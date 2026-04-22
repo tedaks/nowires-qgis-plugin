@@ -7,7 +7,6 @@ NoWires is a QGIS 4 plugin for:
 - point-to-point radio link analysis
 - coverage heatmap analysis
 - contour line generation from Copernicus GLO-30 DEM data
-- 3D terrain and globe viewing from saved NoWires DEM outputs
 
 This guide is for end users. It focuses on installation, setup, and basic workflows. For implementation details and engineering reference material, see [TECH-DOC.md](TECH-DOC.md).
 
@@ -126,8 +125,6 @@ You should then see:
   - `Point-to-Point Analysis`
   - `Coverage Analysis`
   - `Contour Lines`
-  - `Adjust Coverage Opacity`
-  - `Open 3D View`
 
 ## Where to Find the Tools
 
@@ -211,7 +208,6 @@ Main inputs include:
 - max analysis distance
 - grid size resolution
 - overlay transparency
-- optional raw DEM output for 3D terrain reuse
 - polarization
 - climate zone
 - time, location, and situation percentages
@@ -257,21 +253,6 @@ Available presets range from `64 x 64` to `1024 x 1024`.
    - the legend
    - the Processing log statistics
 
-### Adjusting Coverage Transparency After Run
-
-If you want to change coverage transparency without regenerating the raster:
-
-1. Keep the coverage layer loaded.
-2. Open `NoWires` -> `Adjust Coverage Opacity`.
-3. Drag the slider.
-
-Changes apply immediately to the loaded coverage layer.
-
-Notes:
-
-- this menu action works on the most recently tracked NoWires coverage layer
-- it changes display opacity only; it does not regenerate the raster data
-
 ### Reading the Result
 
 The tool reports:
@@ -296,7 +277,6 @@ Use this tool to generate contours and an optional hillshade/elevation overlay f
 - smoothing level
 - line color
 - optional elevation overlay
-- optional raw DEM output for 3D terrain reuse
 
 ### Basic Steps
 
@@ -307,26 +287,6 @@ Use this tool to generate contours and an optional hillshade/elevation overlay f
 5. Choose a line color.
 6. Decide whether to generate the elevation overlay.
 7. Run the tool.
-
-## 3D View Workflow
-
-Use this workflow when you want to view NoWires terrain, contours, and coverage in QGIS 3D or globe view.
-
-1. Run `Coverage Analysis` or `Contour Lines`.
-2. Save `Raw DEM output (3D terrain)` to a persistent `.tif` file.
-3. Keep the resulting coverage raster and/or contour layer visible in the Layers panel.
-4. Open `NoWires` -> `Open 3D View`.
-5. Choose `Local terrain` for a standard terrain scene or `Globe` for globe mode.
-6. In the 3D view, confirm:
-   - the saved NoWires DEM is being used as terrain
-   - coverage is draped over the terrain surface
-   - contours follow the terrain as elevation-aware lines
-
-Notes:
-
-- `Coverage Analysis` contributes the color overlay.
-- `Contour Lines` contributes linework with elevation-aware defaults.
-- The raw DEM output is the terrain source; the hillshade overlay is not the terrain mesh.
 
 ## Updating the Plugin
 

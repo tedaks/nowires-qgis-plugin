@@ -13,7 +13,6 @@ NoWires is a QGIS 4 plugin that combines:
 - point-to-point radio propagation analysis
 - area coverage heatmap analysis
 - contour line generation
-- 3D terrain/globe scene launch support
 - DEM download, caching, clipping, and derived overlay support
 
 ## High-Level Architecture
@@ -59,9 +58,7 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
 - [overlay_raster.py](overlay_raster.py)
   Overlay raster sizing helpers
 - [qt_compat.py](qt_compat.py)
-  QGIS 4 / Qt compatibility helpers
-- [three_d.py](three_d.py)
-  Shared helpers for remembering NoWires 3D-ready layers, configuring contour elevation defaults, and opening a QGIS 3D scene
+   QGIS 4 / Qt compatibility helpers
 
 ### Bundled Third-Party Engine
 
@@ -75,7 +72,7 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
 3. User launches an algorithm either from the menu or the Processing toolbox.
 4. The selected algorithm collects parameters and executes.
 5. Output layers are added to the map if valid.
-6. Optional menu actions can adjust the latest coverage layer opacity or open a 3D scene from the latest saved NoWires outputs.
+6. Optional menu actions can adjust the latest coverage layer opacity.
 
 ## Processing Provider
 
@@ -211,7 +208,6 @@ This is an important product distinction:
 - max analysis distance
 - grid size resolution
 - overlay transparency
-- optional raw DEM output for 3D terrain reuse
 - polarization
 - climate
 - time percentage
@@ -316,33 +312,12 @@ These metrics are based on raster cells at or above `RX sensitivity`.
 - smoothing level
 - line color
 - optional elevation overlay
-- optional raw DEM output for 3D terrain reuse
 - optional proxy authentication
 
 ### Contour Constraints
 
 - contour interval range: `1` to `5000`
 - area-of-interest maximum extent: `5.0°` width or height
-
-## 3D Scene Support
-
-`three_d.py` owns the NoWires 3D integration layer.
-
-Current design:
-
-- `Coverage Analysis` can persist the downloaded DEM as `Raw DEM output (3D terrain)`.
-- `Contour Lines` can persist the downloaded DEM as `Raw DEM output (3D terrain)`.
-- `Open 3D View` launches a QGIS 3D canvas in local terrain or globe mode.
-- saved NoWires DEM output is used as the terrain source when available.
-- visible coverage rasters remain 2D raster layers and appear in 3D as draped terrain texture.
-- contour layers are configured with terrain-aware elevation defaults using the `ELEV` attribute.
-
-Implementation notes:
-
-- layer ids for the latest NoWires DEM, coverage raster, and contour output are stored in project settings under `NoWires/3D`.
-- `nowires.py` exposes the user-facing `Open 3D View` and `Adjust Coverage Opacity` menu actions.
-- contour 3D defaults are applied through vector elevation properties instead of rewriting contour geometry to explicit Z lines.
-- the 3D launcher uses defensive API checks around terrain setup so the plugin remains tolerant of small QGIS 4 API differences.
 
 ## Parameter Reference
 
