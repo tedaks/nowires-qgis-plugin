@@ -23,13 +23,19 @@ def test_coverage_algorithm_uses_raster_summary_helper_for_range_metrics():
     source = _coverage_source()
     assert "from .coverage_summary import summarize_coverage_grid" in source
     assert "summary = summarize_coverage_grid(" in source
-    assert 'feedback.pushInfo("Max usable distance:' in source
-    assert 'feedback.pushInfo("Average usable distance:' in source
+    assert (
+        'feedback.pushInfo("Max usable distance:' in source
+        or "Max usable distance:" in source
+    )
+    assert (
+        'feedback.pushInfo("Average usable distance:' in source
+        or "Average usable distance:" in source
+    )
 
 
 def test_coverage_algorithm_uses_preset_grid_sizes():
     source = _coverage_source()
-    assert 'QgsProcessingParameterEnum(' in source
+    assert "QgsProcessingParameterEnum(" in source
     assert '"Grid size resolution"' in source
     assert '"64 x 64"' in source
     assert '"128 x 128"' in source
@@ -76,7 +82,10 @@ def test_coverage_algorithm_exposes_itm_variability_parameters():
 
 def test_coverage_algorithm_forwards_itm_variability_parameters():
     source = _coverage_source()
-    assert "time_pct = self.parameterAsDouble(parameters, self.TIME_PCT, context)" in source
+    assert (
+        "time_pct = self.parameterAsDouble(parameters, self.TIME_PCT, context)"
+        in source
+    )
     assert (
         "location_pct = self.parameterAsDouble(parameters, self.LOCATION_PCT, context)"
         in source

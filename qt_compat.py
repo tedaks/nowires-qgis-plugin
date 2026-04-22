@@ -28,3 +28,11 @@ def painter_blend_mode_color_dodge(qpainter_namespace):
 
 def matplotlib_qt_backend():
     return ("QtAgg", "backend_qtagg")
+
+
+def slider_orientation_Horizontal(qt_namespace):
+    return _resolve_qt6_enum(qt_namespace, "Orientation", "Horizontal")
+
+
+def slider_tick_position_below(qt_namespace):
+    return _resolve_qt6_enum(qt_namespace, "TickPosition", "TicksBelow")

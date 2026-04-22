@@ -37,15 +37,14 @@ def test_coverage_algorithm_uses_heatmap_stop_builder():
 
 def test_coverage_algorithm_uses_interpolated_palette():
     source = _source_text()
-    assert "color_ramp_shader.setColorRampType(QgsColorRampShader.Interpolated)" in source
+    assert (
+        "color_ramp_shader.setColorRampType(QgsColorRampShader.Interpolated)" in source
+    )
 
 
 def test_coverage_algorithm_applies_overlay_opacity_to_layer():
     source = _source_text()
-    assert (
-        "overlay_transparency_pct = self.parameterAsInt("
-        in source
-    )
+    assert "overlay_transparency_pct = self.parameterAsInt(" in source
     assert "self.OVERLAY_TRANSPARENCY" in source
     assert "raster_layer.setOpacity(1.0 - (overlay_transparency_pct / 100.0))" in source
 
@@ -53,7 +52,10 @@ def test_coverage_algorithm_applies_overlay_opacity_to_layer():
 def test_coverage_algorithm_uses_custom_slider_wrapper_for_transparency():
     source = _source_text()
     assert "class TransparencySliderWidget(WidgetWrapper):" in source
-    assert "QSlider(Qt.Horizontal)" in source
+    assert (
+        "slider_orientation_Horizontal(Qt)" in source
+        or "QSlider(Qt.Horizontal)" in source
+    )
     assert "overlay_transparency_param.setMetadata(" in source
     assert '"widget_wrapper"' in source
     assert "TransparencySliderWidget" in source
