@@ -65,6 +65,7 @@ from .coverage_legend import show_coverage_legend
 from .coverage_palette import build_heatmap_stops
 from .coverage_summary import summarize_coverage_grid
 from .coverage_engine import compute_coverage
+from .qt_compat import slider_orientation_Horizontal, slider_tick_position_below
 
 GRID_SIZE_PRESETS = [64, 128, 192, 256, 384, 512, 768, 1024]
 
@@ -73,12 +74,12 @@ class TransparencySliderWidget(WidgetWrapper):
     """Processing widget wrapper for an integer transparency slider."""
 
     def createWidget(self):
-        self._slider = QSlider(Qt.Horizontal)
+        self._slider = QSlider(slider_orientation_Horizontal(Qt))
         self._slider.setRange(0, 100)
         self._slider.setSingleStep(1)
         self._slider.setPageStep(5)
         self._slider.setTickInterval(10)
-        self._slider.setTickPosition(QSlider.TicksBelow)
+        self._slider.setTickPosition(slider_tick_position_below(QSlider))
         return self._slider
 
     def setValue(self, value):
@@ -544,9 +545,17 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 feedback.pushInfo(
                     "Above sensitivity ({:.0f} dBm): {:.1f}%".format(rx_sens, pct_above)
                 )
-                feedback.pushInfo("Min usable distance: {:.2f} km".format(summary["min_distance_km"]))
-                feedback.pushInfo("Max usable distance: {:.2f} km".format(summary["max_distance_km"]))
-                feedback.pushInfo("Average usable distance: {:.2f} km".format(summary["average_distance_km"]))
+                feedback.pushInfo(
+                    "Min usable distance: {:.2f} km".format(summary["min_distance_km"])
+                )
+                feedback.pushInfo(
+                    "Max usable distance: {:.2f} km".format(summary["max_distance_km"])
+                )
+                feedback.pushInfo(
+                    "Average usable distance: {:.2f} km".format(
+                        summary["average_distance_km"]
+                    )
+                )
                 if summary["usable_cell_count"] == 0:
                     feedback.pushInfo("No cells met the RX sensitivity threshold.")
                 feedback.pushInfo("=" * 40)
