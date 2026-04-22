@@ -6,9 +6,9 @@ import sys
 
 import numpy as np
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from NoWires.coverage_engine import build_coverage_tasks, should_use_multiprocessing
+from coverage_engine import build_coverage_tasks, should_use_multiprocessing
 
 
 def test_should_use_multiprocessing_disabled_on_windows():
