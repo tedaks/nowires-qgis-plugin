@@ -105,14 +105,16 @@ def test_coverage_algorithm_uses_finer_profile_sampling():
     assert "max_profile_pts=200," in source
 
 
-def test_coverage_algorithm_exposes_overlay_transparency_parameter():
+def test_coverage_algorithm_sets_full_opacity():
     source = _coverage_source()
-    assert 'OVERLAY_TRANSPARENCY = "OVERLAY_TRANSPARENCY"' in source
-    assert '"Overlay transparency (%)"' in source
-    assert "type=QgsProcessingParameterNumber.Integer" in source
-    assert "defaultValue=35" in source
-    assert "minValue=0" in source
-    assert "maxValue=100" in source
+    assert "raster_layer.setOpacity(1.0)" in source
+
+
+def test_coverage_algorithm_has_no_transparency_parameter():
+    source = _coverage_source()
+    assert "OVERLAY_TRANSPARENCY" not in source
+    assert "Overlay transparency" not in source
+    assert "TransparencySliderWidget" not in source
 
 
 def test_coverage_algorithm_loads_dem_as_elevation_layer():
