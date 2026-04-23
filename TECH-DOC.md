@@ -55,6 +55,8 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   Coverage legend support in QGIS
 - [coverage_opacity.py](coverage_opacity.py)
   Live opacity adjustment dialog for the latest coverage layer
+- [reliability.py](reliability.py)
+  Formal-or-fallback availability and reliability helpers
 - [report_export.py](report_export.py)
   Shared CSV, JSON, and HTML report writers
 - [report_payloads.py](report_payloads.py)
@@ -149,6 +151,13 @@ Point-to-point analysis now produces:
 - TX/RX marker output
 - optional `CSV`, `JSON`, and `HTML` reports
 
+Point-to-point reports now also carry reliability fields:
+
+- `availability_method`
+- `availability_estimate_pct`
+- `fade_margin_class`
+- `reliability_summary`
+
 ### P2P Parameters
 
 #### Main propagation inputs
@@ -220,6 +229,8 @@ In the current codebase, Earth radius factor is used in the Fresnel and earth-bu
 8. Add the raster and legend to the map.
 9. Compute raster-derived range metrics from cells above sensitivity.
 10. Optionally write `CSV`, `JSON`, and `HTML` report files from the computed summary values.
+
+Coverage reports now also include reliability guidance. The current implementation uses the formal method where validity checks pass and otherwise falls back to the margin-based path.
 
 ### Max Analysis Distance vs Actual Coverage
 

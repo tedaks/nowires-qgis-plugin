@@ -73,10 +73,22 @@ def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
     """Create a new QGIS 3D map canvas using the latest NoWires layers."""
     os_name = os.name
     if os_name == "nt":
+        layers = resolve_nowires_3d_layers(QgsProject.instance())
+        dem_layer = layers["dem_layer"]
+        coverage_layer = layers["coverage_layer"]
+        contour_layer = layers["contour_layer"]
+        if contour_layer is not None:
+            _set_layer_visible(QgsProject.instance(), contour_layer)
+        if coverage_layer is not None:
+            _set_layer_visible(QgsProject.instance(), coverage_layer)
+        if dem_layer is not None:
+            _set_layer_visible(QgsProject.instance(), dem_layer)
         iface.messageBar().pushWarning(
             "NoWires",
             "Opening 3D views from the plugin crashes QGIS on Windows. "
-            "Use View > 3D Map Views > New 3D Map View instead.",
+            "The latest NoWires layers are ready. "
+            "Use View > 3D Map Views > New 3D Map View, then use the NoWires DEM "
+            "layer as terrain.",
         )
         return None
 

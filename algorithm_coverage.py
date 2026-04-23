@@ -572,6 +572,27 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                         summary["average_distance_km"]
                     )
                 )
+                feedback.pushInfo(
+                    "Availability method: {}".format(
+                        report_payload["results"]["availability_method"]
+                    )
+                )
+                feedback.pushInfo(
+                    "Reliability: {}".format(
+                        report_payload["results"]["reliability_summary"]
+                    )
+                )
+                feedback.pushInfo(
+                    "Fade margin class: {}".format(
+                        report_payload["results"]["fade_margin_class"]
+                    )
+                )
+                if report_payload["results"]["availability_estimate_pct"] is not None:
+                    feedback.pushInfo(
+                        "Availability estimate: {:.2f}%".format(
+                            report_payload["results"]["availability_estimate_pct"]
+                        )
+                    )
                 if summary["usable_cell_count"] == 0:
                     feedback.pushInfo("No cells met the RX sensitivity threshold.")
                 feedback.pushInfo("=" * 40)
