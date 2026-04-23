@@ -7,7 +7,14 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from elevation import haversine_m, bearing_deg, bearing_destination
+import numpy as np
+
+from elevation import (
+    haversine_m,
+    bearing_deg,
+    bearing_destination,
+    sample_line_from_grid,
+)
 
 
 class TestHaversine:
@@ -82,6 +89,40 @@ class TestBearingDestination:
         lat, lon = bearing_destination(0.0, 0.0, 90.0, 111_000)
         assert lat == pytest.approx(0.0, abs=0.01)
         assert lon == pytest.approx(1.0, abs=0.01)
+
+
+class TestGridSamplingOrientation:
+    """Tests for DEM north/south row orientation."""
+
+    def test_sample_line_from_grid_keeps_north_at_top_row(self):
+        grid = np.array(
+            [
+                [100.0, 110.0],
+                [200.0, 210.0],
+            ],
+            dtype=np.float32,
+        )
+        meta = {
+            "min_lat": 0.0,
+            "max_lat": 1.0,
+            "min_lon": 0.0,
+            "max_lon": 1.0,
+            "n_lat": 2,
+            "n_lon": 2,
+        }
+
+        samples = sample_line_from_grid(
+            grid,
+            meta,
+            lat1=1.0,
+            lon1=0.0,
+            lat2=0.0,
+            lon2=0.0,
+            n_pts=2,
+        )
+
+        assert samples[0] == pytest.approx(100.0)
+        assert samples[1] == pytest.approx(200.0)
 
 
 import pytest
