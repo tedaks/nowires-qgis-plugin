@@ -148,3 +148,11 @@ def test_coverage_algorithm_returns_report_outputs():
     assert "self.OUTPUT_REPORT_CSV: report_csv_path" in source
     assert "self.OUTPUT_REPORT_JSON: report_json_path" in source
     assert "self.OUTPUT_REPORT_HTML: report_html_path" in source
+
+
+def test_coverage_algorithm_reports_reliability_fields():
+    source = _coverage_source()
+    assert "availability_method" in source
+    assert "availability_estimate_pct" in source
+    assert "fade_margin_class" in source
+    assert "reliability_summary" in source

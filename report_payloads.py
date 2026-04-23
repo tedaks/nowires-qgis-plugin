@@ -6,6 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from osgeo import ogr, osr
+from reliability import summarize_reliability
 
 
 def build_p2p_report_payload(
@@ -38,6 +39,12 @@ def build_p2p_report_payload(
     max_fresnel_radius_m,
 ):
     """Build the structured P2P report payload."""
+    reliability = summarize_reliability(
+        margin_db=margin_db,
+        frequency_mhz=f_mhz,
+        distance_km=dist_m / 1000.0,
+        los_blocked=los_blocked,
+    )
     return {
         "report_type": "p2p",
         "generated_by": "NoWires",
@@ -69,6 +76,10 @@ def build_p2p_report_payload(
             "eirp_dbm": eirp_dbm,
             "received_power_dbm": prx_dbm,
             "link_margin_db": margin_db,
+            "availability_method": reliability["availability_method"],
+            "availability_estimate_pct": reliability["availability_estimate_pct"],
+            "fade_margin_class": reliability["fade_margin_class"],
+            "reliability_summary": reliability["reliability_summary"],
             "los_blocked": bool(los_blocked),
             "fresnel_1_violated": bool(fresnel_1_violated),
             "fresnel_60_violated": bool(fresnel_60_violated),
@@ -111,6 +122,12 @@ def build_coverage_report_payload(
     average_distance_km,
 ):
     """Build the structured coverage report payload."""
+    reliability = summarize_reliability(
+        margin_db=max_prx_dbm - rx_sensitivity_dbm,
+        frequency_mhz=f_mhz,
+        distance_km=max_distance_km,
+        los_blocked=False,
+    )
     return {
         "report_type": "coverage",
         "generated_by": "NoWires",
@@ -141,6 +158,10 @@ def build_coverage_report_payload(
             "mean_prx_dbm": mean_prx_dbm,
             "pct_above_sensitivity": pct_above_sensitivity,
             "usable_cell_count": usable_cell_count,
+            "availability_method": reliability["availability_method"],
+            "availability_estimate_pct": reliability["availability_estimate_pct"],
+            "fade_margin_class": reliability["fade_margin_class"],
+            "reliability_summary": reliability["reliability_summary"],
             "min_distance_km": min_distance_km,
             "max_distance_km": max_distance_km,
             "average_distance_km": average_distance_km,

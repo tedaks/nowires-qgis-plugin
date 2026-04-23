@@ -201,6 +201,20 @@ Point-to-point analysis can also write:
 
 These exports contain the link inputs, path summary, link-budget values, Fresnel status, and viability summary from the run.
 
+### Reliability Output
+
+P2P reports now also include:
+
+- `fade_margin_class`
+- `availability_method`
+- `availability_estimate_pct` when the formal method is used
+- `reliability_summary`
+
+Interpretation:
+
+- `formal_p530` means the plugin judged the case suitable for the formal availability path
+- `fallback_margin` means the plugin used the margin-based fallback summary instead
+
 ### Good Defaults for New Users
 
 - Polarization: `Vertical`
@@ -276,6 +290,15 @@ Coverage analysis can also write:
 
 These exports contain the key coverage inputs plus the derived summary values, including usable distance metrics and received-signal statistics.
 
+Coverage reports now also include:
+
+- `fade_margin_class`
+- `availability_method`
+- `availability_estimate_pct` when the formal path is used
+- `reliability_summary`
+
+Coverage can fall back more often than P2P because not every raster cell is a good candidate for the formal availability method.
+
 ### Adjusting Coverage Opacity
 
 After a coverage run, you can open `NoWires -> Coverage Opacity` to adjust the most recent coverage raster without rerunning the algorithm.
@@ -342,7 +365,7 @@ Instead:
 
 1. Run `Coverage Analysis` or `Contour Lines`.
 2. Open QGIS's native 3D view from `View -> 3D Map Views -> New 3D Map View`.
-3. Use the tracked NoWires DEM, coverage, and contour layers already added to the project.
+3. Use the tracked NoWires DEM layer as terrain, then add the other tracked NoWires layers to the scene as needed.
 
 ## Updating the Plugin
 
@@ -397,7 +420,7 @@ NoWires downloads Copernicus GLO-30 tiles from AWS Open Data. Network restrictio
 
 ### Open 3D View does not open a scene on Windows
 
-This is expected in the current release. Use QGIS's native `View -> 3D Map Views -> New 3D Map View` action instead after running a NoWires coverage or contour workflow.
+This is expected in the current release. Use QGIS's native `View -> 3D Map Views -> New 3D Map View` action instead after running a NoWires coverage or contour workflow, and use the NoWires DEM layer as terrain.
 
 ## Support Checklist
 
