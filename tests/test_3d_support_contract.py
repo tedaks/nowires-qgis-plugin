@@ -32,6 +32,12 @@ def test_three_d_module_uses_unified_nowires_project_keys():
     assert 'CONTOUR_LAYER_KEY = "last_contour_layer_id"' in source
 
 
+def test_three_d_module_generates_unique_view_names():
+    source = _text(THREE_D_SOURCE)
+    assert "mapCanvases3D()" in source
+    assert "NoWires 3D View" in source
+
+
 def test_plugin_adds_open_3d_view_action():
     source = _text(PLUGIN_SOURCE)
     assert '"Open 3D View"' in source
@@ -49,3 +55,4 @@ def test_plugin_uses_three_d_helper_for_launcher():
     source = _text(PLUGIN_SOURCE)
     assert "open_nowires_3d_view" in source
     assert "QInputDialog.getItem(" in source
+    assert "QTimer.singleShot(" in source
