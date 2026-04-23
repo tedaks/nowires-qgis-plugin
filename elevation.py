@@ -128,7 +128,7 @@ class ElevationGrid:
         )
 
     def sample(self, lat, lon):
-        fy = (lat - self.min_lat) / self.d_lat
+        fy = (self.max_lat - lat) / self.d_lat
         fx = (lon - self.min_lon) / self.d_lon
         if fy < 0 or fx < 0 or fy > self.n_rows - 1 or fx > self.n_cols - 1:
             return 0.0
@@ -153,7 +153,9 @@ class ElevationGrid:
         ts = np.linspace(0.0, 1.0, n_points)
         lats = lat1 + ts * (lat2 - lat1)
         lons = lon1 + ts * (lon2 - lon1)
-        fy = np.clip((lats - self.min_lat) / self.d_lat, 0, self.n_rows - 1 - 1e-9)
+        fy = np.clip(
+            (self.max_lat - lats) / self.d_lat, 0, self.n_rows - 1 - 1e-9
+        )
         fx = np.clip((lons - self.min_lon) / self.d_lon, 0, self.n_cols - 1 - 1e-9)
         y0 = np.floor(fy).astype(np.int32)
         x0 = np.floor(fx).astype(np.int32)
@@ -206,7 +208,7 @@ def sample_line_from_grid(gd, gm, lat1, lon1, lat2, lon2, n_pts):
     lats = lat1 + ts * (lat2 - lat1)
     lons = lon1 + ts * (lon2 - lon1)
 
-    fy = np.clip((lats - min_lat) / d_lat, 0, n_lat - 1 - 1e-9)
+    fy = np.clip((max_lat - lats) / d_lat, 0, n_lat - 1 - 1e-9)
     fx = np.clip((lons - min_lon) / d_lon, 0, n_lon - 1 - 1e-9)
 
     y0 = np.floor(fy).astype(np.int32)

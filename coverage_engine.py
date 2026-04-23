@@ -322,6 +322,14 @@ def _dynamic_chunk_size(n_tasks):
     return chunk
 
 
+def _coverage_axis_centers(min_value, max_value, size):
+    """Return evenly spaced cell centers for a raster extent."""
+    if size <= 0:
+        return np.asarray([], dtype=np.float64)
+    step = (max_value - min_value) / float(size)
+    return min_value + ((np.arange(size, dtype=np.float64) + 0.5) * step)
+
+
 def build_coverage_tasks(
     tx_lat,
     tx_lon,
@@ -455,8 +463,8 @@ def compute_coverage(
     max_lon = tx_lon + half_lon
 
     eirp_dbm = tx_power_dbm + tx_gain_dbi - cable_loss_db
-    lats = np.linspace(min_lat, max_lat, grid_size)
-    lons = np.linspace(min_lon, max_lon, grid_size)
+    lats = _coverage_axis_centers(min_lat, max_lat, grid_size)
+    lons = _coverage_axis_centers(min_lon, max_lon, grid_size)
     prx_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
     loss_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
 

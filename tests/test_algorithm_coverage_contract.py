@@ -156,3 +156,10 @@ def test_coverage_algorithm_reports_reliability_fields():
     assert "availability_estimate_pct" in source
     assert "fade_margin_class" in source
     assert "reliability_summary" in source
+
+
+def test_coverage_algorithm_builds_report_payload_before_logging_reliability():
+    source = _coverage_source()
+    build_idx = source.index("report_payload = build_coverage_report_payload(")
+    log_idx = source.index('feedback.pushInfo(\n                    "Availability method: {}'.replace("\\n", "\n"))
+    assert build_idx < log_idx
