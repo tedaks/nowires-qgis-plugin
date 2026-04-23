@@ -117,9 +117,9 @@ def test_coverage_algorithm_has_no_transparency_parameter():
     assert "TransparencySliderWidget" not in source
 
 
-def test_coverage_algorithm_does_not_disable_threading():
+def test_coverage_algorithm_disables_threading():
     source = _coverage_source()
-    assert "NoThreading" not in source
+    assert "NoThreading" in source
 
 
 def test_coverage_algorithm_loads_dem_as_elevation_layer():
