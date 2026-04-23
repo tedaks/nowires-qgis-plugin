@@ -62,7 +62,7 @@ def test_itm_numba_has_fused_longley_rice():
 
 def test_itm_numba_uses_njit_cache():
     source = _text(NUMBA_SOURCE)
-    assert "@_njit(cache=True)" in source or "njit(cache=True)" in source
+    assert "@_njit(cache=True, nogil=True)" in source
 
 
 def test_coverage_engine_imports_numba_module():

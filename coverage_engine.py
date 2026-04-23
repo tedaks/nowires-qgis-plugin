@@ -40,7 +40,7 @@ import multiprocessing.shared_memory
 import os
 import sys
 import uuid
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 try:
     from concurrent.futures import BrokenExecutor as _BrokenPool
@@ -92,10 +92,7 @@ def should_use_multiprocessing(os_name=None):
     """Return whether process-based parallelism is safe in this runtime."""
     if os_name is None:
         os_name = os.name
-
-    if os_name == "nt":
-        multiprocessing.freeze_support()
-    return True
+    return os_name != "nt"
 
 
 def _ensure_path():
@@ -542,9 +539,44 @@ def compute_coverage(
     chunk_size = _dynamic_chunk_size(len(tasks))
     chunks = [tasks[i : i + chunk_size] for i in range(0, len(tasks), chunk_size)]
 
-    # Try multiprocessing first where safe; fall back to sequential on failure.
     use_multiprocessing = should_use_multiprocessing()
-    if use_multiprocessing:
+
+    if _HAS_NUMBA:
+        if feedback:
+            feedback.pushInfo(
+                "Computing {} pixels with {} threads (numba nogil)...".format(
+                    len(tasks), n_workers
+                )
+            )
+        try:
+            with ThreadPoolExecutor(max_workers=n_workers) as pool:
+                for chunk_idx, batch_results in enumerate(
+                    pool.map(_itm_worker_batch, chunks, chunksize=1)
+                ):
+                    if feedback and feedback.isCanceled():
+                        logger.info("Coverage cancelled by user")
+                        return None, None, 0, 0, 0, 0
+                    for result in batch_results:
+                        if result is not None:
+                            i, j, loss_db, prx = result
+                            loss_grid[i, j] = loss_db
+                            prx_grid[i, j] = prx
+                        else:
+                            pixels_failed += 1
+                        pixels_done += 1
+                    if feedback and chunk_idx % 50 == 0:
+                        pct = int(pixels_done / len(tasks) * 80)
+                        feedback.setProgress(pct)
+        except (_BrokenPool, RuntimeError) as exc:
+            logger.warning(
+                "Thread pool failed (%s: %s), falling back to sequential",
+                type(exc).__name__,
+                exc,
+            )
+            if feedback:
+                feedback.pushInfo("Thread pool failed, using single-threaded mode...")
+            use_multiprocessing = False
+    elif use_multiprocessing:
         try:
             shm = _make_shared_grid(grid_data)
             with ProcessPoolExecutor(
@@ -581,65 +613,31 @@ def compute_coverage(
                 )
             use_multiprocessing = False
     elif feedback:
-        feedback.pushInfo("Using single-threaded mode (multiprocessing unavailable)...")
+        feedback.pushInfo(
+            "Using single-threaded mode on Windows (no numba, spawn unsafe)..."
+        )
 
     # Sequential fallback (or primary path if multiprocessing was skipped)
-    if not use_multiprocessing:
+    if not _HAS_NUMBA and not use_multiprocessing:
         global _cov_grid_data, _cov_grid_meta
         _cov_grid_data = grid_data
         _cov_grid_meta = grid_meta
 
-        if _HAS_NUMBA:
-            sampled = _presample_elevations(grid_data, grid_meta, tasks)
-            for task_idx, (s_idx, step_m, elevs) in enumerate(sampled):
-                if feedback and feedback.isCanceled():
-                    logger.info("Coverage cancelled by user")
-                    return None, None, 0, 0, 0, 0
-                t = tasks[s_idx]
-                result = compute_itm_p2p(
-                    h_tx__meter=t[8],
-                    h_rx__meter=t[9],
-                    elevations=elevs,
-                    resolution=step_m,
-                    climate_idx=int(t[10]),
-                    N_0=t[11],
-                    f__mhz=t[12],
-                    polarization=int(t[13]),
-                    epsilon=t[14],
-                    sigma=t[15],
-                    time_pct=t[16],
-                    location_pct=t[17],
-                    situation_pct=t[18],
-                    eirp_dbm=t[19],
-                    ant_gain_adj=t[20],
-                    rx_gain_dbi=t[21],
-                )
-                if result is not None:
-                    i, j, loss_db, prx = t[0], t[1], result[0], result[1]
-                    loss_grid[i, j] = loss_db
-                    prx_grid[i, j] = prx
-                else:
-                    pixels_failed += 1
-                pixels_done += 1
-                if feedback and task_idx % 500 == 0:
-                    pct = int(pixels_done / len(tasks) * 80)
-                    feedback.setProgress(pct)
-        else:
-            for task_idx, task in enumerate(tasks):
-                if feedback and feedback.isCanceled():
-                    logger.info("Coverage cancelled by user")
-                    return None, None, 0, 0, 0, 0
-                result = _itm_worker(task)
-                if result is not None:
-                    i, j, loss_db, prx = result
-                    loss_grid[i, j] = loss_db
-                    prx_grid[i, j] = prx
-                else:
-                    pixels_failed += 1
-                pixels_done += 1
-                if feedback and task_idx % 500 == 0:
-                    pct = int(pixels_done / len(tasks) * 80)
-                    feedback.setProgress(pct)
+        for task_idx, task in enumerate(tasks):
+            if feedback and feedback.isCanceled():
+                logger.info("Coverage cancelled by user")
+                return None, None, 0, 0, 0, 0
+            result = _itm_worker(task)
+            if result is not None:
+                i, j, loss_db, prx = result
+                loss_grid[i, j] = loss_db
+                prx_grid[i, j] = prx
+            else:
+                pixels_failed += 1
+            pixels_done += 1
+            if feedback and task_idx % 500 == 0:
+                pct = int(pixels_done / len(tasks) * 80)
+                feedback.setProgress(pct)
 
         # Clear globals after sequential run
         _cov_grid_data = None
@@ -738,9 +736,23 @@ def compute_coverage_radius(
     grid_data = elev_grid.data
     shm = None
     n_workers = min(os.cpu_count() or 1, _MAX_WORKERS)
+    results = None
 
     use_multiprocessing = should_use_multiprocessing()
-    if use_multiprocessing:
+
+    if _HAS_NUMBA:
+        try:
+            with ThreadPoolExecutor(max_workers=n_workers) as pool:
+                results = list(pool.map(_radius_worker, worker_args, chunksize=1))
+        except (_BrokenPool, RuntimeError) as exc:
+            logger.warning(
+                "Thread pool failed for radius sweep (%s: %s), "
+                "falling back to sequential",
+                type(exc).__name__,
+                exc,
+            )
+            results = None
+    elif use_multiprocessing:
         try:
             shm = _make_shared_grid(grid_data)
             with ProcessPoolExecutor(
@@ -756,20 +768,13 @@ def compute_coverage_radius(
                 type(exc).__name__,
                 exc,
             )
-            if feedback:
-                feedback.pushInfo(
-                    "Multiprocessing unavailable, using single-threaded mode..."
-                )
             use_multiprocessing = False
             results = None
     else:
         if feedback:
-            feedback.pushInfo(
-                "Using single-threaded mode on Windows to avoid launching extra QGIS instances..."
-            )
-        results = None
+            feedback.pushInfo("Using single-threaded mode (no numba, spawn unsafe)...")
 
-    if not use_multiprocessing:
+    if not _HAS_NUMBA and not use_multiprocessing and results is None:
         # Sequential fallback: use grid data directly in-process
         global _radius_grid_data, _radius_grid_meta
         _radius_grid_data = grid_data

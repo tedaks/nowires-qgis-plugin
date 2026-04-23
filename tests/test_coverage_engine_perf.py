@@ -31,10 +31,16 @@ def test_dynamic_chunk_size_function():
     assert "_MAX_CHUNK_SIZE" in source
 
 
-def test_windows_multiprocessing_enabled():
+def test_windows_multiprocessing_still_disabled():
     source = _engine_source()
-    assert "multiprocessing.freeze_support()" in source
-    assert 'os_name != "nt"' not in source
+    assert 'os_name != "nt"' in source
+    assert "multiprocessing.freeze_support()" not in source
+
+
+def test_thread_pool_executor_used_with_numba():
+    source = _engine_source()
+    assert "ThreadPoolExecutor" in source
+    assert "_HAS_NUMBA" in source
 
 
 def test_presample_elevations_function():

@@ -21,7 +21,7 @@ except ImportError:
 if _HAS_NUMBA:
     import numpy as _np
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_iccdf(q):
         C_0, C_1, C_2 = 2.515516, 0.802853, 0.010328
         D_1, D_2, D_3 = 1.432788, 0.189269, 0.001308
@@ -33,22 +33,22 @@ if _HAS_NUMBA:
         Q_q = T_x - zeta_x
         return -Q_q if q > 0.5 else Q_q
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_terrain_roughness(d__meter, delta_h__meter):
         return delta_h__meter * (1.0 - 0.8 * math.exp(-d__meter / 50e3))
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_sigma_h(delta_h__meter):
         return 0.78 * delta_h__meter * math.exp(-0.5 * delta_h__meter**0.25)
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_fresnel_integral(v2):
         if v2 < 5.76:
             return 6.02 + 9.11 * math.sqrt(v2) - 1.27 * v2
         else:
             return 12.953 + 10.0 * math.log10(v2)
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_knife_edge_diffraction(
         d__meter, f__mhz, a_e__meter, theta_los, d_hzn0, d_hzn1
     ):
@@ -73,7 +73,7 @@ if _HAS_NUMBA:
         )
         return _nb_fresnel_integral(v_1) + _nb_fresnel_integral(v_2)
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_height_function(x__km, K):
         if x__km < 200.0:
             w = -math.log(K)
@@ -90,7 +90,7 @@ if _HAS_NUMBA:
                 result = (1.0 - w) * result + w * (17.372 * math.log(x__km) - 117.0)
         return result
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_smooth_earth_diffraction(
         d__meter,
         f__mhz,
@@ -138,13 +138,13 @@ if _HAS_NUMBA:
         G_x__db = 0.05751 * x_km_0 - 10.0 * math.log10(x_km_0)
         return G_x__db - F_x_0 - F_x_1 - 20.0
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_h0_curve(j, r):
         a = _np.array([25.0, 80.0, 177.0, 395.0, 705.0])
         b = _np.array([24.0, 45.0, 68.0, 80.0, 105.0])
         return 10.0 * math.log10(1.0 + a[j] * (1.0 / r) ** 4 + b[j] * (1.0 / r) ** 2)
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_h0_function(r, eta_s):
         eta_s = min(max(eta_s, 1.0), 5.0)
         i = int(eta_s)
@@ -154,7 +154,7 @@ if _HAS_NUMBA:
             result = (1.0 - q) * result + q * _nb_h0_curve(i, r)
         return result
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_f_function(td):
         a = _np.array([133.4, 104.6, 71.8])
         b = _np.array([0.332e-3, 0.212e-3, 0.157e-3])
@@ -167,14 +167,14 @@ if _HAS_NUMBA:
             i = 2
         return a[i] + b[i] * td + c[i] * math.log10(td)
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_curve(c1, c2, x1, x2, x3, d_e__meter):
         r = d_e__meter / x1
         return (
             (c1 + c2 / (1.0 + ((d_e__meter - x2) / x3) ** 2)) * (r * r) / (1.0 + r * r)
         )
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_troposcatter_loss(
         d__meter,
         theta_hzn0,
@@ -259,7 +259,7 @@ if _HAS_NUMBA:
         )
         return result, h0_updated
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_line_of_sight_loss(
         d__meter,
         h_e0,
@@ -296,7 +296,7 @@ if _HAS_NUMBA:
         w = 1.0 / (1.0 + f__mhz * delta_h__meter / max(10e3, d_sML__meter))
         return w * A_t__db + (1.0 - w) * A_d__db
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_diffraction_loss(
         d__meter,
         d_hzn0,
@@ -355,7 +355,7 @@ if _HAS_NUMBA:
         w = 25.1 / (25.1 + math.sqrt(q))
         return w * A_se__db + (1.0 - w) * A_k__db + A_fo__db
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_find_horizons(elevations, resolution, h_tx, h_rx, a_e__meter):
         np_ = len(elevations) - 1
         d__meter = np_ * resolution
@@ -385,7 +385,7 @@ if _HAS_NUMBA:
 
         return best_tx, best_rx, best_d_tx, best_d_rx
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_linear_least_squares(elevations, resolution, d_start, d_end):
         np_ = len(elevations) - 1
         i_start = int(max(d_start / resolution - 0.0, 0.0))
@@ -416,7 +416,7 @@ if _HAS_NUMBA:
         fit_y2 = sum_y + scaled_sum_y * (np_ - mid_shift_end)
         return fit_y1, fit_y2
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_compute_delta_h(elevations, resolution, d_start__meter, d_end__meter):
         np_ = len(elevations) - 1
         x_start_idx = d_start__meter / resolution
@@ -473,7 +473,7 @@ if _HAS_NUMBA:
             1.0 - 0.8 * math.exp(-(d_end__meter - d_start__meter) / 50e3)
         )
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def _nb_variability(
         time_pct,
         location_pct,
@@ -600,7 +600,7 @@ if _HAS_NUMBA:
 
         return result
 
-    @_njit(cache=True)
+    @_njit(cache=True, nogil=True)
     def nb_itm_p2p_loss(
         h_tx__meter,
         h_rx__meter,
