@@ -10,6 +10,7 @@ PROJECT_SCOPE = "NoWires"
 COVERAGE_LAYER_KEY = "last_coverage_layer_id"
 DEM_LAYER_KEY = "last_dem_layer_id"
 CONTOUR_LAYER_KEY = "last_contour_layer_id"
+VIEW_NAME_PREFIX = "NoWires 3D View"
 
 
 def remember_nowires_3d_layers(
@@ -58,6 +59,14 @@ def configure_contours_for_3d(layer, elevation_field="ELEV"):
     return layer
 
 
+def _next_3d_view_name(iface):
+    """Generate a unique 3D view name for the current QGIS session."""
+    existing = []
+    if hasattr(iface, "mapCanvases3D"):
+        existing = iface.mapCanvases3D() or []
+    return "{} {}".format(VIEW_NAME_PREFIX, len(existing) + 1)
+
+
 def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
     """Create a new QGIS 3D map canvas using the latest NoWires layers."""
     project = QgsProject.instance()
@@ -85,7 +94,7 @@ def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
         if scene_mode == SCENE_MODE_GLOBE
         else Qgis.SceneMode.Local
     )
-    canvas = iface.createNewMapCanvas3D("NoWires 3D View", scene)
+    canvas = iface.createNewMapCanvas3D(_next_3d_view_name(iface), scene)
 
     if hasattr(project, "elevationProperties"):
         elevation_props = project.elevationProperties()

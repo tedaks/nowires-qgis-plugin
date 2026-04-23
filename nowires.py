@@ -23,6 +23,7 @@
 import os
 import sys
 
+from qgis.PyQt.QtCore import QTimer
 from qgis.PyQt.QtWidgets import QAction, QInputDialog
 from qgis.PyQt.QtGui import QIcon
 
@@ -151,4 +152,6 @@ class NoWiresPlugin:
             return
 
         scene_mode = SCENE_MODE_GLOBE if mode_label == "Globe" else SCENE_MODE_LOCAL
-        open_nowires_3d_view(self.iface, scene_mode=scene_mode)
+        QTimer.singleShot(
+            0, lambda mode=scene_mode: open_nowires_3d_view(self.iface, scene_mode=mode)
+        )
