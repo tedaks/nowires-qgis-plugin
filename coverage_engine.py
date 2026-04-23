@@ -40,7 +40,7 @@ import multiprocessing.shared_memory
 import os
 import sys
 import uuid
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 
 try:
     from concurrent.futures import BrokenExecutor as _BrokenPool
@@ -51,7 +51,7 @@ except ImportError:
         _BrokenPool = RuntimeError
 from typing import Optional
 
-from .itm_numba import _HAS_NUMBA, compute_itm_p2p
+from .coverage_compute import compute_itm_p2p
 
 # On Windows (spawn start method), child processes re-import this module
 # from scratch and do NOT inherit QGIS's dynamically-added sys.path entries.
@@ -322,31 +322,6 @@ def _dynamic_chunk_size(n_tasks):
     return chunk
 
 
-def _presample_elevations(grid_data, grid_meta, tasks):
-    """Pre-sample all terrain profiles so DEM stays in cache.
-
-    Returns a list of (task_index, elevations_array) pairs with the same
-    ordering as tasks.  Each elevations array is a numpy float64 vector
-    ready to be passed directly to compute_itm_p2p.
-    """
-    tx_lat = grid_meta["tx_lat"]
-    tx_lon = grid_meta["tx_lon"]
-    sampled = []
-    for idx, t in enumerate(tasks):
-        _, _, target_lat, target_lon, _, _, step_m, n_pts = t[:8]
-        elevs = sample_line_from_grid(
-            grid_data,
-            grid_meta,
-            tx_lat,
-            tx_lon,
-            target_lat,
-            target_lon,
-            n_pts,
-        )
-        sampled.append((idx, step_m, elevs))
-    return sampled
-
-
 def build_coverage_tasks(
     tx_lat,
     tx_lon,
@@ -541,50 +516,11 @@ def compute_coverage(
     chunks = [tasks[i : i + chunk_size] for i in range(0, len(tasks), chunk_size)]
 
     use_multiprocessing = should_use_multiprocessing()
-
-    if _HAS_NUMBA:
-        _cov_grid_data = grid_data
-        _cov_grid_meta = grid_meta
+    if use_multiprocessing:
         if feedback:
             feedback.pushInfo(
-                "Computing {} pixels with {} threads (numba nogil)...".format(
-                    len(tasks), n_workers
-                )
+                "Computing {} pixels with {} workers...".format(len(tasks), n_workers)
             )
-        try:
-            with ThreadPoolExecutor(max_workers=n_workers) as pool:
-                for chunk_idx, batch_results in enumerate(
-                    pool.map(_itm_worker_batch, chunks, chunksize=1)
-                ):
-                    if feedback and feedback.isCanceled():
-                        logger.info("Coverage cancelled by user")
-                        _cov_grid_data = None
-                        _cov_grid_meta = {}
-                        return None, None, 0, 0, 0, 0
-                    for result in batch_results:
-                        if result is not None:
-                            i, j, loss_db, prx = result
-                            loss_grid[i, j] = loss_db
-                            prx_grid[i, j] = prx
-                        else:
-                            pixels_failed += 1
-                        pixels_done += 1
-                    if feedback and chunk_idx % 50 == 0:
-                        pct = int(pixels_done / len(tasks) * 80)
-                        feedback.setProgress(pct)
-        except (_BrokenPool, RuntimeError) as exc:
-            logger.warning(
-                "Thread pool failed (%s: %s), falling back to sequential",
-                type(exc).__name__,
-                exc,
-            )
-            if feedback:
-                feedback.pushInfo("Thread pool failed, using single-threaded mode...")
-            use_multiprocessing = False
-        finally:
-            _cov_grid_data = None
-            _cov_grid_meta = {}
-    elif use_multiprocessing:
         try:
             shm = _make_shared_grid(grid_data)
             with ProcessPoolExecutor(
@@ -622,11 +558,12 @@ def compute_coverage(
             use_multiprocessing = False
     elif feedback:
         feedback.pushInfo(
-            "Using single-threaded mode on Windows (no numba, spawn unsafe)..."
+            "Using single-threaded mode on Windows (multiprocessing unsafe)..."
         )
 
-    # Sequential fallback (or primary path if multiprocessing was skipped)
-    if not _HAS_NUMBA and not use_multiprocessing:
+    # Sequential fallback
+    if not use_multiprocessing:
+        global _cov_grid_data, _cov_grid_meta
         _cov_grid_data = grid_data
         _cov_grid_meta = grid_meta
 
@@ -747,25 +684,7 @@ def compute_coverage_radius(
     results = None
 
     use_multiprocessing = should_use_multiprocessing()
-
-    if _HAS_NUMBA:
-        _radius_grid_data = grid_data
-        _radius_grid_meta = grid_meta
-        try:
-            with ThreadPoolExecutor(max_workers=n_workers) as pool:
-                results = list(pool.map(_radius_worker, worker_args, chunksize=1))
-        except (_BrokenPool, RuntimeError) as exc:
-            logger.warning(
-                "Thread pool failed for radius sweep (%s: %s), "
-                "falling back to sequential",
-                type(exc).__name__,
-                exc,
-            )
-            results = None
-        finally:
-            _radius_grid_data = None
-            _radius_grid_meta = {}
-    elif use_multiprocessing:
+    if use_multiprocessing:
         try:
             shm = _make_shared_grid(grid_data)
             with ProcessPoolExecutor(
@@ -785,10 +704,13 @@ def compute_coverage_radius(
             results = None
     else:
         if feedback:
-            feedback.pushInfo("Using single-threaded mode (no numba, spawn unsafe)...")
+            feedback.pushInfo(
+                "Using single-threaded mode (multiprocessing unsafe)..."
+            )
 
-    if not _HAS_NUMBA and not use_multiprocessing and results is None:
+    if not use_multiprocessing and results is None:
         # Sequential fallback: use grid data directly in-process
+        global _radius_grid_data, _radius_grid_meta
         _radius_grid_data = grid_data
         _radius_grid_meta = grid_meta
 
