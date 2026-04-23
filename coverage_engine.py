@@ -468,6 +468,7 @@ def compute_coverage(
     situation_pct=50.0,
     feedback=None,
 ):
+    global _cov_grid_data, _cov_grid_meta
     radius_m = radius_km * 1000.0
     lat_per_m = 1.0 / 111320.0
     lon_per_m = 1.0 / (111320.0 * max(math.cos(math.radians(tx_lat)), 0.01))
@@ -707,6 +708,7 @@ def compute_coverage_radius(
     situation_pct=50.0,
     feedback=None,
 ):
+    global _radius_grid_data, _radius_grid_meta
     search_max_m = radius_km * 1000.0
     eirp_dbm = tx_power_dbm + tx_gain_dbi - cable_loss_db
     grid_meta = elev_grid.grid_meta_dict()
