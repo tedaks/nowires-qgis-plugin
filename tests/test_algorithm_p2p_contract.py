@@ -77,3 +77,28 @@ def test_p2p_algorithm_keeps_legacy_k_factor_as_compatibility_fallback():
     assert "if self.K_FACTOR_PRESET not in parameters and self.K_FACTOR in parameters:" in source
     assert "k_factor = self.parameterAsDouble(parameters, self.K_FACTOR, context)" in source
     assert "k_factor = K_FACTOR_PRESETS[" in source
+
+
+def test_p2p_algorithm_exposes_marker_output():
+    source = _p2p_source()
+    assert 'OUTPUT_MARKERS = "OUTPUT_MARKERS"' in source
+    assert '"TX/RX marker output"' in source
+
+
+def test_p2p_algorithm_exposes_report_outputs():
+    source = _p2p_source()
+    assert 'OUTPUT_REPORT_CSV = "OUTPUT_REPORT_CSV"' in source
+    assert 'OUTPUT_REPORT_JSON = "OUTPUT_REPORT_JSON"' in source
+    assert 'OUTPUT_REPORT_HTML = "OUTPUT_REPORT_HTML"' in source
+    assert "QgsProcessingParameterFileDestination(" in source
+    assert '"P2P report CSV"' in source
+    assert '"P2P report JSON"' in source
+    assert '"P2P report HTML"' in source
+
+
+def test_p2p_algorithm_returns_marker_and_report_outputs():
+    source = _p2p_source()
+    assert "self.OUTPUT_MARKERS: markers_path" in source
+    assert "self.OUTPUT_REPORT_CSV: report_csv_path" in source
+    assert "self.OUTPUT_REPORT_JSON: report_json_path" in source
+    assert "self.OUTPUT_REPORT_HTML: report_html_path" in source
