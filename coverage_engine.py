@@ -542,6 +542,8 @@ def compute_coverage(
     use_multiprocessing = should_use_multiprocessing()
 
     if _HAS_NUMBA:
+        _cov_grid_data = grid_data
+        _cov_grid_meta = grid_meta
         if feedback:
             feedback.pushInfo(
                 "Computing {} pixels with {} threads (numba nogil)...".format(
@@ -555,6 +557,8 @@ def compute_coverage(
                 ):
                     if feedback and feedback.isCanceled():
                         logger.info("Coverage cancelled by user")
+                        _cov_grid_data = None
+                        _cov_grid_meta = {}
                         return None, None, 0, 0, 0, 0
                     for result in batch_results:
                         if result is not None:
@@ -576,6 +580,9 @@ def compute_coverage(
             if feedback:
                 feedback.pushInfo("Thread pool failed, using single-threaded mode...")
             use_multiprocessing = False
+        finally:
+            _cov_grid_data = None
+            _cov_grid_meta = {}
     elif use_multiprocessing:
         try:
             shm = _make_shared_grid(grid_data)
@@ -619,7 +626,6 @@ def compute_coverage(
 
     # Sequential fallback (or primary path if multiprocessing was skipped)
     if not _HAS_NUMBA and not use_multiprocessing:
-        global _cov_grid_data, _cov_grid_meta
         _cov_grid_data = grid_data
         _cov_grid_meta = grid_meta
 
@@ -741,6 +747,8 @@ def compute_coverage_radius(
     use_multiprocessing = should_use_multiprocessing()
 
     if _HAS_NUMBA:
+        _radius_grid_data = grid_data
+        _radius_grid_meta = grid_meta
         try:
             with ThreadPoolExecutor(max_workers=n_workers) as pool:
                 results = list(pool.map(_radius_worker, worker_args, chunksize=1))
@@ -752,6 +760,9 @@ def compute_coverage_radius(
                 exc,
             )
             results = None
+        finally:
+            _radius_grid_data = None
+            _radius_grid_meta = {}
     elif use_multiprocessing:
         try:
             shm = _make_shared_grid(grid_data)
@@ -776,7 +787,6 @@ def compute_coverage_radius(
 
     if not _HAS_NUMBA and not use_multiprocessing and results is None:
         # Sequential fallback: use grid data directly in-process
-        global _radius_grid_data, _radius_grid_meta
         _radius_grid_data = grid_data
         _radius_grid_meta = grid_meta
 
