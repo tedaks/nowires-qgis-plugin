@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 - Prepare repository for public GitHub upload.
+- Split coverage helpers into `coverage_compute.py` and `coverage_colors.py`.
+- Add a synthetic coverage runtime benchmark under `benchmarks/coverage_runtime.py`.
 
 ## [1.1.0]
 

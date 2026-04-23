@@ -23,7 +23,7 @@
 import os
 import sys
 
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QInputDialog
 from qgis.PyQt.QtGui import QIcon
 
 from qgis.core import QgsApplication
@@ -32,6 +32,7 @@ import processing
 from .coverage_legend import remove_coverage_legend
 from .coverage_opacity import find_latest_coverage_layer, CoverageOpacityDialog
 from .provider import NoWiresProvider
+from .three_d import SCENE_MODE_GLOBE, SCENE_MODE_LOCAL, open_nowires_3d_view
 
 cmd_folder = os.path.dirname(__file__)
 
@@ -90,6 +91,13 @@ class NoWiresPlugin:
         self.opacity_action.triggered.connect(self.run_coverage_opacity)
         self.iface.addPluginToMenu("&NoWires", self.opacity_action)
 
+        # 3D View action
+        self.open_3d_action = QAction(
+            QIcon(icon), "Open 3D View", self.iface.mainWindow()
+        )
+        self.open_3d_action.triggered.connect(self.run_open_3d_view)
+        self.iface.addPluginToMenu("&NoWires", self.open_3d_action)
+
         self._opacity_dialog = None
 
     def unload(self):
@@ -103,6 +111,7 @@ class NoWiresPlugin:
         self.iface.removePluginMenu("&NoWires", self.coverage_action)
         self.iface.removePluginMenu("&NoWires", self.contour_action)
         self.iface.removePluginMenu("&NoWires", self.opacity_action)
+        self.iface.removePluginMenu("&NoWires", self.open_3d_action)
         self.iface.removeToolBarIcon(self.p2p_action)
 
     def run_p2p(self):
@@ -128,3 +137,18 @@ class NoWiresPlugin:
             layer, parent=self.iface.mainWindow()
         )
         self._opacity_dialog.show()
+
+    def run_open_3d_view(self):
+        mode_label, ok = QInputDialog.getItem(
+            self.iface.mainWindow(),
+            "NoWires 3D View",
+            "Scene mode",
+            ["Local terrain", "Globe"],
+            0,
+            False,
+        )
+        if not ok:
+            return
+
+        scene_mode = SCENE_MODE_GLOBE if mode_label == "Globe" else SCENE_MODE_LOCAL
+        open_nowires_3d_view(self.iface, scene_mode=scene_mode)

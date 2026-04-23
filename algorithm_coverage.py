@@ -478,6 +478,9 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 elev_props.setMode(Qgis.RasterElevationMode.RepresentsElevationSurface)
                 elev_props.setBandNumber(1)
                 QgsProject.instance().addMapLayer(dem_layer)
+                QgsProject.instance().writeEntry(
+                    "NoWires", "last_dem_layer_id", dem_layer.id()
+                )
 
             # Statistics
             raster_grid = prx_grid[::-1]

@@ -142,3 +142,9 @@ def test_coverage_algorithm_stores_layer_id():
     assert '"NoWires"' in source
     assert '"last_coverage_layer_id"' in source
     assert "raster_layer.id()" in source
+
+
+def test_coverage_algorithm_stores_dem_layer_id_for_3d():
+    source = _text(COVERAGE_SOURCE)
+    assert '"last_dem_layer_id"' in source
+    assert "dem_layer.id()" in source
