@@ -58,6 +58,7 @@ from qgis.core import (
     QgsProcessingParameterEnum,
     QgsProcessingParameterExtent,
     QgsProcessingParameterNumber,
+    QgsProcessingParameterRasterDestination,
     QgsProcessingParameterVectorDestination,
     QgsProject,
     QgsRasterLayer,
@@ -78,6 +79,7 @@ from .dem_downloader import (
 )
 from .overlay_raster import build_overview_levels, choose_overlay_dimensions
 from .qt_compat import painter_blend_mode_color_dodge
+from .three_d import configure_contours_for_3d
 
 
 def _raster_calc(calc_func, output_path, nodata=-32768, overwrite=False, **inputs):
@@ -176,6 +178,7 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
     ELEVATION_MAP = "ELEVATION_MAP"
     PROXY_AUTH = "PROXY_AUTH"
     OUTPUT = "OUTPUT"
+    OUTPUT_DEM = "OUTPUT_DEM"
 
     def __init__(self):
         super().__init__()
@@ -248,6 +251,11 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorDestination(
                 self.OUTPUT, "Contour lines output"
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterRasterDestination(
+                self.OUTPUT_DEM, "Raw DEM output (3D terrain)", optional=True
             )
         )
 
@@ -428,9 +436,11 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
         self.progress += 1
         feedback.setProgress(int(self.progress * self.status_total))
 
+        dem_output = self.parameterAsOutputLayer(parameters, self.OUTPUT_DEM, context)
+
         # Save raw DEM for the optional elevation overlay path.
         elevation_dem_path = None
-        if generate_elevation_map:
+        if generate_elevation_map or dem_output:
             elevation_dem_path = os.path.join(self.temp_dir, "elevation_contour.tif")
             shutil.copy2(merged_path, elevation_dem_path)
 
@@ -588,9 +598,22 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
         layer.setLabelsEnabled(True)
         layer.setLabeling(QgsVectorLayerSimpleLabeling(label_settings))
         layer.triggerRepaint()
+        configure_contours_for_3d(layer, elevation_field="ELEV")
 
         self.progress += 1
         feedback.setProgress(int(self.progress * self.status_total))
+
+        output_dem_layer = None
+        if dem_output:
+            gdal.Translate(dem_output, elevation_dem_path)
+            output_dem_layer = QgsRasterLayer(dem_output, "NoWires DEM")
+            if output_dem_layer.isValid():
+                QgsProject.instance().addMapLayer(output_dem_layer)
+                QgsProject.instance().writeEntry(
+                    "NoWires", "last_dem_layer_id", output_dem_layer.id()
+                )
+            else:
+                feedback.pushInfo("Warning: Could not load NoWires DEM layer")
 
         # Hillshade overlay
         if generate_elevation_map:
@@ -608,8 +631,11 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
                 feedback.pushInfo("Warning: Could not load Elevation Overlay layer")
 
         QgsProject.instance().addMapLayer(layer)
+        QgsProject.instance().writeEntry(
+            "NoWires", "last_contour_layer_id", layer.id()
+        )
         feedback.pushInfo("\nDone.")
-        return {self.OUTPUT: final_output_path}
+        return {self.OUTPUT: final_output_path, self.OUTPUT_DEM: dem_output}
 
     def _smooth_contour_line(self, smoothing, feedback):
         """Apply Gaussian-weighted contour line smoothing guided by TPI."""

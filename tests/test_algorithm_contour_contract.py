@@ -21,4 +21,18 @@ def test_contour_algorithm_declares_output_destination_parameter():
 
 def test_contour_algorithm_returns_output_path_to_processing():
     source = _source_text()
-    assert "return {self.OUTPUT: final_output_path}" in source
+    assert "return {self.OUTPUT: final_output_path" in source
+
+
+def test_contour_algorithm_declares_optional_dem_output_for_3d():
+    source = _source_text()
+    assert "QgsProcessingParameterRasterDestination" in source
+    assert 'OUTPUT_DEM = "OUTPUT_DEM"' in source
+    assert '"Raw DEM output (3D terrain)"' in source
+
+
+def test_contour_algorithm_stores_latest_3d_layer_ids():
+    source = _source_text()
+    assert '"last_contour_layer_id"' in source
+    assert '"last_dem_layer_id"' in source
+    assert "layer.id()" in source
