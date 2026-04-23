@@ -46,6 +46,7 @@ from qgis.core import (
     QgsColorRampShader,
     QgsProcessingAlgorithm,
     QgsProcessingParameterEnum,
+    QgsProcessingParameterFileDestination,
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
     QgsProcessingParameterRasterDestination,
@@ -62,8 +63,12 @@ from .coverage_legend import show_coverage_legend
 from .coverage_palette import build_heatmap_stops
 from .coverage_summary import summarize_coverage_grid
 from .coverage_engine import compute_coverage
+from .radio import CLIMATE_NAMES
+from .report_export import write_report_csv, write_report_html, write_report_json
+from .report_payloads import build_coverage_report_payload
 
 GRID_SIZE_PRESETS = [64, 128, 192, 256, 384, 512, 768, 1024]
+POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
 
 
 class CoverageAlgorithm(QgsProcessingAlgorithm):
@@ -92,6 +97,9 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
     EPSILON = "EPSILON"
     SIGMA = "SIGMA"
     OUTPUT_RASTER = "OUTPUT_RASTER"
+    OUTPUT_REPORT_CSV = "OUTPUT_REPORT_CSV"
+    OUTPUT_REPORT_JSON = "OUTPUT_REPORT_JSON"
+    OUTPUT_REPORT_HTML = "OUTPUT_REPORT_HTML"
 
     def flags(self):
         return super().flags() | Qgis.ProcessingAlgorithmFlag.NoThreading
@@ -311,6 +319,30 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 self.OUTPUT_RASTER, "Coverage raster output"
             )
         )
+        self.addParameter(
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT_REPORT_CSV,
+                "Coverage report CSV",
+                "CSV files (*.csv)",
+                optional=True,
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT_REPORT_JSON,
+                "Coverage report JSON",
+                "JSON files (*.json)",
+                optional=True,
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT_REPORT_HTML,
+                "Coverage report HTML",
+                "HTML files (*.html)",
+                optional=True,
+            )
+        )
 
     def processAlgorithm(self, parameters, context, feedback):
         from qgis.core import QgsCoordinateReferenceSystem
@@ -431,6 +463,15 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 tempfile.mkdtemp(prefix="nowires_coverage_"), "coverage_prx.tif"
             )
         )
+        report_csv_path = self.parameterAsFileOutput(
+            parameters, self.OUTPUT_REPORT_CSV, context
+        )
+        report_json_path = self.parameterAsFileOutput(
+            parameters, self.OUTPUT_REPORT_JSON, context
+        )
+        report_html_path = self.parameterAsFileOutput(
+            parameters, self.OUTPUT_REPORT_HTML, context
+        )
 
         driver = gdal.GetDriverByName("GTiff")
         n_rows, n_cols = prx_grid.shape
@@ -534,11 +575,57 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 if summary["usable_cell_count"] == 0:
                     feedback.pushInfo("No cells met the RX sensitivity threshold.")
                 feedback.pushInfo("=" * 40)
+                report_payload = build_coverage_report_payload(
+                    tx_lat=tx_lat,
+                    tx_lon=tx_lon,
+                    tx_h=tx_h,
+                    rx_h=rx_h,
+                    f_mhz=f_mhz,
+                    radius_km=radius_km,
+                    grid_size=grid_size,
+                    polarization_name=POLARIZATION_NAMES.get(
+                        polarization, str(polarization)
+                    ),
+                    climate_name=CLIMATE_NAMES.get(climate, str(climate)),
+                    time_pct=time_pct,
+                    location_pct=location_pct,
+                    situation_pct=situation_pct,
+                    tx_power=tx_power,
+                    tx_gain=tx_gain,
+                    rx_gain=rx_gain,
+                    cable_loss=cable_loss,
+                    rx_sensitivity_dbm=rx_sens,
+                    valid_pixel_count=int(valid.sum()),
+                    pixel_count=int(raster_grid.size),
+                    min_prx_dbm=float(np.nanmin(raster_grid)),
+                    max_prx_dbm=float(np.nanmax(raster_grid)),
+                    mean_prx_dbm=float(np.nanmean(raster_grid)),
+                    pct_above_sensitivity=pct_above,
+                    usable_cell_count=int(summary["usable_cell_count"]),
+                    min_distance_km=summary["min_distance_km"],
+                    max_distance_km=summary["max_distance_km"],
+                    average_distance_km=summary["average_distance_km"],
+                )
+                if report_csv_path:
+                    write_report_csv(report_csv_path, report_payload)
+                if report_json_path:
+                    write_report_json(report_json_path, report_payload)
+                if report_html_path:
+                    write_report_html(
+                        report_html_path,
+                        report_payload,
+                        title="NoWires Coverage Report",
+                    )
         else:
             feedback.pushInfo("Warning: Could not load coverage raster layer.")
 
         feedback.setProgress(100)
-        return {self.OUTPUT_RASTER: tif_path}
+        return {
+            self.OUTPUT_RASTER: tif_path,
+            self.OUTPUT_REPORT_CSV: report_csv_path,
+            self.OUTPUT_REPORT_JSON: report_json_path,
+            self.OUTPUT_REPORT_HTML: report_html_path,
+        }
 
     def _apply_coverage_style(self, layer, rx_sensitivity_dbm):
         """Apply a color ramp renderer based on signal level thresholds."""
