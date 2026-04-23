@@ -94,7 +94,7 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
     OUTPUT_RASTER = "OUTPUT_RASTER"
 
     def flags(self):
-        return super().flags()
+        return super().flags() | Qgis.ProcessingAlgorithmFlag.NoThreading
 
     def initAlgorithm(self, config):
         self.addParameter(
