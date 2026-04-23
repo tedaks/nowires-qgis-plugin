@@ -8,9 +8,8 @@ from qgis.PyQt.QtWidgets import (
     QLabel,
     QSlider,
     QVBoxLayout,
-    QWidget,
 )
-from qgis.core import QgsProject, QgsRasterLayer
+from qgis.core import QgsMapLayerType, QgsProject
 
 from .qt_compat import slider_orientation_Horizontal, slider_tick_position_below
 
@@ -22,8 +21,8 @@ def find_latest_coverage_layer():
     project = QgsProject.instance()
     layers = project.mapLayers()
     candidates = []
-    for layer_id, layer in layers.items():
-        if isinstance(layer, QgsRasterLayer) and layer.name().startswith(
+    for layer in layers.values():
+        if layer.type() == QgsMapLayerType.RasterLayer and layer.name().startswith(
             COVERAGE_LAYER_PREFIX
         ):
             candidates.append(layer)
