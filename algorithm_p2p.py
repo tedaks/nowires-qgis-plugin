@@ -48,6 +48,7 @@ from qgis.core import (
     QgsGeometry,
     QgsPointXY,
     QgsProcessingAlgorithm,
+    QgsProcessingParameterFileDestination,
     QgsProcessingParameterBoolean,
     QgsProcessingParameterEnum,
     QgsProcessingParameterNumber,
@@ -66,14 +67,18 @@ from .qt_compat import (
     widget_attribute_delete_on_close,
 )
 from .radio import (
+    CLIMATE_NAMES,
     PROP_MODE_NAMES,
     SIGNAL_LEVELS,
     build_pfl,
     fresnel_profile_analysis,
     itm_p2p_loss,
 )
+from .report_export import write_report_csv, write_report_html, write_report_json
+from .report_payloads import build_p2p_report_payload, write_p2p_marker_layer
 
 K_FACTOR_PRESETS = [0.67, 1.0, 4.0 / 3.0, 2.0, 4.0]
+POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
 
 
 class P2PAlgorithm(QgsProcessingAlgorithm):
@@ -101,6 +106,10 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
     SIGMA = "SIGMA"
     OUTPUT_PROFILE = "OUTPUT_PROFILE"
     OUTPUT_FRESNEL = "OUTPUT_FRESNEL"
+    OUTPUT_MARKERS = "OUTPUT_MARKERS"
+    OUTPUT_REPORT_CSV = "OUTPUT_REPORT_CSV"
+    OUTPUT_REPORT_JSON = "OUTPUT_REPORT_JSON"
+    OUTPUT_REPORT_HTML = "OUTPUT_REPORT_HTML"
     SHOW_CHART = "SHOW_CHART"
 
     def flags(self):
@@ -306,6 +315,35 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
                 self.OUTPUT_FRESNEL, "Fresnel zone polygon"
             )
         )
+        self.addParameter(
+            QgsProcessingParameterVectorDestination(
+                self.OUTPUT_MARKERS, "TX/RX marker output"
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT_REPORT_CSV,
+                "P2P report CSV",
+                "CSV files (*.csv)",
+                optional=True,
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT_REPORT_JSON,
+                "P2P report JSON",
+                "JSON files (*.json)",
+                optional=True,
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT_REPORT_HTML,
+                "P2P report HTML",
+                "HTML files (*.html)",
+                optional=True,
+            )
+        )
 
         self.addParameter(
             QgsProcessingParameterBoolean(
@@ -490,6 +528,12 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         fresnel_poly_path = (
             fresnel_dest if fresnel_dest else os.path.join(temp_dir, "fresnel_zone.shp")
         )
+        markers_dest = self.parameterAsOutputLayer(
+            parameters, self.OUTPUT_MARKERS, context
+        )
+        markers_path = (
+            markers_dest if markers_dest else os.path.join(temp_dir, "p2p_markers.shp")
+        )
         # Derive the lines path from the polygon path
         fresnel_lines_path = fresnel_poly_path.replace(".shp", "_lines.shp")
 
@@ -507,6 +551,64 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
             fresnel_r,
             dist_m,
         )
+        write_p2p_marker_layer(
+            markers_path,
+            tx_lat=tx_lat,
+            tx_lon=tx_lon,
+            rx_lat=rx_lat,
+            rx_lon=rx_lon,
+            tx_h=tx_h,
+            rx_h=rx_h,
+            tx_gain=tx_gain,
+            rx_gain=rx_gain,
+            tx_power_dbm=tx_power,
+            rx_sensitivity_dbm=rx_sens,
+        )
+
+        report_payload = build_p2p_report_payload(
+            tx_lat=tx_lat,
+            tx_lon=tx_lon,
+            rx_lat=rx_lat,
+            rx_lon=rx_lon,
+            tx_h=tx_h,
+            rx_h=rx_h,
+            f_mhz=f_mhz,
+            polarization_name=POLARIZATION_NAMES.get(polarization, str(polarization)),
+            climate_name=CLIMATE_NAMES.get(climate, str(climate)),
+            k_factor=k_factor,
+            dist_m=dist_m,
+            propagation_mode=result.mode,
+            propagation_mode_name=PROP_MODE_NAMES.get(result.mode, "Unknown"),
+            fspl_db=fspl_db,
+            itm_loss_db=result.loss_db,
+            tx_power=tx_power,
+            tx_gain=tx_gain,
+            rx_gain=rx_gain,
+            cable_loss=cable_loss,
+            eirp_dbm=eirp_dbm,
+            prx_dbm=prx_dbm,
+            rx_sensitivity_dbm=rx_sens,
+            margin_db=margin_db,
+            los_blocked=los_blocked,
+            fresnel_1_violated=f1_violated,
+            fresnel_60_violated=f60_violated,
+            max_fresnel_radius_m=float(fresnel_r.max()),
+        )
+        report_csv_path = self.parameterAsFileOutput(
+            parameters, self.OUTPUT_REPORT_CSV, context
+        )
+        report_json_path = self.parameterAsFileOutput(
+            parameters, self.OUTPUT_REPORT_JSON, context
+        )
+        report_html_path = self.parameterAsFileOutput(
+            parameters, self.OUTPUT_REPORT_HTML, context
+        )
+        if report_csv_path:
+            write_report_csv(report_csv_path, report_payload)
+        if report_json_path:
+            write_report_json(report_json_path, report_payload)
+        if report_html_path:
+            write_report_html(report_html_path, report_payload, title="NoWires P2P Report")
 
         feedback.setProgress(90)
 
@@ -521,10 +623,12 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         fresnel_lines_layer = QgsVectorLayer(
             fresnel_lines_path, "Fresnel Zone Lines"
         )
+        marker_layer = QgsVectorLayer(markers_path, "P2P TX/RX Markers")
 
         QgsProject.instance().addMapLayer(fresnel_poly_layer)
         QgsProject.instance().addMapLayer(fresnel_lines_layer)
         QgsProject.instance().addMapLayer(profile_layer)
+        QgsProject.instance().addMapLayer(marker_layer)
 
         # Show profile chart if requested
         show_chart = self.parameterAsBool(parameters, self.SHOW_CHART, context)
@@ -611,6 +715,10 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         return {
             self.OUTPUT_PROFILE: profile_path,
             self.OUTPUT_FRESNEL: fresnel_poly_path,
+            self.OUTPUT_MARKERS: markers_path,
+            self.OUTPUT_REPORT_CSV: report_csv_path,
+            self.OUTPUT_REPORT_JSON: report_json_path,
+            self.OUTPUT_REPORT_HTML: report_html_path,
         }
 
     def _write_profile_line(
