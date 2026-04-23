@@ -55,6 +55,10 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   Coverage legend support in QGIS
 - [coverage_opacity.py](coverage_opacity.py)
   Live opacity adjustment dialog for the latest coverage layer
+- [report_export.py](report_export.py)
+  Shared CSV, JSON, and HTML report writers
+- [report_payloads.py](report_payloads.py)
+  Pure-Python payload builders and P2P marker helpers
 - [elevation.py](elevation.py)
   DEM sampling, terrain profiles, geographic helpers
 - [dem_downloader.py](dem_downloader.py)
@@ -134,7 +138,16 @@ In addition to Processing algorithms, the plugin exposes two post-run helper act
 6. Run ITM path-loss prediction through `itm_p2p_loss()`.
 7. Run Fresnel/LOS analysis in `fresnel_profile_analysis()`.
 8. Compute link-budget values.
-9. Write vector outputs and optional chart.
+9. Write vector outputs, optional reports, and optional chart.
+
+### P2P Outputs
+
+Point-to-point analysis now produces:
+
+- profile line output
+- Fresnel zone output
+- TX/RX marker output
+- optional `CSV`, `JSON`, and `HTML` reports
 
 ### P2P Parameters
 
@@ -206,6 +219,7 @@ In the current codebase, Earth radius factor is used in the Fresnel and earth-bu
 7. Apply a heatmap renderer and opacity setting.
 8. Add the raster and legend to the map.
 9. Compute raster-derived range metrics from cells above sensitivity.
+10. Optionally write `CSV`, `JSON`, and `HTML` report files from the computed summary values.
 
 ### Max Analysis Distance vs Actual Coverage
 

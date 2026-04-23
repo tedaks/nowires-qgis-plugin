@@ -175,7 +175,8 @@ Advanced inputs include:
 - ITM path loss result
 - link budget values
 - Fresnel zone analysis
-- vector outputs for the path and Fresnel geometry
+- vector outputs for the path, Fresnel geometry, and TX/RX markers
+- optional `CSV`, `JSON`, and `HTML` reports
 - optional profile chart
 
 ### Basic Steps
@@ -189,6 +190,16 @@ Advanced inputs include:
    - Earth radius factor preset
 5. Run the algorithm.
 6. Review the created layers and Processing log output.
+
+### Optional Report Export
+
+Point-to-point analysis can also write:
+
+- `CSV`
+- `JSON`
+- `HTML`
+
+These exports contain the link inputs, path summary, link-budget values, Fresnel status, and viability summary from the run.
 
 ### Good Defaults for New Users
 
@@ -254,6 +265,16 @@ Available presets range from `64 x 64` to `1024 x 1024`.
    - the output raster
    - the legend
    - the Processing log statistics
+
+### Optional Coverage Report Export
+
+Coverage analysis can also write:
+
+- `CSV`
+- `JSON`
+- `HTML`
+
+These exports contain the key coverage inputs plus the derived summary values, including usable distance metrics and received-signal statistics.
 
 ### Adjusting Coverage Opacity
 
