@@ -125,6 +125,8 @@ You should then see:
   - `Point-to-Point Analysis`
   - `Coverage Analysis`
   - `Contour Lines`
+  - `Coverage Opacity`
+  - `Open 3D View`
 
 ## Where to Find the Tools
 
@@ -253,6 +255,12 @@ Available presets range from `64 x 64` to `1024 x 1024`.
    - the legend
    - the Processing log statistics
 
+### Adjusting Coverage Opacity
+
+After a coverage run, you can open `NoWires -> Coverage Opacity` to adjust the most recent coverage raster without rerunning the algorithm.
+
+If no coverage layer has been created yet, the plugin will warn you and ask you to run `Coverage Analysis` first.
+
 ### Reading the Result
 
 The tool reports:
@@ -287,6 +295,33 @@ Use this tool to generate contours and an optional hillshade/elevation overlay f
 5. Choose a line color.
 6. Decide whether to generate the elevation overlay.
 7. Run the tool.
+
+## Basic Workflow: 3D View
+
+Use this when you want to inspect the latest NoWires DEM, coverage raster, and contour output in a QGIS 3D scene.
+
+### How It Works
+
+- Coverage Analysis stores the latest coverage and DEM layers for 3D use.
+- Contour Lines stores the latest contour layer and optional DEM layer for 3D use.
+- `Open 3D View` reuses those tracked layers when available.
+
+### Basic Steps
+
+1. Run `Coverage Analysis` or `Contour Lines` first.
+2. Open `NoWires -> Open 3D View`.
+3. Choose either `Local terrain` or `Globe`.
+4. Review the opened 3D scene.
+
+### Windows Limitation
+
+On Windows, NoWires does not open the 3D canvas directly because that QGIS API path is unstable in the current plugin context.
+
+Instead:
+
+1. Run `Coverage Analysis` or `Contour Lines`.
+2. Open QGIS's native 3D view from `View -> 3D Map Views -> New 3D Map View`.
+3. Use the tracked NoWires DEM, coverage, and contour layers already added to the project.
 
 ## Updating the Plugin
 
@@ -329,9 +364,19 @@ Try:
 - using a smaller grid size
 - simplifying directional antenna settings if not needed
 
+For repeatable development-side checks, the repository also includes a synthetic runtime benchmark:
+
+```bash
+python3 benchmarks/coverage_runtime.py
+```
+
 ### DEM download problems
 
 NoWires downloads Copernicus GLO-30 tiles from AWS Open Data. Network restrictions, proxy settings, or SSL inspection can interfere with downloads.
+
+### Open 3D View does not open a scene on Windows
+
+This is expected in the current release. Use QGIS's native `View -> 3D Map Views -> New 3D Map View` action instead after running a NoWires coverage or contour workflow.
 
 ## Support Checklist
 

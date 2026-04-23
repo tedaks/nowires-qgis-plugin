@@ -11,10 +11,12 @@ This repository contains the QGIS 4 plugin source for **NoWires**.
 ### Radio Propagation
 - **Point-to-Point Analysis**: Place TX and RX points on the map. Computes ITM path loss, terrain profile with Fresnel zone analysis, and generates a detailed link budget report. Creates vector layers showing the link path and Fresnel zone geometry.
 - **Coverage Analysis**: Place a transmitter, set a max analysis distance and grid resolution, then generate a heatmap raster showing received signal strength (dBm) plus range statistics derived from cells above sensitivity.
+- **Coverage Opacity Control**: Adjust the most recent coverage raster opacity from a live plugin dialog after the analysis finishes.
 
 ### Terrain Analysis
 - **Contour Lines**: Generate contour lines with rule-based symbology (index contours with labels) from Copernicus GLO-30 DEM. Adjustable interval (1–5000 m or ft), four smoothing levels, and custom colour.
 - **Hillshade Overlay**: Optional hillshade elevation layer rendered from the raw DEM with Dodge blending.
+- **3D Scene Support**: Coverage and contour workflows track the latest DEM and derived layers for opening a QGIS 3D view. On Windows, use QGIS's native `View -> 3D Map Views -> New 3D Map View` workflow because plugin-launched 3D canvases are disabled there for stability.
 
 ### DEM Data
 - All DEM data is automatically downloaded from the **Copernicus GLO-30** dataset hosted on AWS Open Data.
@@ -45,6 +47,11 @@ This plugin also adapts code from [tedaks/nowires](https://github.com/tedaks/now
 - `algorithm_coverage.py`: coverage heatmap analysis
 - `algorithm_contour.py`: contour line generation
 - `coverage_engine.py`: coverage raster computation engine
+- `coverage_compute.py`: shared coverage propagation helpers
+- `coverage_colors.py`: coverage color-application helpers
+- `coverage_opacity.py`: live coverage opacity dialog
+- `three_d.py`: 3D layer tracking and scene helpers
+- `benchmarks/coverage_runtime.py`: synthetic coverage runtime benchmark
 - `itm/`: bundled ITM implementation
 - `tests/`: regression and unit tests
 - `metadata.txt`: QGIS plugin metadata
@@ -56,6 +63,8 @@ Open the **Processing Toolbox** (`Ctrl+Alt+T`) and navigate to **NoWires**:
 1. **Point-to-Point Analysis**: Select TX and RX points, configure frequency, antenna heights, and link parameters. Click Run.
 2. **Coverage Analysis**: Select a TX point, set max analysis distance and grid resolution. Click Run to generate a signal-strength heatmap raster and coverage summary.
 3. **Contour Lines**: Draw an extent, set contour interval and smoothing. Generates contour lines and optional hillshade.
+4. **Coverage Opacity**: After running coverage, open the menu action to adjust the latest coverage raster opacity live.
+5. **Open 3D View**: After running coverage or contours, open a tracked 3D scene from the plugin menu on Linux/macOS. On Windows, open the native QGIS 3D view manually.
 
 ## Data Source
 
@@ -84,7 +93,8 @@ pytest -q
 
 1. Make changes in the plugin source.
 2. Run `pytest -q`.
-3. Copy the `NoWires` folder into your QGIS plugins directory for manual testing.
+3. Optionally run `python3 benchmarks/coverage_runtime.py` to compare runtime against the reference synthetic cases.
+4. Copy the `NoWires` folder into your QGIS plugins directory for manual testing.
 
 ## Contributing
 
