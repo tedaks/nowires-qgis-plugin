@@ -41,8 +41,6 @@ import tempfile
 import numpy as np
 
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
-from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtWidgets import QSlider
 from qgis.core import (
     Qgis,
     QgsColorRampShader,
@@ -57,7 +55,6 @@ from qgis.core import (
     QgsSingleBandPseudoColorRenderer,
 )
 from osgeo import gdal, osr
-from processing.gui.wrappers import WidgetWrapper
 
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid, haversine_m
@@ -65,28 +62,8 @@ from .coverage_legend import show_coverage_legend
 from .coverage_palette import build_heatmap_stops
 from .coverage_summary import summarize_coverage_grid
 from .coverage_engine import compute_coverage
-from .qt_compat import slider_orientation_Horizontal, slider_tick_position_below
 
 GRID_SIZE_PRESETS = [64, 128, 192, 256, 384, 512, 768, 1024]
-
-
-class TransparencySliderWidget(WidgetWrapper):
-    """Processing widget wrapper for an integer transparency slider."""
-
-    def createWidget(self):
-        self._slider = QSlider(slider_orientation_Horizontal(Qt))
-        self._slider.setRange(0, 100)
-        self._slider.setSingleStep(1)
-        self._slider.setPageStep(5)
-        self._slider.setTickInterval(10)
-        self._slider.setTickPosition(slider_tick_position_below(QSlider))
-        return self._slider
-
-    def setValue(self, value):
-        self._slider.setValue(int(35 if value is None else value))
-
-    def value(self):
-        return self._slider.value()
 
 
 class CoverageAlgorithm(QgsProcessingAlgorithm):
@@ -99,7 +76,6 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
     FREQ_MHZ = "FREQ_MHZ"
     RADIUS_KM = "RADIUS_KM"
     GRID_SIZE = "GRID_SIZE"
-    OVERLAY_TRANSPARENCY = "OVERLAY_TRANSPARENCY"
     POLARIZATION = "POLARIZATION"
     CLIMATE = "CLIMATE"
     TIME_PCT = "TIME_PCT"
@@ -179,18 +155,6 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 defaultValue=2,
             )
         )
-        overlay_transparency_param = QgsProcessingParameterNumber(
-            self.OVERLAY_TRANSPARENCY,
-            "Overlay transparency (%)",
-            type=QgsProcessingParameterNumber.Integer,
-            defaultValue=35,
-            minValue=0,
-            maxValue=100,
-        )
-        overlay_transparency_param.setMetadata(
-            {"widget_wrapper": {"class": TransparencySliderWidget}}
-        )
-        self.addParameter(overlay_transparency_param)
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.POLARIZATION,
@@ -369,9 +333,6 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
         radius_km = self.parameterAsDouble(parameters, self.RADIUS_KM, context)
         grid_size_index = self.parameterAsEnum(parameters, self.GRID_SIZE, context)
         grid_size = GRID_SIZE_PRESETS[grid_size_index]
-        overlay_transparency_pct = self.parameterAsInt(
-            parameters, self.OVERLAY_TRANSPARENCY, context
-        )
         polarization = self.parameterAsEnum(parameters, self.POLARIZATION, context)
         climate = self.parameterAsEnum(parameters, self.CLIMATE, context)
         time_pct = self.parameterAsDouble(parameters, self.TIME_PCT, context)
@@ -503,7 +464,7 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
         if raster_layer.isValid():
             # Apply color ramp based on signal levels
             self._apply_coverage_style(raster_layer, rx_sens)
-            raster_layer.setOpacity(1.0 - (overlay_transparency_pct / 100.0))
+            raster_layer.setOpacity(1.0)
             QgsProject.instance().addMapLayer(raster_layer)
             QgsProject.instance().writeEntry(
                 "NoWires", "last_coverage_layer_id", raster_layer.id()

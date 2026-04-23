@@ -42,20 +42,13 @@ def test_coverage_algorithm_uses_interpolated_palette():
     )
 
 
-def test_coverage_algorithm_applies_overlay_opacity_to_layer():
+def test_coverage_algorithm_sets_full_opacity_on_layer():
     source = _source_text()
-    assert "overlay_transparency_pct = self.parameterAsInt(" in source
-    assert "self.OVERLAY_TRANSPARENCY" in source
-    assert "raster_layer.setOpacity(1.0 - (overlay_transparency_pct / 100.0))" in source
+    assert "raster_layer.setOpacity(1.0)" in source
 
 
-def test_coverage_algorithm_uses_custom_slider_wrapper_for_transparency():
+def test_coverage_algorithm_has_no_transparency_slider():
     source = _source_text()
-    assert "class TransparencySliderWidget(WidgetWrapper):" in source
-    assert (
-        "slider_orientation_Horizontal(Qt)" in source
-        or "QSlider(Qt.Horizontal)" in source
-    )
-    assert "overlay_transparency_param.setMetadata(" in source
-    assert '"widget_wrapper"' in source
-    assert "TransparencySliderWidget" in source
+    assert "TransparencySliderWidget" not in source
+    assert "WidgetWrapper" not in source
+    assert "slider_orientation_Horizontal" not in source
