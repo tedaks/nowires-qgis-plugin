@@ -113,3 +113,13 @@ def test_coverage_algorithm_exposes_overlay_transparency_parameter():
     assert "defaultValue=35" in source
     assert "minValue=0" in source
     assert "maxValue=100" in source
+
+
+def test_coverage_algorithm_loads_dem_as_elevation_layer():
+    source = _coverage_source()
+    assert 'QgsRasterLayer(dem_path, "NoWires DEM (GLO-30)")' in source
+    assert "elevationProperties()" in source
+    assert "elev_props.setEnabled(True)" in source
+    assert "Qgis.RasterElevationMode.RepresentsElevationSurface" in source
+    assert "elev_props.setBandNumber(1)" in source
+    assert "QgsProject.instance().addMapLayer(dem_layer)" in source

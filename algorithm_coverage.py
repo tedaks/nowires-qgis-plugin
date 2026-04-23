@@ -510,6 +510,14 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
             )
             show_coverage_legend(rx_sensitivity_dbm=rx_sens)
 
+            dem_layer = QgsRasterLayer(dem_path, "NoWires DEM (GLO-30)")
+            if dem_layer.isValid():
+                elev_props = dem_layer.elevationProperties()
+                elev_props.setEnabled(True)
+                elev_props.setMode(Qgis.RasterElevationMode.RepresentsElevationSurface)
+                elev_props.setBandNumber(1)
+                QgsProject.instance().addMapLayer(dem_layer)
+
             # Statistics
             raster_grid = prx_grid[::-1]
             valid = ~np.isnan(raster_grid)
