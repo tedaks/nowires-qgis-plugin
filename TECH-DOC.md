@@ -300,6 +300,12 @@ Key behaviors:
 - Windows defaults to single-process mode to avoid spawning extra QGIS instances
 - non-Windows runtimes may use multiprocessing with shared memory
 
+Raster positioning details:
+
+- coverage task coordinates are generated at raster cell centers rather than raster edges
+- the GeoTIFF writer uses the requested envelope as pixel bounds, so center-based sampling keeps the displayed heatmap aligned with the map extent
+- this avoids the half-cell visual offset that can otherwise appear when sampling and georeferencing disagree
+
 ### Coverage Helper Split
 
 The coverage support code is now split by responsibility:
@@ -324,6 +330,15 @@ The coverage engine now allows near-TX cells to be computed instead of leaving a
 Implementation note:
 
 - the engine avoids a true zero-distance ITM path by forcing a minimum modeled distance of `1.0 m`
+
+### DEM Row Orientation
+
+`elevation.py` treats GDAL row `0` as the north edge of the raster.
+
+Implementation detail:
+
+- direct DEM sampling and line sampling convert latitude to row index from `max_lat` downward
+- this keeps terrain profiles, coverage terrain paths, and other DEM-derived outputs north-up instead of vertically mirrored
 
 ### Coverage Styling
 
