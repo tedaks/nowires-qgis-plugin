@@ -30,6 +30,7 @@ from qgis.core import QgsApplication
 import processing
 
 from .coverage_legend import remove_coverage_legend
+from .coverage_opacity import find_latest_coverage_layer, CoverageOpacityDialog
 from .provider import NoWiresProvider
 
 cmd_folder = os.path.dirname(__file__)
@@ -82,13 +83,26 @@ class NoWiresPlugin:
         self.contour_action.triggered.connect(self.run_contour)
         self.iface.addPluginToMenu("&NoWires", self.contour_action)
 
+        # Coverage Opacity action
+        self.opacity_action = QAction(
+            QIcon(icon), "Coverage Opacity", self.iface.mainWindow()
+        )
+        self.opacity_action.triggered.connect(self.run_coverage_opacity)
+        self.iface.addPluginToMenu("&NoWires", self.opacity_action)
+
+        self._opacity_dialog = None
+
     def unload(self):
         """Remove plugin elements."""
+        if self._opacity_dialog is not None:
+            self._opacity_dialog.close()
+            self._opacity_dialog = None
         remove_coverage_legend()
         QgsApplication.processingRegistry().removeProvider(self.provider)
         self.iface.removePluginMenu("&NoWires", self.p2p_action)
         self.iface.removePluginMenu("&NoWires", self.coverage_action)
         self.iface.removePluginMenu("&NoWires", self.contour_action)
+        self.iface.removePluginMenu("&NoWires", self.opacity_action)
         self.iface.removeToolBarIcon(self.p2p_action)
 
     def run_p2p(self):
@@ -99,3 +113,18 @@ class NoWiresPlugin:
 
     def run_contour(self):
         processing.execAlgorithmDialog("nowires:contour_lines")
+
+    def run_coverage_opacity(self):
+        layer = find_latest_coverage_layer()
+        if layer is None:
+            self.iface.messageBar().pushWarning(
+                "NoWires",
+                "No coverage layer found. Run Coverage Analysis first.",
+            )
+            return
+        if self._opacity_dialog is not None:
+            self._opacity_dialog.close()
+        self._opacity_dialog = CoverageOpacityDialog(
+            layer, parent=self.iface.mainWindow()
+        )
+        self._opacity_dialog.show()
