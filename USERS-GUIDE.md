@@ -317,6 +317,8 @@ The tool reports:
 
 Transparent or faint areas usually indicate very weak or no service, depending on the rendered signal level and raster NoData behavior.
 
+The heatmap should track the same north-up orientation as the basemap and NoWires DEM. If a raster appears offset or upside down, make sure you are using a current plugin build and remove any older copy of the plugin before reinstalling.
+
 ## Basic Workflow: Contour Lines
 
 Use this tool to generate contours and an optional hillshade/elevation overlay from downloaded Copernicus GLO-30 DEM.

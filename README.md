@@ -10,7 +10,7 @@ This repository contains the QGIS 4 plugin source for **NoWires**.
 
 ### Radio Propagation
 - **Point-to-Point Analysis**: Place TX and RX points on the map. Computes ITM path loss, terrain profile with Fresnel zone analysis, generates CSV/JSON/HTML reports, and creates vector layers for the link path, Fresnel geometry, and TX/RX markers.
-- **Coverage Analysis**: Place a transmitter, set a max analysis distance and grid resolution, then generate a heatmap raster showing received signal strength (dBm) plus range statistics derived from cells above sensitivity, with optional CSV/JSON/HTML report export.
+- **Coverage Analysis**: Place a transmitter, set a max analysis distance and grid resolution, then generate a heatmap raster showing received signal strength (dBm) plus range statistics derived from cells above sensitivity, with optional CSV/JSON/HTML report export. Coverage cells are sampled and georeferenced at cell centers so the heatmap lines up with the terrain and requested map extent.
 - **Reliability Outputs**: P2P and coverage reports now include fade-margin classes plus formal-or-fallback availability guidance.
 - **Coverage Opacity Control**: Adjust the most recent coverage raster opacity from a live plugin dialog after the analysis finishes.
 
