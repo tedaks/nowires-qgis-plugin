@@ -130,3 +130,21 @@ def test_coverage_algorithm_loads_dem_as_elevation_layer():
     assert "Qgis.RasterElevationMode.RepresentsElevationSurface" in source
     assert "elev_props.setBandNumber(1)" in source
     assert "QgsProject.instance().addMapLayer(dem_layer)" in source
+
+
+def test_coverage_algorithm_exposes_report_outputs():
+    source = _coverage_source()
+    assert 'OUTPUT_REPORT_CSV = "OUTPUT_REPORT_CSV"' in source
+    assert 'OUTPUT_REPORT_JSON = "OUTPUT_REPORT_JSON"' in source
+    assert 'OUTPUT_REPORT_HTML = "OUTPUT_REPORT_HTML"' in source
+    assert "QgsProcessingParameterFileDestination(" in source
+    assert '"Coverage report CSV"' in source
+    assert '"Coverage report JSON"' in source
+    assert '"Coverage report HTML"' in source
+
+
+def test_coverage_algorithm_returns_report_outputs():
+    source = _coverage_source()
+    assert "self.OUTPUT_REPORT_CSV: report_csv_path" in source
+    assert "self.OUTPUT_REPORT_JSON: report_json_path" in source
+    assert "self.OUTPUT_REPORT_HTML: report_html_path" in source
