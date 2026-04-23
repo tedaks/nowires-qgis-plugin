@@ -43,12 +43,18 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   ITM bridge, Fresnel analysis, signal-level definitions
 - [coverage_engine.py](coverage_engine.py)
   Coverage raster computation
+- [coverage_compute.py](coverage_compute.py)
+  Shared coverage propagation helpers
+- [coverage_colors.py](coverage_colors.py)
+  Coverage color-application helpers
 - [coverage_summary.py](coverage_summary.py)
   Raster-derived usable-distance metrics
 - [coverage_palette.py](coverage_palette.py)
   Heatmap stop definitions
 - [coverage_legend.py](coverage_legend.py)
   Coverage legend support in QGIS
+- [coverage_opacity.py](coverage_opacity.py)
+  Live opacity adjustment dialog for the latest coverage layer
 - [elevation.py](elevation.py)
   DEM sampling, terrain profiles, geographic helpers
 - [dem_downloader.py](dem_downloader.py)
@@ -57,6 +63,8 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   Directional antenna gain adjustment
 - [overlay_raster.py](overlay_raster.py)
   Overlay raster sizing helpers
+- [three_d.py](three_d.py)
+  3D layer tracking and scene-opening helpers
 - [qt_compat.py](qt_compat.py)
    QGIS 4 / Qt compatibility helpers
 
@@ -72,7 +80,7 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
 3. User launches an algorithm either from the menu or the Processing toolbox.
 4. The selected algorithm collects parameters and executes.
 5. Output layers are added to the map if valid.
-6. Optional menu actions can adjust the latest coverage layer opacity.
+6. Optional menu actions can adjust the latest coverage layer opacity or open a tracked 3D view.
 
 ## Processing Provider
 
@@ -100,6 +108,15 @@ NoWires uses Copernicus GLO-30 DEM tiles hosted on AWS Open Data.
 - download retries are implemented
 - tile names are validated against a regex
 - temporary `.tmp` files are cleaned up on failure paths where possible
+
+## Menu Actions Outside Processing
+
+In addition to Processing algorithms, the plugin exposes two post-run helper actions from the `NoWires` menu:
+
+- `Coverage Opacity`
+  Opens a non-modal slider dialog for the latest tracked coverage layer
+- `Open 3D View`
+  Opens a QGIS 3D scene from the latest tracked NoWires DEM, coverage, and contour layers when supported by the runtime platform
 
 ## Point-to-Point Analysis
 
@@ -258,6 +275,17 @@ Key behaviors:
 - Windows defaults to single-process mode to avoid spawning extra QGIS instances
 - non-Windows runtimes may use multiprocessing with shared memory
 
+### Coverage Helper Split
+
+The coverage support code is now split by responsibility:
+
+- `coverage_compute.py`
+  Hosts the shared propagation-side helper used by coverage calculations
+- `coverage_colors.py`
+  Hosts coverage color-application helpers
+- `coverage_engine.py`
+  Owns the grid walk, raster assembly, multiprocessing decisions, and integration logic
+
 Important constants:
 
 - `_MAX_WORKERS = 4`
@@ -286,6 +314,12 @@ The visual layer opacity is controlled independently from the per-stop alpha val
 Implementation detail:
 
 - the coverage workflow applies opacity to both the `QgsRasterLayer` and its active raster renderer so the styled heatmap responds correctly to initial transparency and live slider updates in QGIS 4
+
+### Benchmark Support
+
+The repository includes `benchmarks/coverage_runtime.py`, a deterministic synthetic benchmark that exercises the real `compute_coverage()` path over named reference cases (`small`, `medium`, and `large`).
+
+This benchmark is intended for local performance comparison and regression spotting; it is not a replacement for full in-QGIS validation.
 
 ### Coverage Summary
 
@@ -318,6 +352,21 @@ These metrics are based on raster cells at or above `RX sensitivity`.
 
 - contour interval range: `1` to `5000`
 - area-of-interest maximum extent: `5.0°` width or height
+
+## 3D Scene Support
+
+`three_d.py` tracks the latest relevant NoWires output layers in project settings under the `NoWires` scope:
+
+- `last_coverage_layer_id`
+- `last_dem_layer_id`
+- `last_contour_layer_id`
+
+Current behavior:
+
+- coverage and contour workflows update these tracked layer ids when they create 3D-relevant outputs
+- contour layers are configured for terrain-aware elevation when used in 3D
+- Linux and macOS can request a plugin-opened 3D canvas through `iface.createNewMapCanvas3D(...)`
+- Windows does not use that API path from the plugin because it caused native crashes during testing; the plugin shows a warning and defers to QGIS's native `View -> 3D Map Views -> New 3D Map View` workflow instead
 
 ## Parameter Reference
 
@@ -393,6 +442,8 @@ Test coverage includes:
 - source-based regression checks for Processing contracts
 - unit tests for pure Python helpers
 - coverage-engine behavior checks
+- benchmark and module-split regressions
+- 3D support contract checks
 - compatibility checks for QGIS 4 Qt helper assumptions
 
 GitHub Actions runs `pytest -q` for pushes and pull requests.
@@ -420,6 +471,7 @@ The `K_FACTOR` / `K_FACTOR_PRESET` handling in `algorithm_p2p.py` is an example 
 
 - Coverage performance degrades as grid size and analysis distance grow.
 - Coverage multiprocessing is intentionally disabled on Windows.
+- Plugin-launched 3D canvas creation is disabled on Windows because it caused native QGIS crashes in this workflow.
 - The coverage radius-sweep implementation remains on disk but is not part of the normal public workflow.
 - DEM access depends on external network availability.
 - The repository test suite does not substitute for in-QGIS manual validation.
