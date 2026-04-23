@@ -11,8 +11,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from coverage_engine import build_coverage_tasks, should_use_multiprocessing
 
 
-def test_should_use_multiprocessing_disabled_on_windows():
-    assert should_use_multiprocessing(os_name="nt") is False
+def test_should_use_multiprocessing_enabled_on_windows():
+    assert should_use_multiprocessing(os_name="nt") is True
 
 
 def test_should_use_multiprocessing_enabled_on_non_windows():

@@ -73,8 +73,9 @@ logger = logging.getLogger(__name__)
 
 ITM_LOSS_UPPER_BOUND = 400.0
 RADIUS_CONSECUTIVE_MISS_LIMIT = 3
-_MAX_WORKERS = 4
-_CHUNK_SIZE = 512
+_MAX_WORKERS = os.cpu_count() or 1
+_MIN_CHUNK_SIZE = 64
+_MAX_CHUNK_SIZE = 2048
 _MIN_COVERAGE_DISTANCE_M = 1.0
 
 _cov_shm: Optional[multiprocessing.shared_memory.SharedMemory] = None
@@ -92,10 +93,9 @@ def should_use_multiprocessing(os_name=None):
     if os_name is None:
         os_name = os.name
 
-    # In the QGIS desktop plugin runtime on Windows, spawned worker processes
-    # can relaunch the QGIS host with multiprocessing fork arguments such as
-    # ``--multiprocessing-fork``. Run in-process there instead.
-    return os_name != "nt"
+    if os_name == "nt":
+        multiprocessing.freeze_support()
+    return True
 
 
 def _ensure_path():
@@ -316,6 +316,40 @@ def _radius_worker(args):
     return (bearing_deg_val, last_good)
 
 
+def _dynamic_chunk_size(n_tasks):
+    """Choose chunk size based on task count: larger at start, smaller near end."""
+    if n_tasks <= _MIN_CHUNK_SIZE:
+        return _MIN_CHUNK_SIZE
+    target_chunks = max(16, n_tasks // _MIN_CHUNK_SIZE)
+    chunk = max(_MIN_CHUNK_SIZE, min(n_tasks // target_chunks, _MAX_CHUNK_SIZE))
+    return chunk
+
+
+def _presample_elevations(grid_data, grid_meta, tasks):
+    """Pre-sample all terrain profiles so DEM stays in cache.
+
+    Returns a list of (task_index, elevations_array) pairs with the same
+    ordering as tasks.  Each elevations array is a numpy float64 vector
+    ready to be passed directly to compute_itm_p2p.
+    """
+    tx_lat = grid_meta["tx_lat"]
+    tx_lon = grid_meta["tx_lon"]
+    sampled = []
+    for idx, t in enumerate(tasks):
+        _, _, target_lat, target_lon, _, _, step_m, n_pts = t[:8]
+        elevs = sample_line_from_grid(
+            grid_data,
+            grid_meta,
+            tx_lat,
+            tx_lon,
+            target_lat,
+            target_lon,
+            n_pts,
+        )
+        sampled.append((idx, step_m, elevs))
+    return sampled
+
+
 def build_coverage_tasks(
     tx_lat,
     tx_lon,
@@ -505,7 +539,8 @@ def compute_coverage(
     pixels_failed = 0
     pixels_done = 0
 
-    chunks = [tasks[i : i + _CHUNK_SIZE] for i in range(0, len(tasks), _CHUNK_SIZE)]
+    chunk_size = _dynamic_chunk_size(len(tasks))
+    chunks = [tasks[i : i + chunk_size] for i in range(0, len(tasks), chunk_size)]
 
     # Try multiprocessing first where safe; fall back to sequential on failure.
     use_multiprocessing = should_use_multiprocessing()
@@ -546,34 +581,65 @@ def compute_coverage(
                 )
             use_multiprocessing = False
     elif feedback:
-        feedback.pushInfo(
-            "Using single-threaded mode on Windows to avoid launching extra QGIS instances..."
-        )
+        feedback.pushInfo("Using single-threaded mode (multiprocessing unavailable)...")
 
     # Sequential fallback (or primary path if multiprocessing was skipped)
     if not use_multiprocessing:
-        # Set up globals so _itm_worker can access the grid in-process.
-        # Re-use the existing numpy array directly (no need for shared memory
-        # indirection in single-process mode).
         global _cov_grid_data, _cov_grid_meta
         _cov_grid_data = grid_data
         _cov_grid_meta = grid_meta
 
-        for task_idx, task in enumerate(tasks):
-            if feedback and feedback.isCanceled():
-                logger.info("Coverage cancelled by user")
-                return None, None, 0, 0, 0, 0
-            result = _itm_worker(task)
-            if result is not None:
-                i, j, loss_db, prx = result
-                loss_grid[i, j] = loss_db
-                prx_grid[i, j] = prx
-            else:
-                pixels_failed += 1
-            pixels_done += 1
-            if feedback and task_idx % 500 == 0:
-                pct = int(pixels_done / len(tasks) * 80)
-                feedback.setProgress(pct)
+        if _HAS_NUMBA:
+            sampled = _presample_elevations(grid_data, grid_meta, tasks)
+            for task_idx, (s_idx, step_m, elevs) in enumerate(sampled):
+                if feedback and feedback.isCanceled():
+                    logger.info("Coverage cancelled by user")
+                    return None, None, 0, 0, 0, 0
+                t = tasks[s_idx]
+                result = compute_itm_p2p(
+                    h_tx__meter=t[8],
+                    h_rx__meter=t[9],
+                    elevations=elevs,
+                    resolution=step_m,
+                    climate_idx=int(t[10]),
+                    N_0=t[11],
+                    f__mhz=t[12],
+                    polarization=int(t[13]),
+                    epsilon=t[14],
+                    sigma=t[15],
+                    time_pct=t[16],
+                    location_pct=t[17],
+                    situation_pct=t[18],
+                    eirp_dbm=t[19],
+                    ant_gain_adj=t[20],
+                    rx_gain_dbi=t[21],
+                )
+                if result is not None:
+                    i, j, loss_db, prx = t[0], t[1], result[0], result[1]
+                    loss_grid[i, j] = loss_db
+                    prx_grid[i, j] = prx
+                else:
+                    pixels_failed += 1
+                pixels_done += 1
+                if feedback and task_idx % 500 == 0:
+                    pct = int(pixels_done / len(tasks) * 80)
+                    feedback.setProgress(pct)
+        else:
+            for task_idx, task in enumerate(tasks):
+                if feedback and feedback.isCanceled():
+                    logger.info("Coverage cancelled by user")
+                    return None, None, 0, 0, 0, 0
+                result = _itm_worker(task)
+                if result is not None:
+                    i, j, loss_db, prx = result
+                    loss_grid[i, j] = loss_db
+                    prx_grid[i, j] = prx
+                else:
+                    pixels_failed += 1
+                pixels_done += 1
+                if feedback and task_idx % 500 == 0:
+                    pct = int(pixels_done / len(tasks) * 80)
+                    feedback.setProgress(pct)
 
         # Clear globals after sequential run
         _cov_grid_data = None
