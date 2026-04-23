@@ -39,10 +39,10 @@ def test_opacity_dialog_uses_qt_compat_slider_helpers():
     assert "slider_tick_position_below(QSlider)" in source
 
 
-def test_opacity_module_uses_map_layer_type_enum():
+def test_opacity_module_uses_key_based_iteration():
     source = _text(OPACITY_SOURCE)
-    assert "QgsMapLayerType" in source
-    assert "layer.type() == QgsMapLayerType.RasterLayer" in source
+    assert "for lid in layers_by_id:" in source
+    assert "layer = layers_by_id[lid]" in source
 
 
 def test_opacity_dialog_sets_layer_opacity():
