@@ -40,7 +40,7 @@ class CoverageOpacityDialog(QDialog):
 
     def __init__(self, layer, parent=None):
         super().__init__(parent)
-        self._layer = layer
+        self._layer_id = layer.id()
         self.setWindowTitle("Coverage Opacity")
         self.setModal(False)
         self.setMinimumWidth(320)
@@ -76,10 +76,21 @@ class CoverageOpacityDialog(QDialog):
         slider_row.addWidget(self._pct_label)
         layout.addLayout(slider_row)
 
+    def _resolve_layer(self):
+        layer = QgsProject.instance().mapLayer(self._layer_id)
+        if layer is not None and layer.isValid():
+            return layer
+        return None
+
     def _on_slider_changed(self, value):
         self._pct_label.setText("{}%".format(value))
-        self._layer.setOpacity(value / 100.0)
-        self._layer.triggerRepaint()
+        layer = self._resolve_layer()
+        if layer is None:
+            self._slider.setEnabled(False)
+            self._pct_label.setText("Layer removed")
+            return
+        layer.setOpacity(value / 100.0)
+        layer.triggerRepaint()
         try:
             from qgis.utils import iface
 

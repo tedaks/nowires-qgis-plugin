@@ -52,10 +52,28 @@ def test_opacity_module_has_name_prefix_fallback():
     assert "layer.name().startswith(COVERAGE_LAYER_PREFIX)" in source
 
 
+def test_opacity_dialog_stores_layer_id_not_reference():
+    source = _text(OPACITY_SOURCE)
+    assert "self._layer_id = layer.id()" in source
+    assert "self._layer =" not in source
+
+
+def test_opacity_dialog_resolves_layer_dynamically():
+    source = _text(OPACITY_SOURCE)
+    assert "_resolve_layer" in source
+    assert "QgsProject.instance().mapLayer(self._layer_id)" in source
+
+
+def test_opacity_dialog_handles_deleted_layer():
+    source = _text(OPACITY_SOURCE)
+    assert "_resolve_layer" in source
+    assert "layer is None" in source
+
+
 def test_opacity_dialog_sets_layer_opacity():
     source = _text(OPACITY_SOURCE)
-    assert "self._layer.setOpacity(value / 100.0)" in source
-    assert "self._layer.triggerRepaint()" in source
+    assert "layer.setOpacity(value / 100.0)" in source
+    assert "layer.triggerRepaint()" in source
 
 
 def test_opacity_dialog_is_non_modal():
