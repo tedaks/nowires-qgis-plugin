@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Shared helpers for NoWires 3D scene support."""
 
+import os
+
 from qgis.core import Qgis, QgsProject, QgsRasterDemTerrainProvider
 
 
@@ -69,6 +71,15 @@ def _next_3d_view_name(iface):
 
 def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
     """Create a new QGIS 3D map canvas using the latest NoWires layers."""
+    os_name = os.name
+    if os_name == "nt":
+        iface.messageBar().pushWarning(
+            "NoWires",
+            "Opening 3D views from the plugin crashes QGIS on Windows. "
+            "Use View > 3D Map Views > New 3D Map View instead.",
+        )
+        return None
+
     project = QgsProject.instance()
     layers = resolve_nowires_3d_layers(project)
     dem_layer = layers["dem_layer"]
