@@ -683,6 +683,27 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("  Received Power: {:.2f} dBm".format(prx_dbm))
         feedback.pushInfo("  RX Sensitivity: {:.2f} dBm".format(rx_sens))
         feedback.pushInfo("  Link Margin:    {:.2f} dB".format(margin_db))
+        feedback.pushInfo(
+            "  Fade Margin Class: {}".format(
+                report_payload["results"]["fade_margin_class"]
+            )
+        )
+        feedback.pushInfo(
+            "  Reliability:     {}".format(
+                report_payload["results"]["reliability_summary"]
+            )
+        )
+        feedback.pushInfo(
+            "  Availability Method: {}".format(
+                report_payload["results"]["availability_method"]
+            )
+        )
+        if report_payload["results"]["availability_estimate_pct"] is not None:
+            feedback.pushInfo(
+                "  Availability Estimate: {:.2f}%".format(
+                    report_payload["results"]["availability_estimate_pct"]
+                )
+            )
         feedback.pushInfo("")
         feedback.pushInfo("FRESNEL ZONE ANALYSIS (k={:.3f})".format(k_factor))
         feedback.pushInfo(

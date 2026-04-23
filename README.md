@@ -11,6 +11,7 @@ This repository contains the QGIS 4 plugin source for **NoWires**.
 ### Radio Propagation
 - **Point-to-Point Analysis**: Place TX and RX points on the map. Computes ITM path loss, terrain profile with Fresnel zone analysis, generates CSV/JSON/HTML reports, and creates vector layers for the link path, Fresnel geometry, and TX/RX markers.
 - **Coverage Analysis**: Place a transmitter, set a max analysis distance and grid resolution, then generate a heatmap raster showing received signal strength (dBm) plus range statistics derived from cells above sensitivity, with optional CSV/JSON/HTML report export.
+- **Reliability Outputs**: P2P and coverage reports now include fade-margin classes plus formal-or-fallback availability guidance.
 - **Coverage Opacity Control**: Adjust the most recent coverage raster opacity from a live plugin dialog after the analysis finishes.
 
 ### Terrain Analysis
@@ -50,6 +51,7 @@ This plugin also adapts code from [tedaks/nowires](https://github.com/tedaks/now
 - `coverage_compute.py`: shared coverage propagation helpers
 - `coverage_colors.py`: coverage color-application helpers
 - `coverage_opacity.py`: live coverage opacity dialog
+- `reliability.py`: formal-or-fallback availability and reliability helpers
 - `report_export.py`: shared CSV/JSON/HTML report writers
 - `report_payloads.py`: pure-Python report payload and marker helpers
 - `three_d.py`: 3D layer tracking and scene helpers
@@ -66,7 +68,7 @@ Open the **Processing Toolbox** (`Ctrl+Alt+T`) and navigate to **NoWires**:
 2. **Coverage Analysis**: Select a TX point, set max analysis distance and grid resolution. Click Run to generate a signal-strength heatmap raster, coverage summary, and any requested reports.
 3. **Contour Lines**: Draw an extent, set contour interval and smoothing. Generates contour lines and optional hillshade.
 4. **Coverage Opacity**: After running coverage, open the menu action to adjust the latest coverage raster opacity live.
-5. **Open 3D View**: After running coverage or contours, open a tracked 3D scene from the plugin menu on Linux/macOS. On Windows, open the native QGIS 3D view manually.
+5. **Open 3D View**: After running coverage or contours, open a tracked 3D scene from the plugin menu on Linux/macOS. On Windows, NoWires now points you to the native QGIS 3D view and tells you to use the NoWires DEM as terrain.
 
 ## Data Source
 

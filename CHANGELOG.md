@@ -12,6 +12,8 @@ All notable changes to this project will be documented in this file.
 - Disable plugin-launched 3D canvas creation on Windows and defer to the native QGIS 3D view workflow there.
 - Add CSV, JSON, and HTML report export for P2P and coverage workflows.
 - Add TX/RX marker output for point-to-point analysis.
+- Add reliability outputs and availability estimates for P2P and coverage reports.
+- Improve the Windows 3D fallback guidance for opening the native QGIS 3D view.
 
 ## [1.1.0]
 

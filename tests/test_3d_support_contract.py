@@ -44,6 +44,13 @@ def test_three_d_module_guards_windows_canvas_creation():
     assert "View > 3D Map Views > New 3D Map View" in source
 
 
+def test_three_d_module_windows_warning_mentions_native_menu_and_dem():
+    source = _text(THREE_D_SOURCE)
+    assert "NoWires DEM" in source
+    assert "terrain" in source
+    assert "latest NoWires layers" in source
+
+
 def test_plugin_adds_open_3d_view_action():
     source = _text(PLUGIN_SOURCE)
     assert '"Open 3D View"' in source

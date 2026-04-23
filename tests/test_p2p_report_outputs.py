@@ -42,6 +42,9 @@ def test_build_p2p_report_payload_contains_expected_summary():
     assert payload["inputs"]["frequency_mhz"] == 900.0
     assert payload["results"]["propagation_mode_name"] == "Line-of-Sight"
     assert payload["results"]["link_margin_db"] == 19.6
+    assert payload["results"]["availability_method"] == "fallback_margin"
+    assert payload["results"]["fade_margin_class"] == "Strong"
+    assert payload["results"]["reliability_summary"] == "Reliable"
     assert payload["status"]["summary"] == "VIABLE"
 
 
