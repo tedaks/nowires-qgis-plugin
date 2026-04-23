@@ -19,10 +19,15 @@ COVERAGE_LAYER_PREFIX = "Coverage ("
 def find_latest_coverage_layer():
     """Return the most recently added coverage raster layer, or None."""
     project = QgsProject.instance()
-    layers_by_id = project.mapLayers()
+
+    layer_id, ok = project.readEntry("NoWires", "last_coverage_layer_id", "")
+    if ok and layer_id:
+        layer = project.mapLayer(layer_id)
+        if layer is not None:
+            return layer
+
     candidates = []
-    for lid in layers_by_id:
-        layer = layers_by_id[lid]
+    for layer in project.mapLayers().values():
         if layer.name().startswith(COVERAGE_LAYER_PREFIX):
             candidates.append(layer)
     if not candidates:

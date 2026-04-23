@@ -505,6 +505,9 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
             self._apply_coverage_style(raster_layer, rx_sens)
             raster_layer.setOpacity(1.0 - (overlay_transparency_pct / 100.0))
             QgsProject.instance().addMapLayer(raster_layer)
+            QgsProject.instance().writeEntry(
+                "NoWires", "last_coverage_layer_id", raster_layer.id()
+            )
             show_coverage_legend(rx_sensitivity_dbm=rx_sens)
 
             # Statistics
