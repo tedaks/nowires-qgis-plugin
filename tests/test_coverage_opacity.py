@@ -7,6 +7,7 @@ import os
 PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
 OPACITY_SOURCE = os.path.join(PLUGIN_DIR, "coverage_opacity.py")
 PLUGIN_SOURCE = os.path.join(PLUGIN_DIR, "nowires.py")
+COVERAGE_SOURCE = os.path.join(PLUGIN_DIR, "algorithm_coverage.py")
 
 
 def _text(path):
@@ -39,10 +40,16 @@ def test_opacity_dialog_uses_qt_compat_slider_helpers():
     assert "slider_tick_position_below(QSlider)" in source
 
 
-def test_opacity_module_uses_key_based_iteration():
+def test_opacity_module_uses_stored_layer_id_first():
     source = _text(OPACITY_SOURCE)
-    assert "for lid in layers_by_id:" in source
-    assert "layer = layers_by_id[lid]" in source
+    assert 'project.readEntry("NoWires", "last_coverage_layer_id"' in source
+    assert "project.mapLayer(layer_id)" in source
+
+
+def test_opacity_module_has_name_prefix_fallback():
+    source = _text(OPACITY_SOURCE)
+    assert "project.mapLayers().values()" in source
+    assert "layer.name().startswith(COVERAGE_LAYER_PREFIX)" in source
 
 
 def test_opacity_dialog_sets_layer_opacity():
@@ -109,3 +116,11 @@ def test_plugin_tracks_opacity_dialog_reference():
     source = _text(PLUGIN_SOURCE)
     assert "self._opacity_dialog = None" in source
     assert "self._opacity_dialog.close()" in source
+
+
+def test_coverage_algorithm_stores_layer_id():
+    source = _text(COVERAGE_SOURCE)
+    assert "writeEntry(" in source
+    assert '"NoWires"' in source
+    assert '"last_coverage_layer_id"' in source
+    assert "raster_layer.id()" in source
