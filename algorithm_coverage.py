@@ -542,6 +542,37 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                     max_lon=max_lon,
                     rx_sensitivity_dbm=rx_sens,
                 )
+                report_payload = build_coverage_report_payload(
+                    tx_lat=tx_lat,
+                    tx_lon=tx_lon,
+                    tx_h=tx_h,
+                    rx_h=rx_h,
+                    f_mhz=f_mhz,
+                    radius_km=radius_km,
+                    grid_size=grid_size,
+                    polarization_name=POLARIZATION_NAMES.get(
+                        polarization, str(polarization)
+                    ),
+                    climate_name=CLIMATE_NAMES.get(climate, str(climate)),
+                    time_pct=time_pct,
+                    location_pct=location_pct,
+                    situation_pct=situation_pct,
+                    tx_power=tx_power,
+                    tx_gain=tx_gain,
+                    rx_gain=rx_gain,
+                    cable_loss=cable_loss,
+                    rx_sensitivity_dbm=rx_sens,
+                    valid_pixel_count=int(valid.sum()),
+                    pixel_count=int(raster_grid.size),
+                    min_prx_dbm=float(np.nanmin(raster_grid)),
+                    max_prx_dbm=float(np.nanmax(raster_grid)),
+                    mean_prx_dbm=float(np.nanmean(raster_grid)),
+                    pct_above_sensitivity=pct_above,
+                    usable_cell_count=int(summary["usable_cell_count"]),
+                    min_distance_km=summary["min_distance_km"],
+                    max_distance_km=summary["max_distance_km"],
+                    average_distance_km=summary["average_distance_km"],
+                )
                 feedback.pushInfo("")
                 feedback.pushInfo("=" * 40)
                 feedback.pushInfo("COVERAGE RESULTS")
@@ -592,41 +623,10 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                         "Availability estimate: {:.2f}%".format(
                             report_payload["results"]["availability_estimate_pct"]
                         )
-                    )
+                )
                 if summary["usable_cell_count"] == 0:
                     feedback.pushInfo("No cells met the RX sensitivity threshold.")
                 feedback.pushInfo("=" * 40)
-                report_payload = build_coverage_report_payload(
-                    tx_lat=tx_lat,
-                    tx_lon=tx_lon,
-                    tx_h=tx_h,
-                    rx_h=rx_h,
-                    f_mhz=f_mhz,
-                    radius_km=radius_km,
-                    grid_size=grid_size,
-                    polarization_name=POLARIZATION_NAMES.get(
-                        polarization, str(polarization)
-                    ),
-                    climate_name=CLIMATE_NAMES.get(climate, str(climate)),
-                    time_pct=time_pct,
-                    location_pct=location_pct,
-                    situation_pct=situation_pct,
-                    tx_power=tx_power,
-                    tx_gain=tx_gain,
-                    rx_gain=rx_gain,
-                    cable_loss=cable_loss,
-                    rx_sensitivity_dbm=rx_sens,
-                    valid_pixel_count=int(valid.sum()),
-                    pixel_count=int(raster_grid.size),
-                    min_prx_dbm=float(np.nanmin(raster_grid)),
-                    max_prx_dbm=float(np.nanmax(raster_grid)),
-                    mean_prx_dbm=float(np.nanmean(raster_grid)),
-                    pct_above_sensitivity=pct_above,
-                    usable_cell_count=int(summary["usable_cell_count"]),
-                    min_distance_km=summary["min_distance_km"],
-                    max_distance_km=summary["max_distance_km"],
-                    average_distance_km=summary["average_distance_km"],
-                )
                 if report_csv_path:
                     write_report_csv(report_csv_path, report_payload)
                 if report_json_path:

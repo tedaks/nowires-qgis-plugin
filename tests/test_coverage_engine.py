@@ -89,3 +89,69 @@ def test_build_coverage_tasks_keeps_nearest_pixels_for_even_ui_grid_sizes():
     nearest_tasks = [task for task in tasks if abs(task[4] - nearest_distance) < 1e-9]
     assert len(nearest_tasks) == 4
     assert nearest_distance < 50.0
+
+
+def test_compute_coverage_samples_cell_centers_within_requested_extent(monkeypatch):
+    import coverage_engine
+
+    captured = {}
+
+    def fake_build_coverage_tasks(*args, **kwargs):
+        captured["lats"] = args[-2].copy()
+        captured["lons"] = args[-1].copy()
+        return []
+
+    monkeypatch.setattr(coverage_engine, "build_coverage_tasks", fake_build_coverage_tasks)
+
+    class _DummyGrid:
+        data = np.zeros((2, 2), dtype=np.float32)
+
+        @staticmethod
+        def grid_meta_dict():
+            return {
+                "min_lat": -0.001,
+                "max_lat": 0.001,
+                "min_lon": -0.001,
+                "max_lon": 0.001,
+                "n_lat": 2,
+                "n_lon": 2,
+            }
+
+    coverage_engine.compute_coverage(
+        elev_grid=_DummyGrid(),
+        tx_lat=0.0,
+        tx_lon=0.0,
+        tx_h_m=30.0,
+        rx_h_m=10.0,
+        f_mhz=300.0,
+        radius_km=0.1,
+        grid_size=4,
+    )
+
+    radius_m = 100.0
+    lat_per_m = 1.0 / 111320.0
+    lon_per_m = 1.0 / 111320.0
+    half_lat = radius_m * lat_per_m
+    half_lon = radius_m * lon_per_m
+    lat_step = (half_lat * 2.0) / 4.0
+    lon_step = (half_lon * 2.0) / 4.0
+
+    expected_lats = np.array(
+        [
+            -half_lat + (lat_step * 0.5),
+            -half_lat + (lat_step * 1.5),
+            -half_lat + (lat_step * 2.5),
+            -half_lat + (lat_step * 3.5),
+        ]
+    )
+    expected_lons = np.array(
+        [
+            -half_lon + (lon_step * 0.5),
+            -half_lon + (lon_step * 1.5),
+            -half_lon + (lon_step * 2.5),
+            -half_lon + (lon_step * 3.5),
+        ]
+    )
+
+    assert np.allclose(captured["lats"], expected_lats)
+    assert np.allclose(captured["lons"], expected_lons)
