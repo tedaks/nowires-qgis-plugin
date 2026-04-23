@@ -41,15 +41,17 @@ import os
 import sys
 import uuid
 from concurrent.futures import ProcessPoolExecutor
+
 try:
     from concurrent.futures import BrokenExecutor as _BrokenPool
 except ImportError:
     try:
         from concurrent.futures.process import BrokenProcessPool as _BrokenPool
     except ImportError:
-        # Python < 3.7 — no broken-pool exception available
         _BrokenPool = RuntimeError
 from typing import Optional
+
+from .itm_numba import _HAS_NUMBA, compute_itm_p2p
 
 # On Windows (spawn start method), child processes re-import this module
 # from scratch and do NOT inherit QGIS's dynamically-added sys.path entries.
@@ -66,7 +68,6 @@ import numpy as np
 
 from .antenna import antenna_gain_factor
 from .elevation import bearing_destination, sample_line_from_grid
-from .radio import build_pfl, itm_p2p_loss
 
 logger = logging.getLogger(__name__)
 
@@ -195,32 +196,31 @@ def _itm_worker(args):
         target_lon,
         n_pts,
     )
-    pfl = build_pfl(elevs, step_m)
 
-    try:
-        res = itm_p2p_loss(
-            h_tx__meter=tx_h_m,
-            h_rx__meter=rx_h_m,
-            profile=pfl,
-            climate=climate,
-            N0=N0,
-            f__mhz=f_mhz,
-            polarization=polarization,
-            epsilon=epsilon,
-            sigma=sigma,
-            time_pct=time_pct,
-            location_pct=location_pct,
-            situation_pct=situation_pct,
-        )
-    except Exception as e:
-        logger.warning("ITM worker failed for pixel (%d,%d): %s", i, j, e)
+    result = compute_itm_p2p(
+        h_tx__meter=tx_h_m,
+        h_rx__meter=rx_h_m,
+        elevations=elevs,
+        resolution=step_m,
+        climate_idx=int(climate),
+        N_0=N0,
+        f__mhz=f_mhz,
+        polarization=int(polarization),
+        epsilon=epsilon,
+        sigma=sigma,
+        time_pct=time_pct,
+        location_pct=location_pct,
+        situation_pct=situation_pct,
+        eirp_dbm=eirp_dbm,
+        ant_gain_adj=ant_gain_adj,
+        rx_gain_dbi=rx_gain_dbi,
+    )
+
+    if result is None:
         return None
 
-    if not math.isfinite(res.loss_db) or res.loss_db > ITM_LOSS_UPPER_BOUND:
-        return None
-
-    prx = eirp_dbm + ant_gain_adj + rx_gain_dbi - res.loss_db
-    return (i, j, res.loss_db, prx)
+    loss_db, prx = result
+    return (i, j, loss_db, prx)
 
 
 def _itm_worker_batch(batch):
@@ -274,29 +274,33 @@ def _radius_worker(args):
         n_pts = max(3, min(int(round(d / profile_step_target)) + 1, 500))
         elevs = sample_line_from_grid(gd, gm, tx_lat, tx_lon, lat_end, lon_end, n_pts)
         step_m = d / (n_pts - 1)
-        pfl = build_pfl(elevs, step_m)
 
-        try:
-            res = itm_p2p_loss(
-                h_tx__meter=tx_h_m,
-                h_rx__meter=rx_h_m,
-                profile=pfl,
-                climate=climate,
-                N0=N0,
-                f__mhz=f_mhz,
-                polarization=polarization,
-                epsilon=epsilon,
-                sigma=sigma,
-                time_pct=time_pct,
-                location_pct=location_pct,
-                situation_pct=situation_pct,
-            )
-            loss_ok = math.isfinite(res.loss_db)
-        except Exception:
+        result = compute_itm_p2p(
+            h_tx__meter=tx_h_m,
+            h_rx__meter=rx_h_m,
+            elevations=elevs,
+            resolution=step_m,
+            climate_idx=int(climate),
+            N_0=N0,
+            f__mhz=f_mhz,
+            polarization=int(polarization),
+            epsilon=epsilon,
+            sigma=sigma,
+            time_pct=time_pct,
+            location_pct=location_pct,
+            situation_pct=situation_pct,
+            eirp_dbm=eirp_dbm,
+            ant_gain_adj=ant_gain_adj,
+            rx_gain_dbi=rx_gain_dbi,
+        )
+
+        if result is not None:
+            loss_db, prx = result
+            loss_ok = math.isfinite(loss_db)
+        else:
             loss_ok = False
 
         if loss_ok:
-            prx = eirp_dbm + ant_gain_adj + rx_gain_dbi - res.loss_db
             if prx >= rx_sensitivity_dbm:
                 last_good = d
                 consecutive_below = 0
@@ -533,7 +537,8 @@ def compute_coverage(
         except (_BrokenPool, ImportError, OSError, RuntimeError) as exc:
             logger.warning(
                 "Multiprocessing failed (%s: %s), falling back to sequential",
-                type(exc).__name__, exc,
+                type(exc).__name__,
+                exc,
             )
             if feedback:
                 feedback.pushInfo(
@@ -682,7 +687,8 @@ def compute_coverage_radius(
             logger.warning(
                 "Multiprocessing failed for radius sweep (%s: %s), "
                 "falling back to sequential",
-                type(exc).__name__, exc,
+                type(exc).__name__,
+                exc,
             )
             if feedback:
                 feedback.pushInfo(
