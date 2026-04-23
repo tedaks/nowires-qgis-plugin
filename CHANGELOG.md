@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 - Add TX/RX marker output for point-to-point analysis.
 - Add reliability outputs and availability estimates for P2P and coverage reports.
 - Improve the Windows 3D fallback guidance for opening the native QGIS 3D view.
+- Fix coverage raster cell-center alignment so the heatmap matches the requested map extent.
+- Fix DEM north-up sampling so coverage and terrain-derived outputs are not mirrored upside down.
 
 ## [1.1.0]
 
