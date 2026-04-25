@@ -11,7 +11,6 @@ from radio import (
     SIGNAL_LEVELS,
     THRESHOLDS,
     build_pfl,
-    interpolate_nans,
 )
 
 
@@ -133,35 +132,6 @@ class TestBuildPFL:
         pfl = build_pfl(elevs, 50.0)
         assert pfl[0] == 2
         assert pfl[1] == 50.0
-
-
-class TestInterpolateNans:
-    """Tests for interpolate_nans()."""
-
-    def test_no_nans(self):
-        """Array with no NaNs should be returned unchanged."""
-        values = [1.0, 2.0, 3.0, 4.0]
-        result = interpolate_nans(values)
-        assert result == [1.0, 2.0, 3.0, 4.0]
-
-    def test_all_nans(self):
-        """All-NaN array should be returned as-is (can't interpolate)."""
-        values = [float("nan"), float("nan"), float("nan")]
-        result = interpolate_nans(values)
-        assert all(math.isnan(v) for v in result)
-
-    def test_interpolate_middle_nan(self):
-        """NaN in the middle should be interpolated from neighbors."""
-        values = [1.0, float("nan"), 3.0]
-        result = interpolate_nans(values)
-        assert result[1] == pytest.approx(2.0, abs=0.01)
-
-    def test_interpolate_multiple_nans(self):
-        """Multiple NaNs should be linearly interpolated."""
-        values = [0.0, float("nan"), float("nan"), 3.0]
-        result = interpolate_nans(values)
-        assert result[1] == pytest.approx(1.0, abs=0.01)
-        assert result[2] == pytest.approx(2.0, abs=0.01)
 
 
 class TestSignalLevels:

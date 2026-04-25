@@ -72,11 +72,57 @@ def test_p2p_algorithm_exposes_k_factor_preset_and_legacy_numeric_parameter():
     assert "QgsProcessingParameterNumber(" in source
 
 
-def test_p2p_algorithm_keeps_legacy_k_factor_as_compatibility_fallback():
+def test_resolve_k_factor_prefers_preset_when_available():
+    """Behavioural replacement for the literal-string check on parameter wiring.
+
+    The algorithm delegates k-factor selection to a pure helper. Asserting
+    on the helper's behaviour is robust to source reformatting and to the
+    exact shape of the preset-vs-custom branch in ``processAlgorithm``.
+    """
+    from radio import K_FACTOR_PRESETS, resolve_k_factor
+
+    # Preset present -> use the preset, ignore the custom value.
+    assert (
+        resolve_k_factor(
+            has_preset=True,
+            has_custom=True,
+            custom_value=99.0,
+            preset_index=2,
+        )
+        == K_FACTOR_PRESETS[2]
+    )
+
+    # Only the legacy custom field present -> fall back to the custom value.
+    assert (
+        resolve_k_factor(
+            has_preset=False,
+            has_custom=True,
+            custom_value=2.5,
+            preset_index=0,
+        )
+        == 2.5
+    )
+
+    # Neither flagged as present -> still resolve via the preset index
+    # (matches the algorithm's else-branch when both flags are False).
+    assert (
+        resolve_k_factor(
+            has_preset=False,
+            has_custom=False,
+            custom_value=0.0,
+            preset_index=1,
+        )
+        == K_FACTOR_PRESETS[1]
+    )
+
+
+def test_p2p_algorithm_wires_resolve_k_factor_helper():
+    """The algorithm must delegate to the helper, not inline the branch."""
     source = _p2p_source()
-    assert "if self.K_FACTOR_PRESET not in parameters and self.K_FACTOR in parameters:" in source
-    assert "k_factor = self.parameterAsDouble(parameters, self.K_FACTOR, context)" in source
-    assert "k_factor = K_FACTOR_PRESETS[" in source
+    assert "resolve_k_factor" in source
+    assert "K_FACTOR_PRESETS[" not in source, (
+        "Algorithm should call resolve_k_factor instead of indexing presets directly"
+    )
 
 
 def test_p2p_algorithm_exposes_marker_output():

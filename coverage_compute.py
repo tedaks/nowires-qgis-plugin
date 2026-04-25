@@ -11,6 +11,20 @@ import math
 
 from .radio import build_pfl, itm_p2p_loss
 
+DEFAULT_PROFILE_STEP_M = 100.0
+DEFAULT_MAX_PROFILE_PTS = 200
+
+
+def coverage_profile_step_m(f_mhz):
+    """Profile sampling step (metres) used by the coverage analysis.
+
+    Kept as a function (not a bare constant) so callers don't bake the
+    sampling policy into call sites. Future tuning (e.g. frequency-aware
+    step sizing) lives here without touching the algorithm wiring.
+    """
+    del f_mhz  # currently constant; argument reserved for future tuning
+    return DEFAULT_PROFILE_STEP_M
+
 
 def compute_itm_p2p(
     h_tx__meter,
