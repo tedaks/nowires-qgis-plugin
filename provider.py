@@ -18,13 +18,13 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-
-
-NoWires Processing Provider.
-
-Registers all processing algorithms: P2P analysis, coverage analysis,
-and contour lines generation.
 """
+
+
+# NoWires Processing Provider.
+#
+# Registers all processing algorithms: P2P analysis, coverage analysis,
+# and contour lines generation.
 
 import os
 

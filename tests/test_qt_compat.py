@@ -3,11 +3,8 @@
 
 import configparser
 import os
-import sys
 
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from qt_compat import (
     dock_widget_area_right,

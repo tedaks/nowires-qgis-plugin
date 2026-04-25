@@ -6,7 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from osgeo import ogr, osr
-from reliability import summarize_reliability
+from .reliability import summarize_reliability
 
 
 def build_p2p_report_payload(

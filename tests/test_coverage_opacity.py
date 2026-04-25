@@ -33,10 +33,10 @@ def test_opacity_module_has_dialog_class():
 def test_opacity_dialog_uses_qt_compat_slider_helpers():
     source = _text(OPACITY_SOURCE)
     assert (
-        "from .qt_compat import slider_orientation_Horizontal, slider_tick_position_below"
+        "from .qt_compat import slider_orientation_horizontal, slider_tick_position_below"
         in source
     )
-    assert "slider_orientation_Horizontal(Qt)" in source
+    assert "slider_orientation_horizontal(Qt)" in source
     assert "slider_tick_position_below(QSlider)" in source
 
 

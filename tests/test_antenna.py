@@ -2,11 +2,6 @@
 """Unit tests for antenna.py — antenna radiation pattern model."""
 
 import math
-import sys
-import os
-
-# Add plugin dir to path so we can import
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from antenna import antenna_gain_factor
 
