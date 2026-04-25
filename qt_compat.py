@@ -30,7 +30,7 @@ def matplotlib_qt_backend():
     return ("QtAgg", "backend_qtagg")
 
 
-def slider_orientation_Horizontal(qt_namespace):
+def slider_orientation_horizontal(qt_namespace):
     return _resolve_qt6_enum(qt_namespace, "Orientation", "Horizontal")
 
 

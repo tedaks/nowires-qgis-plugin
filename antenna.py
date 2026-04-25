@@ -6,8 +6,7 @@
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
         begin                : 2026-04-22
-        copyright            : (C) 2024 Bortre Tenamo
-                               Adaptations (C) 2026 by Bortre Tenamo
+        copyright            : (C) 2026 by Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
 

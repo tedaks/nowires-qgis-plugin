@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
 """Unit tests for overlay raster sizing helpers."""
 
-import os
-import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 from overlay_raster import build_overview_levels, choose_overlay_dimensions
 
 

@@ -19,26 +19,24 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-
-
-Coverage computation engine for area prediction and radius sweep.
-
-Computes per-pixel ITM predictions using multiprocessing, producing
-received power (dBm) grids for visualization as QGIS raster layers.
-
-Uses shared memory to avoid OOM when distributing the DEM grid to workers.
-
-Portions of this module are adapted from the tedaks/nowires web application
-and were originally distributed under the MIT License. See NOTICE.md for
-attribution details.
 """
+
+# Coverage computation engine for area prediction and radius sweep.
+#
+# Computes per-pixel ITM predictions using multiprocessing, producing
+# received power (dBm) grids for visualization as QGIS raster layers.
+#
+# Uses shared memory to avoid OOM when distributing the DEM grid to workers.
+#
+# Portions of this module are adapted from the tedaks/nowires web application
+# and were originally distributed under the MIT License. See NOTICE.md for
+# attribution details.
 
 import logging
 import math
 import multiprocessing
 import multiprocessing.shared_memory
 import os
-import sys
 import uuid
 from concurrent.futures import ProcessPoolExecutor
 
@@ -53,17 +51,6 @@ from typing import Optional
 
 from .coverage_compute import compute_itm_p2p
 
-# On Windows (spawn start method), child processes re-import this module
-# from scratch and do NOT inherit QGIS's dynamically-added sys.path entries.
-# We must ensure the plugin's parent directory is on sys.path BEFORE the
-# relative imports below, or the child will fail with ImportError.
-_plugin_dir = os.path.dirname(os.path.abspath(__file__))
-_plugins_parent = os.path.dirname(_plugin_dir)
-if _plugins_parent not in sys.path:
-    sys.path.insert(0, _plugins_parent)
-if _plugin_dir not in sys.path:
-    sys.path.insert(0, _plugin_dir)
-
 import numpy as np
 
 from .antenna import antenna_gain_factor
@@ -77,13 +64,36 @@ _MAX_WORKERS = os.cpu_count() or 1
 _MIN_CHUNK_SIZE = 64
 _MAX_CHUNK_SIZE = 2048
 _MIN_COVERAGE_DISTANCE_M = 1.0
+METERS_PER_DEGREE_LAT = 111320.0
+
+from collections import namedtuple
+
+_CoverageTask = namedtuple(
+    "_CoverageTask",
+    [
+        "i", "j", "target_lat", "target_lon", "dist_m", "bearing",
+        "step_m", "n_pts", "tx_h_m", "rx_h_m", "climate", "N0",
+        "f_mhz", "polarization", "epsilon", "sigma",
+        "time_pct", "location_pct", "situation_pct",
+        "eirp_dbm", "ant_gain_adj", "rx_gain_dbi",
+    ],
+)
+
+_RadiusTask = namedtuple(
+    "_RadiusTask",
+    [
+        "bearing", "tx_lat", "tx_lon", "tx_h_m", "rx_h_m",
+        "f_mhz", "polarization", "climate", "N0", "epsilon", "sigma",
+        "time_pct", "location_pct", "situation_pct",
+        "eirp_dbm", "rx_gain_dbi", "rx_sensitivity_dbm",
+        "antenna_az_deg", "antenna_beamwidth_deg",
+        "sweep_step_m", "search_max_m",
+    ],
+)
 
 _cov_shm: Optional[multiprocessing.shared_memory.SharedMemory] = None
 _cov_grid_data: Optional[np.ndarray] = None
 _cov_grid_meta: dict = {}
-_radius_shm: Optional[multiprocessing.shared_memory.SharedMemory] = None
-_radius_grid_data: Optional[np.ndarray] = None
-_radius_grid_meta: dict = {}
 
 _itm_imports = None
 
@@ -139,85 +149,43 @@ def _cleanup_cov_pool():
         _cov_shm = None
 
 
-def _init_radius_pool(shm_name, shape, dtype_str, grid_meta):
-    _ensure_path()
-    global _radius_shm, _radius_grid_data, _radius_grid_meta
-    _radius_shm = multiprocessing.shared_memory.SharedMemory(name=shm_name)
-    _radius_grid_data = np.ndarray(
-        shape, dtype=np.dtype(dtype_str), buffer=_radius_shm.buf
-    )
-    _radius_grid_meta = grid_meta
-
-
-def _cleanup_radius_pool():
-    global _radius_shm, _radius_grid_data
-    if _radius_grid_data is not None:
-        _radius_grid_data = None
-    if _radius_shm is not None:
-        _radius_shm.close()
-        _radius_shm = None
-
-
 def _itm_worker(args):
-    (
-        i,
-        j,
-        target_lat,
-        target_lon,
-        dist_m,
-        bearing_deg_val,
-        step_m,
-        n_pts,
-        tx_h_m,
-        rx_h_m,
-        climate,
-        N0,
-        f_mhz,
-        polarization,
-        epsilon,
-        sigma,
-        time_pct,
-        location_pct,
-        situation_pct,
-        eirp_dbm,
-        ant_gain_adj,
-        rx_gain_dbi,
-    ) = args
+    task = _CoverageTask(*args)
 
     elevs = sample_line_from_grid(
         _cov_grid_data,
         _cov_grid_meta,
         _cov_grid_meta["tx_lat"],
         _cov_grid_meta["tx_lon"],
-        target_lat,
-        target_lon,
-        n_pts,
+        task.target_lat,
+        task.target_lon,
+        task.n_pts,
     )
 
     result = compute_itm_p2p(
-        h_tx__meter=tx_h_m,
-        h_rx__meter=rx_h_m,
+        h_tx__meter=task.tx_h_m,
+        h_rx__meter=task.rx_h_m,
         elevations=elevs,
-        resolution=step_m,
-        climate_idx=int(climate),
-        N_0=N0,
-        f__mhz=f_mhz,
-        polarization=int(polarization),
-        epsilon=epsilon,
-        sigma=sigma,
-        time_pct=time_pct,
-        location_pct=location_pct,
-        situation_pct=situation_pct,
-        eirp_dbm=eirp_dbm,
-        ant_gain_adj=ant_gain_adj,
-        rx_gain_dbi=rx_gain_dbi,
+        resolution=task.step_m,
+        climate_idx=int(task.climate),
+        N_0=task.N0,
+        f__mhz=task.f_mhz,
+        polarization=int(task.polarization),
+        epsilon=task.epsilon,
+        sigma=task.sigma,
+        time_pct=task.time_pct,
+        location_pct=task.location_pct,
+        situation_pct=task.situation_pct,
+        eirp_dbm=task.eirp_dbm,
+        ant_gain_adj=task.ant_gain_adj,
+        rx_gain_dbi=task.rx_gain_dbi,
     )
 
     if result is None:
         return None
 
     loss_db, prx = result
-    return (i, j, loss_db, prx)
+    return (task.i, task.j, loss_db, prx)
 
 
 def _itm_worker_batch(batch):
@@ -231,64 +199,42 @@ def _itm_worker_batch(batch):
 
 
 def _radius_worker(args):
-    (
-        bearing_deg_val,
-        tx_lat,
-        tx_lon,
-        tx_h_m,
-        rx_h_m,
-        f_mhz,
-        polarization,
-        climate,
-        N0,
-        epsilon,
-        sigma,
-        time_pct,
-        location_pct,
-        situation_pct,
-        eirp_dbm,
-        rx_gain_dbi,
-        rx_sensitivity_dbm,
-        antenna_az_deg,
-        antenna_beamwidth_deg,
-        sweep_step_m,
-        search_max_m,
-    ) = args
+    task = _RadiusTask(*args)
 
     gd = _radius_grid_data
     gm = _radius_grid_meta
     ant_gain_adj = antenna_gain_factor(
-        bearing_deg_val, antenna_az_deg, antenna_beamwidth_deg
+        task.bearing, task.antenna_az_deg, task.antenna_beamwidth_deg
     )
-    profile_step_target = max(100.0, sweep_step_m * 0.5)
+    profile_step_target = max(100.0, task.sweep_step_m * 0.5)
 
     consecutive_below = 0
     last_good = 0.0
-    d = sweep_step_m
+    d = task.sweep_step_m
 
-    while d <= search_max_m:
-        lat_end, lon_end = bearing_destination(tx_lat, tx_lon, bearing_deg_val, d)
+    while d <= task.search_max_m:
+        lat_end, lon_end = bearing_destination(task.tx_lat, task.tx_lon, task.bearing, d)
         n_pts = max(3, min(int(round(d / profile_step_target)) + 1, 500))
-        elevs = sample_line_from_grid(gd, gm, tx_lat, tx_lon, lat_end, lon_end, n_pts)
+        elevs = sample_line_from_grid(gd, gm, task.tx_lat, task.tx_lon, lat_end, lon_end, n_pts)
         step_m = d / (n_pts - 1)
 
         result = compute_itm_p2p(
-            h_tx__meter=tx_h_m,
-            h_rx__meter=rx_h_m,
+            h_tx__meter=task.tx_h_m,
+            h_rx__meter=task.rx_h_m,
             elevations=elevs,
             resolution=step_m,
-            climate_idx=int(climate),
-            N_0=N0,
-            f__mhz=f_mhz,
-            polarization=int(polarization),
-            epsilon=epsilon,
-            sigma=sigma,
-            time_pct=time_pct,
-            location_pct=location_pct,
-            situation_pct=situation_pct,
-            eirp_dbm=eirp_dbm,
+            climate_idx=int(task.climate),
+            N_0=task.N0,
+            f__mhz=task.f_mhz,
+            polarization=int(task.polarization),
+            epsilon=task.epsilon,
+            sigma=task.sigma,
+            time_pct=task.time_pct,
+            location_pct=task.location_pct,
+            situation_pct=task.situation_pct,
+            eirp_dbm=task.eirp_dbm,
             ant_gain_adj=ant_gain_adj,
-            rx_gain_dbi=rx_gain_dbi,
+            rx_gain_dbi=task.rx_gain_dbi,
         )
 
         if result is not None:
@@ -298,7 +244,7 @@ def _radius_worker(args):
             loss_ok = False
 
         if loss_ok:
-            if prx >= rx_sensitivity_dbm:
+            if prx >= task.rx_sensitivity_dbm:
                 last_good = d
                 consecutive_below = 0
             else:
@@ -308,9 +254,9 @@ def _radius_worker(args):
 
         if consecutive_below >= RADIUS_CONSECUTIVE_MISS_LIMIT:
             break
-        d += sweep_step_m
+        d += task.sweep_step_m
 
-    return (bearing_deg_val, last_good)
+    return (task.bearing, last_good)
 
 
 def _dynamic_chunk_size(n_tasks):
@@ -453,8 +399,8 @@ def compute_coverage(
 ):
     global _cov_grid_data, _cov_grid_meta
     radius_m = radius_km * 1000.0
-    lat_per_m = 1.0 / 111320.0
-    lon_per_m = 1.0 / (111320.0 * max(math.cos(math.radians(tx_lat)), 0.01))
+    lat_per_m = 1.0 / METERS_PER_DEGREE_LAT
+    lon_per_m = 1.0 / (METERS_PER_DEGREE_LAT * max(math.cos(math.radians(tx_lat)), 0.01))
     half_lat = radius_m * lat_per_m
     half_lon = radius_m * lon_per_m
     min_lat = tx_lat - half_lat
@@ -516,7 +462,7 @@ def compute_coverage(
     )
 
     shm = None
-    n_workers = min(os.cpu_count() or 1, _MAX_WORKERS)
+    n_workers = _MAX_WORKERS
     pixels_failed = 0
     pixels_done = 0
 
@@ -571,7 +517,6 @@ def compute_coverage(
 
     # Sequential fallback
     if not use_multiprocessing:
-        global _cov_grid_data, _cov_grid_meta
         _cov_grid_data = grid_data
         _cov_grid_meta = grid_meta
 
@@ -626,127 +571,3 @@ def compute_coverage(
         )
 
     return prx_grid, loss_grid, min_lat, max_lat, min_lon, max_lon
-
-
-def compute_coverage_radius(
-    elev_grid,
-    tx_lat,
-    tx_lon,
-    tx_h_m,
-    rx_h_m,
-    f_mhz,
-    radius_km=100.0,
-    tx_power_dbm=43.0,
-    tx_gain_dbi=8.0,
-    rx_gain_dbi=2.0,
-    cable_loss_db=2.0,
-    rx_sensitivity_dbm=-100.0,
-    antenna_az_deg=None,
-    antenna_beamwidth_deg=360.0,
-    polarization=0,
-    climate=1,
-    N0=301.0,
-    epsilon=15.0,
-    sigma=0.005,
-    time_pct=50.0,
-    location_pct=50.0,
-    situation_pct=50.0,
-    feedback=None,
-):
-    global _radius_grid_data, _radius_grid_meta
-    search_max_m = radius_km * 1000.0
-    eirp_dbm = tx_power_dbm + tx_gain_dbi - cable_loss_db
-    grid_meta = elev_grid.grid_meta_dict()
-    sweep_step_m = 600.0
-
-    worker_args = [
-        (
-            float(b),
-            tx_lat,
-            tx_lon,
-            tx_h_m,
-            rx_h_m,
-            f_mhz,
-            polarization,
-            climate,
-            N0,
-            epsilon,
-            sigma,
-            time_pct,
-            location_pct,
-            situation_pct,
-            eirp_dbm,
-            rx_gain_dbi,
-            rx_sensitivity_dbm,
-            antenna_az_deg,
-            antenna_beamwidth_deg,
-            sweep_step_m,
-            search_max_m,
-        )
-        for b in np.arange(0, 360, 1.0)
-    ]
-
-    grid_data = elev_grid.data
-    shm = None
-    n_workers = min(os.cpu_count() or 1, _MAX_WORKERS)
-    results = None
-
-    use_multiprocessing = should_use_multiprocessing()
-    if use_multiprocessing:
-        try:
-            shm = _make_shared_grid(grid_data)
-            with ProcessPoolExecutor(
-                max_workers=n_workers,
-                initializer=_init_radius_pool,
-                initargs=(shm.name, grid_data.shape, str(grid_data.dtype), grid_meta),
-            ) as pool:
-                results = list(pool.map(_radius_worker, worker_args, chunksize=1))
-        except (_BrokenPool, ImportError, OSError, RuntimeError) as exc:
-            logger.warning(
-                "Multiprocessing failed for radius sweep (%s: %s), "
-                "falling back to sequential",
-                type(exc).__name__,
-                exc,
-            )
-            use_multiprocessing = False
-            results = None
-    else:
-        if feedback:
-            feedback.pushInfo(
-                "Using single-threaded mode (multiprocessing unsafe)..."
-            )
-
-    if not use_multiprocessing and results is None:
-        # Sequential fallback: use grid data directly in-process
-        global _radius_grid_data, _radius_grid_meta
-        _radius_grid_data = grid_data
-        _radius_grid_meta = grid_meta
-
-        results = []
-        for arg_idx, args in enumerate(worker_args):
-            if feedback and feedback.isCanceled():
-                break
-            results.append(_radius_worker(args))
-            if feedback and arg_idx % 30 == 0:
-                pct = int(arg_idx / len(worker_args) * 80)
-                feedback.setProgress(pct)
-
-        _radius_grid_data = None
-        _radius_grid_meta = {}
-
-    # Always clean up shared memory
-    if shm is not None:
-        try:
-            shm.close()
-        except Exception:
-            pass
-        try:
-            shm.unlink()
-        except Exception:
-            pass
-
-    results = [r for r in results if r is not None]
-    if not results:
-        logger.warning("All radius sweep bearings failed")
-
-    return results

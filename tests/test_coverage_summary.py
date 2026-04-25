@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
 """Unit tests for raster-derived coverage summary metrics."""
 
-import os
-import sys
-
 import numpy as np
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from coverage_summary import summarize_coverage_grid
 

@@ -51,4 +51,4 @@ def test_coverage_algorithm_has_no_transparency_slider():
     source = _source_text()
     assert "TransparencySliderWidget" not in source
     assert "WidgetWrapper" not in source
-    assert "slider_orientation_Horizontal" not in source
+    assert "slider_orientation_horizontal" not in source

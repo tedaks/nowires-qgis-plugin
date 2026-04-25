@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
 """Unit tests for coverage engine execution policy and task generation."""
 
-import os
-import sys
-
 import numpy as np
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from coverage_engine import build_coverage_tasks, should_use_multiprocessing
 

@@ -31,18 +31,28 @@ _no_wires_pkg.__package__ = "NoWires"
 _no_wires_pkg.__name__ = "NoWires"
 sys.modules["NoWires"] = _no_wires_pkg
 
+# Submodules with no relative imports — can be loaded as top-level first,
+# then registered under the NoWires package.
 for _submodule_name in (
     "antenna",
     "coverage_palette",
     "coverage_summary",
     "elevation",
     "radio",
+    "reliability",
 ):
     _mod = __import__(_submodule_name, fromlist=[""])
     sys.modules[f"NoWires.{_submodule_name}"] = _mod
     setattr(_no_wires_pkg, _submodule_name, _mod)
 
-_coverage_mod = __import__("NoWires.coverage_engine", fromlist=[""])
-sys.modules["coverage_engine"] = _coverage_mod
-sys.modules["NoWires.coverage_engine"] = _coverage_mod
-setattr(_no_wires_pkg, "coverage_engine", _coverage_mod)
+# Submodules that use relative imports — must be imported through the
+# NoWires package so that ``from .xxx import ...`` resolves correctly.
+for _pkg_sub in (
+    "coverage_compute",
+    "coverage_engine",
+    "report_payloads",
+):
+    _mod = __import__(f"NoWires.{_pkg_sub}", fromlist=[""])
+    sys.modules[_pkg_sub] = _mod
+    sys.modules[f"NoWires.{_pkg_sub}"] = _mod
+    setattr(_no_wires_pkg, _pkg_sub, _mod)

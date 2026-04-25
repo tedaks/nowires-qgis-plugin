@@ -6,8 +6,7 @@
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
         begin                : 2026-04-22
-        copyright            : (C) 2024 Bortre Tenamo
-                               Adaptations (C) 2026 by Bortre Tenamo
+        copyright            : (C) 2026 by Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
 
@@ -101,7 +100,7 @@ class ElevationGrid:
                 raise RuntimeError("Failed to read DEM band: {}".format(dem_path))
             self.data = np.asarray(data, dtype=np.float32)
             if self.nodata is not None:
-                self.data[self.data == self.nodata] = 0.0
+                self.data[self.data == self.nodata] = np.nan
 
             self.n_rows, self.n_cols = self.data.shape
             self.min_lon = self.transform[0]

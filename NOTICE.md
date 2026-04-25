@@ -17,7 +17,7 @@ The following files are derived from or inspired by the nowires project (adapted
 |---|---|
 | `algorithm_p2p.py` | `apps/api/app/p2p.py` |
 | `algorithm_coverage.py` | `apps/api/app/coverage.py`, `apps/api/app/coverage_render.py` |
-| `algorithm_coverage_radius.py` | `apps/api/app/coverage_radius.py` |
+
 | `coverage_engine.py` | `apps/api/app/coverage_workers.py`, `apps/api/app/coverage_render.py` |
 | `radio.py` (ITM bridge, Fresnel, signal levels) | `apps/api/app/itm_bridge.py`, `apps/api/app/math_kernels.py`, `apps/api/app/signal_levels.py` |
 | `antenna.py` | `apps/api/app/antenna.py` |
@@ -81,37 +81,9 @@ The following files are derived from the ContourLines plugin:
 |---|---|
 | `algorithm_contour.py` | `contour_lines_algorithm.py` |
 | `dem_downloader.py` (DEM download, clip, merge logic) | `contour_lines_algorithm.py` (tile download and processing sections) |
-| `gdal_calc.py` | `gdal_calc.py` |
-
 ---
 
-## 4. gdal_calc.py — GDAL Raster Calculator
-
-**Source:** GDAL project (<https://gdal.org/>)  
-**License:** MIT-style license (below)  
-**Copyright:** © 2010 Chris Yesson <chris.yesson@ioz.ac.uk>, © 2010–2011 Even Rouault, © 2016 Piers Titus van der Torren <pierstitus@gmail.com>
-
-> Permission is hereby granted, free of charge, to any person obtaining a
-> copy of this software and associated documentation files (the "Software"),
-> to deal in the Software without restriction, including without limitation
-> the rights to use, copy, modify, merge, publish, distribute, sublicense,
-> and/or sell copies of the Software, and to permit persons to whom the
-> Software is furnished to do so, subject to the following conditions:
->
-> The above copyright notice and this permission notice shall be included
-> in all copies or substantial portions of the Software.
->
-> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-> OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-> FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-> THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-> LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-> FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-> DEALINGS IN THE SOFTWARE.
-
----
-
-## 5. Copernicus DEM — Elevation Data
+## 4. Copernicus DEM — Elevation Data
 
 Elevation data used by this plugin is sourced from the **Copernicus GLO-30 Public DEM** hosted on AWS Open Data:
 
@@ -126,7 +98,7 @@ GLO-30 Public is available free of charge for any use under the terms of the [Co
 
 ---
 
-## 6. ITM References
+## 5. ITM References
 
 The Irregular Terrain Model was originally developed by:
 
@@ -136,7 +108,7 @@ The Irregular Terrain Model was originally developed by:
 
 ---
 
-## 7. Local Modifications
+## 6. Local Modifications
 
 - Files adapted from `nowires` retain the original MIT attribution in this notice and are redistributed as part of this GPLv3-or-later plugin.
 - Files adapted from `ContourLines` carry preserved upstream attribution where practical and are redistributed as part of this GPLv3-or-later plugin.

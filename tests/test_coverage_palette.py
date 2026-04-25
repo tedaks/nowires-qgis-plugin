@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
 """Unit tests for coverage palette and legend entries."""
 
-import os
-import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 from coverage_palette import SIGNAL_LEVELS, build_heatmap_stops, build_legend_entries
 
 

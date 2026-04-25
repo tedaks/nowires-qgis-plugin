@@ -11,7 +11,7 @@ from qgis.PyQt.QtWidgets import (
 )
 from qgis.core import QgsProject
 
-from .qt_compat import slider_orientation_Horizontal, slider_tick_position_below
+from .qt_compat import slider_orientation_horizontal, slider_tick_position_below
 
 COVERAGE_LAYER_PREFIX = "Coverage ("
 
@@ -59,7 +59,7 @@ class CoverageOpacityDialog(QDialog):
         self._pct_label = QLabel("100%", self)
         self._pct_label.setMinimumWidth(42)
 
-        self._slider = QSlider(slider_orientation_Horizontal(Qt))
+        self._slider = QSlider(slider_orientation_horizontal(Qt))
         self._slider.setRange(0, 100)
         self._slider.setSingleStep(1)
         self._slider.setPageStep(5)

@@ -319,9 +319,10 @@ The coverage support code is now split by responsibility:
 
 Important constants:
 
-- `_MAX_WORKERS = 4`
-- `_CHUNK_SIZE = 512`
+- `_MAX_WORKERS = os.cpu_count() or 1` (auto-detected)
+- Dynamic chunk size via `_dynamic_chunk_size()`
 - `_MIN_COVERAGE_DISTANCE_M = 1.0`
+- `METERS_PER_DEGREE_LAT = 111320.0`
 
 ### Near-Transmitter Coverage Cells
 
@@ -512,7 +513,7 @@ The `K_FACTOR` / `K_FACTOR_PRESET` handling in `algorithm_p2p.py` is an example 
 - Coverage performance degrades as grid size and analysis distance grow.
 - Coverage multiprocessing is intentionally disabled on Windows.
 - Plugin-launched 3D canvas creation is disabled on Windows because it caused native QGIS crashes in this workflow.
-- The coverage radius-sweep implementation remains on disk but is not part of the normal public workflow.
+- The coverage radius-sweep implementation has been removed.
 - DEM access depends on external network availability.
 - The repository test suite does not substitute for in-QGIS manual validation.
 

@@ -109,6 +109,8 @@ Use ESA WorldCover plus a custom terminal clutter correction module, layered on 
 
 ## 3. Link Reliability Outputs
 
+> **Status: Done.** Reliability outputs are in `reliability.py` and both P2P and coverage reports include `fade_margin_class`, `availability_method`, `availability_estimate_pct`, and `reliability_summary`.
+
 Build clearer user-facing outputs around the existing ITM variability inputs:
 - fade margin classification
 - availability estimate
@@ -128,6 +130,8 @@ This would be especially useful for engineering tradeoff studies and quick plann
 
 ## 5. TX/RX Map Layers For P2P
 
+> **Status: Done.** P2P analysis produces a TX/RX marker vector layer via `report_payloads.write_p2p_marker_layer()` with role, antenna height, gain, power, and sensitivity attributes.
+
 Create explicit TX and RX point layers with useful attributes:
 - role
 - antenna type
@@ -137,6 +141,8 @@ Create explicit TX and RX point layers with useful attributes:
 This would make point-to-point outputs easier to inspect, symbolize, label, and reuse in QGIS workflows.
 
 ## 6. Better Report Export
+
+> **Status: Done.** P2P and coverage analyses export CSV, JSON, and HTML reports via `report_export.py`. Reports include all inputs, link-budget/summary values, and reliability fields.
 
 Add one-click export for P2P and coverage summaries:
 - CSV

@@ -81,7 +81,6 @@ Elevation data: **Copernicus GLO-30 Public DEM** hosted on AWS Open Data.
 - Radio propagation engine: [tedaks/pyitm](https://github.com/tedaks/pyitm) — NTIA Irregular Terrain Model (bundled)
 - Original web application: [tedaks/nowires](https://github.com/tedaks/nowires)
 - Contour lines algorithm: [ContourLines](https://github.com/tedaks/ContourLines) by Daniel Hulshof Saint Martin
-- gdal_calc utility: GDAL project (Chris Yesson, Even Rouault, Piers Titus van der Torren)
 
 ## Development
 

@@ -31,14 +31,14 @@ and were originally distributed under the MIT License. See NOTICE.md for
 attribution details.
 """
 
-import math
 import logging
-
-logger = logging.getLogger(__name__)
+import math
 import os
 import tempfile
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (
@@ -69,6 +69,7 @@ from .report_payloads import build_coverage_report_payload
 
 GRID_SIZE_PRESETS = [64, 128, 192, 256, 384, 512, 768, 1024]
 POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
+METERS_PER_DEGREE_LAT = 111320.0
 
 
 class CoverageAlgorithm(QgsProcessingAlgorithm):
@@ -394,10 +395,10 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
         )
 
         # Compute padded DEM area
-        pad_deg = max(0.05, radius_km / 111.32 * 0.1)
-        radius_deg_lat = radius_km / 111.32
+        pad_deg = max(0.05, radius_km / (METERS_PER_DEGREE_LAT / 1000.0) * 0.1)
+        radius_deg_lat = radius_km / (METERS_PER_DEGREE_LAT / 1000.0)
         radius_deg_lon = radius_km / (
-            111.32 * max(math.cos(math.radians(tx_lat)), 0.01)
+            METERS_PER_DEGREE_LAT / 1000.0 * max(math.cos(math.radians(tx_lat)), 0.01)
         )
         south = tx_lat - radius_deg_lat - pad_deg
         north = tx_lat + radius_deg_lat + pad_deg

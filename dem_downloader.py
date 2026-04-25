@@ -54,9 +54,6 @@ _MAX_TILES = 200
 _DOWNLOAD_RETRIES = 3
 _VALID_TILE_RE = re.compile(r"^Copernicus_DSM_COG_10_[NS]\d{2}_00_[EW]\d{3}_00_DEM$")
 
-gdal.SetConfigOption("GDAL_CACHEMAX", "512")
-gdal.SetConfigOption("GDAL_NUM_THREADS", "ALL_CPUS")
-
 
 def get_temp_dir():
     temp_dir = os.path.join(tempfile.gettempdir(), "NoWires")
