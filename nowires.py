@@ -21,7 +21,6 @@
 """
 
 import os
-import sys
 
 from qgis.PyQt.QtCore import QTimer
 from qgis.PyQt.QtWidgets import QAction, QInputDialog
@@ -36,9 +35,6 @@ from .provider import NoWiresProvider
 from .three_d import SCENE_MODE_GLOBE, SCENE_MODE_LOCAL, open_nowires_3d_view
 
 cmd_folder = os.path.dirname(__file__)
-
-if cmd_folder not in sys.path:
-    sys.path.insert(0, cmd_folder)
 
 
 class NoWiresPlugin:

@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Remove `gdal_calc.py` (dead code with `eval()` usage and deprecated `optparse`).
+- Remove `algorithm_coverage_radius.py` (dead code — was never registered in the provider).
+- Fix critical import bug in `report_payloads.py` — bare `from reliability import` would crash at QGIS runtime.
+- Vectorize `coverage_summary.py` distance computation for significant speedup on large grids.
+- Replace fragile VRT string manipulation in `algorithm_contour.py` with proper XML parsing.
+- Use namedtuples for coverage task tuples to prevent fragile positional unpacking.
+- Remove global GDAL configuration side effects from `dem_downloader.py` that affected the entire QGIS process.
+- Use `NaN` instead of `0.0` for nodata replacement in `ElevationGrid` to distinguish nodata from sea level.
+- Remove legacy `sys.path` manipulation from `nowires.py` and `coverage_engine.py`.
+- Fix import ordering violations and remove unused imports across multiple files.
+- Normalize copyright headers to consistent `(C) 2026 by Bortre Tenamo`.
+- Extract magic numbers into named constants for clarity.
+- Remove redundant `sys.path` insertions from test files.
 - Prepare repository for public GitHub upload.
 - Split coverage helpers into `coverage_compute.py` and `coverage_colors.py`.
 - Add a synthetic coverage runtime benchmark under `benchmarks/coverage_runtime.py`.

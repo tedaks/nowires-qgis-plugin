@@ -31,16 +31,14 @@ and were originally distributed under the MIT License. See NOTICE.md for
 attribution details.
 """
 
-import math
 import logging
-
-logger = logging.getLogger(__name__)
+import math
 import os
 import tempfile
-import uuid
-import shutil
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (

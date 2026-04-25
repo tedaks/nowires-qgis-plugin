@@ -32,15 +32,15 @@ and were originally distributed under the GPL. See NOTICE.md for
 attribution details.
 """
 
+import logging
 import math
 import os
-import logging
-
-logger = logging.getLogger(__name__)
-import shutil
 import tempfile
+import xml.etree.ElementTree as ET
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 from osgeo import gdal, ogr, osr
 
 from qgis.PyQt.QtCore import QCoreApplication
@@ -153,18 +153,27 @@ def _make_blur_vrt(vrt_path, src_path, kernel_size, sigma=None):
     ``KernelFilteredSource`` with the generated Gaussian coefficients.
     """
     gdal.BuildVRT(vrt_path, src_path)
-    with open(vrt_path, "rt") as f:
-        data = f.read()
-    data = data.replace("ComplexSource", "KernelFilteredSource")
-    coefs = _gaussian_kernel_2d(kernel_size, sigma)
-    data = data.replace(
-        "<NODATA>-32768</NODATA>",
-        '<NODATA>-32768</NODATA>'
-        '<Kernel normalized="1"><Size>{size}</Size>'
-        "<Coefs>{coefs}</Coefs></Kernel>".format(size=kernel_size, coefs=coefs),
-    )
-    with open(vrt_path, "wt") as f:
-        f.write(data)
+
+    tree = ET.parse(vrt_path)
+    root = tree.getroot()
+
+    ns = ""
+    if root.tag.startswith("{"):
+        ns = root.tag.split("}")[0] + "}"
+
+    for source_elem in root.iter("{}Source".format(ns)):
+        if source_elem.tag not in ("{}SimpleSource".format(ns), "{}ComplexSource".format(ns)):
+            continue
+        source_elem.tag = "{}KernelFilteredSource".format(ns)
+        nodata_elem = source_elem.find("{}NODATA".format(ns))
+        kernel_elem = ET.SubElement(source_elem, "{}Kernel".format(ns))
+        kernel_elem.set("normalized", "1")
+        size_elem = ET.SubElement(kernel_elem, "{}Size".format(ns))
+        size_elem.text = str(kernel_size)
+        coefs_elem = ET.SubElement(kernel_elem, "{}Coefs".format(ns))
+        coefs_elem.text = _gaussian_kernel_2d(kernel_size, sigma)
+
+    tree.write(vrt_path, xml_declaration=True, encoding="utf-8")
 
 
 class ContourLinesAlgorithm(QgsProcessingAlgorithm):
@@ -287,7 +296,7 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
 
         aoi_width = area_of_interest.width()
         aoi_height = area_of_interest.height()
-        max_extent = 5.0
+        max_extent = MAX_AOI_EXTENT_DEGREES
         if aoi_width > max_extent or aoi_height > max_extent:
             raise ValueError(
                 self.tr(

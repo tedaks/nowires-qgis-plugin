@@ -3,11 +3,6 @@
 
 import numpy as np
 
-try:
-    from .elevation import haversine_m
-except ImportError:  # pragma: no cover - direct test imports use module mode
-    from elevation import haversine_m
-
 
 def summarize_coverage_grid(
     prx_grid,
@@ -23,20 +18,28 @@ def summarize_coverage_grid(
     n_rows, n_cols = prx_grid.shape
     lat_step = (max_lat - min_lat) / n_rows
     lon_step = (max_lon - min_lon) / n_cols
-    usable_distances_km = []
 
-    for row in range(n_rows):
-        cell_lat = max_lat - ((row + 0.5) * lat_step)
-        for col in range(n_cols):
-            cell_value = prx_grid[row, col]
-            if np.isnan(cell_value) or cell_value < rx_sensitivity_dbm:
-                continue
+    # Build cell center coordinate arrays
+    cell_lats = max_lat - ((np.arange(n_rows) + 0.5) * lat_step)  # (n_rows,)
+    cell_lons = min_lon + ((np.arange(n_cols) + 0.5) * lon_step)  # (n_cols,)
 
-            cell_lon = min_lon + ((col + 0.5) * lon_step)
-            distance_km = haversine_m(tx_lat, tx_lon, cell_lat, cell_lon) / 1000.0
-            usable_distances_km.append(distance_km)
+    # Vectorized haversine distance computation — broadcast to 2D grid
+    R = 6371000.0
+    lat1_r = np.radians(tx_lat)
+    lon1_r = np.radians(tx_lon)
+    lat2_r = np.radians(cell_lats)[:, np.newaxis]  # (n_rows, 1)
+    lon2_r = np.radians(cell_lons)[np.newaxis, :]  # (1, n_cols)
 
-    if not usable_distances_km:
+    dphi = lat2_r - lat1_r
+    dlam = lon2_r - lon1_r
+    a = np.sin(dphi / 2) ** 2 + np.cos(lat1_r) * np.cos(lat2_r) * np.sin(dlam / 2) ** 2
+    dist_grid_km = (2 * R * np.arcsin(np.sqrt(a))) / 1000.0  # (n_rows, n_cols)
+
+    # Mask: usable cells above sensitivity
+    usable_mask = (~np.isnan(prx_grid)) & (prx_grid >= rx_sensitivity_dbm)
+    usable_distances = dist_grid_km[usable_mask]
+
+    if usable_distances.size == 0:
         return {
             "usable_cell_count": 0,
             "min_distance_km": 0.0,
@@ -44,10 +47,9 @@ def summarize_coverage_grid(
             "average_distance_km": 0.0,
         }
 
-    usable_arr = np.asarray(usable_distances_km, dtype=np.float64)
     return {
-        "usable_cell_count": int(usable_arr.size),
-        "min_distance_km": float(usable_arr.min()),
-        "max_distance_km": float(usable_arr.max()),
-        "average_distance_km": float(usable_arr.mean()),
+        "usable_cell_count": int(usable_distances.size),
+        "min_distance_km": float(usable_distances.min()),
+        "max_distance_km": float(usable_distances.max()),
+        "average_distance_km": float(usable_distances.mean()),
     }
