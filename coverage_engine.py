@@ -54,7 +54,7 @@ from .coverage_compute import compute_itm_p2p
 import numpy as np
 
 from .antenna import antenna_gain_factor
-from .elevation import bearing_destination, sample_line_from_grid
+from .elevation import sample_line_from_grid
 
 logger = logging.getLogger(__name__)
 
@@ -79,24 +79,10 @@ _CoverageTask = namedtuple(
     ],
 )
 
-_RadiusTask = namedtuple(
-    "_RadiusTask",
-    [
-        "bearing", "tx_lat", "tx_lon", "tx_h_m", "rx_h_m",
-        "f_mhz", "polarization", "climate", "N0", "epsilon", "sigma",
-        "time_pct", "location_pct", "situation_pct",
-        "eirp_dbm", "rx_gain_dbi", "rx_sensitivity_dbm",
-        "antenna_az_deg", "antenna_beamwidth_deg",
-        "sweep_step_m", "search_max_m",
-    ],
-)
-
 _cov_shm: Optional[multiprocessing.shared_memory.SharedMemory] = None
 _cov_grid_data: Optional[np.ndarray] = None
 _cov_grid_meta: dict = {}
-
 _itm_imports = None
-
 
 def should_use_multiprocessing(os_name=None):
     """Return whether process-based parallelism is safe in this runtime."""
@@ -121,15 +107,6 @@ def _ensure_path():
         sys.path.insert(0, plugins_dir)
     if plugin_dir not in sys.path:
         sys.path.insert(0, plugin_dir)
-
-
-def _get_itm_cached():
-    global _itm_imports
-    if _itm_imports is None:
-        from .itm import Climate, Polarization, TerrainProfile, predict_p2p
-
-        _itm_imports = (Climate, Polarization, TerrainProfile, predict_p2p)
-    return _itm_imports
 
 
 def _init_cov_pool(shm_name, shape, dtype_str, grid_meta):
@@ -196,67 +173,6 @@ def _itm_worker_batch(batch):
     for args in batch:
         results.append(_itm_worker(args))
     return results
-
-
-def _radius_worker(args):
-    task = _RadiusTask(*args)
-
-    gd = _radius_grid_data
-    gm = _radius_grid_meta
-    ant_gain_adj = antenna_gain_factor(
-        task.bearing, task.antenna_az_deg, task.antenna_beamwidth_deg
-    )
-    profile_step_target = max(100.0, task.sweep_step_m * 0.5)
-
-    consecutive_below = 0
-    last_good = 0.0
-    d = task.sweep_step_m
-
-    while d <= task.search_max_m:
-        lat_end, lon_end = bearing_destination(task.tx_lat, task.tx_lon, task.bearing, d)
-        n_pts = max(3, min(int(round(d / profile_step_target)) + 1, 500))
-        elevs = sample_line_from_grid(gd, gm, task.tx_lat, task.tx_lon, lat_end, lon_end, n_pts)
-        step_m = d / (n_pts - 1)
-
-        result = compute_itm_p2p(
-            h_tx__meter=task.tx_h_m,
-            h_rx__meter=task.rx_h_m,
-            elevations=elevs,
-            resolution=step_m,
-            climate_idx=int(task.climate),
-            N_0=task.N0,
-            f__mhz=task.f_mhz,
-            polarization=int(task.polarization),
-            epsilon=task.epsilon,
-            sigma=task.sigma,
-            time_pct=task.time_pct,
-            location_pct=task.location_pct,
-            situation_pct=task.situation_pct,
-            eirp_dbm=task.eirp_dbm,
-            ant_gain_adj=ant_gain_adj,
-            rx_gain_dbi=task.rx_gain_dbi,
-        )
-
-        if result is not None:
-            loss_db, prx = result
-            loss_ok = math.isfinite(loss_db)
-        else:
-            loss_ok = False
-
-        if loss_ok:
-            if prx >= task.rx_sensitivity_dbm:
-                last_good = d
-                consecutive_below = 0
-            else:
-                consecutive_below += 1
-        else:
-            consecutive_below += 1
-
-        if consecutive_below >= RADIUS_CONSECUTIVE_MISS_LIMIT:
-            break
-        d += task.sweep_step_m
-
-    return (task.bearing, last_good)
 
 
 def _dynamic_chunk_size(n_tasks):

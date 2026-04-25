@@ -3,23 +3,23 @@
 
 from reliability import (
     classify_fade_margin,
-    estimate_formal_availability_pct,
-    formal_availability_validity,
+    estimate_heuristic_availability_pct,
+    heuristic_availability_validity,
 )
 
 
-def test_formal_availability_validity_accepts_simple_los_case():
-    result = formal_availability_validity(
+def test_heuristic_availability_validity_accepts_simple_los_case():
+    result = heuristic_availability_validity(
         frequency_mhz=5800.0,
         distance_km=8.0,
         los_blocked=False,
     )
     assert result["valid"] is True
-    assert result["method"] == "formal_p530"
+    assert result["method"] == "heuristic_availability"
 
 
-def test_formal_availability_validity_rejects_blocked_case():
-    result = formal_availability_validity(
+def test_heuristic_availability_validity_rejects_blocked_case():
+    result = heuristic_availability_validity(
         frequency_mhz=900.0,
         distance_km=12.0,
         los_blocked=True,
@@ -34,8 +34,8 @@ def test_classify_fade_margin_returns_reliable_for_strong_margin():
     assert result["reliability_summary"] == "Reliable"
 
 
-def test_estimate_formal_availability_pct_stays_in_percent_range():
-    value = estimate_formal_availability_pct(
+def test_estimate_heuristic_availability_pct_stays_in_percent_range():
+    value = estimate_heuristic_availability_pct(
         margin_db=20.0,
         distance_km=5.0,
         frequency_mhz=5800.0,

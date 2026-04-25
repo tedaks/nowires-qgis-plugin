@@ -130,7 +130,9 @@ class ElevationGrid:
         fy = (self.max_lat - lat) / self.d_lat
         fx = (lon - self.min_lon) / self.d_lon
         if fy < 0 or fx < 0 or fy > self.n_rows - 1 or fx > self.n_cols - 1:
-            return 0.0
+            # Out of DEM extent: return NaN rather than 0.0 so callers
+            # can distinguish "missing data" from "actual sea level".
+            return float("nan")
         y0 = int(fy)
         x0 = int(fx)
         y1 = min(y0 + 1, self.n_rows - 1)

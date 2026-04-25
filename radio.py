@@ -82,6 +82,23 @@ CLIMATE_NAMES = {
 C_LIGHT = 299792458.0  # Speed of light in m/s
 EARTH_RADIUS_M = 6371000.0
 
+# Earth-radius factor (k) presets exposed by the P2P algorithm UI.
+# Index 2 (4/3) is the standard-atmosphere default.
+K_FACTOR_PRESETS = [0.67, 1.0, 4.0 / 3.0, 2.0, 4.0]
+
+
+def resolve_k_factor(
+    has_preset, has_custom, custom_value, preset_index, presets=K_FACTOR_PRESETS
+):
+    """Pick the effective Earth-radius factor (k) for a P2P run.
+
+    Prefers the preset enum; falls back to the legacy numeric K_FACTOR only
+    when the preset is absent and the custom value was supplied.
+    """
+    if not has_preset and has_custom:
+        return float(custom_value)
+    return presets[preset_index]
+
 
 # --- ITM Bridge ---
 
@@ -278,21 +295,3 @@ def fresnel_profile_analysis(
     violates_f60 = terrain_bulge > (los_h - 0.6 * fr)
 
     return terrain_bulge, los_h, fr, obstructs_los, violates_f1, violates_f60
-
-
-def interpolate_nans(values):
-    """Replace NaN values with linear interpolation from neighbours.
-
-    Vectorized using numpy for O(n) instead of O(n^2).
-    """
-    if not values:
-        return values
-    arr = np.asarray(values, dtype=np.float64)
-    nans = np.isnan(arr)
-    if not nans.any():
-        return arr.tolist()
-    valid = ~nans
-    if not valid.any():
-        return arr.tolist()
-    arr[nans] = np.interp(np.where(nans)[0], np.where(valid)[0], arr[valid])
-    return arr.tolist()
