@@ -62,6 +62,7 @@ from .elevation import ElevationGrid, haversine_m
 from .coverage_legend import show_coverage_legend
 from .coverage_palette import build_heatmap_stops
 from .coverage_summary import summarize_coverage_grid
+from .coverage_compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
 from .coverage_engine import compute_coverage
 from .radio import CLIMATE_NAMES
 from .report_export import write_report_csv, write_report_html, write_report_json
@@ -427,8 +428,8 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
             f_mhz=f_mhz,
             grid_size=grid_size,
             radius_km=radius_km,
-            profile_step_m=100.0,
-            max_profile_pts=200,
+            profile_step_m=coverage_profile_step_m(f_mhz),
+            max_profile_pts=DEFAULT_MAX_PROFILE_PTS,
             tx_power_dbm=tx_power,
             tx_gain_dbi=tx_gain,
             rx_gain_dbi=rx_gain,

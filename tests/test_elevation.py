@@ -6,6 +6,7 @@ import math
 import numpy as np
 
 from elevation import (
+    ElevationGrid,
     haversine_m,
     bearing_deg,
     bearing_destination,
@@ -119,6 +120,39 @@ class TestGridSamplingOrientation:
 
         assert samples[0] == pytest.approx(100.0)
         assert samples[1] == pytest.approx(200.0)
+
+
+class TestElevationGridSampleOutOfExtent:
+    """ElevationGrid.sample must signal missing data with NaN, not 0.0."""
+
+    def _build_grid(self):
+        """Construct a 2x2 grid covering [0,1] x [0,1] without invoking GDAL."""
+        grid = object.__new__(ElevationGrid)
+        grid.data = np.array([[100.0, 110.0], [200.0, 210.0]], dtype=np.float32)
+        grid.n_rows = 2
+        grid.n_cols = 2
+        grid.min_lat = 0.0
+        grid.max_lat = 1.0
+        grid.min_lon = 0.0
+        grid.max_lon = 1.0
+        grid.d_lat = 1.0
+        grid.d_lon = 1.0
+        return grid
+
+    def test_sample_inside_extent_interpolates(self):
+        grid = self._build_grid()
+        # Top-left corner (max_lat, min_lon) -> v00 = 100.0
+        assert grid.sample(1.0, 0.0) == pytest.approx(100.0)
+
+    def test_sample_outside_extent_returns_nan(self):
+        grid = self._build_grid()
+        for lat, lon in [(2.0, 0.5), (-1.0, 0.5), (0.5, 2.0), (0.5, -1.0)]:
+            value = grid.sample(lat, lon)
+            assert math.isnan(value), (
+                "Expected NaN outside DEM extent at ({}, {}), got {}".format(
+                    lat, lon, value
+                )
+            )
 
 
 import pytest

@@ -35,6 +35,7 @@ attribution details.
 import logging
 import math
 import os
+import shutil
 import tempfile
 import xml.etree.ElementTree as ET
 
@@ -82,43 +83,48 @@ from .qt_compat import painter_blend_mode_color_dodge
 from .three_d import configure_contours_for_3d
 
 
+MAX_AOI_EXTENT_DEGREES = 5.0
+
+
 def _raster_calc(calc_func, output_path, nodata=-32768, overwrite=False, **inputs):
     arrays = {}
     datasets = []
     geo_transform = None
     projection = None
     rows = cols = 0
-    for name, path in inputs.items():
-        ds = gdal.Open(path)
-        if ds is None:
-            raise RuntimeError("Cannot open raster: " + str(path))
-        datasets.append(ds)
-        band = ds.GetRasterBand(1)
-        if geo_transform is None:
-            geo_transform = ds.GetGeoTransform()
-            projection = ds.GetProjection()
-            rows = ds.RasterYSize
-            cols = ds.RasterXSize
-        arr = band.ReadAsArray().astype(np.float32)
-        input_nodata = band.GetNoDataValue()
-        if input_nodata is not None:
-            arr[arr == input_nodata] = np.nan
-        arrays[name] = arr
-    result = calc_func(**arrays)
-    result[np.isnan(result)] = nodata
-    if not overwrite and os.path.exists(output_path):
-        raise RuntimeError("Output file already exists: " + output_path)
-    driver = gdal.GetDriverByName("GTiff")
-    out_ds = driver.Create(output_path, cols, rows, 1, gdal.GDT_Float32)
-    out_ds.SetGeoTransform(geo_transform)
-    out_ds.SetProjection(projection)
-    out_band = out_ds.GetRasterBand(1)
-    out_band.SetNoDataValue(nodata)
-    out_band.WriteArray(result)
-    out_band.FlushCache()
-    out_ds = None
-    for ds in datasets:
-        ds = None
+    try:
+        for name, path in inputs.items():
+            ds = gdal.Open(path)
+            if ds is None:
+                raise RuntimeError("Cannot open raster: " + str(path))
+            datasets.append(ds)
+            band = ds.GetRasterBand(1)
+            if geo_transform is None:
+                geo_transform = ds.GetGeoTransform()
+                projection = ds.GetProjection()
+                rows = ds.RasterYSize
+                cols = ds.RasterXSize
+            arr = band.ReadAsArray().astype(np.float32)
+            input_nodata = band.GetNoDataValue()
+            if input_nodata is not None:
+                arr[arr == input_nodata] = np.nan
+            arrays[name] = arr
+        result = calc_func(**arrays)
+        result[np.isnan(result)] = nodata
+        if not overwrite and os.path.exists(output_path):
+            raise RuntimeError("Output file already exists: " + output_path)
+        driver = gdal.GetDriverByName("GTiff")
+        out_ds = driver.Create(output_path, cols, rows, 1, gdal.GDT_Float32)
+        out_ds.SetGeoTransform(geo_transform)
+        out_ds.SetProjection(projection)
+        out_band = out_ds.GetRasterBand(1)
+        out_band.SetNoDataValue(nodata)
+        out_band.WriteArray(result)
+        out_band.FlushCache()
+        out_ds = None
+    finally:
+        for ds in datasets:
+            ds = None
 
 
 def _gaussian_kernel_2d(size, sigma=None):
@@ -432,13 +438,18 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
         # Merge
         feedback.pushInfo("\nMerging clipped tiles")
         merged_path = os.path.join(self.temp_dir, "merged_contour.tif")
-        gdal.Warp(
+        merge_result = gdal.Warp(
             merged_path,
             clipped_rasters,
             dstNodata=-32768,
             format="GTiff",
             callback=gdal_callback,
         )
+        if merge_result is None:
+            raise RuntimeError(
+                "Failed to merge clipped DEM tiles. "
+                "All tiles may be empty or invalid for the selected area."
+            )
 
         if feedback.isCanceled():
             return {}

@@ -99,10 +99,33 @@ def test_coverage_algorithm_forwards_itm_variability_parameters():
     assert "situation_pct=situation_pct," in source
 
 
-def test_coverage_algorithm_uses_finer_profile_sampling():
+def test_coverage_profile_step_helper_returns_finer_sampling():
+    """Behavioural replacement for the literal-string check.
+
+    The algorithm delegates the profile sampling step to a pure helper
+    in ``coverage_compute``. We verify the helper's contract directly so
+    the test survives source reformatting and frequency-aware tuning.
+    """
+    from coverage_compute import (
+        DEFAULT_MAX_PROFILE_PTS,
+        coverage_profile_step_m,
+    )
+
+    assert coverage_profile_step_m(300.0) == 100.0
+    # Helper accepts any positive frequency without raising.
+    for f_mhz in (40.0, 300.0, 5800.0):
+        assert coverage_profile_step_m(f_mhz) > 0.0
+    assert DEFAULT_MAX_PROFILE_PTS == 200
+
+
+def test_coverage_algorithm_wires_profile_step_helper():
+    """The algorithm must call the helper rather than baking in a literal."""
     source = _coverage_source()
-    assert "profile_step_m=100.0," in source
-    assert "max_profile_pts=200," in source
+    assert "from .coverage_compute import" in source
+    assert "coverage_profile_step_m" in source
+    assert "DEFAULT_MAX_PROFILE_PTS" in source
+    assert "profile_step_m=coverage_profile_step_m(" in source
+    assert "max_profile_pts=DEFAULT_MAX_PROFILE_PTS" in source
 
 
 def test_coverage_algorithm_sets_full_opacity():

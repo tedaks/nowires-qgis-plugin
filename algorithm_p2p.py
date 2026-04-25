@@ -66,16 +66,17 @@ from .qt_compat import (
 )
 from .radio import (
     CLIMATE_NAMES,
+    K_FACTOR_PRESETS,
     PROP_MODE_NAMES,
     SIGNAL_LEVELS,
     build_pfl,
     fresnel_profile_analysis,
     itm_p2p_loss,
+    resolve_k_factor,
 )
 from .report_export import write_report_csv, write_report_html, write_report_json
 from .report_payloads import build_p2p_report_payload, write_p2p_marker_layer
 
-K_FACTOR_PRESETS = [0.67, 1.0, 4.0 / 3.0, 2.0, 4.0]
 POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
 
 
@@ -390,12 +391,26 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         rx_gain = self.parameterAsDouble(parameters, self.RX_GAIN, context)
         cable_loss = self.parameterAsDouble(parameters, self.CABLE_LOSS, context)
         rx_sens = self.parameterAsDouble(parameters, self.RX_SENSITIVITY, context)
-        if self.K_FACTOR_PRESET not in parameters and self.K_FACTOR in parameters:
-            k_factor = self.parameterAsDouble(parameters, self.K_FACTOR, context)
+        has_preset = self.K_FACTOR_PRESET in parameters
+        has_custom = self.K_FACTOR in parameters
+        if not has_preset and has_custom:
+            k_factor = resolve_k_factor(
+                has_preset=False,
+                has_custom=True,
+                custom_value=self.parameterAsDouble(
+                    parameters, self.K_FACTOR, context
+                ),
+                preset_index=0,
+            )
         else:
-            k_factor = K_FACTOR_PRESETS[
-                self.parameterAsEnum(parameters, self.K_FACTOR_PRESET, context)
-            ]
+            k_factor = resolve_k_factor(
+                has_preset=has_preset,
+                has_custom=has_custom,
+                custom_value=0.0,
+                preset_index=self.parameterAsEnum(
+                    parameters, self.K_FACTOR_PRESET, context
+                ),
+            )
         n0 = self.parameterAsDouble(parameters, self.N0, context)
         epsilon = self.parameterAsDouble(parameters, self.EPSILON, context)
         sigma = self.parameterAsDouble(parameters, self.SIGMA, context)
@@ -711,7 +726,7 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
             "  1st Fresnel violated: {}".format("YES" if f1_violated else "NO")
         )
         feedback.pushInfo(
-            "  60% Fresnel violated: {}".format("YES" if f60_violated else "NO")
+            "  60% Fresnel rule violated: {}".format("YES" if f60_violated else "NO")
         )
         feedback.pushInfo(
             "  Max 1st Fresnel radius: {:.1f} m".format(float(fresnel_r.max()))
@@ -832,25 +847,29 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         feat_f1.SetField("blocked", 0)
         layer_poly.CreateFeature(feat_f1)
 
-        # 60% Fresnel zone polygon
-        upper_60 = _geo_points(los_h - 0.6 * fresnel_r)
-        lower_60 = _geo_points(los_h - fresnel_r)
+        # Fresnel violation band: the slice between the 1st-Fresnel lower
+        # boundary (los_h - r) and the 60% lower boundary (los_h - 0.6r).
+        # Terrain entering this band already eats more than 40% of the
+        # first Fresnel zone, which is the conventional engineering limit.
+        # This is NOT a symmetric ±0.6r zone around the LOS.
+        upper_band = _geo_points(los_h - 0.6 * fresnel_r)
+        lower_band = _geo_points(los_h - fresnel_r)
 
-        ring_f60 = ogr.Geometry(ogr.wkbLinearRing)
-        for lon, lat, z in upper_60:
-            ring_f60.AddPoint(lon, lat, z)
-        for lon, lat, z in reversed(lower_60):
-            ring_f60.AddPoint(lon, lat, z)
-        ring_f60.AddPoint(upper_60[0][0], upper_60[0][1], upper_60[0][2])
+        ring_band = ogr.Geometry(ogr.wkbLinearRing)
+        for lon, lat, z in upper_band:
+            ring_band.AddPoint(lon, lat, z)
+        for lon, lat, z in reversed(lower_band):
+            ring_band.AddPoint(lon, lat, z)
+        ring_band.AddPoint(upper_band[0][0], upper_band[0][1], upper_band[0][2])
 
-        poly_f60 = ogr.Geometry(ogr.wkbPolygon)
-        poly_f60.AddGeometry(ring_f60)
+        poly_band = ogr.Geometry(ogr.wkbPolygon)
+        poly_band.AddGeometry(ring_band)
 
-        feat_f60 = ogr.Feature(layer_poly.GetLayerDefn())
-        feat_f60.SetGeometry(poly_f60)
-        feat_f60.SetField("type", "fresnel_60_zone")
-        feat_f60.SetField("blocked", 0)
-        layer_poly.CreateFeature(feat_f60)
+        feat_band = ogr.Feature(layer_poly.GetLayerDefn())
+        feat_band.SetGeometry(poly_band)
+        feat_band.SetField("type", "fresnel_violation_band_60pct")
+        feat_band.SetField("blocked", 0)
+        layer_poly.CreateFeature(feat_band)
 
         ds_poly = None
 
@@ -945,11 +964,12 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         ax.plot(d_km, f1_upper, "c:", linewidth=0.8)
         ax.plot(d_km, f1_lower, "c:", linewidth=0.8)
 
-        # 60% Fresnel zone
+        # Fresnel violation band: terrain reaching into this slice already
+        # blocks >40% of the 1st Fresnel zone (the engineering limit).
         f60_upper = los_h - 0.6 * fresnel_r
         ax.fill_between(
             d_km, f1_lower, f60_upper,
-            color="blue", alpha=0.12, label="60% Fresnel Zone",
+            color="blue", alpha=0.12, label="Fresnel Violation Band (>40%)",
         )
 
         # TX and RX antenna markers
