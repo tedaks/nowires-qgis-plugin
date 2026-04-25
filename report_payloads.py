@@ -3,10 +3,50 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from osgeo import ogr, osr
 from .reliability import summarize_reliability
+
+
+_OGR_DRIVER_BY_EXT = {
+    ".shp": "ESRI Shapefile",
+    ".gpkg": "GPKG",
+    ".geojson": "GeoJSON",
+    ".json": "GeoJSON",
+    ".kml": "KML",
+}
+
+
+def ogr_driver_for_path(path):
+    """Return the OGR driver name appropriate for ``path``'s extension.
+
+    Defaults to GPKG when the extension is unknown — GPKG is the modern
+    QGIS Processing default and tolerates the geometry types we write.
+    """
+    ext = os.path.splitext(str(path))[1].lower()
+    return _OGR_DRIVER_BY_EXT.get(ext, "GPKG")
+
+
+def _remove_existing_ogr_dataset(driver, path):
+    """Best-effort removal of an existing OGR dataset before recreating it.
+
+    Older GDAL releases let ``driver.Open`` return None for missing paths;
+    GDAL 3.10+ raises ``RuntimeError`` instead. Using ``os.path.exists`` is
+    portable across both.
+    """
+    str_path = str(path)
+    if os.path.exists(str_path):
+        try:
+            driver.DeleteDataSource(str_path)
+        except RuntimeError:
+            # Driver couldn't reclaim the file (locked, partial, foreign
+            # format) — fall back to a plain unlink.
+            try:
+                os.remove(str_path)
+            except OSError:
+                pass
 
 
 def build_p2p_report_payload(
@@ -223,10 +263,8 @@ def write_p2p_marker_layer(
 ):
     """Write a TX/RX point layer to disk with OGR."""
     path = Path(path)
-    driver = ogr.GetDriverByName("ESRI Shapefile")
-    existing = driver.Open(str(path), update=1)
-    if existing is not None:
-        driver.DeleteDataSource(str(path))
+    driver = ogr.GetDriverByName(ogr_driver_for_path(path))
+    _remove_existing_ogr_dataset(driver, path)
 
     ds = driver.CreateDataSource(str(path))
     srs = osr.SpatialReference()

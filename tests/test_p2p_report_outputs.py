@@ -4,7 +4,20 @@
 from report_payloads import (
     build_p2p_marker_records,
     build_p2p_report_payload,
+    ogr_driver_for_path,
 )
+
+
+def test_ogr_driver_for_path_picks_extension():
+    assert ogr_driver_for_path("foo.shp") == "ESRI Shapefile"
+    assert ogr_driver_for_path("foo.gpkg") == "GPKG"
+    assert ogr_driver_for_path("FOO.GPKG") == "GPKG"
+    assert ogr_driver_for_path("foo.geojson") == "GeoJSON"
+    assert ogr_driver_for_path("foo.json") == "GeoJSON"
+    assert ogr_driver_for_path("foo.kml") == "KML"
+    # Unknown / missing extensions default to GPKG (modern Processing default).
+    assert ogr_driver_for_path("foo.unknown") == "GPKG"
+    assert ogr_driver_for_path("foo") == "GPKG"
 
 
 def test_build_p2p_report_payload_contains_expected_summary():
