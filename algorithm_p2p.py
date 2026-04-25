@@ -75,7 +75,11 @@ from .radio import (
     resolve_k_factor,
 )
 from .report_export import write_report_csv, write_report_html, write_report_json
-from .report_payloads import build_p2p_report_payload, write_p2p_marker_layer
+from .report_payloads import (
+    build_p2p_report_payload,
+    ogr_driver_for_path,
+    write_p2p_marker_layer,
+)
 
 POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
 
@@ -537,7 +541,7 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
             profile_path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result
         )
 
-        # 2. Fresnel zone polygon + terrain/LOS lines layers (separate shapefiles)
+        # 2. Fresnel zone polygon + terrain/LOS lines layers (separate files)
         fresnel_poly_path = (
             fresnel_dest if fresnel_dest else os.path.join(temp_dir, "fresnel_zone.shp")
         )
@@ -547,8 +551,12 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         markers_path = (
             markers_dest if markers_dest else os.path.join(temp_dir, "p2p_markers.shp")
         )
-        # Derive the lines path from the polygon path
-        fresnel_lines_path = fresnel_poly_path.replace(".shp", "_lines.shp")
+        # Derive the lines path from the polygon path. Use os.path.splitext
+        # so it works for any extension (.shp, .gpkg, .geojson, ...) — the
+        # old ".shp" string replace was a silent no-op for non-shapefile
+        # destinations and led to both layers writing to the same file.
+        _poly_root, _poly_ext = os.path.splitext(fresnel_poly_path)
+        fresnel_lines_path = "{}_lines{}".format(_poly_root, _poly_ext)
 
         self._write_fresnel_zone(
             fresnel_poly_path,
@@ -758,9 +766,9 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
     def _write_profile_line(
         self, path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result
     ):
-        """Write the P2P link line as a shapefile."""
+        """Write the P2P link line, picking the OGR driver from the path extension."""
 
-        driver = ogr.GetDriverByName("ESRI Shapefile")
+        driver = ogr.GetDriverByName(ogr_driver_for_path(path))
         ds = driver.CreateDataSource(path)
         layer = ds.CreateLayer("link", srs=srs, geom_type=ogr.wkbLineString)
         layer.CreateField(ogr.FieldDefn("distance", ogr.OFTReal))
@@ -804,9 +812,12 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         * *lines_path* — Terrain profile and LOS lines (wkbLineString).
 
         All features use geographic (lon, lat) coordinates; height is stored as Z.
+        The OGR driver for each file is selected from its extension so that
+        Processing destinations like ``.gpkg`` or ``.geojson`` work too.
         Returns (poly_path, lines_path).
         """
-        driver = ogr.GetDriverByName("ESRI Shapefile")
+        poly_driver = ogr.GetDriverByName(ogr_driver_for_path(poly_path))
+        lines_driver = ogr.GetDriverByName(ogr_driver_for_path(lines_path))
         n = len(distances)
 
         def _geo_points(heights):
@@ -820,7 +831,7 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
             return pts
 
         # ---- Polygon layer (Fresnel zones) ----
-        ds_poly = driver.CreateDataSource(poly_path)
+        ds_poly = poly_driver.CreateDataSource(poly_path)
         layer_poly = ds_poly.CreateLayer(
             "fresnel_zones", srs=srs, geom_type=ogr.wkbPolygon
         )
@@ -874,7 +885,7 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         ds_poly = None
 
         # ---- Line layer (terrain + LOS) ----
-        ds_lines = driver.CreateDataSource(lines_path)
+        ds_lines = lines_driver.CreateDataSource(lines_path)
         layer_lines = ds_lines.CreateLayer(
             "fresnel_lines", srs=srs, geom_type=ogr.wkbLineString
         )
