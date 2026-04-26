@@ -53,6 +53,7 @@ from qgis.core import (
     QgsProcessingParameterPoint,
     QgsProcessingParameterVectorDestination,
     QgsProject,
+    QgsProcessingContext,
     QgsVectorLayer,
 )
 from osgeo import ogr, osr
@@ -66,6 +67,13 @@ from .qt_compat import (
 )
 from .radio import (
     CLIMATE_NAMES,
+    ITM_MAX_FREQUENCY_MHZ,
+    ITM_MAX_N0,
+    ITM_MAX_TERMINAL_HEIGHT_M,
+    ITM_MIN_FREQUENCY_MHZ,
+    ITM_MIN_N0,
+    ITM_MIN_SIGMA,
+    ITM_MIN_TERMINAL_HEIGHT_M,
     K_FACTOR_PRESETS,
     PROP_MODE_NAMES,
     SIGNAL_LEVELS,
@@ -73,15 +81,34 @@ from .radio import (
     fresnel_profile_analysis,
     itm_p2p_loss,
     resolve_k_factor,
+    validate_itm_input_ranges,
 )
 from .report_export import write_report_csv, write_report_html, write_report_json
 from .report_payloads import (
     build_p2p_report_payload,
     ogr_driver_for_path,
+    _remove_existing_ogr_dataset,
     write_p2p_marker_layer,
 )
 
 POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
+
+
+def _queue_layer_for_loading(context, layer, name):
+    """Hand a layer to Processing for loading instead of mutating the project."""
+    if layer is None or not layer.isValid():
+        return False
+    project = QgsProject.instance()
+    if hasattr(context, "temporaryLayerStore") and hasattr(
+        context, "addLayerToLoadOnCompletion"
+    ):
+        context.temporaryLayerStore().addMapLayer(layer)
+        context.addLayerToLoadOnCompletion(
+            layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
+        )
+        return True
+    project.addMapLayer(layer)
+    return True
 
 
 class P2PAlgorithm(QgsProcessingAlgorithm):
@@ -131,7 +158,8 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
                 "TX antenna height (m)",
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=30.0,
-                minValue=0.1,
+                minValue=ITM_MIN_TERMINAL_HEIGHT_M,
+                maxValue=ITM_MAX_TERMINAL_HEIGHT_M,
             )
         )
         self.addParameter(
@@ -140,7 +168,8 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
                 "RX antenna height (m)",
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=10.0,
-                minValue=0.1,
+                minValue=ITM_MIN_TERMINAL_HEIGHT_M,
+                maxValue=ITM_MAX_TERMINAL_HEIGHT_M,
             )
         )
         self.addParameter(
@@ -149,8 +178,8 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
                 "Frequency (MHz)",
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=300.0,
-                minValue=1.0,
-                maxValue=40000.0,
+                minValue=ITM_MIN_FREQUENCY_MHZ,
+                maxValue=ITM_MAX_FREQUENCY_MHZ,
             )
         )
         self.addParameter(
@@ -278,8 +307,8 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
             "Surface refractivity N0 (N-units)",
             type=QgsProcessingParameterNumber.Double,
             defaultValue=301.0,
-            minValue=200.0,
-            maxValue=500.0,
+            minValue=ITM_MIN_N0,
+            maxValue=ITM_MAX_N0,
         )
         n0_param.setFlags(n0_param.flags() | QgsProcessingParameterNumber.FlagAdvanced)
         self.addParameter(n0_param)
@@ -301,7 +330,7 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
             "Earth conductivity (sigma, S/m)",
             type=QgsProcessingParameterNumber.Double,
             defaultValue=0.005,
-            minValue=0.0,
+            minValue=ITM_MIN_SIGMA,
         )
         sigma_param.setFlags(
             sigma_param.flags() | QgsProcessingParameterNumber.FlagAdvanced
@@ -418,6 +447,13 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         n0 = self.parameterAsDouble(parameters, self.N0, context)
         epsilon = self.parameterAsDouble(parameters, self.EPSILON, context)
         sigma = self.parameterAsDouble(parameters, self.SIGMA, context)
+        validate_itm_input_ranges(
+            tx_height_m=tx_h,
+            rx_height_m=rx_h,
+            frequency_mhz=f_mhz,
+            surface_refractivity_n0=n0,
+            earth_conductivity_sigma=sigma,
+        )
 
         dist_m = haversine_m(tx_lat, tx_lon, rx_lat, rx_lon)
 
@@ -646,10 +682,14 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         )
         marker_layer = QgsVectorLayer(markers_path, "P2P TX/RX Markers")
 
-        QgsProject.instance().addMapLayer(fresnel_poly_layer)
-        QgsProject.instance().addMapLayer(fresnel_lines_layer)
-        QgsProject.instance().addMapLayer(profile_layer)
-        QgsProject.instance().addMapLayer(marker_layer)
+        _queue_layer_for_loading(context, fresnel_poly_layer, "Fresnel Zone Analysis")
+        _queue_layer_for_loading(context, fresnel_lines_layer, "Fresnel Zone Lines")
+        _queue_layer_for_loading(
+            context,
+            profile_layer,
+            "P2P Link ({:.0f} MHz, {:.1f} km)".format(f_mhz, dist_m / 1000),
+        )
+        _queue_layer_for_loading(context, marker_layer, "P2P TX/RX Markers")
 
         # Show profile chart if requested
         show_chart = self.parameterAsBool(parameters, self.SHOW_CHART, context)
@@ -769,6 +809,7 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         """Write the P2P link line, picking the OGR driver from the path extension."""
 
         driver = ogr.GetDriverByName(ogr_driver_for_path(path))
+        _remove_existing_ogr_dataset(driver, path)
         ds = driver.CreateDataSource(path)
         layer = ds.CreateLayer("link", srs=srs, geom_type=ogr.wkbLineString)
         layer.CreateField(ogr.FieldDefn("distance", ogr.OFTReal))
@@ -818,6 +859,8 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         """
         poly_driver = ogr.GetDriverByName(ogr_driver_for_path(poly_path))
         lines_driver = ogr.GetDriverByName(ogr_driver_for_path(lines_path))
+        _remove_existing_ogr_dataset(poly_driver, poly_path)
+        _remove_existing_ogr_dataset(lines_driver, lines_path)
         n = len(distances)
 
         def _geo_points(heights):

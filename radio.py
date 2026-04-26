@@ -85,6 +85,13 @@ EARTH_RADIUS_M = 6371000.0
 # Earth-radius factor (k) presets exposed by the P2P algorithm UI.
 # Index 2 (4/3) is the standard-atmosphere default.
 K_FACTOR_PRESETS = [0.67, 1.0, 4.0 / 3.0, 2.0, 4.0]
+ITM_MIN_TERMINAL_HEIGHT_M = 0.5
+ITM_MAX_TERMINAL_HEIGHT_M = 3000.0
+ITM_MIN_FREQUENCY_MHZ = 20.0
+ITM_MAX_FREQUENCY_MHZ = 20000.0
+ITM_MIN_N0 = 250.0
+ITM_MAX_N0 = 400.0
+ITM_MIN_SIGMA = 1e-6
 
 
 def resolve_k_factor(
@@ -98,6 +105,60 @@ def resolve_k_factor(
     if not has_preset and has_custom:
         return float(custom_value)
     return presets[preset_index]
+
+
+def validate_itm_input_ranges(
+    tx_height_m,
+    rx_height_m,
+    frequency_mhz,
+    surface_refractivity_n0,
+    earth_conductivity_sigma,
+):
+    """Validate user inputs against the bundled ITM model's hard limits."""
+    checks = [
+        (
+            "TX antenna height",
+            tx_height_m,
+            ITM_MIN_TERMINAL_HEIGHT_M,
+            ITM_MAX_TERMINAL_HEIGHT_M,
+            "m",
+        ),
+        (
+            "RX antenna height",
+            rx_height_m,
+            ITM_MIN_TERMINAL_HEIGHT_M,
+            ITM_MAX_TERMINAL_HEIGHT_M,
+            "m",
+        ),
+        (
+            "Frequency",
+            frequency_mhz,
+            ITM_MIN_FREQUENCY_MHZ,
+            ITM_MAX_FREQUENCY_MHZ,
+            "MHz",
+        ),
+        (
+            "Surface refractivity N0",
+            surface_refractivity_n0,
+            ITM_MIN_N0,
+            ITM_MAX_N0,
+            "N-units",
+        ),
+    ]
+    for label, value, min_value, max_value, unit in checks:
+        if value < min_value or value > max_value:
+            raise ValueError(
+                "{} must be between {} and {} {}.".format(
+                    label, min_value, max_value, unit
+                )
+            )
+
+    if earth_conductivity_sigma < ITM_MIN_SIGMA:
+        raise ValueError(
+            "Earth conductivity sigma must be at least {} S/m.".format(
+                ITM_MIN_SIGMA
+            )
+        )
 
 
 # --- ITM Bridge ---

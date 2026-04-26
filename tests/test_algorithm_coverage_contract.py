@@ -152,7 +152,7 @@ def test_coverage_algorithm_loads_dem_as_elevation_layer():
     assert "elev_props.setEnabled(True)" in source
     assert "Qgis.RasterElevationMode.RepresentsElevationSurface" in source
     assert "elev_props.setBandNumber(1)" in source
-    assert "QgsProject.instance().addMapLayer(dem_layer)" in source
+    assert '_queue_layer_for_loading(context, dem_layer, "NoWires DEM (GLO-30)")' in source
 
 
 def test_coverage_algorithm_exposes_report_outputs():
@@ -184,5 +184,36 @@ def test_coverage_algorithm_reports_reliability_fields():
 def test_coverage_algorithm_builds_report_payload_before_logging_reliability():
     source = _coverage_source()
     build_idx = source.index("report_payload = build_coverage_report_payload(")
-    log_idx = source.index('feedback.pushInfo(\n                    "Availability method: {}'.replace("\\n", "\n"))
+    log_idx = source.index(
+        'feedback.pushInfo(\n                    "Availability method: {}'.replace("\\n", "\n"),
+        build_idx,
+    )
     assert build_idx < log_idx
+
+
+def test_coverage_algorithm_constrains_inputs_to_bundled_itm_limits():
+    source = _coverage_source()
+    assert "validate_itm_input_ranges(" in source
+    assert "maxValue=ITM_MAX_TERMINAL_HEIGHT_M" in source
+    assert "minValue=ITM_MIN_FREQUENCY_MHZ" in source
+    assert "maxValue=ITM_MAX_FREQUENCY_MHZ" in source
+    assert "minValue=ITM_MIN_N0" in source
+    assert "maxValue=ITM_MAX_N0" in source
+    assert "minValue=ITM_MIN_SIGMA" in source
+
+
+def test_coverage_algorithm_writes_reports_even_when_no_pixels_are_valid():
+    source = _coverage_source()
+    assert "if not valid.any():" in source
+    assert "build_empty_coverage_report_payload(" in source
+    empty_idx = source.index("build_empty_coverage_report_payload(")
+    write_idx = source.index("write_report_csv(report_csv_path, report_payload)")
+    assert empty_idx < write_idx
+
+
+def test_coverage_algorithm_uses_processing_context_for_layer_loading():
+    source = _coverage_source()
+    assert "_queue_layer_for_loading(" in source
+    assert "context.temporaryLayerStore().addMapLayer(layer)" in source
+    assert "addLayerToLoadOnCompletion" in source
+    assert "QgsProject.instance().addMapLayer(" not in source
