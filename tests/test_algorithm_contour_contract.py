@@ -36,3 +36,11 @@ def test_contour_algorithm_stores_latest_3d_layer_ids():
     assert '"last_contour_layer_id"' in source
     assert '"last_dem_layer_id"' in source
     assert "layer.id()" in source
+
+
+def test_contour_algorithm_uses_processing_context_for_layer_loading():
+    source = _source_text()
+    assert "_queue_layer_for_loading(" in source
+    assert "context.temporaryLayerStore().addMapLayer(layer)" in source
+    assert "addLayerToLoadOnCompletion" in source
+    assert "QgsProject.instance().addMapLayer(" not in source

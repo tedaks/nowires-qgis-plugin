@@ -285,6 +285,19 @@ def _make_shared_grid(grid_data):
     return shm
 
 
+def _release_shared_memory(shm):
+    if shm is None:
+        return
+    try:
+        shm.close()
+    except Exception:
+        pass
+    try:
+        shm.unlink()
+    except Exception:
+        pass
+
+
 def compute_coverage(
     elev_grid,
     tx_lat,
@@ -403,6 +416,7 @@ def compute_coverage(
                 ):
                     if feedback and feedback.isCanceled():
                         logger.info("Coverage cancelled by user")
+                        _release_shared_memory(shm)
                         return None, None, 0, 0, 0, 0
                     for result in batch_results:
                         if result is not None:
@@ -457,15 +471,7 @@ def compute_coverage(
         _cov_grid_meta = {}
 
     # Always clean up shared memory
-    if shm is not None:
-        try:
-            shm.close()
-        except Exception:
-            pass
-        try:
-            shm.unlink()
-        except Exception:
-            pass
+    _release_shared_memory(shm)
 
     total = len(tasks)
     if feedback:

@@ -11,6 +11,7 @@ from radio import (
     SIGNAL_LEVELS,
     THRESHOLDS,
     build_pfl,
+    validate_itm_input_ranges,
 )
 
 
@@ -132,6 +133,29 @@ class TestBuildPFL:
         pfl = build_pfl(elevs, 50.0)
         assert pfl[0] == 2
         assert pfl[1] == 50.0
+
+
+class TestITMInputValidation:
+    """Tests for user-facing ITM input range validation."""
+
+    def test_accepts_values_inside_bundled_itm_limits(self):
+        validate_itm_input_ranges(
+            tx_height_m=0.5,
+            rx_height_m=3000.0,
+            frequency_mhz=20000.0,
+            surface_refractivity_n0=250.0,
+            earth_conductivity_sigma=0.001,
+        )
+
+    def test_rejects_values_that_bundled_itm_would_convert_to_fake_loss(self):
+        with pytest.raises(ValueError, match="Frequency"):
+            validate_itm_input_ranges(
+                tx_height_m=30.0,
+                rx_height_m=10.0,
+                frequency_mhz=40000.0,
+                surface_refractivity_n0=301.0,
+                earth_conductivity_sigma=0.005,
+            )
 
 
 class TestSignalLevels:

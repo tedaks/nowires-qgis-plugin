@@ -213,6 +213,78 @@ def build_coverage_report_payload(
     }
 
 
+def build_empty_coverage_report_payload(
+    tx_lat,
+    tx_lon,
+    tx_h,
+    rx_h,
+    f_mhz,
+    radius_km,
+    grid_size,
+    polarization_name,
+    climate_name,
+    time_pct,
+    location_pct,
+    situation_pct,
+    tx_power,
+    tx_gain,
+    rx_gain,
+    cable_loss,
+    rx_sensitivity_dbm,
+    pixel_count,
+):
+    """Build a coverage report payload for a grid with no valid modelled cells."""
+    reliability = summarize_reliability(
+        margin_db=-999.0,
+        frequency_mhz=f_mhz,
+        distance_km=0.0,
+        los_blocked=False,
+    )
+    return {
+        "report_type": "coverage",
+        "generated_by": "NoWires",
+        "inputs": {
+            "tx_lat": round(tx_lat, 6),
+            "tx_lon": round(tx_lon, 6),
+            "tx_height_m": tx_h,
+            "rx_height_m": rx_h,
+            "frequency_mhz": f_mhz,
+            "max_analysis_distance_km": radius_km,
+            "grid_size": grid_size,
+            "polarization": polarization_name,
+            "climate": climate_name,
+            "time_pct": time_pct,
+            "location_pct": location_pct,
+            "situation_pct": situation_pct,
+            "tx_power_dbm": tx_power,
+            "tx_gain_dbi": tx_gain,
+            "rx_gain_dbi": rx_gain,
+            "cable_loss_db": cable_loss,
+            "rx_sensitivity_dbm": rx_sensitivity_dbm,
+        },
+        "results": {
+            "valid_pixel_count": 0,
+            "pixel_count": pixel_count,
+            "min_prx_dbm": None,
+            "max_prx_dbm": None,
+            "mean_prx_dbm": None,
+            "pct_above_sensitivity": 0.0,
+            "usable_cell_count": 0,
+            "availability_method": reliability["availability_method"],
+            "availability_estimate_pct": reliability["availability_estimate_pct"],
+            "fade_margin_class": reliability["fade_margin_class"],
+            "reliability_summary": reliability["reliability_summary"],
+            "min_distance_km": 0.0,
+            "max_distance_km": 0.0,
+            "average_distance_km": 0.0,
+        },
+        "status": {
+            "summary": "NO VALID COVERAGE CELLS",
+            "usable_cells_present": False,
+        },
+    }
+
+
 def build_p2p_marker_records(
     tx_lat,
     tx_lon,
