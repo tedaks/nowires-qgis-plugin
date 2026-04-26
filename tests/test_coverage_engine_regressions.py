@@ -72,3 +72,60 @@ def test_compute_coverage_runs_in_single_process_mode(monkeypatch):
     assert loss_grid.shape == (3, 3)
     assert np.nanmax(loss_grid) == 123.0
     assert np.nanmax(prx_grid) == -77.0
+
+
+def test_compute_coverage_cleans_shared_memory_when_cancelled(monkeypatch):
+    coverage_engine = _import_coverage_engine()
+
+    class FakeSharedMemory:
+        def __init__(self):
+            self.name = "fake_shared_memory"
+            self.closed = False
+            self.unlinked = False
+
+        def close(self):
+            self.closed = True
+
+        def unlink(self):
+            self.unlinked = True
+
+    class FakeExecutor:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def map(self, *args, **kwargs):
+            yield []
+
+    class CancelledFeedback:
+        def pushInfo(self, message):
+            pass
+
+        def isCanceled(self):
+            return True
+
+    fake_shm = FakeSharedMemory()
+    monkeypatch.setattr(coverage_engine, "should_use_multiprocessing", lambda: True)
+    monkeypatch.setattr(coverage_engine, "_make_shared_grid", lambda grid: fake_shm)
+    monkeypatch.setattr(coverage_engine, "ProcessPoolExecutor", FakeExecutor)
+
+    result = coverage_engine.compute_coverage(
+        elev_grid=_DummyGrid(),
+        tx_lat=0.0,
+        tx_lon=0.0,
+        tx_h_m=30.0,
+        rx_h_m=10.0,
+        f_mhz=300.0,
+        radius_km=0.01,
+        grid_size=3,
+        feedback=CancelledFeedback(),
+    )
+
+    assert result == (None, None, 0, 0, 0, 0)
+    assert fake_shm.closed is True
+    assert fake_shm.unlinked is True

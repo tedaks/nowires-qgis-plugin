@@ -53,6 +53,7 @@ from qgis.core import (
     QgsGeometry,
     QgsPalLayerSettings,
     QgsProcessingAlgorithm,
+    QgsProcessingContext,
     QgsProcessingParameterAuthConfig,
     QgsProcessingParameterBoolean,
     QgsProcessingParameterColor,
@@ -84,6 +85,23 @@ from .three_d import configure_contours_for_3d
 
 
 MAX_AOI_EXTENT_DEGREES = 5.0
+
+
+def _queue_layer_for_loading(context, layer, name):
+    """Hand a layer to Processing for loading instead of mutating the project."""
+    if layer is None or not layer.isValid():
+        return False
+    project = QgsProject.instance()
+    if hasattr(context, "temporaryLayerStore") and hasattr(
+        context, "addLayerToLoadOnCompletion"
+    ):
+        context.temporaryLayerStore().addMapLayer(layer)
+        context.addLayerToLoadOnCompletion(
+            layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
+        )
+        return True
+    project.addMapLayer(layer)
+    return True
 
 
 def _raster_calc(calc_func, output_path, nodata=-32768, overwrite=False, **inputs):
@@ -628,7 +646,7 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
             gdal.Translate(dem_output, elevation_dem_path)
             output_dem_layer = QgsRasterLayer(dem_output, "NoWires DEM")
             if output_dem_layer.isValid():
-                QgsProject.instance().addMapLayer(output_dem_layer)
+                _queue_layer_for_loading(context, output_dem_layer, "NoWires DEM")
                 QgsProject.instance().writeEntry(
                     "NoWires", "last_dem_layer_id", output_dem_layer.id()
                 )
@@ -646,11 +664,13 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
                 from qgis.PyQt.QtGui import QPainter
 
                 dem_layer.setBlendMode(painter_blend_mode_color_dodge(QPainter))
-                QgsProject.instance().addMapLayer(dem_layer)
+                _queue_layer_for_loading(context, dem_layer, "Elevation Overlay")
             else:
                 feedback.pushInfo("Warning: Could not load Elevation Overlay layer")
 
-        QgsProject.instance().addMapLayer(layer)
+        _queue_layer_for_loading(
+            context, layer, "Contour Lines ({}{})".format(interval, unit_label)
+        )
         QgsProject.instance().writeEntry(
             "NoWires", "last_contour_layer_id", layer.id()
         )

@@ -45,6 +45,7 @@ from qgis.core import (
     Qgis,
     QgsColorRampShader,
     QgsProcessingAlgorithm,
+    QgsProcessingContext,
     QgsProcessingParameterEnum,
     QgsProcessingParameterFileDestination,
     QgsProcessingParameterNumber,
@@ -64,13 +65,43 @@ from .coverage_palette import build_heatmap_stops
 from .coverage_summary import summarize_coverage_grid
 from .coverage_compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
 from .coverage_engine import compute_coverage
-from .radio import CLIMATE_NAMES
+from .radio import (
+    CLIMATE_NAMES,
+    ITM_MAX_FREQUENCY_MHZ,
+    ITM_MAX_N0,
+    ITM_MAX_TERMINAL_HEIGHT_M,
+    ITM_MIN_FREQUENCY_MHZ,
+    ITM_MIN_N0,
+    ITM_MIN_SIGMA,
+    ITM_MIN_TERMINAL_HEIGHT_M,
+    validate_itm_input_ranges,
+)
 from .report_export import write_report_csv, write_report_html, write_report_json
-from .report_payloads import build_coverage_report_payload
+from .report_payloads import (
+    build_coverage_report_payload,
+    build_empty_coverage_report_payload,
+)
 
 GRID_SIZE_PRESETS = [64, 128, 192, 256, 384, 512, 768, 1024]
 POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
 METERS_PER_DEGREE_LAT = 111320.0
+
+
+def _queue_layer_for_loading(context, layer, name):
+    """Hand a layer to Processing for loading instead of mutating the project."""
+    if layer is None or not layer.isValid():
+        return False
+    project = QgsProject.instance()
+    if hasattr(context, "temporaryLayerStore") and hasattr(
+        context, "addLayerToLoadOnCompletion"
+    ):
+        context.temporaryLayerStore().addMapLayer(layer)
+        context.addLayerToLoadOnCompletion(
+            layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
+        )
+        return True
+    project.addMapLayer(layer)
+    return True
 
 
 class CoverageAlgorithm(QgsProcessingAlgorithm):
@@ -116,7 +147,8 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 "TX antenna height (m)",
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=30.0,
-                minValue=0.1,
+                minValue=ITM_MIN_TERMINAL_HEIGHT_M,
+                maxValue=ITM_MAX_TERMINAL_HEIGHT_M,
             )
         )
         self.addParameter(
@@ -125,7 +157,8 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 "RX antenna height (m)",
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=10.0,
-                minValue=0.1,
+                minValue=ITM_MIN_TERMINAL_HEIGHT_M,
+                maxValue=ITM_MAX_TERMINAL_HEIGHT_M,
             )
         )
         self.addParameter(
@@ -134,8 +167,8 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 "Frequency (MHz)",
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=300.0,
-                minValue=1.0,
-                maxValue=40000.0,
+                minValue=ITM_MIN_FREQUENCY_MHZ,
+                maxValue=ITM_MAX_FREQUENCY_MHZ,
             )
         )
         self.addParameter(
@@ -286,8 +319,8 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
             "Surface refractivity N0 (N-units)",
             type=QgsProcessingParameterNumber.Double,
             defaultValue=301.0,
-            minValue=200.0,
-            maxValue=500.0,
+            minValue=ITM_MIN_N0,
+            maxValue=ITM_MAX_N0,
         )
         n0_param.setFlags(n0_param.flags() | QgsProcessingParameterNumber.FlagAdvanced)
         self.addParameter(n0_param)
@@ -309,7 +342,7 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
             "Earth conductivity (sigma, S/m)",
             type=QgsProcessingParameterNumber.Double,
             defaultValue=0.005,
-            minValue=0.0,
+            minValue=ITM_MIN_SIGMA,
         )
         sigma_param.setFlags(
             sigma_param.flags() | QgsProcessingParameterNumber.FlagAdvanced
@@ -388,6 +421,13 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
         n0 = self.parameterAsDouble(parameters, self.N0, context)
         epsilon = self.parameterAsDouble(parameters, self.EPSILON, context)
         sigma = self.parameterAsDouble(parameters, self.SIGMA, context)
+        validate_itm_input_ranges(
+            tx_height_m=tx_h,
+            rx_height_m=rx_h,
+            frequency_mhz=f_mhz,
+            surface_refractivity_n0=n0,
+            earth_conductivity_sigma=sigma,
+        )
 
         feedback.pushInfo(
             "TX: ({:.5f}, {:.5f}), F={:.1f} MHz, R={:.1f} km, Grid={}x{}".format(
@@ -508,7 +548,7 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
             # Apply color ramp based on signal levels
             self._apply_coverage_style(raster_layer, rx_sens)
             raster_layer.setOpacity(1.0)
-            QgsProject.instance().addMapLayer(raster_layer)
+            _queue_layer_for_loading(context, raster_layer, layer_name)
             QgsProject.instance().writeEntry(
                 "NoWires", "last_coverage_layer_id", raster_layer.id()
             )
@@ -520,7 +560,7 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 elev_props.setEnabled(True)
                 elev_props.setMode(Qgis.RasterElevationMode.RepresentsElevationSurface)
                 elev_props.setBandNumber(1)
-                QgsProject.instance().addMapLayer(dem_layer)
+                _queue_layer_for_loading(context, dem_layer, "NoWires DEM (GLO-30)")
                 QgsProject.instance().writeEntry(
                     "NoWires", "last_dem_layer_id", dem_layer.id()
                 )
@@ -528,7 +568,54 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
             # Statistics
             raster_grid = prx_grid[::-1]
             valid = ~np.isnan(raster_grid)
-            if valid.any():
+            if not valid.any():
+                report_payload = build_empty_coverage_report_payload(
+                    tx_lat=tx_lat,
+                    tx_lon=tx_lon,
+                    tx_h=tx_h,
+                    rx_h=rx_h,
+                    f_mhz=f_mhz,
+                    radius_km=radius_km,
+                    grid_size=grid_size,
+                    polarization_name=POLARIZATION_NAMES.get(
+                        polarization, str(polarization)
+                    ),
+                    climate_name=CLIMATE_NAMES.get(climate, str(climate)),
+                    time_pct=time_pct,
+                    location_pct=location_pct,
+                    situation_pct=situation_pct,
+                    tx_power=tx_power,
+                    tx_gain=tx_gain,
+                    rx_gain=rx_gain,
+                    cable_loss=cable_loss,
+                    rx_sensitivity_dbm=rx_sens,
+                    pixel_count=int(raster_grid.size),
+                )
+                feedback.pushInfo("")
+                feedback.pushInfo("=" * 40)
+                feedback.pushInfo("COVERAGE RESULTS")
+                feedback.pushInfo("=" * 40)
+                feedback.pushInfo(
+                    "Valid pixels: 0 / {}".format(raster_grid.size)
+                )
+                feedback.pushInfo("No valid coverage cells were computed.")
+                feedback.pushInfo(
+                    "Availability method: {}".format(
+                        report_payload["results"]["availability_method"]
+                    )
+                )
+                feedback.pushInfo(
+                    "Reliability: {}".format(
+                        report_payload["results"]["reliability_summary"]
+                    )
+                )
+                feedback.pushInfo(
+                    "Fade margin class: {}".format(
+                        report_payload["results"]["fade_margin_class"]
+                    )
+                )
+                feedback.pushInfo("=" * 40)
+            else:
                 pct_above = (
                     float((raster_grid[valid] >= rx_sens).sum())
                     / max(valid.sum(), 1)
@@ -629,16 +716,16 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 if summary["usable_cell_count"] == 0:
                     feedback.pushInfo("No cells met the RX sensitivity threshold.")
                 feedback.pushInfo("=" * 40)
-                if report_csv_path:
-                    write_report_csv(report_csv_path, report_payload)
-                if report_json_path:
-                    write_report_json(report_json_path, report_payload)
-                if report_html_path:
-                    write_report_html(
-                        report_html_path,
-                        report_payload,
-                        title="NoWires Coverage Report",
-                    )
+            if report_csv_path:
+                write_report_csv(report_csv_path, report_payload)
+            if report_json_path:
+                write_report_json(report_json_path, report_payload)
+            if report_html_path:
+                write_report_html(
+                    report_html_path,
+                    report_payload,
+                    title="NoWires Coverage Report",
+                )
         else:
             feedback.pushInfo("Warning: Could not load coverage raster layer.")
 

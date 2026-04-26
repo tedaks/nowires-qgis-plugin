@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """Behavior tests for coverage report payloads."""
 
-from report_payloads import build_coverage_report_payload
+from report_payloads import (
+    build_coverage_report_payload,
+    build_empty_coverage_report_payload,
+)
 
 
 def test_build_coverage_report_payload_contains_summary_values():
@@ -41,3 +44,32 @@ def test_build_coverage_report_payload_contains_summary_values():
     assert payload["results"]["availability_method"] == "fallback_margin"
     assert payload["results"]["reliability_summary"] == "Reliable"
     assert payload["status"]["summary"] == "HAS USABLE CELLS"
+
+
+def test_build_empty_coverage_report_payload_records_failed_grid_without_fake_stats():
+    payload = build_empty_coverage_report_payload(
+        tx_lat=14.0,
+        tx_lon=121.0,
+        tx_h=30.0,
+        rx_h=10.0,
+        f_mhz=1800.0,
+        radius_km=5.0,
+        grid_size=128,
+        polarization_name="Vertical",
+        climate_name="Continental Subtropical",
+        time_pct=50.0,
+        location_pct=50.0,
+        situation_pct=50.0,
+        tx_power=43.0,
+        tx_gain=8.0,
+        rx_gain=2.0,
+        cable_loss=2.0,
+        rx_sensitivity_dbm=-95.0,
+        pixel_count=4096,
+    )
+
+    assert payload["results"]["valid_pixel_count"] == 0
+    assert payload["results"]["min_prx_dbm"] is None
+    assert payload["results"]["pct_above_sensitivity"] == 0.0
+    assert payload["results"]["usable_cell_count"] == 0
+    assert payload["status"]["summary"] == "NO VALID COVERAGE CELLS"

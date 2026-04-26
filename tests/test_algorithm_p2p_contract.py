@@ -156,3 +156,29 @@ def test_p2p_algorithm_reports_reliability_fields():
     assert "availability_estimate_pct" in source
     assert "fade_margin_class" in source
     assert "reliability_summary" in source
+
+
+def test_p2p_algorithm_constrains_inputs_to_bundled_itm_limits():
+    source = _p2p_source()
+    assert "validate_itm_input_ranges(" in source
+    assert "maxValue=ITM_MAX_TERMINAL_HEIGHT_M" in source
+    assert "minValue=ITM_MIN_FREQUENCY_MHZ" in source
+    assert "maxValue=ITM_MAX_FREQUENCY_MHZ" in source
+    assert "minValue=ITM_MIN_N0" in source
+    assert "maxValue=ITM_MAX_N0" in source
+    assert "minValue=ITM_MIN_SIGMA" in source
+
+
+def test_p2p_algorithm_uses_processing_context_for_layer_loading():
+    source = _p2p_source()
+    assert "_queue_layer_for_loading(" in source
+    assert "context.temporaryLayerStore().addMapLayer(layer)" in source
+    assert "addLayerToLoadOnCompletion" in source
+    assert "QgsProject.instance().addMapLayer(" not in source
+
+
+def test_p2p_algorithm_removes_existing_profile_and_fresnel_outputs():
+    source = _p2p_source()
+    assert "_remove_existing_ogr_dataset(driver, path)" in source
+    assert "_remove_existing_ogr_dataset(poly_driver, poly_path)" in source
+    assert "_remove_existing_ogr_dataset(lines_driver, lines_path)" in source
