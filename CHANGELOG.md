@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.2.0]
 
 - Remove `gdal_calc.py` (dead code with `eval()` usage and deprecated `optparse`).
 - Remove `algorithm_coverage_radius.py` (dead code — was never registered in the provider).
