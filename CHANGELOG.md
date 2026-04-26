@@ -29,6 +29,10 @@ All notable changes to this project will be documented in this file.
 - Improve the Windows 3D fallback guidance for opening the native QGIS 3D view.
 - Fix coverage raster cell-center alignment so the heatmap matches the requested map extent.
 - Fix DEM north-up sampling so coverage and terrain-derived outputs are not mirrored upside down.
+- Fix Windows access violation crash caused by `QgsProject.instance().addMapLayer()` called from inside `processAlgorithm`.
+- Fix "layer not correctly generated" error by replacing `RasterDestination`/`VectorDestination` output parameters with `FileDestination` to prevent double-loading conflict with manually queued styled layers.
+- Fix DEM raster layers loading on top of coverage/contour outputs; `postProcessAlgorithm` now moves DEM layers to the bottom of the layer tree.
+- Fix missing `ANTENNA_AZ` class constant that caused `AttributeError` at algorithm initialization.
 
 ## [1.1.0]
 
