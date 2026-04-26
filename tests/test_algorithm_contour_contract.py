@@ -15,7 +15,8 @@ def _source_text():
 
 def test_contour_algorithm_declares_output_destination_parameter():
     source = _source_text()
-    assert "QgsProcessingParameterVectorDestination" in source
+    assert "QgsProcessingParameterFileDestination" in source
+    assert '"Contour lines output"' in source
     assert 'self.OUTPUT = "OUTPUT"' in source or 'OUTPUT = "OUTPUT"' in source
 
 
@@ -26,7 +27,7 @@ def test_contour_algorithm_returns_output_path_to_processing():
 
 def test_contour_algorithm_declares_optional_dem_output_for_3d():
     source = _source_text()
-    assert "QgsProcessingParameterRasterDestination" in source
+    assert "QgsProcessingParameterFileDestination" in source
     assert 'OUTPUT_DEM = "OUTPUT_DEM"' in source
     assert '"Raw DEM output (3D terrain)"' in source
 

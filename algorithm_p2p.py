@@ -51,7 +51,6 @@ from qgis.core import (
     QgsProcessingParameterEnum,
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
-    QgsProcessingParameterVectorDestination,
     QgsProject,
     QgsProcessingContext,
     QgsVectorLayer,
@@ -98,16 +97,16 @@ def _queue_layer_for_loading(context, layer, name):
     """Hand a layer to Processing for loading instead of mutating the project."""
     if layer is None or not layer.isValid():
         return False
-    project = QgsProject.instance()
-    if hasattr(context, "temporaryLayerStore") and hasattr(
-        context, "addLayerToLoadOnCompletion"
+    if not (
+        hasattr(context, "temporaryLayerStore")
+        and hasattr(context, "addLayerToLoadOnCompletion")
     ):
-        context.temporaryLayerStore().addMapLayer(layer)
-        context.addLayerToLoadOnCompletion(
-            layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
-        )
-        return True
-    project.addMapLayer(layer)
+        return False
+    project = QgsProject.instance()
+    context.temporaryLayerStore().addMapLayer(layer)
+    context.addLayerToLoadOnCompletion(
+        layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
+    )
     return True
 
 
@@ -338,18 +337,18 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(sigma_param)
 
         self.addParameter(
-            QgsProcessingParameterVectorDestination(
-                self.OUTPUT_PROFILE, "Profile line output"
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT_PROFILE, "Profile line output", "GeoPackage files (*.gpkg)"
             )
         )
         self.addParameter(
-            QgsProcessingParameterVectorDestination(
-                self.OUTPUT_FRESNEL, "Fresnel zone polygon"
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT_FRESNEL, "Fresnel zone polygon", "GeoPackage files (*.gpkg)"
             )
         )
         self.addParameter(
-            QgsProcessingParameterVectorDestination(
-                self.OUTPUT_MARKERS, "TX/RX marker output"
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT_MARKERS, "TX/RX marker output", "GeoPackage files (*.gpkg)"
             )
         )
         self.addParameter(
@@ -562,10 +561,10 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
         # Use output parameter destinations if provided, else temp dir
-        profile_dest = self.parameterAsOutputLayer(
+        profile_dest = self.parameterAsFileOutput(
             parameters, self.OUTPUT_PROFILE, context
         )
-        fresnel_dest = self.parameterAsOutputLayer(
+        fresnel_dest = self.parameterAsFileOutput(
             parameters, self.OUTPUT_FRESNEL, context
         )
 
@@ -581,7 +580,7 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         fresnel_poly_path = (
             fresnel_dest if fresnel_dest else os.path.join(temp_dir, "fresnel_zone.shp")
         )
-        markers_dest = self.parameterAsOutputLayer(
+        markers_dest = self.parameterAsFileOutput(
             parameters, self.OUTPUT_MARKERS, context
         )
         markers_path = (

@@ -44,13 +44,13 @@ from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (
     Qgis,
     QgsColorRampShader,
+    QgsLayerTreeLayer,
     QgsProcessingAlgorithm,
     QgsProcessingContext,
     QgsProcessingParameterEnum,
     QgsProcessingParameterFileDestination,
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
-    QgsProcessingParameterRasterDestination,
     QgsProject,
     QgsRasterLayer,
     QgsRasterShader,
@@ -91,16 +91,16 @@ def _queue_layer_for_loading(context, layer, name):
     """Hand a layer to Processing for loading instead of mutating the project."""
     if layer is None or not layer.isValid():
         return False
-    project = QgsProject.instance()
-    if hasattr(context, "temporaryLayerStore") and hasattr(
-        context, "addLayerToLoadOnCompletion"
+    if not (
+        hasattr(context, "temporaryLayerStore")
+        and hasattr(context, "addLayerToLoadOnCompletion")
     ):
-        context.temporaryLayerStore().addMapLayer(layer)
-        context.addLayerToLoadOnCompletion(
-            layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
-        )
-        return True
-    project.addMapLayer(layer)
+        return False
+    project = QgsProject.instance()
+    context.temporaryLayerStore().addMapLayer(layer)
+    context.addLayerToLoadOnCompletion(
+        layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
+    )
     return True
 
 
@@ -124,8 +124,8 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
     RX_GAIN = "RX_GAIN"
     CABLE_LOSS = "CABLE_LOSS"
     RX_SENSITIVITY = "RX_SENSITIVITY"
-    ANTENNA_AZ = "ANTENNA_AZ"
     ANTENNA_BW = "ANTENNA_BW"
+    ANTENNA_AZ = "ANTENNA_AZ"
     N0 = "N0"
     EPSILON = "EPSILON"
     SIGMA = "SIGMA"
@@ -133,6 +133,10 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
     OUTPUT_REPORT_CSV = "OUTPUT_REPORT_CSV"
     OUTPUT_REPORT_JSON = "OUTPUT_REPORT_JSON"
     OUTPUT_REPORT_HTML = "OUTPUT_REPORT_HTML"
+
+    def __init__(self):
+        super().__init__()
+        self._raster_layer_ids = []
 
     def flags(self):
         return super().flags() | Qgis.ProcessingAlgorithmFlag.NoThreading
@@ -350,8 +354,10 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(sigma_param)
 
         self.addParameter(
-            QgsProcessingParameterRasterDestination(
-                self.OUTPUT_RASTER, "Coverage raster output"
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT_RASTER,
+                "Coverage raster output",
+                "GeoTIFF files (*.tif)",
             )
         )
         self.addParameter(
@@ -497,7 +503,7 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
         feedback.setProgress(85)
 
         # Write GeoTIFF
-        tif_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
+        tif_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_RASTER, context)
         tif_path = (
             tif_dest
             if tif_dest
@@ -545,14 +551,8 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
         raster_layer = QgsRasterLayer(tif_path, layer_name)
 
         if raster_layer.isValid():
-            # Apply color ramp based on signal levels
             self._apply_coverage_style(raster_layer, rx_sens)
             raster_layer.setOpacity(1.0)
-            _queue_layer_for_loading(context, raster_layer, layer_name)
-            QgsProject.instance().writeEntry(
-                "NoWires", "last_coverage_layer_id", raster_layer.id()
-            )
-            show_coverage_legend(rx_sensitivity_dbm=rx_sens)
 
             dem_layer = QgsRasterLayer(dem_path, "NoWires DEM (GLO-30)")
             if dem_layer.isValid():
@@ -561,9 +561,16 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 elev_props.setMode(Qgis.RasterElevationMode.RepresentsElevationSurface)
                 elev_props.setBandNumber(1)
                 _queue_layer_for_loading(context, dem_layer, "NoWires DEM (GLO-30)")
+                self._raster_layer_ids.append(dem_layer.id())
                 QgsProject.instance().writeEntry(
                     "NoWires", "last_dem_layer_id", dem_layer.id()
                 )
+
+            _queue_layer_for_loading(context, raster_layer, layer_name)
+            QgsProject.instance().writeEntry(
+                "NoWires", "last_coverage_layer_id", raster_layer.id()
+            )
+            show_coverage_legend(rx_sensitivity_dbm=rx_sens)
 
             # Statistics
             raster_grid = prx_grid[::-1]
@@ -761,6 +768,17 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
         renderer = QgsSingleBandPseudoColorRenderer(provider, 1, shader)
         layer.setRenderer(renderer)
         layer.triggerRepaint()
+
+    def postProcessAlgorithm(self, context, feedback):
+        root = QgsProject.instance().layerTreeRoot()
+        for layer_id in self._raster_layer_ids:
+            node = root.findLayer(layer_id)
+            if node is not None:
+                clone = node.clone()
+                parent = node.parent()
+                parent.removeChildNode(node)
+                parent.insertChildNode(0, clone)
+        return {}
 
     def name(self):
         return "coverage_analysis"

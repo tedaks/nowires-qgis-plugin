@@ -52,6 +52,7 @@ from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsGeometry,
     QgsPalLayerSettings,
+    QgsLayerTreeLayer,
     QgsProcessingAlgorithm,
     QgsProcessingContext,
     QgsProcessingParameterAuthConfig,
@@ -59,9 +60,8 @@ from qgis.core import (
     QgsProcessingParameterColor,
     QgsProcessingParameterEnum,
     QgsProcessingParameterExtent,
+    QgsProcessingParameterFileDestination,
     QgsProcessingParameterNumber,
-    QgsProcessingParameterRasterDestination,
-    QgsProcessingParameterVectorDestination,
     QgsProject,
     QgsRasterLayer,
     QgsRuleBasedRenderer,
@@ -91,16 +91,16 @@ def _queue_layer_for_loading(context, layer, name):
     """Hand a layer to Processing for loading instead of mutating the project."""
     if layer is None or not layer.isValid():
         return False
-    project = QgsProject.instance()
-    if hasattr(context, "temporaryLayerStore") and hasattr(
-        context, "addLayerToLoadOnCompletion"
+    if not (
+        hasattr(context, "temporaryLayerStore")
+        and hasattr(context, "addLayerToLoadOnCompletion")
     ):
-        context.temporaryLayerStore().addMapLayer(layer)
-        context.addLayerToLoadOnCompletion(
-            layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
-        )
-        return True
-    project.addMapLayer(layer)
+        return False
+    project = QgsProject.instance()
+    context.temporaryLayerStore().addMapLayer(layer)
+    context.addLayerToLoadOnCompletion(
+        layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
+    )
     return True
 
 
@@ -218,6 +218,7 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
         self.temp_dir = get_temp_dir()
         self.status_total = 0.0
         self.progress = 0.0
+        self._raster_layer_ids = []
 
     def flags(self):
         return super().flags() | Qgis.ProcessingAlgorithmFlag.NoThreading
@@ -282,13 +283,18 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgsProcessingParameterVectorDestination(
-                self.OUTPUT, "Contour lines output"
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT,
+                "Contour lines output",
+                "GeoPackage files (*.gpkg)",
             )
         )
         self.addParameter(
-            QgsProcessingParameterRasterDestination(
-                self.OUTPUT_DEM, "Raw DEM output (3D terrain)", optional=True
+            QgsProcessingParameterFileDestination(
+                self.OUTPUT_DEM,
+                "Raw DEM output (3D terrain)",
+                "GeoTIFF files (*.tif)",
+                optional=True,
             )
         )
 
@@ -474,7 +480,7 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
         self.progress += 1
         feedback.setProgress(int(self.progress * self.status_total))
 
-        dem_output = self.parameterAsOutputLayer(parameters, self.OUTPUT_DEM, context)
+        dem_output = self.parameterAsFileOutput(parameters, self.OUTPUT_DEM, context)
 
         # Save raw DEM for the optional elevation overlay path.
         elevation_dem_path = None
@@ -560,7 +566,7 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
         else:
             final_shp_path = contour_shp_path
 
-        output_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
+        output_dest = self.parameterAsFileOutput(parameters, self.OUTPUT, context)
         if not output_dest:
             raise RuntimeError("No contour output destination was provided.")
         gdal.VectorTranslate(output_dest, final_shp_path)
@@ -647,6 +653,7 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
             output_dem_layer = QgsRasterLayer(dem_output, "NoWires DEM")
             if output_dem_layer.isValid():
                 _queue_layer_for_loading(context, output_dem_layer, "NoWires DEM")
+                self._raster_layer_ids.append(output_dem_layer.id())
                 QgsProject.instance().writeEntry(
                     "NoWires", "last_dem_layer_id", output_dem_layer.id()
                 )
@@ -665,6 +672,7 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
 
                 dem_layer.setBlendMode(painter_blend_mode_color_dodge(QPainter))
                 _queue_layer_for_loading(context, dem_layer, "Elevation Overlay")
+                self._raster_layer_ids.append(dem_layer.id())
             else:
                 feedback.pushInfo("Warning: Could not load Elevation Overlay layer")
 
@@ -878,6 +886,17 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
                 hillshade_ds = None
 
         return overlay_hillshade_path
+
+    def postProcessAlgorithm(self, context, feedback):
+        root = QgsProject.instance().layerTreeRoot()
+        for layer_id in self._raster_layer_ids:
+            node = root.findLayer(layer_id)
+            if node is not None:
+                clone = node.clone()
+                parent = node.parent()
+                parent.removeChildNode(node)
+                parent.insertChildNode(0, clone)
+        return {}
 
     def name(self):
         return "contour_lines"
