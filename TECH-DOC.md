@@ -508,6 +508,14 @@ When changing parameter keys or types, compatibility with stored Processing mode
 
 The `K_FACTOR` / `K_FACTOR_PRESET` handling in `algorithm_p2p.py` is an example of preserving legacy behavior while evolving the UI.
 
+Output parameters for algorithms use `QgsProcessingParameterFileDestination` rather than `RasterDestination` or `VectorDestination`. This avoids a double-loading conflict: the `*Destination` types tell QGIS Processing to auto-load the output layer, but the algorithms also queue layers via `addLayerToLoadOnCompletion` with custom styling. Using `FileDestination` means only the manually-queued load with proper styling occurs.
+
+### Layer Loading in processAlgorithm
+
+All three algorithms use a shared `_queue_layer_for_loading()` helper that adds layers to the processing context's temporary layer store and registers them for deferred loading via `addLayerToLoadOnCompletion`. This avoids calling `QgsProject.instance().addMapLayer()` from inside `processAlgorithm`, which mutates the project from a worker thread and causes a Windows access violation crash.
+
+A `postProcessAlgorithm` override in the coverage and contour algorithms reorders raster layers to the bottom of the layer tree after QGIS finishes loading them, so DEM and hillshade overlays render beneath vector and coverage layers.
+
 ## Known Limitations
 
 - Coverage performance degrades as grid size and analysis distance grow.
