@@ -63,6 +63,28 @@ def clutter_override_value(index_or_category):
     return CLUTTER_OVERRIDE_OPTIONS[idx]
 
 
+def clutter_source_label(
+    enabled,
+    land_cover_grid=None,
+    raster_path=None,
+    tx_override=None,
+    rx_override=None,
+):
+    """Return a user-visible source label for clutter reports."""
+    if not enabled:
+        return "off"
+    sources = []
+    if tx_override or rx_override:
+        sources.append("override")
+    if raster_path:
+        sources.append(str(raster_path))
+    elif land_cover_grid is not None:
+        sources.append(land_cover_grid.source)
+    if sources:
+        return ",".join(sources)
+    return "fallback_open"
+
+
 @dataclass
 class LandCoverGrid:
     data: np.ndarray

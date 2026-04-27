@@ -210,3 +210,10 @@ def test_p2p_algorithm_reports_total_path_loss_components():
     assert "clutter_tx_db" in source
     assert "clutter_rx_db" in source
     assert "antenna_gain_adjustment_db" in source
+
+
+def test_p2p_algorithm_loads_auto_clutter_after_path_bounds_exist():
+    source = _p2p_source()
+    bounds_idx = source.index("south = min(tx_lat, rx_lat) - pad")
+    auto_clutter_idx = source.index("clutter_grid = ensure_clutter_grid_for_area(")
+    assert bounds_idx < auto_clutter_idx

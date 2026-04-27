@@ -71,7 +71,9 @@ from .clutter import (
     CLUTTER_MODEL_OPTIONS,
     CLUTTER_OVERRIDE_OPTIONS,
     LandCoverGrid,
+    clutter_source_label,
     clutter_override_value,
+    compute_terminal_clutter_losses,
     ensure_clutter_grid_for_area,
 )
 from .radio import (
@@ -558,6 +560,24 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 east=east,
                 feedback=feedback,
             )
+        clutter_source = clutter_source_label(
+            enabled=clutter_enabled,
+            land_cover_grid=clutter_grid,
+            raster_path=clutter_raster_path,
+            tx_override=tx_clutter_override,
+            rx_override=rx_clutter_override,
+        )
+        tx_clutter_for_report = compute_terminal_clutter_losses(
+            tx_lat=tx_lat,
+            tx_lon=tx_lon,
+            rx_lat=tx_lat,
+            rx_lon=tx_lon,
+            frequency_mhz=f_mhz,
+            enabled=clutter_enabled,
+            land_cover_grid=clutter_grid,
+            tx_override=tx_clutter_override,
+            rx_override=tx_clutter_override,
+        )
 
         feedback.pushInfo("Computing coverage...")
         feedback.setProgress(20)
@@ -713,8 +733,9 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                     rx_sensitivity_dbm=rx_sens,
                     pixel_count=int(raster_grid.size),
                     clutter_model=CLUTTER_MODEL_OPTIONS[1] if clutter_enabled else CLUTTER_MODEL_OPTIONS[0],
-                    clutter_source=clutter_raster_path or ("override" if tx_clutter_override or rx_clutter_override else "off"),
+                    clutter_source=clutter_source,
                     tx_antenna_preset=ANTENNA_PRESET_OPTIONS[antenna_preset],
+                    clutter_tx_db=tx_clutter_for_report.tx_loss_db,
                 )
                 feedback.pushInfo("")
                 feedback.pushInfo("=" * 40)
@@ -756,6 +777,25 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                     max_lon=max_lon,
                     rx_sensitivity_dbm=rx_sens,
                 )
+                component_valid = ~np.isnan(loss_grid)
+                itm_loss_db = (
+                    float(np.nanmean(itm_loss_grid[component_valid]))
+                    if component_valid.any()
+                    else None
+                )
+                total_path_loss_db = (
+                    float(np.nanmean(loss_grid[component_valid]))
+                    if component_valid.any()
+                    else None
+                )
+                clutter_total_db = (
+                    float(np.nanmean(clutter_loss_grid[component_valid]))
+                    if component_valid.any()
+                    else 0.0
+                )
+                clutter_rx_db = max(
+                    0.0, clutter_total_db - tx_clutter_for_report.tx_loss_db
+                )
                 report_payload = build_coverage_report_payload(
                     tx_lat=tx_lat,
                     tx_lon=tx_lon,
@@ -787,8 +827,12 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                     max_distance_km=summary["max_distance_km"],
                     average_distance_km=summary["average_distance_km"],
                     clutter_model=CLUTTER_MODEL_OPTIONS[1] if clutter_enabled else CLUTTER_MODEL_OPTIONS[0],
-                    clutter_source=clutter_raster_path or ("override" if tx_clutter_override or rx_clutter_override else "off"),
+                    clutter_source=clutter_source,
                     tx_antenna_preset=ANTENNA_PRESET_OPTIONS[antenna_preset],
+                    itm_loss_db=itm_loss_db,
+                    clutter_tx_db=tx_clutter_for_report.tx_loss_db,
+                    clutter_rx_db=clutter_rx_db,
+                    total_path_loss_db=total_path_loss_db,
                 )
                 feedback.pushInfo("")
                 feedback.pushInfo("=" * 40)
