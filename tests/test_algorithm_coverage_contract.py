@@ -238,3 +238,12 @@ def test_coverage_algorithm_forwards_clutter_to_engine():
     assert "clutter_grid=clutter_grid" in source
     assert "tx_clutter_override=tx_clutter_override" in source
     assert "rx_clutter_override=rx_clutter_override" in source
+
+
+def test_coverage_algorithm_reports_actual_clutter_source_and_loss_components():
+    source = _coverage_source()
+    assert "clutter_source_label(" in source
+    assert "itm_loss_db=" in source
+    assert "clutter_tx_db=" in source
+    assert "clutter_rx_db=" in source
+    assert "total_path_loss_db=" in source

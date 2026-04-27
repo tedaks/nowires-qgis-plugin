@@ -39,6 +39,10 @@ def test_build_coverage_report_payload_contains_summary_values():
         clutter_model="Simple clutter correction",
         clutter_source="memory",
         tx_antenna_preset="sector_120",
+        itm_loss_db=118.0,
+        clutter_tx_db=2.0,
+        clutter_rx_db=6.0,
+        total_path_loss_db=126.0,
     )
 
     assert payload["report_type"] == "coverage"
@@ -50,6 +54,10 @@ def test_build_coverage_report_payload_contains_summary_values():
     assert payload["inputs"]["clutter_model"] == "Simple clutter correction"
     assert payload["inputs"]["clutter_source"] == "memory"
     assert payload["inputs"]["tx_antenna_preset"] == "sector_120"
+    assert payload["results"]["itm_loss_db"] == 118.0
+    assert payload["results"]["clutter_tx_db"] == 2.0
+    assert payload["results"]["clutter_rx_db"] == 6.0
+    assert payload["results"]["total_path_loss_db"] == 126.0
 
 
 def test_build_empty_coverage_report_payload_records_failed_grid_without_fake_stats():

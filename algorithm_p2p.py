@@ -569,14 +569,6 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         clutter_raster_path = self.parameterAsFile(parameters, self.CLUTTER_RASTER, context)
         if clutter_raster_path:
             clutter_grid = LandCoverGrid.from_raster(clutter_raster_path)
-        elif clutter_enabled:
-            clutter_grid = ensure_clutter_grid_for_area(
-                south=south,
-                north=north,
-                west=west,
-                east=east,
-                feedback=feedback,
-            )
         else:
             clutter_grid = None
         tx_clutter_override = clutter_override_value(
@@ -603,6 +595,15 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         north = max(tx_lat, rx_lat) + pad
         west = min(tx_lon, rx_lon) - pad
         east = max(tx_lon, rx_lon) + pad
+
+        if clutter_grid is None and clutter_enabled:
+            clutter_grid = ensure_clutter_grid_for_area(
+                south=south,
+                north=north,
+                west=west,
+                east=east,
+                feedback=feedback,
+            )
 
         feedback.pushInfo("Downloading DEM data for path...")
         feedback.setProgress(5)

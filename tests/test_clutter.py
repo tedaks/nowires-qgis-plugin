@@ -8,6 +8,7 @@ from clutter import (
     CLUTTER_LOSS_DB,
     LandCoverGrid,
     clutter_loss_db,
+    clutter_source_label,
     compute_terminal_clutter_losses,
     worldcover_class_to_clutter_category,
 )
@@ -87,3 +88,44 @@ def test_ensure_clutter_grid_for_area_returns_none_when_download_disabled(monkey
 
     result = ensure_clutter_grid_for_area(0, 1, 0, 1)
     assert result is None
+
+
+def test_clutter_source_label_reports_auto_downloaded_grid_source():
+    grid = LandCoverGrid(
+        data=np.array([[50]], dtype=np.int16),
+        min_lat=0.0,
+        max_lat=1.0,
+        min_lon=0.0,
+        max_lon=1.0,
+        nodata=None,
+        source="/tmp/worldcover.tif",
+    )
+
+    assert clutter_source_label(
+        enabled=True,
+        land_cover_grid=grid,
+        raster_path=None,
+        tx_override=None,
+        rx_override=None,
+    ) == "/tmp/worldcover.tif"
+    assert clutter_source_label(
+        enabled=True,
+        land_cover_grid=grid,
+        raster_path=None,
+        tx_override="urban",
+        rx_override=None,
+    ) == "override,/tmp/worldcover.tif"
+    assert clutter_source_label(
+        enabled=True,
+        land_cover_grid=None,
+        raster_path=None,
+        tx_override="urban",
+        rx_override=None,
+    ) == "override"
+    assert clutter_source_label(
+        enabled=True,
+        land_cover_grid=None,
+        raster_path=None,
+        tx_override=None,
+        rx_override=None,
+    ) == "fallback_open"
