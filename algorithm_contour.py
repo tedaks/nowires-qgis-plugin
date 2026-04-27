@@ -444,7 +444,7 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
             fn_clip = os.path.join(self.temp_dir, base + "_clip.tif")
             clipped_rasters.append(fn_clip)
             feedback.pushInfo("Clipping: " + os.path.basename(tile_path))
-            gdal.Warp(
+            clip_result = gdal.Warp(
                 fn_clip,
                 tile_path,
                 cutlineDSName=aoi_shp_path,
@@ -455,6 +455,8 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
                 format="GTiff",
                 callback=gdal_callback,
             )
+            if clip_result is not None:
+                clip_result = None
             self.progress += 1
             feedback.setProgress(int(self.progress * self.status_total))
 
@@ -473,6 +475,7 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
                 "Failed to merge clipped DEM tiles. "
                 "All tiles may be empty or invalid for the selected area."
             )
+        merge_result = None
 
         if feedback.isCanceled():
             return {}
@@ -648,7 +651,9 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
 
         output_dem_layer = None
         if dem_output:
-            gdal.Translate(dem_output, elevation_dem_path)
+            translate_ds = gdal.Translate(dem_output, elevation_dem_path)
+            if translate_ds is not None:
+                translate_ds = None
             output_dem_layer = QgsRasterLayer(dem_output, "NoWires DEM")
             if output_dem_layer.isValid():
                 _queue_layer_for_loading(context, output_dem_layer, "NoWires DEM")
@@ -696,12 +701,14 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
         input_dem = os.path.join(path, "merged_contour.tif")
 
         # Convert to Float32
-        gdal.Translate(
+        translate_ds = gdal.Translate(
             os.path.join(path, "dem.tif"),
             input_dem,
             outputType=gdal.GDT_Float32,
             noData=-32768,
         )
+        if translate_ds is not None:
+            translate_ds = None
 
         # 3x3 Gaussian blur VRT
         _make_blur_vrt(
@@ -713,11 +720,13 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
         feedback.setProgress(int((self.progress + 0.2) * self.status_total))
 
         # TPI
-        gdal.DEMProcessing(
+        tpi_ds = gdal.DEMProcessing(
             destName=os.path.join(path, "dem_tpi.tif"),
             srcDS=input_dem,
             processing="TPI",
         )
+        if tpi_ds is not None:
+            tpi_ds = None
         _raster_calc(
             lambda A: np.abs(A),
             output_path=os.path.join(path, "tpi_pos.tif"),
@@ -759,12 +768,16 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
                 )
             else:
                 logger.warning("Could not get TPI statistics, using raw TPI")
-                gdal.Translate(
+                fallback_ds = gdal.Translate(
                     destName=os.path.join(path, "tpi_norm.tif"), srcDS=vrt_path
                 )
+                if fallback_ds is not None:
+                    fallback_ds = None
         except Exception:
             logger.warning("TPI normalisation failed, using raw TPI")
-            gdal.Translate(destName=os.path.join(path, "tpi_norm.tif"), srcDS=vrt_path)
+            fallback_ds = gdal.Translate(destName=os.path.join(path, "tpi_norm.tif"), srcDS=vrt_path)
+            if fallback_ds is not None:
+                fallback_ds = None
 
         feedback.setProgress(int((self.progress + 0.8) * self.status_total))
 

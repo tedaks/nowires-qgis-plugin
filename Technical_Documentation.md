@@ -155,12 +155,16 @@ Point-to-point analysis now produces:
 - TX/RX marker output
 - optional `CSV`, `JSON`, and `HTML` reports
 
-Point-to-point reports now also carry reliability fields:
+Point-to-point reports carry reliability and clutter fields:
 
 - `availability_method`
 - `availability_estimate_pct`
 - `fade_margin_class`
 - `reliability_summary`
+- `clutter_source`
+- `clutter_tx_db`
+- `clutter_rx_db`
+- `total_path_loss_db`
 
 ### P2P Parameters
 
@@ -189,6 +193,11 @@ Point-to-point reports now also carry reliability fields:
 - `N0`
 - `epsilon`
 - `sigma`
+- antenna preset, azimuth, beamwidth, front-to-back ratio, downtilt, and optional pattern CSV files
+- clutter model (Off / Simple clutter correction)
+- clutter raster path (optional; auto-downloads WorldCover when clutter is enabled and left blank)
+- TX clutter override
+- RX clutter override
 
 ### Earth Radius Factor Handling
 
@@ -234,7 +243,17 @@ In the current codebase, Earth radius factor is used in the Fresnel and earth-bu
 9. Compute raster-derived range metrics from cells above sensitivity.
 10. Optionally write `CSV`, `JSON`, and `HTML` report files from the computed summary values.
 
-Coverage reports now also include reliability guidance. The current implementation uses the formal method where validity checks pass and otherwise falls back to the margin-based path.
+Coverage reports now also include reliability guidance and clutter loss breakdown:
+
+- `fade_margin_class`
+- `availability_method`
+- `availability_estimate_pct` when the formal path is used
+- `reliability_summary`
+- `clutter_source`
+- `clutter_tx_db`
+- `clutter_rx_db`
+- `itm_loss_db` (grid-wide mean over valid pixels)
+- `total_path_loss_db` (grid-wide mean over valid pixels)
 
 ### Max Analysis Distance vs Actual Coverage
 
@@ -264,8 +283,12 @@ This is an important product distinction:
 - RX gain
 - cable loss
 - RX sensitivity
-- antenna azimuth
-- antenna beamwidth
+- antenna azimuth and beamwidth
+- antenna preset, front-to-back ratio, downtilt, and optional pattern CSV files
+- clutter model (Off / Simple clutter correction)
+- clutter raster path (optional; auto-downloads WorldCover when clutter is enabled and left blank)
+- TX clutter override
+- RX clutter override
 
 #### Advanced inputs
 
@@ -304,11 +327,107 @@ Key behaviors:
 
 ### Antenna Pattern Layer
 
-`antenna.py` returns relative gain adjustments. Coverage applies the TX pattern per pixel; P2P applies TX and RX pattern adjustments using forward and reverse bearings plus the endpoint vertical angle.
+`antenna.py` provides directional gain adjustment on top of the user-specified peak antenna gain. The adjustment is a *relative* offset — boresight is `0 dB` and off-axis directions are negative, so the adjustment is subtracted from the link budget.
+
+#### Presets
+
+| Preset | Key | H Beamwidth | V Beamwidth | Front-Back Ratio |
+|---|---|---|---|---|
+| Omni | `omni` | 360° | 360° | 0 dB |
+| Sector 90 | `sector_90` | 90° | 10° | 25 dB |
+| Sector 120 | `sector_120` | 120° | 10° | 25 dB |
+| Dish 20 | `dish_20` | 20° | 8° | 35 dB |
+| Custom | `custom` | configurable | configurable | 25 dB |
+
+The `Omni` preset produces `0 dB` adjustment everywhere and preserves legacy behaviour. Sector and Dish presets provide common planning shapes with configurable azimuth, front-to-back ratio, and downtilt.
+
+#### Horizontal Pattern
+
+When a horizontal pattern CSV file is supplied, gain is interpolated from the file with 360° wraparound. Otherwise, a simplified parabolic model is used:
+
+- Within the half-beamwidth: `gain = -3 * x²` where `x` is the normalized angular offset from boresight (`-1` to `+1` across the half-beamwidth).
+- Outside the half-beamwidth: `gain = -front_back_db`.
+
+The horizontal bearing is computed as the angle difference between the target direction and the antenna azimuth, normalised to `[-180°, +180°]`.
+
+#### Vertical Pattern
+
+When a vertical pattern CSV file is supplied, gain is interpolated from the file, clamped to the file's angle range (no wrapping). Otherwise, the same parabolic model is used with `downtilt_deg` shifting the main beam downward:
+
+- Within the half-beamwidth: `gain = -3 * x²` where `x = (elevation_angle + downtilt) / (vertical_beamwidth / 2)`.
+- Outside the half-beamwidth: `gain = -12 dB`.
+
+#### Combined Adjustment
+
+The final `antenna_gain_adjustment_db = min(0, horizontal + vertical)`. Clamping at `0 dB` ensures the adjustment never adds gain beyond the user-specified peak.
+
+#### Pattern CSV Files
+
+Pattern CSVs use two numeric columns:
+
+```csv
+angle_deg,gain_adjust_db
+0,0
+90,-12
+180,-30
+270,-12
+360,0
+```
+
+Horizontal pattern files wrap around 360° (the last point must close the circle). Vertical pattern files are clamped to the file's angle range. Cache is provided by `_read_pattern_points()` with an LRU cache of 32 entries.
+
+#### Application in Algorithms
+
+- **Coverage**: `antenna_gain_adjustment_db()` is called per pixel using the bearing from TX to each cell centre and the vertical elevation angle, producing a directional coverage heatmap.
+- **P2P**: TX and RX pattern adjustments are computed using forward and reverse bearings plus the endpoint vertical angles.
 
 ### Clutter Correction Layer
 
 `clutter.py` implements the optional terminal correction layer. It keeps ITM unchanged, samples a WorldCover-compatible raster at terminal locations, maps raw classes to propagation categories, and adds terminal losses after ITM.
+
+Key helpers:
+
+- `compute_terminal_clutter_losses()`: resolves TX and RX clutter categories (from override, raster sample, or `open` fallback) and returns a `TerminalClutterLosses` dataclass with `tx_loss_db`, `rx_loss_db`, `total_loss_db`, and a `source` label.
+- `clutter_source_label()`: builds a user-visible source string for reports (e.g. `"override,/tmp/worldcover.vrt"` or `"fallback_open"`).
+- `clutter_override_value()`: converts a Processing parameter index or category string into a category name or `None`.
+- `LandCoverGrid.from_raster()`: loads a land-cover GeoTIFF into a `LandCoverGrid` with geographic bounds and no-data handling.
+- `LandCoverGrid.sample_category()`: samples the grid at a given lat/lon and returns a clutter category string.
+- `ensure_clutter_grid_for_area()`: auto-downloads WorldCover tiles when clutter is enabled and no raster is supplied.
+
+Clutter categories and loss table:
+
+| Category | Loss (dB) |
+|---|---|
+| open | 0.0 |
+| rural | 2.0 |
+| vegetation | 6.0 |
+| suburban | 8.0 |
+| urban | 10.0 |
+
+WorldCover class-to-category mapping (`worldcover_class_to_clutter_category`):
+
+| WorldCover class | Category |
+|---|---|
+| 10, 95, 100 | vegetation |
+| 20, 30, 40 | rural |
+| 50 | urban |
+| 60, 70, 80, 90 | open |
+
+### Clutter Reporting
+
+Both P2P and coverage reports expose clutter loss breakdown:
+
+- `clutter_source`: a descriptive label produced by `clutter_source_label()` rather than a raw file path.
+- `clutter_tx_db`: TX terminal clutter loss (dB).
+- `clutter_rx_db`: RX terminal clutter loss (dB).
+- `total_path_loss_db`: `itm_loss_db + clutter_tx_db + clutter_rx_db`.
+
+For coverage reports, `itm_loss_db` and `total_path_loss_db` are grid-wide means over valid pixels, `clutter_tx_db` is the TX terminal loss at the transmitter location, and `clutter_rx_db` is derived as `clutter_total_mean - clutter_tx_db`.
+
+For P2P reports, clutter losses are computed per terminal using `compute_terminal_clutter_losses()` and included directly.
+
+### Multiprocessing Note
+
 - Windows defaults to single-process mode to avoid spawning extra QGIS instances
 - non-Windows runtimes may use multiprocessing with shared memory
 
