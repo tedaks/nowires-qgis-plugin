@@ -45,8 +45,17 @@ def test_compute_itm_p2p_uses_radio_bridge(monkeypatch):
         eirp_dbm=43.0,
         ant_gain_adj=3.0,
         rx_gain_dbi=2.0,
+        clutter_tx_db=2.0,
+        clutter_rx_db=6.0,
     )
 
     assert calls["pfl"] == ([100.0, 101.0, 102.0], 50.0)
     assert calls["itm"]["profile"] == ["pfl"]
-    assert result == (144.5, -96.5)
+    assert result == {
+        "itm_loss_db": 144.5,
+        "clutter_tx_db": 2.0,
+        "clutter_rx_db": 6.0,
+        "total_path_loss_db": 152.5,
+        "antenna_gain_adjustment_db": 3.0,
+        "received_power_dbm": -104.5,
+    }

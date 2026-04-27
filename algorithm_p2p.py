@@ -49,6 +49,7 @@ from qgis.core import (
     QgsProcessingParameterFileDestination,
     QgsProcessingParameterBoolean,
     QgsProcessingParameterEnum,
+    QgsProcessingParameterFile,
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
     QgsProject,
@@ -58,7 +59,7 @@ from qgis.core import (
 from osgeo import ogr, osr
 
 from .dem_downloader import ensure_dem_for_area
-from .elevation import ElevationGrid, haversine_m
+from .elevation import ElevationGrid, bearing_deg, haversine_m
 from .radio import (
     CLIMATE_NAMES,
     ITM_MAX_FREQUENCY_MHZ,
@@ -83,6 +84,19 @@ from .report_payloads import (
     ogr_driver_for_path,
     _remove_existing_ogr_dataset,
     write_p2p_marker_layer,
+)
+from .antenna import (
+    ANTENNA_PRESET_OPTIONS,
+    antenna_config_from_values,
+    antenna_gain_adjustment_db,
+)
+from .clutter import (
+    CLUTTER_MODEL_OPTIONS,
+    CLUTTER_OVERRIDE_OPTIONS,
+    LandCoverGrid,
+    clutter_override_value,
+    compute_terminal_clutter_losses,
+    ensure_clutter_grid_for_area,
 )
 
 POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
@@ -123,6 +137,22 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
     RX_GAIN = "RX_GAIN"
     CABLE_LOSS = "CABLE_LOSS"
     RX_SENSITIVITY = "RX_SENSITIVITY"
+    TX_ANTENNA_PRESET = "TX_ANTENNA_PRESET"
+    TX_ANTENNA_AZ = "TX_ANTENNA_AZ"
+    TX_FRONT_BACK_DB = "TX_FRONT_BACK_DB"
+    TX_DOWNTILT_DEG = "TX_DOWNTILT_DEG"
+    TX_H_PATTERN = "TX_H_PATTERN"
+    TX_V_PATTERN = "TX_V_PATTERN"
+    RX_ANTENNA_PRESET = "RX_ANTENNA_PRESET"
+    RX_ANTENNA_AZ = "RX_ANTENNA_AZ"
+    RX_FRONT_BACK_DB = "RX_FRONT_BACK_DB"
+    RX_DOWNTILT_DEG = "RX_DOWNTILT_DEG"
+    RX_H_PATTERN = "RX_H_PATTERN"
+    RX_V_PATTERN = "RX_V_PATTERN"
+    CLUTTER_MODEL = "CLUTTER_MODEL"
+    CLUTTER_RASTER = "CLUTTER_RASTER"
+    TX_CLUTTER_OVERRIDE = "TX_CLUTTER_OVERRIDE"
+    RX_CLUTTER_OVERRIDE = "RX_CLUTTER_OVERRIDE"
     K_FACTOR_PRESET = "K_FACTOR_PRESET"
     K_FACTOR = "K_FACTOR"
     N0 = "N0"
@@ -271,6 +301,76 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
                 defaultValue=-100.0,
             )
         )
+        self.addParameter(QgsProcessingParameterEnum(
+            self.TX_ANTENNA_PRESET, "TX antenna preset",
+            options=ANTENNA_PRESET_OPTIONS, defaultValue=0,
+        ))
+        self.addParameter(QgsProcessingParameterNumber(
+            self.TX_ANTENNA_AZ, "TX antenna azimuth (deg)",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=0.0, minValue=0.0, maxValue=360.0, optional=True,
+        ))
+        self.addParameter(QgsProcessingParameterNumber(
+            self.TX_FRONT_BACK_DB, "TX front-to-back ratio (dB)",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=25.0, minValue=0.0,
+        ))
+        self.addParameter(QgsProcessingParameterNumber(
+            self.TX_DOWNTILT_DEG, "TX downtilt (deg)",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=0.0, minValue=-45.0, maxValue=45.0,
+        ))
+        self.addParameter(QgsProcessingParameterFile(
+            self.TX_H_PATTERN, "TX horizontal pattern CSV",
+            extension="csv", optional=True,
+        ))
+        self.addParameter(QgsProcessingParameterFile(
+            self.TX_V_PATTERN, "TX vertical pattern CSV",
+            extension="csv", optional=True,
+        ))
+        self.addParameter(QgsProcessingParameterEnum(
+            self.RX_ANTENNA_PRESET, "RX antenna preset",
+            options=ANTENNA_PRESET_OPTIONS, defaultValue=0,
+        ))
+        self.addParameter(QgsProcessingParameterNumber(
+            self.RX_ANTENNA_AZ, "RX antenna azimuth (deg)",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=0.0, minValue=0.0, maxValue=360.0, optional=True,
+        ))
+        self.addParameter(QgsProcessingParameterNumber(
+            self.RX_FRONT_BACK_DB, "RX front-to-back ratio (dB)",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=25.0, minValue=0.0,
+        ))
+        self.addParameter(QgsProcessingParameterNumber(
+            self.RX_DOWNTILT_DEG, "RX downtilt (deg)",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=0.0, minValue=-45.0, maxValue=45.0,
+        ))
+        self.addParameter(QgsProcessingParameterFile(
+            self.RX_H_PATTERN, "RX horizontal pattern CSV",
+            extension="csv", optional=True,
+        ))
+        self.addParameter(QgsProcessingParameterFile(
+            self.RX_V_PATTERN, "RX vertical pattern CSV",
+            extension="csv", optional=True,
+        ))
+        self.addParameter(QgsProcessingParameterEnum(
+            self.CLUTTER_MODEL, "Clutter correction",
+            options=CLUTTER_MODEL_OPTIONS, defaultValue=0,
+        ))
+        self.addParameter(QgsProcessingParameterFile(
+            self.CLUTTER_RASTER, "Land-cover raster (auto-downloaded if blank)",
+            extension="tif", optional=True,
+        ))
+        self.addParameter(QgsProcessingParameterEnum(
+            self.TX_CLUTTER_OVERRIDE, "TX clutter override",
+            options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0,
+        ))
+        self.addParameter(QgsProcessingParameterEnum(
+            self.RX_CLUTTER_OVERRIDE, "RX clutter override",
+            options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0,
+        ))
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.K_FACTOR_PRESET,
@@ -449,6 +549,43 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
             earth_conductivity_sigma=sigma,
         )
 
+        tx_antenna_config = antenna_config_from_values(
+            preset=self.parameterAsEnum(parameters, self.TX_ANTENNA_PRESET, context),
+            azimuth_deg=self.parameterAsDouble(parameters, self.TX_ANTENNA_AZ, context),
+            front_back_db=self.parameterAsDouble(parameters, self.TX_FRONT_BACK_DB, context),
+            downtilt_deg=self.parameterAsDouble(parameters, self.TX_DOWNTILT_DEG, context),
+            horizontal_pattern_path=self.parameterAsFile(parameters, self.TX_H_PATTERN, context),
+            vertical_pattern_path=self.parameterAsFile(parameters, self.TX_V_PATTERN, context),
+        )
+        rx_antenna_config = antenna_config_from_values(
+            preset=self.parameterAsEnum(parameters, self.RX_ANTENNA_PRESET, context),
+            azimuth_deg=self.parameterAsDouble(parameters, self.RX_ANTENNA_AZ, context),
+            front_back_db=self.parameterAsDouble(parameters, self.RX_FRONT_BACK_DB, context),
+            downtilt_deg=self.parameterAsDouble(parameters, self.RX_DOWNTILT_DEG, context),
+            horizontal_pattern_path=self.parameterAsFile(parameters, self.RX_H_PATTERN, context),
+            vertical_pattern_path=self.parameterAsFile(parameters, self.RX_V_PATTERN, context),
+        )
+        clutter_enabled = self.parameterAsEnum(parameters, self.CLUTTER_MODEL, context) == 1
+        clutter_raster_path = self.parameterAsFile(parameters, self.CLUTTER_RASTER, context)
+        if clutter_raster_path:
+            clutter_grid = LandCoverGrid.from_raster(clutter_raster_path)
+        elif clutter_enabled:
+            clutter_grid = ensure_clutter_grid_for_area(
+                south=south,
+                north=north,
+                west=west,
+                east=east,
+                feedback=feedback,
+            )
+        else:
+            clutter_grid = None
+        tx_clutter_override = clutter_override_value(
+            self.parameterAsEnum(parameters, self.TX_CLUTTER_OVERRIDE, context)
+        )
+        rx_clutter_override = clutter_override_value(
+            self.parameterAsEnum(parameters, self.RX_CLUTTER_OVERRIDE, context)
+        )
+
         dist_m = haversine_m(tx_lat, tx_lon, rx_lat, rx_lon)
 
         feedback.pushInfo(
@@ -539,7 +676,36 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
 
         # Link budget
         eirp_dbm = tx_power + tx_gain - cable_loss
-        prx_dbm = eirp_dbm + rx_gain - result.loss_db
+        tx_bearing = bearing_deg(tx_lat, tx_lon, rx_lat, rx_lon)
+        rx_bearing = bearing_deg(rx_lat, rx_lon, tx_lat, tx_lon)
+        vertical_angle = math.degrees(
+            math.atan2((rx_elev + rx_h) - (tx_elev + tx_h), max(dist_m, 1.0))
+        )
+        tx_ant_adj = antenna_gain_adjustment_db(
+            tx_bearing, vertical_angle, tx_antenna_config
+        )
+        rx_ant_adj = antenna_gain_adjustment_db(
+            rx_bearing, -vertical_angle, rx_antenna_config
+        )
+        antenna_gain_adjustment_db_total = tx_ant_adj + rx_ant_adj
+        clutter_losses = compute_terminal_clutter_losses(
+            tx_lat=tx_lat,
+            tx_lon=tx_lon,
+            rx_lat=rx_lat,
+            rx_lon=rx_lon,
+            frequency_mhz=f_mhz,
+            enabled=clutter_enabled,
+            land_cover_grid=clutter_grid,
+            tx_override=tx_clutter_override,
+            rx_override=rx_clutter_override,
+        )
+        total_path_loss_db = result.loss_db + clutter_losses.total_loss_db
+        prx_dbm = (
+            eirp_dbm
+            + rx_gain
+            + antenna_gain_adjustment_db_total
+            - total_path_loss_db
+        )
         margin_db = prx_dbm - rx_sens
         fspl_db = (
             20.0 * math.log10(dist_m / 1000.0) + 20.0 * math.log10(f_mhz) + 32.44
@@ -644,6 +810,13 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
             fresnel_1_violated=f1_violated,
             fresnel_60_violated=f60_violated,
             max_fresnel_radius_m=float(fresnel_r.max()),
+            total_path_loss_db=total_path_loss_db,
+            clutter_tx_db=clutter_losses.tx_loss_db,
+            clutter_rx_db=clutter_losses.rx_loss_db,
+            clutter_source=clutter_losses.source,
+            tx_antenna_preset=tx_antenna_config.preset,
+            rx_antenna_preset=rx_antenna_config.preset,
+            antenna_gain_adjustment_db=antenna_gain_adjustment_db_total,
         )
         report_csv_path = self.parameterAsFileOutput(
             parameters, self.OUTPUT_REPORT_CSV, context
@@ -731,6 +904,10 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("  EIRP:           {:.2f} dBm".format(eirp_dbm))
         feedback.pushInfo("  Free Space Loss:{:.2f} dB".format(fspl_db))
         feedback.pushInfo("  ITM Path Loss:  {:.2f} dB".format(result.loss_db))
+        feedback.pushInfo("  Clutter TX Loss:{:.2f} dB".format(clutter_losses.tx_loss_db))
+        feedback.pushInfo("  Clutter RX Loss:{:.2f} dB".format(clutter_losses.rx_loss_db))
+        feedback.pushInfo("  Total Path Loss:{:.2f} dB".format(total_path_loss_db))
+        feedback.pushInfo("  Antenna Pattern:{:.2f} dB".format(antenna_gain_adjustment_db_total))
         feedback.pushInfo(
             "  Excess Loss:    {:.2f} dB".format(result.loss_db - fspl_db)
         )

@@ -43,6 +43,8 @@ def compute_itm_p2p(
     eirp_dbm,
     ant_gain_adj,
     rx_gain_dbi,
+    clutter_tx_db=0.0,
+    clutter_rx_db=0.0,
 ):
     """Compute ITM point-to-point loss and received power."""
     elev_list = (
@@ -65,5 +67,14 @@ def compute_itm_p2p(
     )
     if not math.isfinite(result.loss_db) or result.loss_db > 400.0:
         return None
-    prx = eirp_dbm + ant_gain_adj + rx_gain_dbi - result.loss_db
-    return (result.loss_db, prx)
+    clutter_total_db = clutter_tx_db + clutter_rx_db
+    total_path_loss_db = result.loss_db + clutter_total_db
+    prx = eirp_dbm + ant_gain_adj + rx_gain_dbi - total_path_loss_db
+    return {
+        "itm_loss_db": result.loss_db,
+        "clutter_tx_db": clutter_tx_db,
+        "clutter_rx_db": clutter_rx_db,
+        "total_path_loss_db": total_path_loss_db,
+        "antenna_gain_adjustment_db": ant_gain_adj,
+        "received_power_dbm": prx,
+    }

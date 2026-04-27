@@ -240,7 +240,36 @@ Main inputs include:
 - time, location, and situation percentages
 - TX power, gains, cable loss
 - RX sensitivity
-- antenna azimuth and beamwidth
+    - antenna azimuth and beamwidth
+
+### Antenna Presets And Pattern Files
+
+NoWires treats the numeric TX/RX gain as the peak antenna gain. The antenna preset adds a relative pattern adjustment: boresight is normally `0 dB`, while off-axis directions are reduced. `Omni` preserves the older behavior. `Sector 90`, `Sector 120`, and `Dish 20` provide common planning shapes with configurable azimuth, front-to-back ratio, and downtilt.
+
+Optional pattern CSV files use two numeric columns:
+
+```csv
+angle_deg,gain_adjust_db
+0,0
+90,-12
+180,-30
+270,-12
+360,0
+```
+
+Horizontal pattern angles wrap around 360 degrees. Vertical pattern angles are clamped to the file range.
+
+### Clutter / Land-Cover Correction
+
+The simple clutter correction is optional. When enabled, NoWires samples land cover at the TX and RX terminals, maps the raw class into `open`, `rural`, `vegetation`, `suburban`, or `urban`, and adds terminal excess loss after ITM:
+
+```text
+total_path_loss_db = itm_loss_db + clutter_tx_db + clutter_rx_db
+```
+
+The initial loss table is `open=0 dB`, `rural=2 dB`, `vegetation=6 dB`, `suburban=8 dB`, and `urban=10 dB`. Use TX/RX overrides when the raster is unavailable or visibly wrong. This v1 model does not sample clutter along the full path.
+
+When clutter is enabled and the land-cover raster field is left blank, NoWires automatically downloads the required ESA WorldCover 2020 tiles from the AWS open data bucket. Tiles are cached locally in a temporary directory for reuse. If the download fails, the correction falls back to `open` (0 dB) with a warning in the log.
 
 Advanced inputs include:
 

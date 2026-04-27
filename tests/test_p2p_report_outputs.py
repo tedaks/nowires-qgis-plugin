@@ -49,6 +49,13 @@ def test_build_p2p_report_payload_contains_expected_summary():
         fresnel_1_violated=False,
         fresnel_60_violated=False,
         max_fresnel_radius_m=8.4,
+        total_path_loss_db=129.4,
+        clutter_tx_db=2.0,
+        clutter_rx_db=6.0,
+        clutter_source="override",
+        tx_antenna_preset="sector_90",
+        rx_antenna_preset="omni",
+        antenna_gain_adjustment_db=-1.0,
     )
 
     assert payload["report_type"] == "p2p"
@@ -59,6 +66,10 @@ def test_build_p2p_report_payload_contains_expected_summary():
     assert payload["results"]["fade_margin_class"] == "Strong"
     assert payload["results"]["reliability_summary"] == "Reliable"
     assert payload["status"]["summary"] == "VIABLE"
+    assert payload["results"]["clutter_tx_db"] == 2.0
+    assert payload["results"]["clutter_rx_db"] == 6.0
+    assert payload["results"]["total_path_loss_db"] == 129.4
+    assert payload["inputs"]["tx_antenna_preset"] == "sector_90"
 
 
 def test_build_p2p_marker_records_returns_tx_and_rx():

@@ -35,11 +35,13 @@ sys.modules["NoWires"] = _no_wires_pkg
 # then registered under the NoWires package.
 for _submodule_name in (
     "antenna",
+    "clutter",
     "coverage_palette",
     "coverage_summary",
     "elevation",
     "radio",
     "reliability",
+    "worldcover_downloader",
 ):
     _mod = __import__(_submodule_name, fromlist=[""])
     sys.modules[f"NoWires.{_submodule_name}"] = _mod

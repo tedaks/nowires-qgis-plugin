@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Added automatic WorldCover 2020 v100 tile download for clutter correction when no land-cover raster is supplied.
+- Added antenna presets, front-to-back ratio, downtilt, and optional pattern CSV support for link and coverage planning.
+- Added optional simple terminal clutter correction with WorldCover-style land-cover sampling and report-visible loss components.
 - Remove the obsolete Qt compatibility helper module and use QGIS 4 / Qt 6 APIs directly.
 - Fix Qt 6 `QAction` import location and keep source checks for direct Qt 6 enum usage.
 
