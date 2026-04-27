@@ -169,6 +169,10 @@ Advanced inputs include:
 - surface refractivity (`N0`)
 - earth permittivity (`epsilon`)
 - earth conductivity (`sigma`)
+- antenna preset, azimuth, beamwidth, front-to-back ratio, downtilt, and optional pattern CSV files
+- clutter model (Off / Simple clutter correction)
+- clutter raster path (optional; auto-downloads WorldCover when enabled and left blank)
+- TX and RX clutter overrides
 
 ### What It Produces
 
@@ -176,6 +180,8 @@ Advanced inputs include:
 - link budget values
 - Fresnel zone analysis
 - vector outputs for the path, Fresnel geometry, and TX/RX markers
+- clutter loss breakdown (`clutter_tx_db`, `clutter_rx_db`, `total_path_loss_db`) when clutter correction is enabled
+- antenna gain adjustment in the link budget when a directional antenna preset is used
 - optional `CSV`, `JSON`, and `HTML` reports
 - optional profile chart
 
@@ -240,7 +246,11 @@ Main inputs include:
 - time, location, and situation percentages
 - TX power, gains, cable loss
 - RX sensitivity
-    - antenna azimuth and beamwidth
+- antenna azimuth and beamwidth
+- antenna preset, front-to-back ratio, downtilt, and optional pattern CSV files
+- clutter model (Off / Simple clutter correction)
+- clutter raster path (optional; auto-downloads WorldCover when enabled and left blank)
+- TX and RX clutter overrides
 
 ### Antenna Presets And Pattern Files
 
@@ -267,9 +277,30 @@ The simple clutter correction is optional. When enabled, NoWires samples land co
 total_path_loss_db = itm_loss_db + clutter_tx_db + clutter_rx_db
 ```
 
-The initial loss table is `open=0 dB`, `rural=2 dB`, `vegetation=6 dB`, `suburban=8 dB`, and `urban=10 dB`. Use TX/RX overrides when the raster is unavailable or visibly wrong. This v1 model does not sample clutter along the full path.
+The loss table is:
+
+| Category | Loss (dB) |
+|---|---|
+| open | 0.0 |
+| rural | 2.0 |
+| vegetation | 6.0 |
+| suburban | 8.0 |
+| urban | 10.0 |
+
+Use TX/RX overrides when the raster is unavailable or visibly wrong. This v1 model does not sample clutter along the full path.
 
 When clutter is enabled and the land-cover raster field is left blank, NoWires automatically downloads the required ESA WorldCover 2020 tiles from the AWS open data bucket. Tiles are cached locally in a temporary directory for reuse. If the download fails, the correction falls back to `open` (0 dB) with a warning in the log.
+
+### Clutter in Reports
+
+Both P2P and coverage reports include clutter loss fields:
+
+- `clutter_source`: describes where the clutter data came from (e.g. `override`, a raster path, or `fallback_open`)
+- `clutter_tx_db`: TX terminal clutter loss
+- `clutter_rx_db`: RX terminal clutter loss
+- `total_path_loss_db`: ITM loss plus both terminal clutter losses
+
+For coverage, `itm_loss_db` and `total_path_loss_db` are grid-wide means over valid pixels.
 
 Advanced inputs include:
 
@@ -325,6 +356,8 @@ Coverage reports now also include:
 - `availability_method`
 - `availability_estimate_pct` when the formal path is used
 - `reliability_summary`
+- `clutter_source`, `clutter_tx_db`, `clutter_rx_db`, and `total_path_loss_db` when clutter correction is enabled
+- `itm_loss_db` (grid-wide mean over valid pixels)
 
 Coverage can fall back more often than P2P because not every raster cell is a good candidate for the formal availability method.
 

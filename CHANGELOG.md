@@ -4,11 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- Added automatic WorldCover 2020 v100 tile download for clutter correction when no land-cover raster is supplied.
-- Added antenna presets, front-to-back ratio, downtilt, and optional pattern CSV support for link and coverage planning.
-- Added optional simple terminal clutter correction with WorldCover-style land-cover sampling and report-visible loss components.
-- Remove the obsolete Qt compatibility helper module and use QGIS 4 / Qt 6 APIs directly.
+### Added
+
+- Antenna presets (omni, sector 90/120, dish 20, custom), front-to-back ratio, downtilt, and optional horizontal/vertical pattern CSV support for both P2P and coverage workflows.
+- Optional simple terminal clutter correction with WorldCover-style land-cover sampling; clutter loss components (`clutter_tx_db`, `clutter_rx_db`, `total_path_loss_db`) are now visible in all report payloads.
+- `worldcover_downloader.py`: ESA WorldCover 2020 v100 tile download, caching, and clip/merge (mirrors the DEM downloader pattern).
+- `clutter_source_label()` helper for descriptive clutter source labels in reports.
+- `compute_terminal_clutter_losses()` helper for consistent terminal clutter loss computation.
+- Coverage report payloads now include `itm_loss_db`, `clutter_tx_db`, `clutter_rx_db`, and `total_path_loss_db` fields.
+- P2P clutter grid download now occurs after the bounding box is computed, ensuring the correct area is covered.
+
+### Changed
+
+- Clutter source in P2P and coverage reports is now produced by `clutter_source_label()` instead of a raw file path or inline conditional.
+- Coverage clutter reporting now uses the TX terminal clutter loss as the representative `clutter_tx_db` and derives `clutter_rx_db` from the grid-wide mean totals.
+
+### Removed
+
+- The obsolete Qt compatibility helper module has been removed; source now uses QGIS 4 / Qt 6 APIs directly.
+
+### Fixed
+
 - Fix Qt 6 `QAction` import location and keep source checks for direct Qt 6 enum usage.
+- Fix P2P clutter grid download bounding box: WorldCover tiles are now fetched after the padded TX–RX extent is known, preventing zero-area downloads when the TX and RX are close together.
 
 ## [1.2.0]
 

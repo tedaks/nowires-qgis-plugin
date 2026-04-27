@@ -257,6 +257,7 @@ def clip_and_merge_worldcover(tile_paths, south, north, west, east, temp_dir=Non
         if result is None:
             logger.warning("Warp failed for %s", os.path.basename(path))
             continue
+        result = None
 
         check = gdal.Open(clip_path)
         if check is None:
@@ -285,6 +286,7 @@ def clip_and_merge_worldcover(tile_paths, south, north, west, east, temp_dir=Non
     if result is None:
         logger.error("WorldCover merge Warp failed")
         return None
+    result = None
 
     return merged_path
 
