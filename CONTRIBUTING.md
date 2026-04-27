@@ -3,6 +3,7 @@
 ## Development Notes
 
 - Target platform: QGIS 4.x
+- Qt target: Qt 6 / PyQt 6 only; do not add Qt 5 compatibility shims
 - Language: Python
 - Raster/terrain source: Copernicus GLO-30
 - Propagation engine: bundled `itm/`

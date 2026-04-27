@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Remove the obsolete Qt compatibility helper module and use QGIS 4 / Qt 6 APIs directly.
+- Fix Qt 6 `QAction` import location and keep source checks for direct Qt 6 enum usage.
+
 ## [1.2.0]
 
 - Remove `gdal_calc.py` (dead code with `eval()` usage and deprecated `optparse`).

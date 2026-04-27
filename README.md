@@ -27,9 +27,12 @@ This repository contains the QGIS 4 plugin source for **NoWires**.
 ## Requirements
 
 - QGIS 4.0 or later
+- Qt 6 / PyQt 6 as bundled with QGIS 4
 - Internet connection (for DEM tile downloads)
 - GDAL (bundled with QGIS)
 - numpy (bundled with QGIS)
+
+NoWires does not maintain a Qt 5 compatibility layer. Source code uses QGIS 4 / Qt 6 APIs directly.
 
 No additional Python packages need to be installed. The ITM library ([tedaks/pyitm](https://github.com/tedaks/pyitm)) is bundled with this plugin.
 This plugin also adapts code from [tedaks/nowires](https://github.com/tedaks/nowires) and [tedaks/ContourLines](https://github.com/tedaks/ContourLines); see [NOTICE.md](NOTICE.md) for third-party attribution and license details.

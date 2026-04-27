@@ -59,11 +59,6 @@ from osgeo import ogr, osr
 
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid, haversine_m
-from .qt_compat import (
-    dock_widget_area_right,
-    matplotlib_qt_backend,
-    widget_attribute_delete_on_close,
-)
 from .radio import (
     CLIMATE_NAMES,
     ITM_MAX_FREQUENCY_MHZ,
@@ -983,8 +978,7 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         """Show a matplotlib profile chart as a non-modal dialog."""
         try:
             import matplotlib
-            backend_name, _backend_module = matplotlib_qt_backend()
-            matplotlib.use(backend_name)
+            matplotlib.use("QtAgg")
             import matplotlib.pyplot as plt
             from qgis.PyQt.QtWidgets import QDockWidget
             from qgis.PyQt.QtCore import Qt
@@ -1066,8 +1060,8 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         dock = QDockWidget("P2P Profile Chart", qgis_iface.mainWindow())
         dock.setWidget(canvas)
         dock.setFloating(True)
-        dock.setAttribute(widget_attribute_delete_on_close(Qt))
-        qgis_iface.addDockWidget(dock_widget_area_right(Qt), dock)
+        dock.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        qgis_iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
 
     def name(self):
         return "p2p_analysis"

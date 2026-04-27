@@ -9,7 +9,7 @@ version=1.2.0
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
-about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's Irregular Terrain Model (ITM). It provides point-to-point path loss analysis with Fresnel zone visualization, unified Coverage Analysis heatmap prediction with raster-derived range metrics, and contour line generation. DEM data is automatically downloaded from the Copernicus GLO-30 dataset hosted on AWS Open Data. The plugin bundles the ITM library from https://github.com/tedaks/pyitm and adapts code from https://github.com/tedaks/nowires and https://github.com/tedaks/ContourLines. See NOTICE.md for attribution and third-party licensing details.
+about=NoWires is a QGIS 4 plugin for radio propagation analysis powered by NTIA's Irregular Terrain Model (ITM), using the Qt 6 / PyQt 6 runtime bundled with QGIS 4. It provides point-to-point path loss analysis with Fresnel zone visualization, unified Coverage Analysis heatmap prediction with raster-derived range metrics, and contour line generation. DEM data is automatically downloaded from the Copernicus GLO-30 dataset hosted on AWS Open Data. The plugin bundles the ITM library from https://github.com/tedaks/pyitm and adapts code from https://github.com/tedaks/nowires and https://github.com/tedaks/ContourLines. See NOTICE.md for attribution and third-party licensing details.
 
 hasProcessingProvider=yes
 

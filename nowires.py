@@ -23,8 +23,8 @@
 import os
 
 from qgis.PyQt.QtCore import QTimer
-from qgis.PyQt.QtWidgets import QAction, QInputDialog
-from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtGui import QAction, QIcon
+from qgis.PyQt.QtWidgets import QInputDialog
 
 from qgis.core import QgsApplication
 import processing

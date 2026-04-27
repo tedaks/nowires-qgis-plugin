@@ -45,3 +45,9 @@ def test_contour_algorithm_uses_processing_context_for_layer_loading():
     assert "context.temporaryLayerStore().addMapLayer(layer)" in source
     assert "addLayerToLoadOnCompletion" in source
     assert "QgsProject.instance().addMapLayer(" not in source
+
+
+def test_contour_algorithm_uses_direct_qt6_painter_blend_enum():
+    source = _source_text()
+    assert "QPainter.CompositionMode.CompositionMode_ColorDodge" in source
+    assert "painter_blend_mode_color_dodge" not in source
