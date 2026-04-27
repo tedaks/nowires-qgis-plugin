@@ -295,6 +295,7 @@ def clip_and_merge(tile_paths, south, north, west, east, temp_dir=None, feedback
         if result is None:
             logger.warning("Warp failed for %s", os.path.basename(path))
             continue
+        result = None
 
         check = gdal.Open(clip_path)
         if check is None:
@@ -320,6 +321,7 @@ def clip_and_merge(tile_paths, south, north, west, east, temp_dir=None, feedback
     if result is None:
         logger.error("Merge Warp failed")
         return None
+    result = None
 
     return merged_path
 
