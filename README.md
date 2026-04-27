@@ -11,6 +11,8 @@ This repository contains the QGIS 4 plugin source for **NoWires**.
 ### Radio Propagation
 - **Point-to-Point Analysis**: Place TX and RX points on the map. Computes ITM path loss, terrain profile with Fresnel zone analysis, generates CSV/JSON/HTML reports, and creates vector layers for the link path, Fresnel geometry, and TX/RX markers.
 - **Coverage Analysis**: Place a transmitter, set a max analysis distance and grid resolution, then generate a heatmap raster showing received signal strength (dBm) plus range statistics derived from cells above sensitivity, with optional CSV/JSON/HTML report export. Coverage cells are sampled and georeferenced at cell centers so the heatmap lines up with the terrain and requested map extent.
+- **Antenna Presets And Pattern Files**: Antenna presets for omni, sector, and dish-style pattern planning, with optional horizontal/vertical pattern CSV files.
+- **Clutter / Land-Cover Correction**: Optional simple clutter correction using terminal land-cover categories. WorldCover 2020 tiles are auto-downloaded from the ESA AWS open data bucket when clutter is enabled and no raster is supplied; users can also provide a local raster.
 - **Reliability Outputs**: P2P and coverage reports now include fade-margin classes plus formal-or-fallback availability guidance.
 - **Coverage Opacity Control**: Adjust the most recent coverage raster opacity from a live plugin dialog after the analysis finishes.
 
@@ -50,6 +52,8 @@ This plugin also adapts code from [tedaks/nowires](https://github.com/tedaks/now
 - `algorithm_p2p.py`: point-to-point ITM analysis
 - `algorithm_coverage.py`: coverage heatmap analysis
 - `algorithm_contour.py`: contour line generation
+- `antenna.py`: antenna radiation pattern model with presets and pattern files
+- `clutter.py`: terminal clutter correction helpers
 - `coverage_engine.py`: coverage raster computation engine
 - `coverage_compute.py`: shared coverage propagation helpers
 - `coverage_colors.py`: coverage color-application helpers

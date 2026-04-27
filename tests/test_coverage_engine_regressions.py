@@ -54,10 +54,10 @@ def test_compute_coverage_runs_in_single_process_mode(monkeypatch):
     monkeypatch.setattr(
         coverage_engine,
         "_itm_worker",
-        lambda task: (task[0], task[1], 123.0, -77.0),
+        lambda task: (task[0], task[1], 123.0, -77.0, 120.0, 2.0, 1.0),
     )
 
-    prx_grid, loss_grid, *_ = coverage_engine.compute_coverage(
+    prx_grid, loss_grid, *_extra = coverage_engine.compute_coverage(
         elev_grid=_DummyGrid(),
         tx_lat=0.0,
         tx_lon=0.0,
@@ -126,6 +126,6 @@ def test_compute_coverage_cleans_shared_memory_when_cancelled(monkeypatch):
         feedback=CancelledFeedback(),
     )
 
-    assert result == (None, None, 0, 0, 0, 0)
+    assert result == (None, None, 0, 0, 0, 0, None, None)
     assert fake_shm.closed is True
     assert fake_shm.unlinked is True

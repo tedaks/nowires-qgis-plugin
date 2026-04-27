@@ -36,6 +36,9 @@ def test_build_coverage_report_payload_contains_summary_values():
         min_distance_km=0.2,
         max_distance_km=4.7,
         average_distance_km=2.6,
+        clutter_model="Simple clutter correction",
+        clutter_source="memory",
+        tx_antenna_preset="sector_120",
     )
 
     assert payload["report_type"] == "coverage"
@@ -44,6 +47,9 @@ def test_build_coverage_report_payload_contains_summary_values():
     assert payload["results"]["availability_method"] == "fallback_margin"
     assert payload["results"]["reliability_summary"] == "Reliable"
     assert payload["status"]["summary"] == "HAS USABLE CELLS"
+    assert payload["inputs"]["clutter_model"] == "Simple clutter correction"
+    assert payload["inputs"]["clutter_source"] == "memory"
+    assert payload["inputs"]["tx_antenna_preset"] == "sector_120"
 
 
 def test_build_empty_coverage_report_payload_records_failed_grid_without_fake_stats():

@@ -3,7 +3,11 @@
 
 import numpy as np
 
+from antenna import AntennaConfig
 from coverage_engine import build_coverage_tasks, should_use_multiprocessing
+
+
+_OMNI_CONFIG = AntennaConfig(preset="omni")
 
 
 def test_should_use_multiprocessing_disabled_on_windows():
@@ -35,8 +39,11 @@ def test_build_coverage_tasks_keeps_center_pixel_with_minimum_distance():
         situation_pct=50.0,
         eirp_dbm=49.0,
         rx_gain_dbi=2.0,
-        antenna_az_deg=None,
-        antenna_beamwidth_deg=360.0,
+        antenna_config=_OMNI_CONFIG,
+        clutter_enabled=False,
+        clutter_grid=None,
+        tx_clutter_loss_db=0.0,
+        rx_clutter_override=None,
         lats=np.array([13.9995, 14.0, 14.0005]),
         lons=np.array([120.9995, 121.0, 121.0005]),
     )
@@ -74,8 +81,11 @@ def test_build_coverage_tasks_keeps_nearest_pixels_for_even_ui_grid_sizes():
         situation_pct=50.0,
         eirp_dbm=49.0,
         rx_gain_dbi=2.0,
-        antenna_az_deg=None,
-        antenna_beamwidth_deg=360.0,
+        antenna_config=_OMNI_CONFIG,
+        clutter_enabled=False,
+        clutter_grid=None,
+        tx_clutter_loss_db=0.0,
+        rx_clutter_override=None,
         lats=lats,
         lons=lons,
     )

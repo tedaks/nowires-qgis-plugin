@@ -190,3 +190,23 @@ def test_p2p_profile_chart_uses_direct_qt6_enums():
     assert "Qt.DockWidgetArea.RightDockWidgetArea" in source
     assert "widget_attribute_delete_on_close" not in source
     assert "dock_widget_area_right" not in source
+
+
+def test_p2p_algorithm_exposes_antenna_and_clutter_parameters():
+    source = _p2p_source()
+    assert 'TX_ANTENNA_PRESET = "TX_ANTENNA_PRESET"' in source
+    assert 'RX_ANTENNA_PRESET = "RX_ANTENNA_PRESET"' in source
+    assert 'TX_FRONT_BACK_DB = "TX_FRONT_BACK_DB"' in source
+    assert 'TX_DOWNTILT_DEG = "TX_DOWNTILT_DEG"' in source
+    assert 'CLUTTER_MODEL = "CLUTTER_MODEL"' in source
+    assert 'CLUTTER_RASTER = "CLUTTER_RASTER"' in source
+    assert 'TX_CLUTTER_OVERRIDE = "TX_CLUTTER_OVERRIDE"' in source
+    assert 'RX_CLUTTER_OVERRIDE = "RX_CLUTTER_OVERRIDE"' in source
+
+
+def test_p2p_algorithm_reports_total_path_loss_components():
+    source = _p2p_source()
+    assert "total_path_loss_db" in source
+    assert "clutter_tx_db" in source
+    assert "clutter_rx_db" in source
+    assert "antenna_gain_adjustment_db" in source

@@ -53,7 +53,7 @@ from .coverage_compute import compute_itm_p2p
 
 import numpy as np
 
-from .antenna import antenna_gain_factor
+from .antenna import antenna_config_from_values, antenna_gain_adjustment_db
 from .elevation import sample_line_from_grid
 
 logger = logging.getLogger(__name__)
@@ -75,7 +75,8 @@ _CoverageTask = namedtuple(
         "step_m", "n_pts", "tx_h_m", "rx_h_m", "climate", "N0",
         "f_mhz", "polarization", "epsilon", "sigma",
         "time_pct", "location_pct", "situation_pct",
-        "eirp_dbm", "ant_gain_adj", "rx_gain_dbi",
+        "eirp_dbm", "antenna_config", "rx_gain_dbi",
+        "clutter_tx_db", "clutter_rx_db",
     ],
 )
 
@@ -139,6 +140,18 @@ def _itm_worker(args):
         task.n_pts,
     )
 
+    vertical_angle_deg = math.degrees(
+        math.atan2(
+            (float(elevs[-1]) + task.rx_h_m) - (float(elevs[0]) + task.tx_h_m),
+            max(task.dist_m, 1.0),
+        )
+    )
+    ant_gain_adj = antenna_gain_adjustment_db(
+        bearing_deg=task.bearing,
+        elevation_angle_deg=vertical_angle_deg,
+        config=task.antenna_config,
+    )
+
     result = compute_itm_p2p(
         h_tx__meter=task.tx_h_m,
         h_rx__meter=task.rx_h_m,
@@ -154,15 +167,24 @@ def _itm_worker(args):
         location_pct=task.location_pct,
         situation_pct=task.situation_pct,
         eirp_dbm=task.eirp_dbm,
-        ant_gain_adj=task.ant_gain_adj,
+        ant_gain_adj=ant_gain_adj,
         rx_gain_dbi=task.rx_gain_dbi,
+        clutter_tx_db=task.clutter_tx_db,
+        clutter_rx_db=task.clutter_rx_db,
     )
 
     if result is None:
         return None
 
-    loss_db, prx = result
-    return (task.i, task.j, loss_db, prx)
+    return (
+        task.i,
+        task.j,
+        result["total_path_loss_db"],
+        result["received_power_dbm"],
+        result["itm_loss_db"],
+        result["clutter_tx_db"],
+        result["clutter_rx_db"],
+    )
 
 
 def _itm_worker_batch(batch):
@@ -212,11 +234,16 @@ def build_coverage_tasks(
     situation_pct,
     eirp_dbm,
     rx_gain_dbi,
-    antenna_az_deg,
-    antenna_beamwidth_deg,
+    antenna_config,
+    clutter_enabled,
+    clutter_grid,
+    tx_clutter_loss_db,
+    rx_clutter_override,
     lats,
     lons,
 ):
+    from .clutter import compute_terminal_clutter_losses
+
     lat_per_m = 1.0 / 111320.0
     lon_per_m = 1.0 / (111320.0 * max(math.cos(math.radians(tx_lat)), 0.01))
     dlat = (lats[:, np.newaxis] - tx_lat) / lat_per_m
@@ -236,7 +263,17 @@ def build_coverage_tasks(
                 3, min(int(round(modeled_d_m / profile_step_m)) + 1, max_profile_pts)
             )
             step_m = modeled_d_m / (n_pts - 1)
-            ant_gain = antenna_gain_factor(b, antenna_az_deg, antenna_beamwidth_deg)
+            rx_clutter = compute_terminal_clutter_losses(
+                tx_lat=tx_lat,
+                tx_lon=tx_lon,
+                rx_lat=float(lats[i]),
+                rx_lon=float(lons[j]),
+                frequency_mhz=f_mhz,
+                enabled=clutter_enabled,
+                land_cover_grid=clutter_grid,
+                tx_override="open",
+                rx_override=rx_clutter_override,
+            )
             tasks.append(
                 (
                     i,
@@ -259,8 +296,10 @@ def build_coverage_tasks(
                     location_pct,
                     situation_pct,
                     eirp_dbm,
-                    ant_gain,
+                    antenna_config,
                     rx_gain_dbi,
+                    tx_clutter_loss_db,
+                    rx_clutter.rx_loss_db,
                 )
             )
     return tasks
@@ -324,8 +363,19 @@ def compute_coverage(
     time_pct=50.0,
     location_pct=50.0,
     situation_pct=50.0,
+    antenna_preset=0,
+    antenna_front_back_db=25.0,
+    antenna_downtilt_deg=0.0,
+    antenna_horizontal_pattern_path=None,
+    antenna_vertical_pattern_path=None,
+    clutter_enabled=False,
+    clutter_grid=None,
+    tx_clutter_override=None,
+    rx_clutter_override=None,
     feedback=None,
 ):
+    from .clutter import compute_terminal_clutter_losses
+
     global _cov_grid_data, _cov_grid_meta
     radius_m = radius_km * 1000.0
     lat_per_m = 1.0 / METERS_PER_DEGREE_LAT
@@ -342,6 +392,30 @@ def compute_coverage(
     lons = _coverage_axis_centers(min_lon, max_lon, grid_size)
     prx_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
     loss_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
+    itm_loss_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
+    clutter_loss_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
+
+    antenna_config = antenna_config_from_values(
+        preset=antenna_preset,
+        azimuth_deg=antenna_az_deg,
+        horizontal_beamwidth_deg=antenna_beamwidth_deg,
+        front_back_db=antenna_front_back_db,
+        downtilt_deg=antenna_downtilt_deg,
+        horizontal_pattern_path=antenna_horizontal_pattern_path,
+        vertical_pattern_path=antenna_vertical_pattern_path,
+    )
+
+    tx_clutter = compute_terminal_clutter_losses(
+        tx_lat=tx_lat,
+        tx_lon=tx_lon,
+        rx_lat=tx_lat,
+        rx_lon=tx_lon,
+        frequency_mhz=f_mhz,
+        enabled=clutter_enabled,
+        land_cover_grid=clutter_grid,
+        tx_override=tx_clutter_override,
+        rx_override=tx_clutter_override,
+    )
 
     tasks = build_coverage_tasks(
         tx_lat,
@@ -363,15 +437,18 @@ def compute_coverage(
         situation_pct,
         eirp_dbm,
         rx_gain_dbi,
-        antenna_az_deg,
-        antenna_beamwidth_deg,
+        antenna_config,
+        clutter_enabled,
+        clutter_grid,
+        tx_clutter.tx_loss_db,
+        rx_clutter_override,
         lats,
         lons,
     )
 
     if not tasks:
         logger.warning("No coverage pixels within the specified radius.")
-        return prx_grid, loss_grid, min_lat, max_lat, min_lon, max_lon
+        return prx_grid, loss_grid, min_lat, max_lat, min_lon, max_lon, itm_loss_grid, clutter_loss_grid
 
     grid_meta = elev_grid.grid_meta_dict()
     grid_meta["tx_lat"] = tx_lat
@@ -417,12 +494,14 @@ def compute_coverage(
                     if feedback and feedback.isCanceled():
                         logger.info("Coverage cancelled by user")
                         _release_shared_memory(shm)
-                        return None, None, 0, 0, 0, 0
+                        return None, None, 0, 0, 0, 0, None, None
                     for result in batch_results:
                         if result is not None:
-                            i, j, loss_db, prx = result
+                            i, j, loss_db, prx, itm_loss_db, clutter_tx_db, clutter_rx_db = result
                             loss_grid[i, j] = loss_db
                             prx_grid[i, j] = prx
+                            itm_loss_grid[i, j] = itm_loss_db
+                            clutter_loss_grid[i, j] = clutter_tx_db + clutter_rx_db
                         else:
                             pixels_failed += 1
                         pixels_done += 1
@@ -453,12 +532,14 @@ def compute_coverage(
         for task_idx, task in enumerate(tasks):
             if feedback and feedback.isCanceled():
                 logger.info("Coverage cancelled by user")
-                return None, None, 0, 0, 0, 0
+                return None, None, 0, 0, 0, 0, None, None
             result = _itm_worker(task)
             if result is not None:
-                i, j, loss_db, prx = result
+                i, j, loss_db, prx, itm_loss_db, clutter_tx_db, clutter_rx_db = result
                 loss_grid[i, j] = loss_db
                 prx_grid[i, j] = prx
+                itm_loss_grid[i, j] = itm_loss_db
+                clutter_loss_grid[i, j] = clutter_tx_db + clutter_rx_db
             else:
                 pixels_failed += 1
             pixels_done += 1
@@ -492,4 +573,4 @@ def compute_coverage(
             failure_pct,
         )
 
-    return prx_grid, loss_grid, min_lat, max_lat, min_lon, max_lon
+    return prx_grid, loss_grid, min_lat, max_lat, min_lon, max_lon, itm_loss_grid, clutter_loss_grid

@@ -68,7 +68,11 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
 - [dem_downloader.py](dem_downloader.py)
   Copernicus GLO-30 download, cache, merge, clip
 - [antenna.py](antenna.py)
-  Directional antenna gain adjustment
+  Directional antenna gain adjustment, presets, pattern files, and vertical downtilt
+- [clutter.py](clutter.py)
+  Terminal clutter correction helpers
+- [worldcover_downloader.py](worldcover_downloader.py)
+  ESA WorldCover 2020 v100 tile download, caching, and clip/merge
 - [overlay_raster.py](overlay_raster.py)
   Overlay raster sizing helpers
 - [three_d.py](three_d.py)
@@ -296,7 +300,15 @@ Key behaviors:
 - output grids are initialized as `float32`
 - computations are limited to the requested envelope
 - each pixel samples a terrain path between TX and cell center
-- antenna directionality is applied through `antenna_gain_factor()`
+- antenna directionality is applied through `antenna_gain_factor()` and `antenna_gain_adjustment_db()`
+
+### Antenna Pattern Layer
+
+`antenna.py` returns relative gain adjustments. Coverage applies the TX pattern per pixel; P2P applies TX and RX pattern adjustments using forward and reverse bearings plus the endpoint vertical angle.
+
+### Clutter Correction Layer
+
+`clutter.py` implements the optional terminal correction layer. It keeps ITM unchanged, samples a WorldCover-compatible raster at terminal locations, maps raw classes to propagation categories, and adds terminal losses after ITM.
 - Windows defaults to single-process mode to avoid spawning extra QGIS instances
 - non-Windows runtimes may use multiprocessing with shared memory
 
