@@ -107,18 +107,7 @@ If a more formal microwave-oriented model is needed later:
 
 Use ESA WorldCover plus a custom terminal clutter correction module, layered on top of ITM, with simple configurable excess-loss categories in v1. `itur` is useful elsewhere, but not as the core of this land-cover/clutter feature.
 
-## 3. Link Reliability Outputs
-
-> **Status: Done.** Reliability outputs are in `reliability.py` and both P2P and coverage reports include `fade_margin_class`, `availability_method`, `availability_estimate_pct`, and `reliability_summary`.
-
-Build clearer user-facing outputs around the existing ITM variability inputs:
-- fade margin classification
-- availability estimate
-- service / marginal / unreliable summaries
-
-This would make results easier to interpret without forcing users to manually translate raw path-loss numbers into operational meaning.
-
-## 4. Coverage Comparison Mode
+## 3. Coverage Comparison Mode
 
 Allow users to run and compare two coverage analyses:
 - before / after antenna height
@@ -128,31 +117,7 @@ Allow users to run and compare two coverage analyses:
 
 This would be especially useful for engineering tradeoff studies and quick planning iterations.
 
-## 5. TX/RX Map Layers For P2P
-
-> **Status: Done.** P2P analysis produces a TX/RX marker vector layer via `report_payloads.write_p2p_marker_layer()` with role, antenna height, gain, power, and sensitivity attributes.
-
-Create explicit TX and RX point layers with useful attributes:
-- role
-- antenna type
-- height
-- gain
-
-This would make point-to-point outputs easier to inspect, symbolize, label, and reuse in QGIS workflows.
-
-## 6. Better Report Export
-
-> **Status: Done.** P2P and coverage analyses export CSV, JSON, and HTML reports via `report_export.py`. Reports include all inputs, link-budget/summary values, and reliability fields.
-
-Add one-click export for P2P and coverage summaries:
-- CSV
-- JSON
-- printable HTML or PDF
-- include assumptions and key inputs
-
-This would help users share analysis results without manually collecting values from the UI.
-
-## 7. Batch Analysis
+## 4. Batch Analysis
 
 Add support for:
 - one TX to many RX points
@@ -161,7 +126,7 @@ Add support for:
 
 This is likely the biggest payoff feature for actual network-planning workflows.
 
-## 8. Profile Chart Improvements
+## 5. Profile Chart Improvements
 
 Improve the existing profile chart with:
 - hover values
@@ -171,7 +136,7 @@ Improve the existing profile chart with:
 
 The chart is already useful, and this would make it much better for practical review and reporting.
 
-## 9. Native Benchmark And Performance Guardrails
+## 6. Native Benchmark And Performance Guardrails
 
 Extend the current benchmark work into:
 - a couple of named reference cases
@@ -180,7 +145,7 @@ Extend the current benchmark work into:
 
 This would make future performance work less guessy and more measurable.
 
-## 10. Windows 3D Fallback UX
+## 7. Windows 3D Fallback UX
 
 Because plugin-side 3D launch is unsafe on Windows, improve the fallback flow:
 - clearer message
@@ -188,3 +153,21 @@ Because plugin-side 3D launch is unsafe on Windows, improve the fallback flow:
 - brief guidance on opening the native QGIS 3D view
 
 This would make the current Windows limitation less confusing and less frustrating for users.
+
+## Completed
+
+### Link Reliability Outputs
+
+Reliability outputs are in `reliability.py` and both P2P and coverage reports include:
+- `fade_margin_class`
+- `availability_method`
+- `availability_estimate_pct`
+- `reliability_summary`
+
+### TX/RX Map Layers For P2P
+
+P2P analysis produces a TX/RX marker vector layer via `report_payloads.write_p2p_marker_layer()` with role, antenna height, gain, power, and sensitivity attributes.
+
+### Better Report Export
+
+P2P and coverage analyses export CSV, JSON, and HTML reports via `report_export.py`. Reports include all inputs, link-budget/summary values, and reliability fields.
