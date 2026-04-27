@@ -80,7 +80,6 @@ from .dem_downloader import (
     download_tiles,
 )
 from .overlay_raster import build_overview_levels, choose_overlay_dimensions
-from .qt_compat import painter_blend_mode_color_dodge
 from .three_d import configure_contours_for_3d
 
 
@@ -670,7 +669,9 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
             if dem_layer.isValid():
                 from qgis.PyQt.QtGui import QPainter
 
-                dem_layer.setBlendMode(painter_blend_mode_color_dodge(QPainter))
+                dem_layer.setBlendMode(
+                    QPainter.CompositionMode.CompositionMode_ColorDodge
+                )
                 _queue_layer_for_loading(context, dem_layer, "Elevation Overlay")
                 self._raster_layer_ids.append(dem_layer.id())
             else:

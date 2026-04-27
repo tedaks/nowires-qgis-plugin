@@ -8,6 +8,7 @@ PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
 OPACITY_SOURCE = os.path.join(PLUGIN_DIR, "coverage_opacity.py")
 PLUGIN_SOURCE = os.path.join(PLUGIN_DIR, "nowires.py")
 COVERAGE_SOURCE = os.path.join(PLUGIN_DIR, "algorithm_coverage.py")
+LEGEND_SOURCE = os.path.join(PLUGIN_DIR, "coverage_legend.py")
 
 
 def _text(path):
@@ -30,14 +31,11 @@ def test_opacity_module_has_dialog_class():
     assert "class CoverageOpacityDialog(QDialog):" in source
 
 
-def test_opacity_dialog_uses_qt_compat_slider_helpers():
+def test_opacity_dialog_uses_qt6_slider_enums_directly():
     source = _text(OPACITY_SOURCE)
-    assert (
-        "from .qt_compat import slider_orientation_horizontal, slider_tick_position_below"
-        in source
-    )
-    assert "slider_orientation_horizontal(Qt)" in source
-    assert "slider_tick_position_below(QSlider)" in source
+    assert "from .qt_compat import" not in source
+    assert "QSlider(Qt.Orientation.Horizontal)" in source
+    assert "QSlider.TickPosition.TicksBelow" in source
 
 
 def test_opacity_module_uses_stored_layer_id_first():
@@ -102,6 +100,21 @@ def test_plugin_imports_opacity_module():
         "from .coverage_opacity import find_latest_coverage_layer, CoverageOpacityDialog"
         in source
     )
+
+
+def test_plugin_imports_qaction_from_qtgui_for_qt6():
+    source = _text(PLUGIN_SOURCE)
+    assert "from qgis.PyQt.QtGui import QAction, QIcon" in source
+    assert "from qgis.PyQt.QtWidgets import QAction" not in source
+
+
+def test_coverage_legend_uses_qt6_enums_directly():
+    source = _text(LEGEND_SOURCE)
+    assert "from .qt_compat import" not in source
+    assert "QFrame.Shape.StyledPanel" in source
+    assert "Qt.WidgetAttribute.WA_TransparentForMouseEvents" in source
+    assert "QEvent.Type.Resize" in source
+    assert "QEvent.Type.Show" in source
 
 
 def test_plugin_adds_opacity_menu_action():

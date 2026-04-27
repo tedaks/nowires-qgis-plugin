@@ -182,3 +182,11 @@ def test_p2p_algorithm_removes_existing_profile_and_fresnel_outputs():
     assert "_remove_existing_ogr_dataset(driver, path)" in source
     assert "_remove_existing_ogr_dataset(poly_driver, poly_path)" in source
     assert "_remove_existing_ogr_dataset(lines_driver, lines_path)" in source
+
+
+def test_p2p_profile_chart_uses_direct_qt6_enums():
+    source = _p2p_source()
+    assert "Qt.WidgetAttribute.WA_DeleteOnClose" in source
+    assert "Qt.DockWidgetArea.RightDockWidgetArea" in source
+    assert "widget_attribute_delete_on_close" not in source
+    assert "dock_widget_area_right" not in source

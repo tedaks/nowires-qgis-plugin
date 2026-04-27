@@ -8,7 +8,7 @@ NoWires is a QGIS 4 plugin for:
 - coverage heatmap analysis
 - contour line generation from Copernicus GLO-30 DEM data
 
-This guide is for end users. It focuses on installation, setup, and basic workflows. For implementation details and engineering reference material, see [TECH-DOC.md](TECH-DOC.md).
+This guide is for end users. It focuses on installation, setup, and basic workflows. For implementation details and engineering reference material, see [Technical_Documentation.md](Technical_Documentation.md).
 
 ## Before You Start
 
@@ -438,5 +438,5 @@ When reporting a problem, include:
 ## Further Reading
 
 - Project overview: [README.md](README.md)
-- Technical reference: [TECH-DOC.md](TECH-DOC.md)
+- Technical reference: [Technical_Documentation.md](Technical_Documentation.md)
 - Third-party notices: [NOTICE.md](NOTICE.md)

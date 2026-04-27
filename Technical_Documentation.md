@@ -15,6 +15,8 @@ NoWires is a QGIS 4 plugin that combines:
 - contour line generation
 - DEM download, caching, clipping, and derived overlay support
 
+The runtime target is QGIS 4 with its bundled Qt 6 / PyQt 6 stack. The plugin does not include a Qt 5 compatibility layer; UI code should use Qt 6 API locations and scoped enum names directly.
+
 ## High-Level Architecture
 
 The plugin is organized around QGIS Processing algorithms exposed by a custom provider.
@@ -71,8 +73,6 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   Overlay raster sizing helpers
 - [three_d.py](three_d.py)
   3D layer tracking and scene-opening helpers
-- [qt_compat.py](qt_compat.py)
-   QGIS 4 / Qt compatibility helpers
 
 ### Bundled Third-Party Engine
 
@@ -485,7 +485,7 @@ Test coverage includes:
 - coverage-engine behavior checks
 - benchmark and module-split regressions
 - 3D support contract checks
-- compatibility checks for QGIS 4 Qt helper assumptions
+- source-based checks for QGIS 4 / Qt 6 API usage
 
 GitHub Actions runs `pytest -q` for pushes and pull requests.
 
@@ -495,6 +495,7 @@ GitHub Actions runs `pytest -q` for pushes and pull requests.
 
 - target platform: QGIS 4.x
 - metadata currently advertises `qgisMinimumVersion=4.0`
+- Qt target: Qt 6 / PyQt 6 as provided by QGIS 4; Qt 5 compatibility shims are intentionally not supported
 
 ### Runtime Assumptions
 
