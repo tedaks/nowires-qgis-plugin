@@ -77,6 +77,13 @@ def build_p2p_report_payload(
     fresnel_1_violated,
     fresnel_60_violated,
     max_fresnel_radius_m,
+    total_path_loss_db=None,
+    clutter_tx_db=0.0,
+    clutter_rx_db=0.0,
+    clutter_source="off",
+    tx_antenna_preset="omni",
+    rx_antenna_preset="omni",
+    antenna_gain_adjustment_db=0.0,
 ):
     """Build the structured P2P report payload."""
     reliability = summarize_reliability(
@@ -104,6 +111,9 @@ def build_p2p_report_payload(
             "rx_gain_dbi": rx_gain,
             "cable_loss_db": cable_loss,
             "rx_sensitivity_dbm": rx_sensitivity_dbm,
+            "tx_antenna_preset": tx_antenna_preset,
+            "rx_antenna_preset": rx_antenna_preset,
+            "clutter_source": clutter_source,
         },
         "results": {
             "distance_m": dist_m,
@@ -114,6 +124,10 @@ def build_p2p_report_payload(
             "itm_path_loss_db": itm_loss_db,
             "excess_loss_db": itm_loss_db - fspl_db,
             "eirp_dbm": eirp_dbm,
+            "clutter_tx_db": clutter_tx_db,
+            "clutter_rx_db": clutter_rx_db,
+            "total_path_loss_db": itm_loss_db if total_path_loss_db is None else total_path_loss_db,
+            "antenna_gain_adjustment_db": antenna_gain_adjustment_db,
             "received_power_dbm": prx_dbm,
             "link_margin_db": margin_db,
             "availability_method": reliability["availability_method"],
@@ -160,6 +174,9 @@ def build_coverage_report_payload(
     min_distance_km,
     max_distance_km,
     average_distance_km,
+    clutter_model="Off",
+    clutter_source="off",
+    tx_antenna_preset="omni",
 ):
     """Build the structured coverage report payload."""
     reliability = summarize_reliability(
@@ -189,6 +206,9 @@ def build_coverage_report_payload(
             "rx_gain_dbi": rx_gain,
             "cable_loss_db": cable_loss,
             "rx_sensitivity_dbm": rx_sensitivity_dbm,
+            "clutter_model": clutter_model,
+            "clutter_source": clutter_source,
+            "tx_antenna_preset": tx_antenna_preset,
         },
         "results": {
             "valid_pixel_count": valid_pixel_count,
@@ -232,6 +252,9 @@ def build_empty_coverage_report_payload(
     cable_loss,
     rx_sensitivity_dbm,
     pixel_count,
+    clutter_model="Off",
+    clutter_source="off",
+    tx_antenna_preset="omni",
 ):
     """Build a coverage report payload for a grid with no valid modelled cells."""
     reliability = summarize_reliability(
@@ -261,6 +284,9 @@ def build_empty_coverage_report_payload(
             "rx_gain_dbi": rx_gain,
             "cable_loss_db": cable_loss,
             "rx_sensitivity_dbm": rx_sensitivity_dbm,
+            "clutter_model": clutter_model,
+            "clutter_source": clutter_source,
+            "tx_antenna_preset": tx_antenna_preset,
         },
         "results": {
             "valid_pixel_count": 0,

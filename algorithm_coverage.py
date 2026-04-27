@@ -48,6 +48,7 @@ from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingContext,
     QgsProcessingParameterEnum,
+    QgsProcessingParameterFile,
     QgsProcessingParameterFileDestination,
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
@@ -65,6 +66,14 @@ from .coverage_palette import build_heatmap_stops
 from .coverage_summary import summarize_coverage_grid
 from .coverage_compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
 from .coverage_engine import compute_coverage
+from .antenna import ANTENNA_PRESET_OPTIONS
+from .clutter import (
+    CLUTTER_MODEL_OPTIONS,
+    CLUTTER_OVERRIDE_OPTIONS,
+    LandCoverGrid,
+    clutter_override_value,
+    ensure_clutter_grid_for_area,
+)
 from .radio import (
     CLIMATE_NAMES,
     ITM_MAX_FREQUENCY_MHZ,
@@ -126,6 +135,15 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
     RX_SENSITIVITY = "RX_SENSITIVITY"
     ANTENNA_BW = "ANTENNA_BW"
     ANTENNA_AZ = "ANTENNA_AZ"
+    ANTENNA_PRESET = "ANTENNA_PRESET"
+    FRONT_BACK_DB = "FRONT_BACK_DB"
+    DOWNTILT_DEG = "DOWNTILT_DEG"
+    H_PATTERN = "H_PATTERN"
+    V_PATTERN = "V_PATTERN"
+    CLUTTER_MODEL = "CLUTTER_MODEL"
+    CLUTTER_RASTER = "CLUTTER_RASTER"
+    TX_CLUTTER_OVERRIDE = "TX_CLUTTER_OVERRIDE"
+    RX_CLUTTER_OVERRIDE = "RX_CLUTTER_OVERRIDE"
     N0 = "N0"
     EPSILON = "EPSILON"
     SIGMA = "SIGMA"
@@ -318,6 +336,44 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 maxValue=360.0,
             )
         )
+        self.addParameter(QgsProcessingParameterEnum(
+            self.ANTENNA_PRESET, "TX antenna preset",
+            options=ANTENNA_PRESET_OPTIONS, defaultValue=0,
+        ))
+        self.addParameter(QgsProcessingParameterNumber(
+            self.FRONT_BACK_DB, "TX front-to-back ratio (dB)",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=25.0, minValue=0.0,
+        ))
+        self.addParameter(QgsProcessingParameterNumber(
+            self.DOWNTILT_DEG, "TX downtilt (deg)",
+            type=QgsProcessingParameterNumber.Double,
+            defaultValue=0.0, minValue=-45.0, maxValue=45.0,
+        ))
+        self.addParameter(QgsProcessingParameterFile(
+            self.H_PATTERN, "TX horizontal pattern CSV",
+            extension="csv", optional=True,
+        ))
+        self.addParameter(QgsProcessingParameterFile(
+            self.V_PATTERN, "TX vertical pattern CSV",
+            extension="csv", optional=True,
+        ))
+        self.addParameter(QgsProcessingParameterEnum(
+            self.CLUTTER_MODEL, "Clutter correction",
+            options=CLUTTER_MODEL_OPTIONS, defaultValue=0,
+        ))
+        self.addParameter(QgsProcessingParameterFile(
+            self.CLUTTER_RASTER, "Land-cover raster (auto-downloaded if blank)",
+            extension="tif", optional=True,
+        ))
+        self.addParameter(QgsProcessingParameterEnum(
+            self.TX_CLUTTER_OVERRIDE, "TX clutter override",
+            options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0,
+        ))
+        self.addParameter(QgsProcessingParameterEnum(
+            self.RX_CLUTTER_OVERRIDE, "RX clutter override",
+            options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0,
+        ))
         n0_param = QgsProcessingParameterNumber(
             self.N0,
             "Surface refractivity N0 (N-units)",
@@ -424,6 +480,30 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
             # Directional antenna: honour the azimuth if set, default to 0° if blank
             antenna_az = self.parameterAsDouble(parameters, self.ANTENNA_AZ, context)
 
+        antenna_preset = self.parameterAsEnum(parameters, self.ANTENNA_PRESET, context)
+        front_back_db = self.parameterAsDouble(parameters, self.FRONT_BACK_DB, context)
+        downtilt_deg = self.parameterAsDouble(parameters, self.DOWNTILT_DEG, context)
+        h_pattern = self.parameterAsFile(parameters, self.H_PATTERN, context)
+        v_pattern = self.parameterAsFile(parameters, self.V_PATTERN, context)
+        clutter_enabled = self.parameterAsEnum(parameters, self.CLUTTER_MODEL, context) == 1
+        clutter_raster_path = self.parameterAsFile(parameters, self.CLUTTER_RASTER, context)
+        if clutter_raster_path:
+            clutter_grid = LandCoverGrid.from_raster(clutter_raster_path)
+        else:
+            clutter_grid = None
+        tx_clutter_override = clutter_override_value(
+            self.parameterAsEnum(parameters, self.TX_CLUTTER_OVERRIDE, context)
+        )
+        rx_clutter_override = clutter_override_value(
+            self.parameterAsEnum(parameters, self.RX_CLUTTER_OVERRIDE, context)
+        )
+
+        antenna_bw_override = (
+            None
+            if antenna_preset != 4 and antenna_bw == 360.0
+            else antenna_bw
+        )
+
         n0 = self.parameterAsDouble(parameters, self.N0, context)
         epsilon = self.parameterAsDouble(parameters, self.EPSILON, context)
         sigma = self.parameterAsDouble(parameters, self.SIGMA, context)
@@ -439,6 +519,14 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
             "TX: ({:.5f}, {:.5f}), F={:.1f} MHz, R={:.1f} km, Grid={}x{}".format(
                 tx_lat, tx_lon, f_mhz, radius_km, grid_size, grid_size
             )
+        )
+        feedback.pushInfo(
+            "Clutter correction: {}".format(
+                CLUTTER_MODEL_OPTIONS[1] if clutter_enabled else CLUTTER_MODEL_OPTIONS[0]
+            )
+        )
+        feedback.pushInfo(
+            "TX antenna preset: {}".format(ANTENNA_PRESET_OPTIONS[antenna_preset])
         )
 
         # Compute padded DEM area
@@ -462,6 +550,15 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
         feedback.setProgress(15)
         elev = ElevationGrid(dem_path)
 
+        if clutter_grid is None and clutter_enabled:
+            clutter_grid = ensure_clutter_grid_for_area(
+                south=south,
+                north=north,
+                west=west,
+                east=east,
+                feedback=feedback,
+            )
+
         feedback.pushInfo("Computing coverage...")
         feedback.setProgress(20)
 
@@ -482,7 +579,7 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
             cable_loss_db=cable_loss,
             rx_sensitivity_dbm=rx_sens,
             antenna_az_deg=antenna_az,
-            antenna_beamwidth_deg=antenna_bw,
+            antenna_beamwidth_deg=antenna_bw_override,
             polarization=polarization,
             climate=climate,
             N0=n0,
@@ -491,10 +588,28 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
             time_pct=time_pct,
             location_pct=location_pct,
             situation_pct=situation_pct,
+            antenna_preset=antenna_preset,
+            antenna_front_back_db=front_back_db,
+            antenna_downtilt_deg=downtilt_deg,
+            antenna_horizontal_pattern_path=h_pattern,
+            antenna_vertical_pattern_path=v_pattern,
+            clutter_enabled=clutter_enabled,
+            clutter_grid=clutter_grid,
+            tx_clutter_override=tx_clutter_override,
+            rx_clutter_override=rx_clutter_override,
             feedback=feedback,
         )
 
-        prx_grid, loss_grid, min_lat, max_lat, min_lon, max_lon = result
+        (
+            prx_grid,
+            loss_grid,
+            min_lat,
+            max_lat,
+            min_lon,
+            max_lon,
+            itm_loss_grid,
+            clutter_loss_grid,
+        ) = result
 
         if prx_grid is None:
             raise RuntimeError("Coverage computation was cancelled.")
@@ -597,6 +712,9 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                     cable_loss=cable_loss,
                     rx_sensitivity_dbm=rx_sens,
                     pixel_count=int(raster_grid.size),
+                    clutter_model=CLUTTER_MODEL_OPTIONS[1] if clutter_enabled else CLUTTER_MODEL_OPTIONS[0],
+                    clutter_source=clutter_raster_path or ("override" if tx_clutter_override or rx_clutter_override else "off"),
+                    tx_antenna_preset=ANTENNA_PRESET_OPTIONS[antenna_preset],
                 )
                 feedback.pushInfo("")
                 feedback.pushInfo("=" * 40)
@@ -668,6 +786,9 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                     min_distance_km=summary["min_distance_km"],
                     max_distance_km=summary["max_distance_km"],
                     average_distance_km=summary["average_distance_km"],
+                    clutter_model=CLUTTER_MODEL_OPTIONS[1] if clutter_enabled else CLUTTER_MODEL_OPTIONS[0],
+                    clutter_source=clutter_raster_path or ("override" if tx_clutter_override or rx_clutter_override else "off"),
+                    tx_antenna_preset=ANTENNA_PRESET_OPTIONS[antenna_preset],
                 )
                 feedback.pushInfo("")
                 feedback.pushInfo("=" * 40)

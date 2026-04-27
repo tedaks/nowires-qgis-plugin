@@ -217,3 +217,24 @@ def test_coverage_algorithm_uses_processing_context_for_layer_loading():
     assert "context.temporaryLayerStore().addMapLayer(layer)" in source
     assert "addLayerToLoadOnCompletion" in source
     assert "QgsProject.instance().addMapLayer(" not in source
+
+
+def test_coverage_algorithm_exposes_antenna_and_clutter_parameters():
+    source = _coverage_source()
+    assert 'ANTENNA_PRESET = "ANTENNA_PRESET"' in source
+    assert 'FRONT_BACK_DB = "FRONT_BACK_DB"' in source
+    assert 'DOWNTILT_DEG = "DOWNTILT_DEG"' in source
+    assert 'H_PATTERN = "H_PATTERN"' in source
+    assert 'V_PATTERN = "V_PATTERN"' in source
+    assert 'CLUTTER_MODEL = "CLUTTER_MODEL"' in source
+    assert 'CLUTTER_RASTER = "CLUTTER_RASTER"' in source
+    assert 'TX_CLUTTER_OVERRIDE = "TX_CLUTTER_OVERRIDE"' in source
+    assert 'RX_CLUTTER_OVERRIDE = "RX_CLUTTER_OVERRIDE"' in source
+
+
+def test_coverage_algorithm_forwards_clutter_to_engine():
+    source = _coverage_source()
+    assert "clutter_enabled=clutter_enabled" in source
+    assert "clutter_grid=clutter_grid" in source
+    assert "tx_clutter_override=tx_clutter_override" in source
+    assert "rx_clutter_override=rx_clutter_override" in source
