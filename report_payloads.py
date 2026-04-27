@@ -177,6 +177,10 @@ def build_coverage_report_payload(
     clutter_model="Off",
     clutter_source="off",
     tx_antenna_preset="omni",
+    itm_loss_db=None,
+    clutter_tx_db=0.0,
+    clutter_rx_db=0.0,
+    total_path_loss_db=None,
 ):
     """Build the structured coverage report payload."""
     reliability = summarize_reliability(
@@ -218,6 +222,10 @@ def build_coverage_report_payload(
             "mean_prx_dbm": mean_prx_dbm,
             "pct_above_sensitivity": pct_above_sensitivity,
             "usable_cell_count": usable_cell_count,
+            "itm_loss_db": itm_loss_db,
+            "clutter_tx_db": clutter_tx_db,
+            "clutter_rx_db": clutter_rx_db,
+            "total_path_loss_db": total_path_loss_db,
             "availability_method": reliability["availability_method"],
             "availability_estimate_pct": reliability["availability_estimate_pct"],
             "fade_margin_class": reliability["fade_margin_class"],
@@ -255,6 +263,10 @@ def build_empty_coverage_report_payload(
     clutter_model="Off",
     clutter_source="off",
     tx_antenna_preset="omni",
+    itm_loss_db=None,
+    clutter_tx_db=0.0,
+    clutter_rx_db=0.0,
+    total_path_loss_db=None,
 ):
     """Build a coverage report payload for a grid with no valid modelled cells."""
     reliability = summarize_reliability(
@@ -296,6 +308,10 @@ def build_empty_coverage_report_payload(
             "mean_prx_dbm": None,
             "pct_above_sensitivity": 0.0,
             "usable_cell_count": 0,
+            "itm_loss_db": itm_loss_db,
+            "clutter_tx_db": clutter_tx_db,
+            "clutter_rx_db": clutter_rx_db,
+            "total_path_loss_db": total_path_loss_db,
             "availability_method": reliability["availability_method"],
             "availability_estimate_pct": reliability["availability_estimate_pct"],
             "fade_margin_class": reliability["fade_margin_class"],
