@@ -2,6 +2,7 @@
 """Regression tests for provider and menu wiring."""
 
 import os
+import configparser
 
 
 PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
@@ -31,6 +32,20 @@ def test_docs_describe_coverage_analysis_only():
     assert "Coverage Analysis" in _text(README_SOURCE)
     assert "Coverage Radius Sweep" not in _text(README_SOURCE)
     assert "Coverage Analysis" in _text(METADATA_SOURCE)
+
+
+def test_metadata_targets_qgis4_only():
+    parser = configparser.ConfigParser()
+    parser.read(METADATA_SOURCE)
+    assert parser["general"]["qgisMinimumVersion"].startswith("4")
+
+
+def test_metadata_about_mentions_qgis4_qt6_target():
+    parser = configparser.ConfigParser()
+    parser.read(METADATA_SOURCE)
+    about = parser["general"]["about"]
+    assert "QGIS 4" in about
+    assert "Qt 6" in about
 
 
 def test_plugin_unload_clears_coverage_legend():

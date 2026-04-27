@@ -81,7 +81,10 @@ class CoverageLegendWidget(QFrame):
         return row
 
     def eventFilter(self, watched, event):
-        if watched is self._canvas and event.type() in (QEvent.Type.Resize, QEvent.Type.Show):
+        if watched is self._canvas and event.type() in (
+            QEvent.Type.Resize,
+            QEvent.Type.Show,
+        ):
             self._reposition()
         return super().eventFilter(watched, event)
 
