@@ -1234,11 +1234,33 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
     
                 clearances = los_h - fresnel_r - terrain_bulge
                 obstruction_indices = np.where(terrain_bulge > los_h - fresnel_r)[0]
-                for idx in obstruction_indices:
+
+                def _local_maxima(indices, arr):
+                    """Return indices that are local maxima of arr, sorted by value descending, capped at 5."""
+                    peaks = []
+                    for idx in indices:
+                        is_peak = True
+                        for offset in [-1, 1]:
+                            neighbor = idx + offset
+                            if 0 <= neighbor < len(arr) and neighbor in set(indices):
+                                if arr[neighbor] > arr[idx]:
+                                    is_peak = False
+                                    break
+                                elif arr[neighbor] == arr[idx] and neighbor < idx:
+                                    is_peak = False
+                                    break
+                        if is_peak:
+                            peaks.append(idx)
+                    peaks.sort(key=lambda i: arr[i], reverse=True)
+                    return peaks[:5]
+
+                obstruction_peaks = _local_maxima(list(obstruction_indices), terrain_bulge)
+                obstruction_annotations = []
+                for idx in obstruction_peaks:
                     ob_x = d_km[idx]
                     ob_y = terrain_bulge[idx]
                     deficit = ob_y - (los_h[idx] - fresnel_r[idx])
-                    ax.annotate(
+                    ann = ax.annotate(
                         "OBSTRUCTION\n"
                         "Dist: {:.1f} km\n"
                         "Height: {:.1f} m\n"
@@ -1252,13 +1274,15 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
                         bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.7),
                         ha="center",
                     )
+                    obstruction_annotations.append(ann)
     
                 fig.tight_layout()
     
                 canvas = FigureCanvasQTAgg(fig)
     
                 toggle_state = {"terrain": True, "los": True,
-                                "fresnel": True, "violation_band": True, "antennas": True}
+                                "fresnel": True, "violation_band": True, "antennas": True,
+                                "obstructions": True}
     
                 def update_visibility():
                     terrain_fill.set_visible(toggle_state["terrain"])
@@ -1270,6 +1294,8 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
                     f60_fill.set_visible(toggle_state["violation_band"])
                     tx_marker.set_visible(toggle_state["antennas"])
                     rx_marker.set_visible(toggle_state["antennas"])
+                    for ann in obstruction_annotations:
+                        ann.set_visible(toggle_state["obstructions"])
                     fig.canvas.draw_idle()
     
                 def toggle_terrain(state):
@@ -1291,35 +1317,47 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
                 def toggle_antennas(state):
                     toggle_state["antennas"] = bool(state)
                     update_visibility()
+
+                def toggle_obstructions(state):
+                    toggle_state["obstructions"] = bool(state)
+                    update_visibility()
     
                 def save_png():
                     try:
+                        default_name = "p2p_profile_{:.0f}MHz_{:.1f}km.png".format(f_mhz, dist_m / 1000)
                         path, _ = QFileDialog.getSaveFileName(
-                            dock, "Save PNG", "", "PNG Files (*.png)"
+                            dock, "Save PNG", default_name, "PNG Files (*.png)"
                         )
                         if path:
+                            if not path.lower().endswith(".png"):
+                                path += ".png"
                             fig.savefig(path, dpi=300, bbox_inches="tight")
                             QMessageBox.information(dock, "Saved", "Chart saved to:\n" + path)
                     except Exception as e:
                         logger.warning("Failed to save PNG: %s", e)
                         QMessageBox.warning(dock, "Error", "Failed to save PNG: " + str(e))
-    
+
                 def export_csv():
                     try:
+                        default_name = "p2p_profile_{:.0f}MHz_{:.1f}km.csv".format(f_mhz, dist_m / 1000)
                         path, _ = QFileDialog.getSaveFileName(
-                            dock, "Export CSV", "", "CSV Files (*.csv)"
+                            dock, "Export CSV", default_name, "CSV Files (*.csv)"
                         )
                         if path:
+                            if not path.lower().endswith(".csv"):
+                                path += ".csv"
+                            obstructs_los = terrain_bulge > los_h
                             with open(path, "w") as f:
-                                f.write("distance_m,terrain_elevation_m,los_m,fresnel_radius_m,clearance_m\n")
+                                f.write("distance_m,terrain_elevation_m,los_m,fresnel_radius_m,clearance_m,obstructs_los\n")
                                 for i in range(len(distances)):
                                     f.write(
-                                        "{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}\n".format(
+                                        "{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.0f}\n".format(
                                             distances[i],
                                             terrain_bulge[i],
                                             los_h[i],
                                             fresnel_r[i],
                                             clearances[i],
+                                            1 if obstructs_los[i] else 0,
                                         )
                                     )
                             QMessageBox.information(dock, "Exported", "Data exported to:\n" + path)
@@ -1352,6 +1390,10 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
                 cb_antennas = QCheckBox("Antennas", toolbar)
                 cb_antennas.setChecked(True)
                 cb_antennas.stateChanged.connect(toggle_antennas)
+
+                cb_obstructions = QCheckBox("Obstructions", toolbar)
+                cb_obstructions.setChecked(True)
+                cb_obstructions.stateChanged.connect(toggle_obstructions)
     
                 toolbar.addWidget(btn_png)
                 toolbar.addWidget(btn_csv)
@@ -1361,6 +1403,7 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
                 toolbar.addWidget(cb_fresnel)
                 toolbar.addWidget(cb_violation)
                 toolbar.addWidget(cb_antennas)
+                toolbar.addWidget(cb_obstructions)
     
                 tooltip = ax.text(0, 0, "", fontsize=8, visible=False,
                                   bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue", alpha=0.8))

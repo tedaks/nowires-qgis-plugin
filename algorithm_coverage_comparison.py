@@ -67,6 +67,7 @@ from .elevation import ElevationGrid, haversine_m
 from .coverage_engine import compute_coverage
 from .coverage_compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
 from .coverage_palette import build_heatmap_stops
+from .coverage_legend import show_coverage_legend
 from .antenna import ANTENNA_PRESET_OPTIONS
 from .clutter import (
     CLUTTER_MODEL_OPTIONS,
@@ -734,27 +735,53 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         band.FlushCache()
         ds = None
 
-    def _apply_delta_style(self, layer, threshold_db):
-        """Apply diverging blue-white-red color ramp centered at 0."""
+    def _apply_delta_style(self, layer, threshold_db, style="diverging"):
+        """Apply color ramp to delta raster. 'diverging' uses blue-white-red;
+        'threshold' shows only three categories: improved, unchanged, degraded."""
+        from qgis.PyQt.QtGui import QColor
+
         provider = layer.dataProvider()
         entries = []
 
-        from qgis.PyQt.QtGui import QColor
-
-        stops = [
-            (-threshold_db * 2, (30, 80, 180, 200), f"A better (<-{threshold_db:.0f} dB)"),
-            (-threshold_db, (80, 150, 220, 210), f"-{threshold_db:.0f} dB"),
-            (0.0, (255, 255, 255, 255), "No change"),
-            (threshold_db, (220, 150, 80, 210), f"+{threshold_db:.0f} dB"),
-            (threshold_db * 2, (180, 30, 30, 200), f"A worse (>+{threshold_db:.0f} dB)"),
-        ]
-
-        for value, rgba, label in stops:
-            entry = QgisColorRampShader.ColorRampItem()
-            entry.value = value
-            entry.color = QColor(rgba[0], rgba[1], rgba[2], rgba[3])
-            entry.label = label
-            entries.append(entry)
+        if style == "threshold":
+            entries = [
+                QgisColorRampShader.ColorRampItem(
+                    -1e6, QColor(30, 80, 180), f"A better (<-{threshold_db:.0f} dB)"
+                ),
+                QgisColorRampShader.ColorRampItem(
+                    -threshold_db, QColor(30, 80, 180), f"A better (<-{threshold_db:.0f} dB)"
+                ),
+                QgisColorRampShader.ColorRampItem(
+                    -threshold_db + 0.001, QColor(240, 240, 240), "No change"
+                ),
+                QgisColorRampShader.ColorRampItem(
+                    threshold_db - 0.001, QColor(240, 240, 240), "No change"
+                ),
+                QgisColorRampShader.ColorRampItem(
+                    threshold_db, QColor(180, 30, 30), f"A worse (>+{threshold_db:.0f} dB)"
+                ),
+                QgisColorRampShader.ColorRampItem(
+                    1e6, QColor(180, 30, 30), f"A worse (>+{threshold_db:.0f} dB)"
+                ),
+            ]
+        else:
+            entries = [
+                QgisColorRampShader.ColorRampItem(
+                    -threshold_db * 2, QColor(30, 80, 180, 200), f"A better (<-{threshold_db:.0f} dB)"
+                ),
+                QgisColorRampShader.ColorRampItem(
+                    -threshold_db, QColor(80, 150, 220, 210), f"-{threshold_db:.0f} dB"
+                ),
+                QgisColorRampShader.ColorRampItem(
+                    0.0, QColor(255, 255, 255, 255), "No change"
+                ),
+                QgisColorRampShader.ColorRampItem(
+                    threshold_db, QColor(220, 150, 80, 210), f"+{threshold_db:.0f} dB"
+                ),
+                QgisColorRampShader.ColorRampItem(
+                    threshold_db * 2, QColor(180, 30, 30, 200), f"A worse (>+{threshold_db:.0f} dB)"
+                ),
+            ]
 
         color_ramp_shader = QgisColorRampShader()
         color_ramp_shader.setColorRampType(QgisColorRampShader.ColorRampType.Interpolated)
@@ -936,8 +963,13 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         feedback.setProgress(80)
 
         if prx_grid_a.shape != prx_grid_b.shape:
+            grid_size_a_val = GRID_SIZE_PRESETS[self.parameterAsEnum(parameters, self.PANEL_A_GRID_SIZE, context)]
+            grid_size_b_val = GRID_SIZE_PRESETS[self.parameterAsEnum(parameters, self.PANEL_B_GRID_SIZE, context)]
             raise ValueError(
-                f"Panel A grid size ({prx_grid_a.shape}) and Panel B grid size ({prx_grid_b.shape}) must match."
+                "Panel A grid size ({}) and Panel B grid size ({}) must match. "
+                "Set both panels to the same grid size resolution.".format(
+                    grid_size_a_val, grid_size_b_val
+                )
             )
 
         loss_delta_grid = loss_grid_a - loss_grid_b
@@ -990,7 +1022,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
 
         layer_delta = QgisRasterLayer(output_delta_path, "Coverage Delta (A - B dB)")
         if layer_delta.isValid():
-            self._apply_delta_style(layer_delta, threshold_db)
+            self._apply_delta_style(layer_delta, threshold_db, style=delta_style)
             _queue_layer_for_loading(context, layer_delta, "Coverage Delta (A - B dB)")
 
         layer_a = QgisRasterLayer(output_a_path, "Coverage Panel A")
@@ -1002,6 +1034,8 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         if layer_b.isValid():
             self._apply_coverage_style(layer_b, rx_sens_b)
             _queue_layer_for_loading(context, layer_b, "Coverage Panel B")
+
+        show_coverage_legend(rx_sensitivity_dbm=rx_sens_a)
 
         valid_delta = valid_mask & ~np.isnan(loss_delta_grid)
         valid_count = int(valid_delta.sum())
@@ -1025,7 +1059,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             "tx_gain": tx_gain_a, "rx_gain": rx_gain_a, "cable_loss": cable_loss_a,
             "valid_pixels": int((~np.isnan(prx_grid_a)).sum()),
             "total_pixels": int(prx_grid_a.size),
-            "mean_prx": float(np.nanmean(prx_grid_a)) if ~np.isnan(prx_grid_a).any() else float('nan'),
+            "mean_prx": float(np.nanmean(prx_grid_a)) if np.any(~np.isnan(prx_grid_a)) else float('nan'),
         }
         panel_b_info = {
             "tx_lat": tx_lat_b, "tx_lon": tx_lon_b, "tx_h": tx_h_b, "rx_h": rx_h_b,
@@ -1033,7 +1067,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             "tx_gain": tx_gain_b, "rx_gain": rx_gain_b, "cable_loss": cable_loss_b,
             "valid_pixels": int((~np.isnan(prx_grid_b)).sum()),
             "total_pixels": int(prx_grid_b.size),
-            "mean_prx": float(np.nanmean(prx_grid_b)) if ~np.isnan(prx_grid_b).any() else float('nan'),
+            "mean_prx": float(np.nanmean(prx_grid_b)) if np.any(~np.isnan(prx_grid_b)) else float('nan'),
         }
         delta_info = {
             "style": delta_style,
@@ -1096,6 +1130,26 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         renderer = QgisSingleBandPseudoColorRenderer(provider, 1, shader)
         layer.setRenderer(renderer)
         layer.triggerRepaint()
+
+    def postProcessAlgorithm(self, context, feedback):
+        from qgis.core import QgsProject
+        root = QgsProject.instance().layerTreeRoot()
+        for layer_id in self._raster_layer_ids:
+            node = root.findLayer(layer_id)
+            if node is not None:
+                clone = node.clone()
+                parent = node.parent()
+                parent.removeChildNode(node)
+                parent.insertChildNode(0, clone)
+        return {}
+
+    def shortHelpString(self):
+        return (
+            "Run two coverage analyses side-by-side and produce a delta raster "
+            "showing the difference in path loss (Panel A minus Panel B) in dB. "
+            "Choose 'diverging' style for a continuous blue-white-red ramp, or "
+            "'threshold' style to classify pixels as improved / unchanged / degraded."
+        )
 
     def name(self):
         return "coverage_comparison"

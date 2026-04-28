@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Shared helpers for NoWires 3D scene support."""
 
-import os
+import sys
 
 from qgis.core import Qgis, QgsProject, QgisMapLayer
 from qgis.gui import QCheckBox, QMessageBox, QVBoxLayout, QWidget
@@ -24,11 +24,13 @@ class Windows3DFallbackDialog(QMessageBox):
             "Plugin-launched 3D view crashes QGIS on Windows due to a Qt/WSL conflict.\n\n"
             "You can still view your results in 3D manually:\n\n"
             "1. Go to View > 3D Map Views > New 3D Map View\n"
-            "2. The NoWires DEM and coverage layers will be\n"
-            "   automatically configured for 3D terrain"
+            "2. In the 3D view panel, click the wrench icon to configure terrain\n"
+            "3. Set the DEM layer as the terrain elevation source\n\n"
+            "The NoWires DEM and coverage layers will be highlighted in\n"
+            "the layer panel so you can find them easily."
         )
         self.setIcon(QMessageBox.Warning)
-        self.addButton("Open 3D View", QMessageBox.AcceptRole)
+        self.addButton("Highlight Layers", QMessageBox.AcceptRole)
         self.addButton("Close", QMessageBox.RejectRole)
 
         checkbox = QCheckBox("Highlight NoWires layers in layer panel")
@@ -38,13 +40,16 @@ class Windows3DFallbackDialog(QMessageBox):
 
 
 def highlight_nowires_layers(iface):
-    """Select and pan to NoWires DEM and coverage layers in layer tree."""
+    """Select and expand NoWires DEM, coverage, and contour layers in layer tree."""
     project = QgsProject.instance()
     dem_id = project.readEntry("NoWires", "last_dem_layer_id")[0]
     coverage_id = project.readEntry("NoWires", "last_coverage_layer_id")[0]
+    contour_id = project.readEntry("NoWires", "last_contour_layer_id")[0]
 
     root = project.layerTreeRoot()
-    for layer_id in [dem_id, coverage_id]:
+    for layer_id in [dem_id, coverage_id, contour_id]:
+        if not layer_id:
+            continue
         layer = project.mapLayer(layer_id)
         if layer:
             tree_layer = root.findLayer(layer.id())
@@ -111,19 +116,8 @@ def _next_3d_view_name(iface):
 
 def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
     """Create a new QGIS 3D map canvas using the latest NoWires layers."""
-    os_name = os.name
-    if os_name == "nt":
-        layers = resolve_nowires_3d_layers(QgsProject.instance())
-        dem_layer = layers["dem_layer"]
-        coverage_layer = layers["coverage_layer"]
-        contour_layer = layers["contour_layer"]
-        if contour_layer is not None:
-            _set_layer_visible(QgsProject.instance(), contour_layer)
-        if coverage_layer is not None:
-            _set_layer_visible(QgsProject.instance(), coverage_layer)
-        if dem_layer is not None:
-            _set_layer_visible(QgsProject.instance(), dem_layer)
-
+    is_windows = sys.platform == "win32"
+    if is_windows:
         dialog = Windows3DFallbackDialog()
         result = dialog.exec_()
         if result == QMessageBox.AcceptRole:

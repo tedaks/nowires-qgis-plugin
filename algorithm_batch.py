@@ -42,19 +42,20 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (
     Qgis,
-    QgisProcessingAlgorithm,
-    QgisProject,
-    QgisProcessingContext,
-    QgisProcessingException,
-    QgisProcessingParameterBoolean,
-    QgisProcessingParameterEnum,
-    QgisProcessingParameterFeatureSource,
-    QgisProcessingParameterFileDestination,
-    QgisProcessingParameterNumber,
-    QgisProcessingParameterPoint,
+    QgsProcessingAlgorithm,
+    QgsProject,
+    QgsProcessingContext,
+    QgsProcessingException,
+    QgsProcessingParameterBoolean,
+    QgsProcessingParameterEnum,
+    QgsProcessingParameterFeatureSource,
+    QgsProcessingParameterFile,
+    QgsProcessingParameterFileDestination,
+    QgsProcessingParameterNumber,
+    QgsProcessingParameterPoint,
 )
 from osgeo import ogr, osr
 
@@ -63,11 +64,14 @@ from .elevation import ElevationGrid, bearing_deg, haversine_m
 from .radio import (
     ANTENNA_PRESET_OPTIONS,
     CLIMATE_NAMES,
+    ITM_MIN_FREQUENCY_MHZ,
+    ITM_MAX_FREQUENCY_MHZ,
     K_FACTOR_PRESETS,
     PROP_MODE_NAMES,
     build_pfl,
     itm_p2p_loss,
     resolve_k_factor,
+    validate_itm_input_ranges,
 )
 from .antenna import (
     ANTENNA_PRESET_KEYS,
@@ -88,6 +92,18 @@ BATCH_MODE_OPTIONS = ["One-to-Many (single TX → multiple RX)", "Many-to-One (m
 RANK_BY_OPTIONS = ["Link margin (descending)", "Path loss (ascending)", "Clearance (descending)"]
 
 
+def _feat_attr(feat, name, default):
+    val = feat.attribute(name)
+    if val is None:
+        return default
+    try:
+        if isinstance(val, type(default)):
+            return val
+        return type(default)(val)
+    except (ValueError, TypeError):
+        return default
+
+
 def _queue_layer_for_loading(context, layer, name):
     """Hand a layer to Processing for loading instead of mutating the project."""
     if layer is None or not layer.isValid():
@@ -97,7 +113,7 @@ def _queue_layer_for_loading(context, layer, name):
         and hasattr(context, "addLayerToLoadOnCompletion")
     ):
         return False
-    project = QgisProject.instance()
+    project = QgsProject.instance()
     context.temporaryLayerStore().addMapLayer(layer)
     context.addLayerToLoadOnCompletion(
         layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
@@ -161,7 +177,7 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgisProcessingParameterFeatureSource(
+            QgsProcessingParameterFeatureSource(
                 self.RX_LAYER,
                 "RX point layer (for One-to-Many)",
                 [QgsProcessingParameterFeatureSource.GeometryType.Point],
@@ -169,16 +185,21 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgisProcessingParameterPoint(
+            QgsProcessingParameterPoint(
                 self.RX_POINT, "RX point (for Many-to-One)", optional=True
             )
         )
         self.addParameter(
-            QgisProcessingParameterFeatureSource(
+            QgsProcessingParameterFeatureSource(
                 self.TX_LAYER,
                 "TX candidate layer (for Many-to-One)",
                 [QgsProcessingParameterFeatureSource.GeometryType.Point],
                 optional=True,
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterPoint(
+                self.RX_POINT, "RX point (for Many-to-One)", optional=True
             )
         )
         self.addParameter(
@@ -431,7 +452,7 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
         )
 
     def processAlgorithm(self, parameters, context, feedback):
-        from qgis.core import QgisProject, QgsCoordinateReferenceSystem
+        from qgis.core import QgsCoordinateReferenceSystem
 
         mode = self.parameterAsEnum(parameters, self.MODE, context)
         rank_by = self.parameterAsEnum(parameters, self.RANK_BY, context)
@@ -463,10 +484,10 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
                 pt = geom.asPoint()
                 if pt is None:
                     continue
-                height = float(feat.attribute("height") or 10.0)
-                preset_key = str(feat.attribute("antenna_preset") or "omni")
-                az = float(feat.attribute("azimuth") or 0.0)
-                gain = float(feat.attribute("gain_db") or 0.0)
+                height = _feat_attr(feat, "height", 10.0)
+                preset_key = str(_feat_attr(feat, "antenna_preset", "omni"))
+                az = _feat_attr(feat, "azimuth", 0.0)
+                gain = _feat_attr(feat, "gain_db", 0.0)
                 rx_points.append({
                     "id": feat.id(),
                     "lat": pt.y(),
@@ -500,10 +521,10 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
                 pt = geom.asPoint()
                 if pt is None:
                     continue
-                height = float(feat.attribute("height") or 30.0)
-                preset_key = str(feat.attribute("antenna_preset") or "omni")
-                az = float(feat.attribute("azimuth") or 0.0)
-                gain = float(feat.attribute("gain_db") or 0.0)
+                height = _feat_attr(feat, "height", 30.0)
+                preset_key = str(_feat_attr(feat, "antenna_preset", "omni"))
+                az = _feat_attr(feat, "azimuth", 0.0)
+                gain = _feat_attr(feat, "gain_db", 0.0)
                 candidate_tx.append({
                     "id": feat.id(),
                     "lat": pt.y(),
@@ -564,6 +585,14 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
         n0 = self.parameterAsDouble(parameters, self.N0, context)
         epsilon = self.parameterAsDouble(parameters, self.EPSILON, context)
         sigma = self.parameterAsDouble(parameters, self.SIGMA, context)
+
+        validate_itm_input_ranges(
+            tx_height_m=tx_h,
+            rx_height_m=rx_h,
+            frequency_mhz=f_mhz,
+            surface_refractivity_n0=n0,
+            earth_conductivity_sigma=sigma,
+        )
         clutter_enabled = self.parameterAsEnum(parameters, self.CLUTTER_MODEL, context) == 1
         clutter_raster_path = self.parameterAsFile(parameters, self.CLUTTER_RASTER, context)
         if clutter_raster_path:
@@ -790,6 +819,10 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
         )
         self._write_batch_marker_layer(markers_path, results, feedback, mode)
 
+        from qgis.core import QgsVectorLayer
+        marker_layer = QgsVectorLayer(markers_path, "Batch P2P Markers")
+        _queue_layer_for_loading(context, marker_layer, "Batch P2P Markers")
+
         csv_path = self.parameterAsFileOutput(parameters, self.OUTPUT_CSV, context)
         json_path = self.parameterAsFileOutput(parameters, self.OUTPUT_JSON, context)
 
@@ -819,7 +852,14 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
         layer.CreateField(ogr.FieldDefn("point_id", ogr.OFTString))
         layer.CreateField(ogr.FieldDefn("margin_db", ogr.OFTReal))
         layer.CreateField(ogr.FieldDefn("loss_db", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("itm_loss_db", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("dist_km", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("clearance_pct", ogr.OFTReal))
         layer.CreateField(ogr.FieldDefn("status", ogr.OFTString))
+        layer.CreateField(ogr.FieldDefn("tx_lat", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("tx_lon", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("rx_lat", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("rx_lon", ogr.OFTReal))
 
         for rank, r in enumerate(results, 1):
             feat = ogr.Feature(layer.GetLayerDefn())
@@ -836,7 +876,14 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             feat.SetField("point_id", point_id)
             feat.SetField("margin_db", r["margin_db"])
             feat.SetField("loss_db", r["total_loss_db"])
+            feat.SetField("itm_loss_db", r["itm_loss_db"])
+            feat.SetField("dist_km", round(r["dist_km"], 3))
+            feat.SetField("clearance_pct", round(r["clearance_pct"], 1))
             feat.SetField("status", r["status"])
+            feat.SetField("tx_lat", r["tx_lat"])
+            feat.SetField("tx_lon", r["tx_lon"])
+            feat.SetField("rx_lat", r["rx_lat"])
+            feat.SetField("rx_lon", r["rx_lon"])
             layer.CreateFeature(feat)
 
         ds = None
@@ -898,6 +945,14 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
         with open(str(path), "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2, sort_keys=True)
             f.write("\n")
+
+    def shortHelpString(self):
+        return (
+            "Batch point-to-point link analysis supporting two modes:\n"
+            "- One-to-Many: single TX to multiple RX points from a vector layer\n"
+            "- Many-to-One: multiple candidate TX sites to a single RX point\n"
+            "Results are ranked by link margin, path loss, or Fresnel clearance."
+        )
 
     def name(self):
         return "batch_p2p_analysis"
