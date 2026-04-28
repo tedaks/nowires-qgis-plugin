@@ -44,11 +44,13 @@ class NoWiresProvider(QgsProcessingProvider):
     def loadAlgorithms(self):
         from .algorithm_p2p import P2PAlgorithm
         from .algorithm_coverage import CoverageAlgorithm
+        from .algorithm_coverage_comparison import CoverageComparisonAlgorithm
         from .algorithm_contour import ContourLinesAlgorithm
         from .algorithm_batch import BatchAnalysisAlgorithm
 
         self.addAlgorithm(P2PAlgorithm())
         self.addAlgorithm(CoverageAlgorithm())
+        self.addAlgorithm(CoverageComparisonAlgorithm())
         self.addAlgorithm(ContourLinesAlgorithm())
         self.addAlgorithm(BatchAnalysisAlgorithm())
 
