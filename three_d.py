@@ -3,7 +3,7 @@
 
 import os
 
-from qgis.core import Qgis, QingProject, mapLayer
+from qgis.core import Qgis, QgsProject, QgisMapLayer
 from qgis.gui import QCheckBox, QMessageBox, QVBoxLayout, QWidget
 
 
@@ -39,7 +39,7 @@ class Windows3DFallbackDialog(QMessageBox):
 
 def highlight_nowires_layers(iface):
     """Select and pan to NoWires DEM and coverage layers in layer tree."""
-    project = QingProject.instance()
+    project = QgsProject.instance()
     dem_id = project.readEntry("NoWires", "last_dem_layer_id")[0]
     coverage_id = project.readEntry("NoWires", "last_coverage_layer_id")[0]
 
@@ -49,7 +49,7 @@ def highlight_nowires_layers(iface):
         if layer:
             tree_layer = root.findLayer(layer.id())
             if tree_layer:
-                tree_layer.setItemChecked(True, True)
+                tree_layer.setItemChecked(True)
                 parent = tree_layer.parent()
                 if parent and parent != root:
                     parent.setExpanded(True)
@@ -113,16 +113,16 @@ def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
     """Create a new QGIS 3D map canvas using the latest NoWires layers."""
     os_name = os.name
     if os_name == "nt":
-        layers = resolve_nowires_3d_layers(QingProject.instance())
+        layers = resolve_nowires_3d_layers(QgsProject.instance())
         dem_layer = layers["dem_layer"]
         coverage_layer = layers["coverage_layer"]
         contour_layer = layers["contour_layer"]
         if contour_layer is not None:
-            _set_layer_visible(QingProject.instance(), contour_layer)
+            _set_layer_visible(QgsProject.instance(), contour_layer)
         if coverage_layer is not None:
-            _set_layer_visible(QingProject.instance(), coverage_layer)
+            _set_layer_visible(QgsProject.instance(), coverage_layer)
         if dem_layer is not None:
-            _set_layer_visible(QingProject.instance(), dem_layer)
+            _set_layer_visible(QgsProject.instance(), dem_layer)
 
         dialog = Windows3DFallbackDialog()
         result = dialog.exec_()
@@ -131,7 +131,7 @@ def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
                 highlight_nowires_layers(iface)
         return None
 
-    project = QingProject.instance()
+    project = QgsProject.instance()
     layers = resolve_nowires_3d_layers(project)
     dem_layer = layers["dem_layer"]
     coverage_layer = layers["coverage_layer"]
