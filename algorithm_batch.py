@@ -78,6 +78,7 @@ from .clutter import (
     CLUTTER_MODEL_OPTIONS,
     CLUTTER_OVERRIDE_OPTIONS,
     LandCoverGrid,
+    clutter_override_value,
     compute_terminal_clutter_losses,
     ensure_clutter_grid_for_area,
 )
@@ -160,7 +161,7 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            FeatureSourceParameter(
+            QgisProcessingParameterFeatureSource(
                 self.RX_LAYER,
                 "RX point layer (for One-to-Many)",
                 [QgsProcessingParameterFeatureSource.GeometryType.Point],
@@ -173,7 +174,7 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            FeatureSourceParameter(
+            QgisProcessingParameterFeatureSource(
                 self.TX_LAYER,
                 "TX candidate layer (for Many-to-One)",
                 [QgsProcessingParameterFeatureSource.GeometryType.Point],
@@ -569,8 +570,12 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             clutter_grid = LandCoverGrid.from_raster(clutter_raster_path)
         else:
             clutter_grid = None
-        tx_clutter_override = self.parameterAsEnum(parameters, self.TX_CLUTTER_OVERRIDE, context)
-        rx_clutter_override = self.parameterAsEnum(parameters, self.RX_CLUTTER_OVERRIDE, context)
+        tx_clutter_override = clutter_override_value(
+            self.parameterAsEnum(parameters, self.TX_CLUTTER_OVERRIDE, context)
+        )
+        rx_clutter_override = clutter_override_value(
+            self.parameterAsEnum(parameters, self.RX_CLUTTER_OVERRIDE, context)
+        )
 
         all_lats = [p["lat"] for p in candidate_tx] + [p["lat"] for p in rx_points]
         all_lons = [p["lon"] for p in candidate_tx] + [p["lon"] for p in rx_points]
