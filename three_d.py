@@ -158,7 +158,7 @@ def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
             try:
                 from qgis.core import QgsRasterDemTerrainProvider
                 provider = QgsRasterDemTerrainProvider()
-            except ImportError:
+            except (ImportError, TypeError):
                 provider = Qgis.RasterDemTerrainProvider()
             provider.setLayer(dem_layer)
             elevation_props.setTerrainProvider(provider)

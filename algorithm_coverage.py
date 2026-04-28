@@ -40,7 +40,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-from qgis.PyQt.QtCore import QCoreApplication, QVariant
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
     Qgis,
     QgsColorRampShader,

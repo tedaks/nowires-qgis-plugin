@@ -1237,12 +1237,13 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
 
                 def _local_maxima(indices, arr):
                     """Return indices that are local maxima of arr, sorted by value descending, capped at 5."""
+                    index_set = set(indices)
                     peaks = []
                     for idx in indices:
                         is_peak = True
                         for offset in [-1, 1]:
                             neighbor = idx + offset
-                            if 0 <= neighbor < len(arr) and neighbor in set(indices):
+                            if 0 <= neighbor < len(arr) and neighbor in index_set:
                                 if arr[neighbor] > arr[idx]:
                                     is_peak = False
                                     break
