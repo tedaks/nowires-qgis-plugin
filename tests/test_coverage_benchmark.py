@@ -28,6 +28,8 @@ def test_run_case_reports_elapsed_and_pixels(monkeypatch):
             0.01,
             -0.01,
             0.01,
+            np.full((grid_size, grid_size), 0.0, dtype=np.float32),
+            np.full((grid_size, grid_size), 0.0, dtype=np.float32),
         )
 
     monkeypatch.setattr(module, "compute_coverage", fake_compute_coverage)
