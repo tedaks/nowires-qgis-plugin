@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import math
 import os
 import sys
 import types
@@ -27,8 +26,6 @@ else:
 
 DEFAULT_CASES = COVERAGE_CASES
 
-BenchmarkCase = CoverageCase
-
 
 def run_case(case: CoverageCase):
     grid = SyntheticElevationGrid(case.radius_km)
@@ -45,7 +42,7 @@ def run_case(case: CoverageCase):
     )
     elapsed_s = perf_counter() - start
     pixels = int(np.count_nonzero(~np.isnan(prx_grid)))
-    pixels_per_second = pixels / elapsed_s if elapsed_s > 0 else math.inf
+    pixels_per_second = pixels / elapsed_s if elapsed_s > 0 else float('inf')
     return {
         "label": case.label,
         "radius_km": case.radius_km,
