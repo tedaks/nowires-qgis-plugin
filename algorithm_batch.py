@@ -62,7 +62,6 @@ from osgeo import ogr, osr
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid, bearing_deg, haversine_m
 from .radio import (
-    ANTENNA_PRESET_OPTIONS,
     CLIMATE_NAMES,
     ITM_MIN_FREQUENCY_MHZ,
     ITM_MAX_FREQUENCY_MHZ,
@@ -74,6 +73,7 @@ from .radio import (
     validate_itm_input_ranges,
 )
 from .antenna import (
+    ANTENNA_PRESET_OPTIONS,
     ANTENNA_PRESET_KEYS,
     antenna_config_from_values,
     antenna_gain_adjustment_db,
