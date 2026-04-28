@@ -45,10 +45,12 @@ class NoWiresProvider(QgsProcessingProvider):
         from .algorithm_p2p import P2PAlgorithm
         from .algorithm_coverage import CoverageAlgorithm
         from .algorithm_contour import ContourLinesAlgorithm
+        from .algorithm_batch import BatchAnalysisAlgorithm
 
         self.addAlgorithm(P2PAlgorithm())
         self.addAlgorithm(CoverageAlgorithm())
         self.addAlgorithm(ContourLinesAlgorithm())
+        self.addAlgorithm(BatchAnalysisAlgorithm())
 
     def id(self):
         return "nowires"
