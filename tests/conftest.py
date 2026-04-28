@@ -53,8 +53,10 @@ for _pkg_sub in (
     "coverage_compute",
     "coverage_engine",
     "report_payloads",
+    "benchmarks.coverage_runtime",
+    "benchmarks.p2p_runtime",
+    "benchmarks.reference_cases",
 ):
     _mod = __import__(f"NoWires.{_pkg_sub}", fromlist=[""])
-    sys.modules[_pkg_sub] = _mod
     sys.modules[f"NoWires.{_pkg_sub}"] = _mod
-    setattr(_no_wires_pkg, _pkg_sub, _mod)
+    setattr(_no_wires_pkg, _pkg_sub.split(".")[-1], _mod)

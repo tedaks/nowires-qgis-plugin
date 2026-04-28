@@ -19,60 +19,21 @@ if __package__ in (None, ""):
     _package.__path__ = [_plugin_dir]
     _package.__package__ = "NoWires"
     from NoWires.coverage_engine import compute_coverage
+    from NoWires.benchmarks.reference_cases import CoverageCase, COVERAGE_CASES, SyntheticElevationGrid
 else:
     from ..coverage_engine import compute_coverage
+    from .reference_cases import CoverageCase, COVERAGE_CASES, SyntheticElevationGrid
 
 
-@dataclass(frozen=True)
-class BenchmarkCase:
-    label: str
-    radius_km: float
-    grid_size: int
-    frequency_mhz: float
+DEFAULT_CASES = COVERAGE_CASES
+
+BenchmarkCase = CoverageCase
 
 
-DEFAULT_CASES = (
-    BenchmarkCase("small", radius_km=2.0, grid_size=64, frequency_mhz=900.0),
-    BenchmarkCase("medium", radius_km=5.0, grid_size=128, frequency_mhz=1800.0),
-    BenchmarkCase("large", radius_km=8.0, grid_size=192, frequency_mhz=3500.0),
-)
-
-
-class SyntheticElevationGrid:
-    """Deterministic in-memory DEM for repeatable benchmark runs."""
-
-    def __init__(self, radius_km: float, samples: int = 512):
-        radius_deg = radius_km / 111.32
-        self.min_lat = -radius_deg
-        self.max_lat = radius_deg
-        self.min_lon = -radius_deg
-        self.max_lon = radius_deg
-        self.n_rows = samples
-        self.n_cols = samples
-
-        ys = np.linspace(-1.0, 1.0, samples, dtype=np.float32)
-        xs = np.linspace(-1.0, 1.0, samples, dtype=np.float32)
-        xg, yg = np.meshgrid(xs, ys)
-        ridge = 180.0 * np.exp(-3.5 * (xg * xg + yg * yg))
-        ripple = 35.0 * np.sin(8.0 * xg) * np.cos(6.0 * yg)
-        slope = 25.0 * (xg + yg)
-        self.data = (ridge + ripple + slope + 120.0).astype(np.float32)
-
-    def grid_meta_dict(self):
-        return {
-            "min_lat": self.min_lat,
-            "max_lat": self.max_lat,
-            "min_lon": self.min_lon,
-            "max_lon": self.max_lon,
-            "n_lat": self.n_rows,
-            "n_lon": self.n_cols,
-        }
-
-
-def run_case(case: BenchmarkCase):
+def run_case(case: CoverageCase):
     grid = SyntheticElevationGrid(case.radius_km)
     start = perf_counter()
-    prx_grid, _, _, _, _, _ = compute_coverage(
+    prx_grid, _, _, _, _, _, _, _ = compute_coverage(
         elev_grid=grid,
         tx_lat=0.0,
         tx_lon=0.0,
