@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import time
 import importlib
 
 import pytest
@@ -14,9 +15,10 @@ def test_p2p_benchmark_module_exists():
 
 
 def test_run_p2p_case_reports_elapsed_and_loss(monkeypatch):
-    module = importlib.import_module("NoWires.benchmarks.p2p_runtime")
+    monkeypatch.setattr(time, "perf_counter", iter([10.0, 10.05]).__next__)
 
-    monkeypatch.setattr(module, "perf_counter", iter([10.0, 10.05]).__next__)
+    module = importlib.import_module("NoWires.benchmarks.p2p_runtime")
+    importlib.reload(module)
 
     calls = {}
 
@@ -48,6 +50,7 @@ def test_run_p2p_case_reports_elapsed_and_loss(monkeypatch):
     assert result["elapsed_s"] == 0.05
 
 
+@pytest.mark.benchmark
 def test_p2p_small_rural_case_loads():
     module = importlib.import_module("NoWires.benchmarks.p2p_runtime")
     case = next(c for c in module.P2P_CASES if c.label == "short_rural")
@@ -55,6 +58,7 @@ def test_p2p_small_rural_case_loads():
     assert case.terrain == "flat"
 
 
+@pytest.mark.benchmark
 def test_p2p_medium_urban_case_loads():
     module = importlib.import_module("NoWires.benchmarks.p2p_runtime")
     case = next(c for c in module.P2P_CASES if c.label == "medium_urban")
@@ -62,6 +66,7 @@ def test_p2p_medium_urban_case_loads():
     assert case.terrain == "varied"
 
 
+@pytest.mark.benchmark
 def test_p2p_long_los_case_loads():
     module = importlib.import_module("NoWires.benchmarks.p2p_runtime")
     case = next(c for c in module.P2P_CASES if c.label == "long_los")

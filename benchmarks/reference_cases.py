@@ -109,8 +109,8 @@ class SyntheticElevationGrid:
             (lons - self.min_lon) / (self.max_lon - self.min_lon) * (self.n_cols - 1),
             0, self.n_cols - 1 - 1e-9
         )
-        y0 = np.floor(fy).astype(np.int32)
-        x0 = np.floor(fx).astype(np.int32)
+        y0 = np.floor(fy).astype(int)
+        x0 = np.floor(fx).astype(int)
         y1 = np.clip(y0 + 1, 0, self.n_rows - 1)
         x1 = np.clip(x0 + 1, 0, self.n_cols - 1)
         ty = (fy - y0).astype(np.float32)
