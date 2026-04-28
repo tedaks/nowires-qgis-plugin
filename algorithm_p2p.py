@@ -1149,6 +1149,7 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
                 k_factor,
                 tx_power,
                 tx_gain,
+                rx_gain,
                 cable_loss,
                 rx_sens,
             ):
@@ -1292,31 +1293,39 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
                     update_visibility()
     
                 def save_png():
-                    path, _ = QFileDialog.getSaveFileName(
-                        dock, "Save PNG", "", "PNG Files (*.png)"
-                    )
-                    if path:
-                        fig.savefig(path, dpi=300, bbox_inches="tight")
-                        QMessageBox.information(dock, "Saved", "Chart saved to:\n" + path)
+                    try:
+                        path, _ = QFileDialog.getSaveFileName(
+                            dock, "Save PNG", "", "PNG Files (*.png)"
+                        )
+                        if path:
+                            fig.savefig(path, dpi=300, bbox_inches="tight")
+                            QMessageBox.information(dock, "Saved", "Chart saved to:\n" + path)
+                    except Exception as e:
+                        logger.warning("Failed to save PNG: %s", e)
+                        QMessageBox.warning(dock, "Error", "Failed to save PNG: " + str(e))
     
                 def export_csv():
-                    path, _ = QFileDialog.getSaveFileName(
-                        dock, "Export CSV", "", "CSV Files (*.csv)"
-                    )
-                    if path:
-                        with open(path, "w") as f:
-                            f.write("distance_m,terrain_elevation_m,los_m,fresnel_radius_m,clearance_m\n")
-                            for i in range(len(distances)):
-                                f.write(
-                                    "{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}\n".format(
-                                        distances[i],
-                                        terrain_bulge[i],
-                                        los_h[i],
-                                        fresnel_r[i],
-                                        clearances[i],
+                    try:
+                        path, _ = QFileDialog.getSaveFileName(
+                            dock, "Export CSV", "", "CSV Files (*.csv)"
+                        )
+                        if path:
+                            with open(path, "w") as f:
+                                f.write("distance_m,terrain_elevation_m,los_m,fresnel_radius_m,clearance_m\n")
+                                for i in range(len(distances)):
+                                    f.write(
+                                        "{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}\n".format(
+                                            distances[i],
+                                            terrain_bulge[i],
+                                            los_h[i],
+                                            fresnel_r[i],
+                                            clearances[i],
+                                        )
                                     )
-                                )
-                        QMessageBox.information(dock, "Exported", "Data exported to:\n" + path)
+                            QMessageBox.information(dock, "Exported", "Data exported to:\n" + path)
+                    except Exception as e:
+                        logger.warning("Failed to export CSV: %s", e)
+                        QMessageBox.warning(dock, "Error", "Failed to export CSV: " + str(e))
     
                 toolbar = QToolBar("Chart Controls", dock)
                 btn_png = QPushButton("Save PNG", toolbar)
