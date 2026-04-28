@@ -3,7 +3,7 @@
 
 import sys
 
-from qgis.core import Qgis, QgsProject, QgisMapLayer
+from qgis.core import Qgis, QgsProject
 from qgis.gui import QCheckBox, QMessageBox, QVBoxLayout, QWidget
 
 
