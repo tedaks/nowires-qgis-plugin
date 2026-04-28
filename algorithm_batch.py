@@ -42,7 +42,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-from qgis.PyQt.QtCore import QCoreApplication, QVariant
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
     Qgis,
     QgsProcessingAlgorithm,
@@ -57,16 +57,17 @@ from qgis.core import (
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
 )
+try:
+    from qgis.core import NULL as _QGIS_NULL
+except ImportError:
+    _QGIS_NULL = None
 from osgeo import ogr, osr
 
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid, bearing_deg, haversine_m
 from .radio import (
-    CLIMATE_NAMES,
     ITM_MIN_FREQUENCY_MHZ,
     ITM_MAX_FREQUENCY_MHZ,
-    K_FACTOR_PRESETS,
-    PROP_MODE_NAMES,
     build_pfl,
     itm_p2p_loss,
     resolve_k_factor,
@@ -94,7 +95,7 @@ RANK_BY_OPTIONS = ["Link margin (descending)", "Path loss (ascending)", "Clearan
 
 def _feat_attr(feat, name, default):
     val = feat.attribute(name)
-    if val is None:
+    if val is None or val == _QGIS_NULL:
         return default
     try:
         if isinstance(val, type(default)):
@@ -195,11 +196,6 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
                 "TX candidate layer (for Many-to-One)",
                 [QgsProcessingParameterFeatureSource.GeometryType.Point],
                 optional=True,
-            )
-        )
-        self.addParameter(
-            QgsProcessingParameterPoint(
-                self.RX_POINT, "RX point (for Many-to-One)", optional=True
             )
         )
         self.addParameter(

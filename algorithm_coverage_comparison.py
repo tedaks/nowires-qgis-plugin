@@ -40,11 +40,10 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-from qgis.PyQt.QtCore import QCoreApplication, QVariant
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
     Qgis,
     QgsColorRampShader,
-    QgsLayerTreeLayer,
     QgsProcessingAlgorithm,
     QgsProcessingContext,
     QgsProcessingParameterEnum,
@@ -52,12 +51,10 @@ from qgis.core import (
     QgsProcessingParameterFileDestination,
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
-    QgsProcessingParameterString,
     QgsProject,
     QgsRasterLayer,
     QgsRasterShader,
     QgsSingleBandPseudoColorRenderer,
-    QgsVectorLayer,
 )
 from osgeo import gdal, osr
 
@@ -66,7 +63,6 @@ from .elevation import ElevationGrid, haversine_m
 from .coverage_engine import compute_coverage
 from .coverage_compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
 from .coverage_palette import build_heatmap_stops
-from .coverage_legend import show_coverage_legend
 from .antenna import ANTENNA_PRESET_OPTIONS
 from .clutter import (
     CLUTTER_MODEL_OPTIONS,
@@ -1023,18 +1019,19 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         if layer_delta.isValid():
             self._apply_delta_style(layer_delta, threshold_db, style=delta_style)
             _queue_layer_for_loading(context, layer_delta, "Coverage Delta (A - B dB)")
+            self._raster_layer_ids.append(layer_delta.id())
 
         layer_a = QgsRasterLayer(output_a_path, "Coverage Panel A")
         if layer_a.isValid():
             self._apply_coverage_style(layer_a, rx_sens_a)
             _queue_layer_for_loading(context, layer_a, "Coverage Panel A")
+            self._raster_layer_ids.append(layer_a.id())
 
         layer_b = QgsRasterLayer(output_b_path, "Coverage Panel B")
         if layer_b.isValid():
             self._apply_coverage_style(layer_b, rx_sens_b)
             _queue_layer_for_loading(context, layer_b, "Coverage Panel B")
-
-        show_coverage_legend(rx_sensitivity_dbm=rx_sens_a)
+            self._raster_layer_ids.append(layer_b.id())
 
         valid_delta = valid_mask & ~np.isnan(loss_delta_grid)
         valid_count = int(valid_delta.sum())
