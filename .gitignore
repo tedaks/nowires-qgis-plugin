@@ -26,5 +26,15 @@ build/
 dist/
 *.egg-info/
 
+.venv/
+venv/
+env/
+*.egg
+
+.idea/
+.vscode/
+*.swp
+*.swo
+
 # docs
 /docs
