@@ -43,22 +43,21 @@ logger = logging.getLogger(__name__)
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (
     Qgis,
-    QgisProcessingAlgorithm,
-    QgisProcessingContext,
-    QgisProcessingParameterEnum,
-    QgisProcessingParameterFile,
-    QgisProcessingParameterFileDestination,
-    QgisProcessingParameterNumber,
-    QgisProcessingParameterPoint,
-    QgisProcessingParameterString,
-    QgisProject,
-    QgisTemporalNavigationObject,
-    QgisColorRampShader,
-    QgisLayerTreeLayer,
-    QgisRasterLayer,
-    QgisRasterShader,
-    QgisSingleBandPseudoColorRenderer,
-    QgisVectorLayer,
+    QgsColorRampShader,
+    QgsLayerTreeLayer,
+    QgsProcessingAlgorithm,
+    QgsProcessingContext,
+    QgsProcessingParameterEnum,
+    QgsProcessingParameterFile,
+    QgsProcessingParameterFileDestination,
+    QgsProcessingParameterNumber,
+    QgsProcessingParameterPoint,
+    QgsProcessingParameterString,
+    QgsProject,
+    QgsRasterLayer,
+    QgsRasterShader,
+    QgsSingleBandPseudoColorRenderer,
+    QgsVectorLayer,
 )
 from osgeo import gdal, osr
 
@@ -107,10 +106,10 @@ def _queue_layer_for_loading(context, layer, name):
         and hasattr(context, "addLayerToLoadOnCompletion")
     ):
         return False
-    project = QgisProject.instance()
+    project = QgsProject.instance()
     context.temporaryLayerStore().addMapLayer(layer)
     context.addLayerToLoadOnCompletion(
-        layer.id(), QgisProcessingContext.LayerDetails(name, project, name)
+        layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
     )
     return True
 
@@ -230,7 +229,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgisProcessingParameterEnum(
+            QgsProcessingParameterEnum(
                 f"{prefix}_GRID_SIZE",
                 f"Panel {prefix.split('_')[1]} Grid size resolution",
                 options=[
@@ -247,7 +246,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgisProcessingParameterEnum(
+            QgsProcessingParameterEnum(
                 f"{prefix}_POLARIZATION",
                 f"Panel {prefix.split('_')[1]} Polarization",
                 options=["Horizontal", "Vertical"],
@@ -255,7 +254,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgisProcessingParameterEnum(
+            QgsProcessingParameterEnum(
                 f"{prefix}_CLIMATE",
                 f"Panel {prefix.split('_')[1]} Climate zone",
                 options=[
@@ -342,7 +341,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgisProcessingParameterEnum(
+            QgsProcessingParameterEnum(
                 f"{prefix}_ANTENNA_PRESET",
                 f"Panel {prefix.split('_')[1]} TX antenna preset",
                 options=ANTENNA_PRESET_OPTIONS,
@@ -364,7 +363,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgisProcessingParameterFile(
+            QgsProcessingParameterFile(
                 f"{prefix}_H_PATTERN",
                 f"Panel {prefix.split('_')[1]} TX horizontal pattern CSV",
                 extension="csv",
@@ -372,7 +371,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgisProcessingParameterFile(
+            QgsProcessingParameterFile(
                 f"{prefix}_V_PATTERN",
                 f"Panel {prefix.split('_')[1]} TX vertical pattern CSV",
                 extension="csv",
@@ -380,7 +379,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgisProcessingParameterEnum(
+            QgsProcessingParameterEnum(
                 f"{prefix}_CLUTTER_MODEL",
                 f"Panel {prefix.split('_')[1]} Clutter correction",
                 options=CLUTTER_MODEL_OPTIONS,
@@ -388,7 +387,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgisProcessingParameterFile(
+            QgsProcessingParameterFile(
                 f"{prefix}_CLUTTER_RASTER",
                 f"Panel {prefix.split('_')[1]} Land-cover raster (auto-downloaded if blank)",
                 extension="tif",
@@ -396,7 +395,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgisProcessingParameterEnum(
+            QgsProcessingParameterEnum(
                 f"{prefix}_TX_CLUTTER_OVERRIDE",
                 f"Panel {prefix.split('_')[1]} TX clutter override",
                 options=CLUTTER_OVERRIDE_OPTIONS,
@@ -404,7 +403,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgisProcessingParameterEnum(
+            QgsProcessingParameterEnum(
                 f"{prefix}_RX_CLUTTER_OVERRIDE",
                 f"Panel {prefix.split('_')[1]} RX clutter override",
                 options=CLUTTER_OVERRIDE_OPTIONS,
@@ -416,7 +415,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             f"Panel {prefix.split('_')[1]} Surface refractivity N0 (N-units)",
             defaultValue=301.0,
         )
-        n0_param.setFlags(n0_param.flags() | QgisProcessingParameterNumber.FlagAdvanced)
+        n0_param.setFlags(n0_param.flags() | QgsProcessingParameterNumber.FlagAdvanced)
         self.addParameter(n0_param)
 
         epsilon_param = config["epsilon_param"](
@@ -425,7 +424,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             defaultValue=15.0,
         )
         epsilon_param.setFlags(
-            epsilon_param.flags() | QgisProcessingParameterNumber.FlagAdvanced
+            epsilon_param.flags() | QgsProcessingParameterNumber.FlagAdvanced
         )
         self.addParameter(epsilon_param)
 
@@ -435,73 +434,73 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             defaultValue=0.005,
         )
         sigma_param.setFlags(
-            sigma_param.flags() | QgisProcessingParameterNumber.FlagAdvanced
+            sigma_param.flags() | QgsProcessingParameterNumber.FlagAdvanced
         )
         self.addParameter(sigma_param)
 
     def initAlgorithm(self, config):
         panel_config = {
-            "point_param": lambda name, desc: QgisProcessingParameterPoint(name, desc),
-            "height_param": lambda name, desc, **kw: QgisProcessingParameterNumber(
-                name, desc, type=QgisProcessingParameterNumber.Type.Double,
+            "point_param": lambda name, desc: QgsProcessingParameterPoint(name, desc),
+            "height_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
+                name, desc, type=QgsProcessingParameterNumber.Double,
                 **kw
             ),
-            "freq_param": lambda name, desc, **kw: QgisProcessingParameterNumber(
-                name, desc, type=QgisProcessingParameterNumber.Type.Double,
+            "freq_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
+                name, desc, type=QgsProcessingParameterNumber.Double,
                 minValue=ITM_MIN_FREQUENCY_MHZ, maxValue=ITM_MAX_FREQUENCY_MHZ,
                 **kw
             ),
-            "radius_param": lambda name, desc, **kw: QgisProcessingParameterNumber(
-                name, desc, type=QgisProcessingParameterNumber.Type.Double,
+            "radius_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
+                name, desc, type=QgsProcessingParameterNumber.Double,
                 minValue=1.0, maxValue=500.0,
                 **kw
             ),
-            "pct_param": lambda name, desc, **kw: QgisProcessingParameterNumber(
-                name, desc, type=QgisProcessingParameterNumber.Type.Double,
+            "pct_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
+                name, desc, type=QgsProcessingParameterNumber.Double,
                 minValue=0.01, maxValue=99.99,
                 **kw
             ),
-            "dbm_param": lambda name, desc, **kw: QgisProcessingParameterNumber(
-                name, desc, type=QgisProcessingParameterNumber.Type.Double,
+            "dbm_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
+                name, desc, type=QgsProcessingParameterNumber.Double,
                 **kw
             ),
-            "db_param": lambda name, desc, **kw: QgisProcessingParameterNumber(
-                name, desc, type=QgisProcessingParameterNumber.Type.Double,
+            "db_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
+                name, desc, type=QgsProcessingParameterNumber.Double,
                 minValue=0.0,
                 **kw
             ),
-            "loss_param": lambda name, desc, **kw: QgisProcessingParameterNumber(
-                name, desc, type=QgisProcessingParameterNumber.Type.Double,
+            "loss_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
+                name, desc, type=QgsProcessingParameterNumber.Double,
                 minValue=0.0,
                 **kw
             ),
-            "az_param": lambda name, desc, **kw: QgisProcessingParameterNumber(
-                name, desc, type=QgisProcessingParameterNumber.Type.Double,
+            "az_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
+                name, desc, type=QgsProcessingParameterNumber.Double,
                 minValue=0.0, maxValue=360.0,
                 **kw
             ),
-            "bw_param": lambda name, desc, **kw: QgisProcessingParameterNumber(
-                name, desc, type=QgisProcessingParameterNumber.Type.Double,
+            "bw_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
+                name, desc, type=QgsProcessingParameterNumber.Double,
                 minValue=1.0, maxValue=360.0,
                 **kw
             ),
-            "downtilt_param": lambda name, desc, **kw: QgisProcessingParameterNumber(
-                name, desc, type=QgisProcessingParameterNumber.Type.Double,
+            "downtilt_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
+                name, desc, type=QgsProcessingParameterNumber.Double,
                 minValue=-45.0, maxValue=45.0,
                 **kw
             ),
-            "n0_param": lambda name, desc, **kw: QgisProcessingParameterNumber(
-                name, desc, type=QgisProcessingParameterNumber.Type.Double,
+            "n0_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
+                name, desc, type=QgsProcessingParameterNumber.Double,
                 minValue=ITM_MIN_N0, maxValue=ITM_MAX_N0,
                 **kw
             ),
-            "epsilon_param": lambda name, desc, **kw: QgisProcessingParameterNumber(
-                name, desc, type=QgisProcessingParameterNumber.Type.Double,
+            "epsilon_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
+                name, desc, type=QgsProcessingParameterNumber.Double,
                 minValue=1.0,
                 **kw
             ),
-            "sigma_param": lambda name, desc, **kw: QgisProcessingParameterNumber(
-                name, desc, type=QgisProcessingParameterNumber.Type.Double,
+            "sigma_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
+                name, desc, type=QgsProcessingParameterNumber.Double,
                 minValue=ITM_MIN_SIGMA,
                 **kw
             ),
@@ -511,7 +510,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         self._add_panel_params("PANEL_B", panel_config)
 
         self.addParameter(
-            QgisProcessingParameterFileDestination(
+            QgsProcessingParameterFileDestination(
                 self.OUTPUT_DIR,
                 "Output directory for coverage comparison files",
                 fileFilter="Directory",
@@ -519,7 +518,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgisProcessingParameterEnum(
+            QgsProcessingParameterEnum(
                 self.DELTA_STYLE,
                 "Delta raster styling",
                 options=DELTA_STYLE_OPTIONS,
@@ -527,37 +526,37 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgisProcessingParameterNumber(
+            QgsProcessingParameterNumber(
                 self.DELTA_THRESHOLD_DB,
                 "Significant difference threshold (dB)",
-                type=QgisProcessingParameterNumber.Type.Double,
+                type=QgsProcessingParameterNumber.Double,
                 defaultValue=5.0,
                 minValue=0.1,
             )
         )
         self.addParameter(
-            QgisProcessingParameterFileDestination(
+            QgsProcessingParameterFileDestination(
                 self.OUTPUT_A,
                 "Panel A coverage raster output",
                 fileFilter="GeoTIFF files (*.tif)",
             )
         )
         self.addParameter(
-            QgisProcessingParameterFileDestination(
+            QgsProcessingParameterFileDestination(
                 self.OUTPUT_B,
                 "Panel B coverage raster output",
                 fileFilter="GeoTIFF files (*.tif)",
             )
         )
         self.addParameter(
-            QgisProcessingParameterFileDestination(
+            QgsProcessingParameterFileDestination(
                 self.OUTPUT_DELTA,
                 "Delta raster output (A - B in dB)",
                 fileFilter="GeoTIFF files (*.tif)",
             )
         )
         self.addParameter(
-            QgisProcessingParameterFileDestination(
+            QgsProcessingParameterFileDestination(
                 self.OUTPUT_REPORT_HTML,
                 "Comparison report HTML",
                 fileFilter="HTML files (*.html)",
@@ -567,13 +566,13 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
 
     def _run_panel_coverage(self, prefix, parameters, context, feedback, elev, south, north, west, east):
         """Run compute_coverage for one panel and return the result tuple."""
-        from qgis.core import QgisCoordinateReferenceSystem
+        from qgis.core import QgsCoordinateReferenceSystem
 
         tx_point = self.parameterAsPoint(
             parameters,
             f"{prefix}_POINT",
             context,
-            crs=QgisCoordinateReferenceSystem("EPSG:4326"),
+            crs=QgsCoordinateReferenceSystem("EPSG:4326"),
         )
         if tx_point is None:
             raise ValueError(f"{prefix} TX point is required.")
@@ -745,52 +744,52 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
 
         if style == "threshold":
             entries = [
-                QgisColorRampShader.ColorRampItem(
+                QgsColorRampShader.ColorRampItem(
                     -1e6, QColor(30, 80, 180), f"A better (<-{threshold_db:.0f} dB)"
                 ),
-                QgisColorRampShader.ColorRampItem(
+                QgsColorRampShader.ColorRampItem(
                     -threshold_db, QColor(30, 80, 180), f"A better (<-{threshold_db:.0f} dB)"
                 ),
-                QgisColorRampShader.ColorRampItem(
+                QgsColorRampShader.ColorRampItem(
                     -threshold_db + 0.001, QColor(240, 240, 240), "No change"
                 ),
-                QgisColorRampShader.ColorRampItem(
+                QgsColorRampShader.ColorRampItem(
                     threshold_db - 0.001, QColor(240, 240, 240), "No change"
                 ),
-                QgisColorRampShader.ColorRampItem(
+                QgsColorRampShader.ColorRampItem(
                     threshold_db, QColor(180, 30, 30), f"A worse (>+{threshold_db:.0f} dB)"
                 ),
-                QgisColorRampShader.ColorRampItem(
+                QgsColorRampShader.ColorRampItem(
                     1e6, QColor(180, 30, 30), f"A worse (>+{threshold_db:.0f} dB)"
                 ),
             ]
         else:
             entries = [
-                QgisColorRampShader.ColorRampItem(
+                QgsColorRampShader.ColorRampItem(
                     -threshold_db * 2, QColor(30, 80, 180, 200), f"A better (<-{threshold_db:.0f} dB)"
                 ),
-                QgisColorRampShader.ColorRampItem(
+                QgsColorRampShader.ColorRampItem(
                     -threshold_db, QColor(80, 150, 220, 210), f"-{threshold_db:.0f} dB"
                 ),
-                QgisColorRampShader.ColorRampItem(
+                QgsColorRampShader.ColorRampItem(
                     0.0, QColor(255, 255, 255, 255), "No change"
                 ),
-                QgisColorRampShader.ColorRampItem(
+                QgsColorRampShader.ColorRampItem(
                     threshold_db, QColor(220, 150, 80, 210), f"+{threshold_db:.0f} dB"
                 ),
-                QgisColorRampShader.ColorRampItem(
+                QgsColorRampShader.ColorRampItem(
                     threshold_db * 2, QColor(180, 30, 30, 200), f"A worse (>+{threshold_db:.0f} dB)"
                 ),
             ]
 
-        color_ramp_shader = QgisColorRampShader()
-        color_ramp_shader.setColorRampType(QgisColorRampShader.ColorRampType.Interpolated)
+        color_ramp_shader = QgsColorRampShader()
+        color_ramp_shader.setColorRampType(QgsColorRampShader.Interpolated)
         color_ramp_shader.setColorRampItemList(entries)
 
-        shader = QgisRasterShader()
+        shader = QgsRasterShader()
         shader.setRasterShaderFunction(color_ramp_shader)
 
-        renderer = QgisSingleBandPseudoColorRenderer(provider, 1, shader)
+        renderer = QgsSingleBandPseudoColorRenderer(provider, 1, shader)
         layer.setRenderer(renderer)
         layer.triggerRepaint()
 
@@ -864,7 +863,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         path.write_text(document, encoding="utf-8")
 
     def processAlgorithm(self, parameters, context, feedback):
-        from qgis.core import QgisCoordinateReferenceSystem
+        from qgis.core import QgsCoordinateReferenceSystem
 
         output_dir = self.parameterAsFileOutput(parameters, self.OUTPUT_DIR, context)
         delta_style_index = self.parameterAsEnum(parameters, self.DELTA_STYLE, context)
@@ -873,7 +872,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
 
         tx_point_a = self.parameterAsPoint(
             parameters, self.PANEL_A_POINT, context,
-            crs=QgisCoordinateReferenceSystem("EPSG:4326"),
+            crs=QgsCoordinateReferenceSystem("EPSG:4326"),
         )
         if tx_point_a is None:
             raise ValueError("Panel A TX point is required.")
@@ -883,7 +882,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
 
         tx_point_b = self.parameterAsPoint(
             parameters, self.PANEL_B_POINT, context,
-            crs=QgisCoordinateReferenceSystem("EPSG:4326"),
+            crs=QgsCoordinateReferenceSystem("EPSG:4326"),
         )
         if tx_point_b is None:
             raise ValueError("Panel B TX point is required.")
@@ -1020,17 +1019,17 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         band_delta.FlushCache()
         ds_delta = None
 
-        layer_delta = QgisRasterLayer(output_delta_path, "Coverage Delta (A - B dB)")
+        layer_delta = QgsRasterLayer(output_delta_path, "Coverage Delta (A - B dB)")
         if layer_delta.isValid():
             self._apply_delta_style(layer_delta, threshold_db, style=delta_style)
             _queue_layer_for_loading(context, layer_delta, "Coverage Delta (A - B dB)")
 
-        layer_a = QgisRasterLayer(output_a_path, "Coverage Panel A")
+        layer_a = QgsRasterLayer(output_a_path, "Coverage Panel A")
         if layer_a.isValid():
             self._apply_coverage_style(layer_a, rx_sens_a)
             _queue_layer_for_loading(context, layer_a, "Coverage Panel A")
 
-        layer_b = QgisRasterLayer(output_b_path, "Coverage Panel B")
+        layer_b = QgsRasterLayer(output_b_path, "Coverage Panel B")
         if layer_b.isValid():
             self._apply_coverage_style(layer_b, rx_sens_b)
             _queue_layer_for_loading(context, layer_b, "Coverage Panel B")
@@ -1113,21 +1112,21 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         provider = layer.dataProvider()
         entries = []
         for value, rgba, label in build_heatmap_stops():
-            entry = QgisColorRampShader.ColorRampItem()
+            entry = QgsColorRampShader.ColorRampItem()
             entry.value = value
             from qgis.PyQt.QtGui import QColor
             entry.color = QColor(rgba[0], rgba[1], rgba[2], rgba[3])
             entry.label = "{} ({:.0f} dBm)".format(label, value)
             entries.append(entry)
 
-        color_ramp_shader = QgisColorRampShader()
-        color_ramp_shader.setColorRampType(QgisColorRampShader.ColorRampType.Interpolated)
+        color_ramp_shader = QgsColorRampShader()
+        color_ramp_shader.setColorRampType(QgsColorRampShader.Interpolated)
         color_ramp_shader.setColorRampItemList(entries)
 
-        shader = QgisRasterShader()
+        shader = QgsRasterShader()
         shader.setRasterShaderFunction(color_ramp_shader)
 
-        renderer = QgisSingleBandPseudoColorRenderer(provider, 1, shader)
+        renderer = QgsSingleBandPseudoColorRenderer(provider, 1, shader)
         layer.setRenderer(renderer)
         layer.triggerRepaint()
 
