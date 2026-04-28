@@ -3,7 +3,8 @@
 
 import os
 
-from qgis.core import Qgis, QgsProject, QgsRasterDemTerrainProvider
+from qgis.core import Qgis, QingProject, mapLayer
+from qgis.gui import QCheckBox, QMessageBox, QVBoxLayout, QWidget
 
 
 SCENE_MODE_LOCAL = "local"
@@ -13,6 +14,45 @@ COVERAGE_LAYER_KEY = "last_coverage_layer_id"
 DEM_LAYER_KEY = "last_dem_layer_id"
 CONTOUR_LAYER_KEY = "last_contour_layer_id"
 VIEW_NAME_PREFIX = "NoWires 3D View"
+
+
+class Windows3DFallbackDialog(QMessageBox):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("3D View Not Available on Windows")
+        self.setText(
+            "Plugin-launched 3D view crashes QGIS on Windows due to a Qt/WSL conflict.\n\n"
+            "You can still view your results in 3D manually:\n\n"
+            "1. Go to View > 3D Map Views > New 3D Map View\n"
+            "2. The NoWires DEM and coverage layers will be\n"
+            "   automatically configured for 3D terrain"
+        )
+        self.setIcon(QMessageBox.Warning)
+        self.addButton("Open 3D View", QMessageBox.AcceptRole)
+        self.addButton("Close", QMessageBox.RejectRole)
+
+        checkbox = QCheckBox("Highlight NoWires layers in layer panel")
+        checkbox.setChecked(True)
+        self.setCheckBox(checkbox)
+        self.highlight_checkbox = checkbox
+
+
+def highlight_nowires_layers(iface):
+    """Select and pan to NoWires DEM and coverage layers in layer tree."""
+    project = QingProject.instance()
+    dem_id = project.readEntry("NoWires", "last_dem_layer_id")[0]
+    coverage_id = project.readEntry("NoWires", "last_coverage_layer_id")[0]
+
+    root = project.layerTreeRoot()
+    for layer_id in [dem_id, coverage_id]:
+        layer = project.mapLayer(layer_id)
+        if layer:
+            tree_layer = root.findLayer(layer.id())
+            if tree_layer:
+                tree_layer.setItemChecked(True, True)
+                parent = tree_layer.parent()
+                if parent and parent != root:
+                    parent.setExpanded(True)
 
 
 def remember_nowires_3d_layers(
@@ -73,26 +113,25 @@ def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
     """Create a new QGIS 3D map canvas using the latest NoWires layers."""
     os_name = os.name
     if os_name == "nt":
-        layers = resolve_nowires_3d_layers(QgsProject.instance())
+        layers = resolve_nowires_3d_layers(QingProject.instance())
         dem_layer = layers["dem_layer"]
         coverage_layer = layers["coverage_layer"]
         contour_layer = layers["contour_layer"]
         if contour_layer is not None:
-            _set_layer_visible(QgsProject.instance(), contour_layer)
+            _set_layer_visible(QingProject.instance(), contour_layer)
         if coverage_layer is not None:
-            _set_layer_visible(QgsProject.instance(), coverage_layer)
+            _set_layer_visible(QingProject.instance(), coverage_layer)
         if dem_layer is not None:
-            _set_layer_visible(QgsProject.instance(), dem_layer)
-        iface.messageBar().pushWarning(
-            "NoWires",
-            "Opening 3D views from the plugin crashes QGIS on Windows. "
-            "The latest NoWires layers are ready. "
-            "Use View > 3D Map Views > New 3D Map View, then use the NoWires DEM "
-            "layer as terrain.",
-        )
+            _set_layer_visible(QingProject.instance(), dem_layer)
+
+        dialog = Windows3DFallbackDialog()
+        result = dialog.exec_()
+        if result == QMessageBox.AcceptRole:
+            if dialog.highlight_checkbox.isChecked():
+                highlight_nowires_layers(iface)
         return None
 
-    project = QgsProject.instance()
+    project = QingProject.instance()
     layers = resolve_nowires_3d_layers(project)
     dem_layer = layers["dem_layer"]
     coverage_layer = layers["coverage_layer"]
@@ -122,7 +161,7 @@ def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
     if hasattr(project, "elevationProperties"):
         elevation_props = project.elevationProperties()
         if elevation_props is not None and hasattr(elevation_props, "setTerrainProvider"):
-            provider = QgsRasterDemTerrainProvider()
+            provider = Qgis.RasterDemTerrainProvider()
             provider.setLayer(dem_layer)
             elevation_props.setTerrainProvider(provider)
 
