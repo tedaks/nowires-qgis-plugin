@@ -155,7 +155,11 @@ def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
     if hasattr(project, "elevationProperties"):
         elevation_props = project.elevationProperties()
         if elevation_props is not None and hasattr(elevation_props, "setTerrainProvider"):
-            provider = Qgis.RasterDemTerrainProvider()
+            try:
+                from qgis.core import QgsRasterDemTerrainProvider
+                provider = QgsRasterDemTerrainProvider()
+            except ImportError:
+                provider = Qgis.RasterDemTerrainProvider()
             provider.setLayer(dem_layer)
             elevation_props.setTerrainProvider(provider)
 
