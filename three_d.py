@@ -4,7 +4,7 @@
 import sys
 
 from qgis.core import Qgis, QgsProject
-from qgis.gui import QCheckBox, QMessageBox, QVBoxLayout, QWidget
+from qgis.PyQt.QtWidgets import QCheckBox, QMessageBox, QVBoxLayout, QWidget
 
 
 SCENE_MODE_LOCAL = "local"
