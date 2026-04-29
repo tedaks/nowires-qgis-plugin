@@ -29,10 +29,18 @@ bundled pure-Python itm package for reliability and maintainability.
 
 import math
 
+import numpy as np
+
 from .radio import build_pfl, itm_p2p_loss
 
 DEFAULT_PROFILE_STEP_M = 100.0
 DEFAULT_MAX_PROFILE_PTS = 200
+
+
+def grid_to_raster_array(grid, nodata=-9999.0):
+    """Return a top-origin raster array with missing cells encoded as nodata."""
+    arr = np.asarray(grid, dtype=np.float32)
+    return np.where(np.isnan(arr), nodata, arr)[::-1]
 
 
 def coverage_profile_step_m(f_mhz):

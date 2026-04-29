@@ -122,11 +122,17 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
         local_tif = os.path.join(temp_dir, filename)
 
         if os.path.exists(local_tif):
-            logger.debug("WorldCover cache hit: %s", tile_id)
-            if feedback:
-                feedback.pushInfo("WorldCover cache hit: " + tile_id)
-            available.append(local_tif)
-            continue
+            if gdal.Open(local_tif) is not None:
+                logger.debug("WorldCover cache hit: %s", tile_id)
+                if feedback:
+                    feedback.pushInfo("WorldCover cache hit: " + tile_id)
+                available.append(local_tif)
+                continue
+            logger.warning("Cached WorldCover tile %s failed validation; re-downloading", tile_id)
+            try:
+                os.unlink(local_tif)
+            except OSError:
+                pass
 
         tile_url = worldcover_tile_url(tile_id)
         if feedback:

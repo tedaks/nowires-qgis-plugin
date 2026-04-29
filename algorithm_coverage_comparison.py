@@ -60,7 +60,11 @@ from osgeo import gdal, osr
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
 from .coverage_engine import compute_coverage
-from .coverage_compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
+from .coverage_compute import (
+    DEFAULT_MAX_PROFILE_PTS,
+    coverage_profile_step_m,
+    grid_to_raster_array,
+)
 from .antenna import ANTENNA_PRESET_OPTIONS
 from .processing_utils import queue_layer_for_loading
 from .clutter import (
@@ -729,7 +733,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             ds.SetProjection(srs.ExportToWkt())
             band = ds.GetRasterBand(1)
             band.SetNoDataValue(-9999.0)
-            band.WriteArray(prx_grid[::-1])
+            band.WriteArray(grid_to_raster_array(prx_grid))
             band.FlushCache()
         finally:
             ds = None
@@ -1047,7 +1051,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             ds_delta.SetProjection(srs.ExportToWkt())
             band_delta = ds_delta.GetRasterBand(1)
             band_delta.SetNoDataValue(-9999.0)
-            band_delta.WriteArray(loss_delta_grid[::-1])
+            band_delta.WriteArray(grid_to_raster_array(loss_delta_grid))
             band_delta.FlushCache()
         finally:
             ds_delta = None

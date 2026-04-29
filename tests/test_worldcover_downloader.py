@@ -54,5 +54,48 @@ def test_base_url_points_to_esa_worldcover():
     assert WORLDCOVER_BASE_URL.endswith("/")
 
 
+def test_download_worldcover_tiles_replaces_corrupt_cache(tmp_path, monkeypatch):
+    import worldcover_downloader as wd
+
+    tile_id = "N00E000"
+    local_tif = tmp_path / wd.worldcover_tile_filename(tile_id)
+    local_tif.write_bytes(b"corrupt")
+
+    open_calls = []
+
+    class FakeResponse:
+        headers = {"Content-Length": "4"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def geturl(self):
+            return wd.worldcover_tile_url(tile_id)
+
+        def read(self, _size):
+            if getattr(self, "_read", False):
+                return b""
+            self._read = True
+            return b"good"
+
+    class FakeOpener:
+        def open(self, url, timeout):
+            open_calls.append((url, timeout))
+            return FakeResponse()
+
+    open_results = iter([None, object()])
+    monkeypatch.setattr(wd.gdal, "Open", lambda _path: next(open_results))
+    monkeypatch.setattr(wd.urllib.request, "build_opener", lambda *_args, **_kwargs: FakeOpener())
+
+    paths = wd.download_worldcover_tiles([tile_id], temp_dir=str(tmp_path))
+
+    assert paths == [str(local_tif)]
+    assert open_calls == [(wd.worldcover_tile_url(tile_id), 120)]
+    assert local_tif.read_bytes() == b"good"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
