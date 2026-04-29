@@ -40,7 +40,6 @@ import math
 logger = logging.getLogger(__name__)
 
 from dataclasses import dataclass
-from typing import List, Tuple
 
 import numpy as np
 

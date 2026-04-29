@@ -29,7 +29,7 @@ class TestFresnelRadius:
         """At the midpoint (d1 == d2), Fresnel radius should equal
         sqrt(wavelength * d / 4) for d1 = d2 = d/2."""
         f_mhz = 300.0  # 1m wavelength
-        d = 1000.0  # 1km total distance
+        _ = 1000.0  # 1km total distance
         r_mid = fresnel_radius(500, 500, f_mhz)
         wavelength = 299792458.0 / (f_mhz * 1e6)
         expected = math.sqrt(wavelength * 500 * 500 / 1000)

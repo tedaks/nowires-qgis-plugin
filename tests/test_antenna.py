@@ -3,7 +3,6 @@
 # This program is free software under GPLv3 or later. See LICENSE.
 """Unit tests for antenna.py — antenna radiation pattern model."""
 
-import math
 
 from antenna import antenna_gain_factor
 
@@ -53,7 +52,7 @@ class TestAntennaGainFactor:
         """Gain should follow parabolic pattern: attn = 3 * (diff / half_bw)^2."""
         az = 0.0
         bw = 120.0
-        half = bw / 2.0
+        _ = bw / 2.0
         # At exactly half the way to beam edge (bearing = 30 deg)
         result = antenna_gain_factor(30.0, az, bw)
         expected = -3.0 * (30.0 / 60.0) ** 2  # = -0.75
