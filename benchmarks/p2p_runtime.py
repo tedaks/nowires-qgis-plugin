@@ -22,18 +22,17 @@ if __package__ in (None, ""):
     from NoWires.benchmarks.reference_cases import (
         P2PCase,
         P2P_CASES,
-        SyntheticElevationGrid,
     )
 else:
     from ..coverage_compute import compute_itm_p2p
-    from .reference_cases import P2PCase, P2P_CASES, SyntheticElevationGrid
+    from .reference_cases import P2PCase, P2P_CASES
 
 
 DEFAULT_CASES = P2P_CASES
 
 
 def _terrain_elevations(terrain: str, distance_km: float, samples: int = 200):
-    dist_m = distance_km * 1000.0
+    _ = distance_km * 1000.0
     if terrain == "flat":
         return np.full(samples, 120.0, dtype=np.float32)
     elif terrain == "varied":

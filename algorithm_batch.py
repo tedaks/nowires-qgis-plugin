@@ -182,7 +182,7 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterFeatureSource(
                 self.RX_LAYER,
                 "RX point layer (for One-to-Many)",
-                [QgsProcessingParameterFeatureSource.GeometryType.Point],
+                [Qgis.GeometryType.Point],
                 optional=True,
             )
         )
@@ -195,7 +195,7 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterFeatureSource(
                 self.TX_LAYER,
                 "TX candidate layer (for Many-to-One)",
-                [QgsProcessingParameterFeatureSource.GeometryType.Point],
+                [Qgis.GeometryType.Point],
                 optional=True,
             )
         )

@@ -4,7 +4,6 @@
 """Behavioral tests for clutter correction helpers."""
 
 import numpy as np
-import pytest
 
 from clutter import (
     CLUTTER_LOSS_DB,

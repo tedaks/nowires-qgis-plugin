@@ -72,7 +72,6 @@ from qgis.core import (
 )
 
 from .dem_downloader import (
-    COPERNICUS_BASE_URL,
     get_temp_dir,
     required_tiles,
     download_tiles,
@@ -169,7 +168,7 @@ def _make_blur_vrt(vrt_path, src_path, kernel_size, sigma=None):
         if source_elem.tag not in ("{}SimpleSource".format(ns), "{}ComplexSource".format(ns)):
             continue
         source_elem.tag = "{}KernelFilteredSource".format(ns)
-        nodata_elem = source_elem.find("{}NODATA".format(ns))
+        source_elem.find("{}NODATA".format(ns))
         kernel_elem = ET.SubElement(source_elem, "{}Kernel".format(ns))
         kernel_elem.set("normalized", "1")
         size_elem = ET.SubElement(kernel_elem, "{}Size".format(ns))

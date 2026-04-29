@@ -56,7 +56,6 @@ def test_antenna_gain_adjustment_combines_horizontal_and_vertical_terms():
 
 
 def test_pattern_file_interpolates_relative_adjustment(tmp_path):
-    from pathlib import Path
 
     path = tmp_path / "horizontal.csv"
     path.write_text("angle_deg,gain_adjust_db\n0,0\n90,-12\n180,-30\n270,-12\n360,0\n")
