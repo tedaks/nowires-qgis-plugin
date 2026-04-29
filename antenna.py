@@ -6,7 +6,7 @@
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
         begin                : 2026-04-22
-        copyright            : (C) 2026 by Bortre Tenamo
+        copyright            : (C) 2026 Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
 
@@ -31,8 +31,11 @@ attribution details.
 """
 
 import csv
+import logging
 from dataclasses import dataclass
 from functools import lru_cache
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -117,6 +120,8 @@ def antenna_config_from_values(
 
 @lru_cache(maxsize=32)
 def _read_pattern_points(path):
+    """Read a CSV pattern file. Results are cached by path for the session;
+    editing a pattern file requires a QGIS restart to take effect."""
     points = []
     with open(path, "r", encoding="utf-8") as handle:
         reader = csv.reader(handle)
@@ -192,6 +197,13 @@ def _vertical_gain_factor(elevation_angle_deg, downtilt_deg, beamwidth_deg):
 
 
 def antenna_gain_adjustment_db(bearing_deg, elevation_angle_deg, config):
+    """Compute off-boresight antenna gain adjustment in dB.
+
+    Returns a value <= 0.0 dB representing the gain reduction relative
+    to the peak gain (which is already captured in tx_gain / rx_gain).
+    Pattern CSVs MUST use gains *relative to peak* (i.e., always <= 0 dB).
+    Positive gains in pattern files are silently clamped to 0.0.
+    """
     if config.preset == "omni":
         return 0.0
     if config.horizontal_pattern_path:
@@ -220,4 +232,12 @@ def antenna_gain_adjustment_db(bearing_deg, elevation_angle_deg, config):
             config.downtilt_deg,
             config.vertical_beamwidth_deg,
         )
-    return min(0.0, horizontal + vertical)
+    result = horizontal + vertical
+    if result > 0.0:
+        logger.warning(
+            "Antenna gain adjustment is positive (%.1f dB). "
+            "Pattern files should use gains relative to peak. Clamping to 0.0 dB.",
+            result,
+        )
+        return 0.0
+    return result

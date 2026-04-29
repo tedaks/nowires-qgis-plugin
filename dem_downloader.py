@@ -7,7 +7,7 @@
                              -------------------
         begin                : 2026-04-22
         copyright            : (C) 2026 Daniel Hulshof Saint Martin
-                               Adaptations (C) 2026 by Bortre Tenamo
+                                Adaptations (C) 2026 Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
 
@@ -127,11 +127,17 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
         local_tif = os.path.join(temp_dir, tile_name + ".tif")
 
         if os.path.exists(local_tif):
-            logger.debug("Cache hit: %s", tile_name)
-            if feedback:
-                feedback.pushInfo("Cache hit: " + tile_name)
-            available.append(local_tif)
-            continue
+            if gdal.Open(local_tif) is not None:
+                logger.debug("Cache hit: %s", tile_name)
+                if feedback:
+                    feedback.pushInfo("Cache hit: " + tile_name)
+                available.append(local_tif)
+                continue
+            logger.warning("Cached tile %s failed validation; re-downloading", tile_name)
+            try:
+                os.unlink(local_tif)
+            except OSError:
+                pass
 
         tile_url = "{}{}/{}.tif".format(COPERNICUS_BASE_URL, tile_name, tile_name)
         if feedback:
@@ -189,6 +195,7 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
                     if attempt < _DOWNLOAD_RETRIES - 1:
                         time.sleep(2**attempt)
                         continue
+                    break
                 test_ds = None
 
                 os.rename(tmp_path, local_tif)

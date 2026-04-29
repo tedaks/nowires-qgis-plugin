@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# This program is free software under GPLv3 or later. See LICENSE.
 """Unit tests for overlay raster sizing helpers."""
 
 from overlay_raster import build_overview_levels, choose_overlay_dimensions

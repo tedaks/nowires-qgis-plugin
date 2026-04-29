@@ -6,7 +6,7 @@
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
         begin                : 2026-04-22
-        copyright            : (C) 2026 by Bortre Tenamo
+        copyright            : (C) 2026 Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
 
@@ -46,14 +46,7 @@ import numpy as np
 
 # --- Signal Level Definitions ---
 
-SIGNAL_LEVELS: List[Tuple[float, Tuple[int, int, int, int], str]] = [
-    (-60.0, (0, 110, 40, 210), "Excellent"),
-    (-75.0, (0, 180, 80, 200), "Good"),
-    (-85.0, (180, 220, 40, 195), "Fair"),
-    (-95.0, (240, 180, 40, 190), "Marginal"),
-    (-105.0, (230, 110, 40, 185), "Weak"),
-    (-120.0, (200, 40, 40, 0), "No service"),
-]
+from .coverage_palette import SIGNAL_LEVELS
 
 THRESHOLDS = np.array([t for t, _, _ in SIGNAL_LEVELS], dtype=np.float64)
 COLORS = np.array(
@@ -257,7 +250,8 @@ def itm_p2p_loss(
             situation=situation_pct,
             return_intermediate=True,
         )
-    except (ValueError, RuntimeError, FloatingPointError):
+    except (ValueError, RuntimeError, FloatingPointError) as exc:
+        logger.warning("ITM call failed: %s", exc, exc_info=True)
         return ITMResult(loss_db=999.0, mode=0, warnings=1)
 
     inter = result.intermediate

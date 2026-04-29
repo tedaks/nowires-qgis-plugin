@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# This program is free software under GPLv3 or later. See LICENSE.
 """Benchmark for the P2P runtime."""
 
 from __future__ import annotations
 
 import argparse
-import math
 import os
 import sys
 import types
-from dataclasses import dataclass
 from time import perf_counter
 
 import numpy as np

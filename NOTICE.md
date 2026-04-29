@@ -17,11 +17,13 @@ The following files are derived from or inspired by the nowires project (adapted
 |---|---|
 | `algorithm_p2p.py` | `apps/api/app/p2p.py` |
 | `algorithm_coverage.py` | `apps/api/app/coverage.py`, `apps/api/app/coverage_render.py` |
+| `algorithm_coverage_comparison.py` | `apps/api/app/coverage.py`, `apps/api/app/coverage_render.py` |
 
 | `coverage_engine.py` | `apps/api/app/coverage_workers.py`, `apps/api/app/coverage_render.py` |
 | `radio.py` (ITM bridge, Fresnel, signal levels) | `apps/api/app/itm_bridge.py`, `apps/api/app/math_kernels.py`, `apps/api/app/signal_levels.py` |
 | `antenna.py` | `apps/api/app/antenna.py` |
 | `elevation.py` (terrain utilities, ElevationGrid) | `apps/api/app/elevation_grid.py`, `apps/api/app/terrain.py` |
+| `coverage_palette.py` (signal level palette) | `apps/api/app/signal_levels.py`, `apps/api/app/coverage_render.py` |
 
 Original MIT license text:
 

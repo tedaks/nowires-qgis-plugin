@@ -6,7 +6,7 @@
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
         begin                : 2026-04-22
-        copyright            : (C) 2026 by Bortre Tenamo
+        copyright            : (C) 2026 Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
 
@@ -154,22 +154,25 @@ class ElevationGrid:
         ts = np.linspace(0.0, 1.0, n_points)
         lats = lat1 + ts * (lat2 - lat1)
         lons = lon1 + ts * (lon2 - lon1)
-        fy = np.clip(
-            (self.max_lat - lats) / self.d_lat, 0, self.n_rows - 1 - 1e-9
-        )
-        fx = np.clip((lons - self.min_lon) / self.d_lon, 0, self.n_cols - 1 - 1e-9)
+        fy_raw = (self.max_lat - lats) / self.d_lat
+        fx_raw = (lons - self.min_lon) / self.d_lon
+        oob = (fy_raw < 0) | (fx_raw < 0) | (fy_raw > self.n_rows - 1) | (fx_raw > self.n_cols - 1)
+        fy = np.clip(fy_raw, 0, self.n_rows - 1 - 1e-9)
+        fx = np.clip(fx_raw, 0, self.n_cols - 1 - 1e-9)
         y0 = np.floor(fy).astype(np.int32)
         x0 = np.floor(fx).astype(np.int32)
         y1 = np.clip(y0 + 1, 0, self.n_rows - 1)
         x1 = np.clip(x0 + 1, 0, self.n_cols - 1)
         ty = (fy - y0).astype(np.float32)
         tx_ = (fx - x0).astype(np.float32)
-        return (
+        result = (
             self.data[y0, x0] * (1 - tx_) * (1 - ty)
             + self.data[y0, x1] * tx_ * (1 - ty)
             + self.data[y1, x0] * (1 - tx_) * ty
             + self.data[y1, x1] * tx_ * ty
         )
+        result[oob] = np.nan
+        return result
 
     def terrain_profile(self, lat1, lon1, lat2, lon2, step_m=30.0):
         dist = haversine_m(lat1, lon1, lat2, lon2)
@@ -209,8 +212,11 @@ def sample_line_from_grid(gd, gm, lat1, lon1, lat2, lon2, n_pts):
     lats = lat1 + ts * (lat2 - lat1)
     lons = lon1 + ts * (lon2 - lon1)
 
-    fy = np.clip((max_lat - lats) / d_lat, 0, n_lat - 1 - 1e-9)
-    fx = np.clip((lons - min_lon) / d_lon, 0, n_lon - 1 - 1e-9)
+    fy_raw = (max_lat - lats) / d_lat
+    fx_raw = (lons - min_lon) / d_lon
+    oob = (fy_raw < 0) | (fx_raw < 0) | (fy_raw > n_lat - 1) | (fx_raw > n_lon - 1)
+    fy = np.clip(fy_raw, 0, n_lat - 1 - 1e-9)
+    fx = np.clip(fx_raw, 0, n_lon - 1 - 1e-9)
 
     y0 = np.floor(fy).astype(np.int32)
     x0 = np.floor(fx).astype(np.int32)
@@ -219,9 +225,11 @@ def sample_line_from_grid(gd, gm, lat1, lon1, lat2, lon2, n_pts):
     ty = (fy - y0).astype(np.float32)
     tx_ = (fx - x0).astype(np.float32)
 
-    return (
+    result = (
         gd[y0, x0] * (1 - tx_) * (1 - ty)
         + gd[y0, x1] * tx_ * (1 - ty)
         + gd[y1, x0] * (1 - tx_) * ty
         + gd[y1, x1] * tx_ * ty
     )
+    result[oob] = np.nan
+    return result

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# This program is free software under GPLv3 or later. See LICENSE.
 """Regression tests for provider and menu wiring."""
 
 import os
@@ -52,3 +54,23 @@ def test_plugin_unload_clears_coverage_legend():
     source = _text(PLUGIN_SOURCE)
     assert "from .coverage_legend import remove_coverage_legend" in source
     assert "remove_coverage_legend()" in source
+
+
+def test_provider_registers_batch_algorithm():
+    assert "BatchAnalysisAlgorithm" in _text(PROVIDER_SOURCE)
+
+
+def test_provider_registers_comparison_algorithm():
+    assert "CoverageComparisonAlgorithm" in _text(PROVIDER_SOURCE)
+
+
+def test_plugin_menu_has_batch_action():
+    source = _text(PLUGIN_SOURCE)
+    assert "comparison_action" in source
+    assert "batch_action" in source
+
+
+def test_plugin_toolbar_includes_batch_and_comparison():
+    source = _text(PLUGIN_SOURCE)
+    assert "addToolBarIcon(self.comparison_action)" in source
+    assert "addToolBarIcon(self.batch_action)" in source

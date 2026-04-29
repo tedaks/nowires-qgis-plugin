@@ -1,5 +1,26 @@
 # -*- coding: utf-8 -*-
-"""Pure-Python helpers for NoWires reliability outputs.
+"""
+/***************************************************************************
+ NoWires
+                     A QGIS plugin
+ Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
+                             -------------------
+        begin                : 2026-04-22
+        copyright            : (C) 2026 Bortre Tenamo
+        email                : tedaks@gmail.com
+ ***************************************************************************/
+
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 3 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+
+Pure-Python helpers for NoWires reliability outputs.
 
 The availability percentage exposed here is a heuristic blend of fade
 margin, distance, and frequency. It is **not** a faithful implementation
@@ -43,8 +64,9 @@ def estimate_heuristic_availability_pct(margin_db, distance_km, frequency_mhz):
 
     This is a lightweight placeholder, **not** ITU-R P.530. The blend
     favours larger fade margins, penalises long paths, and adds a small
-    nudge for higher frequencies. Replace with a P.530-derived calculation
-    if/when that is implemented.
+    nudge for higher frequencies. The frequency term always inflates
+    availability slightly — this is a known limitation of the heuristic.
+    Replace with a P.530-derived calculation if/when that is implemented.
     """
     value = 90.0 + margin_db * 0.4 - distance_km * 0.3 + frequency_mhz / 100000.0
     return max(0.0, min(100.0, round(value, 2)))
