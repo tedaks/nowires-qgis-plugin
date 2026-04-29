@@ -79,6 +79,7 @@ from .radio import (
 from .antenna import (
     ANTENNA_PRESET_OPTIONS,
     ANTENNA_PRESET_KEYS,
+    antenna_preset_key,
     antenna_config_from_values,
     antenna_gain_adjustment_db,
 )
@@ -450,17 +451,37 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
         )
 
     def processAlgorithm(self, parameters, context, feedback):
-        from qgis.core import QgsCoordinateReferenceSystem
+        from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform
 
         mode = self.parameterAsEnum(parameters, self.MODE, context)
         rank_by = self.parameterAsEnum(parameters, self.RANK_BY, context)
+        wgs84_crs = QgsCoordinateReferenceSystem("EPSG:4326")
+        transform_cache = {}
+
+        def transform_point_to_wgs84(point, source_crs):
+            if (
+                source_crs is None
+                or not source_crs.isValid()
+                or source_crs.authid().upper() == "EPSG:4326"
+            ):
+                return point
+            key = source_crs.authid() or source_crs.toWkt()
+            transform = transform_cache.get(key)
+            if transform is None:
+                transform = QgsCoordinateTransform(
+                    source_crs,
+                    wgs84_crs,
+                    context.transformContext(),
+                )
+                transform_cache[key] = transform
+            return transform.transform(point)
 
         if mode == 0:
             tx_point = self.parameterAsPoint(
                 parameters,
                 self.TX_POINT,
                 context,
-                crs=QgsCoordinateReferenceSystem("EPSG:4326"),
+                crs=wgs84_crs,
             )
             if tx_point is None:
                 raise QgsProcessingException("TX point is required for One-to-Many mode.")
@@ -470,6 +491,7 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             rx_source = self.parameterAsFeatureSource(parameters, self.RX_LAYER, context)
             if rx_source is None:
                 raise QgsProcessingException("RX layer is required for One-to-Many mode.")
+            rx_source_crs = rx_source.sourceCrs()
             rx_features = list(rx_source.getFeatures())
             if not rx_features:
                 raise QgsProcessingException("RX layer has no features.")
@@ -481,20 +503,23 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
                     continue
                 if geom.isMultipart():
                     continue
-                pt = geom.asPoint()
+                pt = transform_point_to_wgs84(geom.asPoint(), rx_source_crs)
                 height = _feat_attr(feat, "height", 10.0)
-                preset_key = str(_feat_attr(feat, "antenna_preset", "omni"))
-                az = _feat_attr(feat, "azimuth", 0.0)
+                preset_key = _feat_attr(feat, "antenna_preset", None)
+                az = _feat_attr(feat, "azimuth", None)
                 gain = _feat_attr(feat, "gain_db", None)
-                rx_points.append({
+                rx_def = {
                     "id": feat.id(),
                     "lat": pt.y(),
                     "lon": pt.x(),
                     "height": height,
-                    "antenna_preset": preset_key,
-                    "azimuth": az,
                     "gain_db": gain,
-                })
+                }
+                if preset_key is not None:
+                    rx_def["antenna_preset"] = str(preset_key)
+                if az is not None:
+                    rx_def["azimuth"] = az
+                rx_points.append(rx_def)
             if not rx_points:
                 raise QgsProcessingException("No valid RX points found.")
             feedback.pushInfo(
@@ -507,6 +532,7 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             tx_source = self.parameterAsFeatureSource(parameters, self.TX_LAYER, context)
             if tx_source is None:
                 raise QgsProcessingException("TX layer is required for Many-to-One mode.")
+            tx_source_crs = tx_source.sourceCrs()
             tx_features = list(tx_source.getFeatures())
             if not tx_features:
                 raise QgsProcessingException("TX layer has no features.")
@@ -518,21 +544,24 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
                     continue
                 if geom.isMultipart():
                     continue
-                pt = geom.asPoint()
+                pt = transform_point_to_wgs84(geom.asPoint(), tx_source_crs)
                 height = _feat_attr(feat, "height", 30.0)
-                preset_key = str(_feat_attr(feat, "antenna_preset", "omni"))
-                az = _feat_attr(feat, "azimuth", 0.0)
+                preset_key = _feat_attr(feat, "antenna_preset", None)
+                az = _feat_attr(feat, "azimuth", None)
                 gain = _feat_attr(feat, "gain_db", None)
-                candidate_tx.append({
+                tx_def = {
                     "id": feat.id(),
                     "lat": pt.y(),
                     "lon": pt.x(),
                     "height": height,
-                    "antenna_preset": preset_key,
-                    "azimuth": az,
                     "gain_db": gain,
                     "is_tx": True,
-                })
+                }
+                if preset_key is not None:
+                    tx_def["antenna_preset"] = str(preset_key)
+                if az is not None:
+                    tx_def["azimuth"] = az
+                candidate_tx.append(tx_def)
             if not candidate_tx:
                 raise QgsProcessingException("No valid TX points found.")
 
@@ -540,7 +569,7 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
                 parameters,
                 self.RX_POINT,
                 context,
-                crs=QgsCoordinateReferenceSystem("EPSG:4326"),
+                crs=wgs84_crs,
             )
             if rx_point is None:
                 raise QgsProcessingException("RX point is required for Many-to-One mode.")
@@ -564,6 +593,14 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
         rx_gain_default = self.parameterAsDouble(parameters, self.RX_GAIN, context)
         cable_loss = self.parameterAsDouble(parameters, self.CABLE_LOSS, context)
         rx_sens = self.parameterAsDouble(parameters, self.RX_SENSITIVITY, context)
+        tx_default_preset_key = antenna_preset_key(
+            self.parameterAsEnum(parameters, self.TX_ANTENNA_PRESET, context)
+        )
+        rx_default_preset_key = antenna_preset_key(
+            self.parameterAsEnum(parameters, self.RX_ANTENNA_PRESET, context)
+        )
+        tx_default_az = self.parameterAsDouble(parameters, self.TX_ANTENNA_AZ, context)
+        rx_default_az = self.parameterAsDouble(parameters, self.RX_ANTENNA_AZ, context)
         preset_index = self.parameterAsEnum(parameters, self.K_FACTOR_PRESET, context)
         custom_k_factor = self.parameterAsDouble(parameters, self.K_FACTOR, context)
         k_factor = resolve_k_factor(
@@ -700,22 +737,22 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
                     tx_gain_eff = tx_def["gain_db"] if tx_def["gain_db"] is not None else tx_gain_default
                     rx_gain_eff = rx_def["gain_db"] if rx_def["gain_db"] is not None else rx_gain_default
 
-                    tx_preset_key = tx_def.get("antenna_preset", "omni")
+                    tx_preset_key = tx_def.get("antenna_preset", tx_default_preset_key)
                     if tx_preset_key not in ANTENNA_PRESET_KEYS:
-                        tx_preset_key = "omni"
+                        tx_preset_key = tx_default_preset_key
                     tx_preset_idx = ANTENNA_PRESET_KEYS.index(tx_preset_key)
                     tx_ant_config = antenna_config_from_values(
                         preset=tx_preset_idx,
-                        azimuth_deg=tx_def.get("azimuth", 0.0),
+                        azimuth_deg=tx_def.get("azimuth", tx_default_az),
                         front_back_db=tx_front_back_db,
                     )
-                    rx_preset_key = rx_def.get("antenna_preset", "omni")
+                    rx_preset_key = rx_def.get("antenna_preset", rx_default_preset_key)
                     if rx_preset_key not in ANTENNA_PRESET_KEYS:
-                        rx_preset_key = "omni"
+                        rx_preset_key = rx_default_preset_key
                     rx_preset_idx = ANTENNA_PRESET_KEYS.index(rx_preset_key)
                     rx_ant_config = antenna_config_from_values(
                         preset=rx_preset_idx,
-                        azimuth_deg=rx_def.get("azimuth", 0.0),
+                        azimuth_deg=rx_def.get("azimuth", rx_default_az),
                         front_back_db=rx_front_back_db,
                     )
 
@@ -794,12 +831,14 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("Viable links: {} / {}".format(viable, len(results)))
         feedback.pushInfo("Top 5 ranked results:")
         for i, r in enumerate(results[:5]):
+            coord_lat = r["tx_lat"] if mode == 1 else r["rx_lat"]
+            coord_lon = r["tx_lon"] if mode == 1 else r["rx_lon"]
             feedback.pushInfo(
                 "  {}. {} → ({:.5f}, {:.5f}): {:.2f} km, margin={:.1f} dB, {}".format(
                     i + 1,
                     "TX" if mode == 0 else "TX candidate",
-                    r["rx_lat"],
-                    r["rx_lon"],
+                    coord_lat,
+                    coord_lon,
                     r["dist_km"],
                     r["margin_db"],
                     r["status"],

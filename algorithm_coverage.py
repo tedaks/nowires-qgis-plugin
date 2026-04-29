@@ -57,7 +57,11 @@ from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
 from .coverage_legend import show_coverage_legend
 from .coverage_summary import summarize_coverage_grid
-from .coverage_compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
+from .coverage_compute import (
+    DEFAULT_MAX_PROFILE_PTS,
+    coverage_profile_step_m,
+    grid_to_raster_array,
+)
 from .coverage_engine import compute_coverage
 from .antenna import ANTENNA_PRESET_OPTIONS
 from .clutter import (
@@ -657,8 +661,7 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
         ds.SetProjection(srs.ExportToWkt())
         band = ds.GetRasterBand(1)
         band.SetNoDataValue(-9999.0)
-        # Flip vertically since geo transform starts at top
-        band.WriteArray(prx_grid[::-1])
+        band.WriteArray(grid_to_raster_array(prx_grid))
         band.FlushCache()
         ds = None
 

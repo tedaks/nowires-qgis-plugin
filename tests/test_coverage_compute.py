@@ -61,3 +61,19 @@ def test_compute_itm_p2p_uses_radio_bridge(monkeypatch):
         "antenna_gain_adjustment_db": 3.0,
         "received_power_dbm": -104.5,
     }
+
+
+def test_grid_to_raster_array_flips_rows_and_replaces_nan_with_nodata():
+    module = importlib.import_module("NoWires.coverage_compute")
+    grid = np.array(
+        [
+            [1.0, np.nan],
+            [-85.5, -90.0],
+        ],
+        dtype=np.float32,
+    )
+
+    result = module.grid_to_raster_array(grid, nodata=-9999.0)
+
+    assert result.tolist() == [[-85.5, -90.0], [1.0, -9999.0]]
+    assert not np.isnan(result).any()

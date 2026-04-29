@@ -129,3 +129,27 @@ def test_batch_algorithm_keeps_temporary_outputs_alive_for_qgis_loading():
     source = _batch_source()
     assert "shutil.rmtree(_batch_tmp" not in source
     assert "Temporary outputs are intentionally left on disk" in source
+
+
+def test_batch_algorithm_transforms_source_layer_points_to_epsg4326():
+    source = _batch_source()
+    assert "QgsCoordinateTransform" in source
+    assert "rx_source.sourceCrs()" in source
+    assert "tx_source.sourceCrs()" in source
+    assert "transform_point_to_wgs84(" in source
+
+
+def test_batch_algorithm_uses_global_antenna_settings_as_feature_defaults():
+    source = _batch_source()
+    assert "tx_default_preset_key" in source
+    assert "rx_default_preset_key" in source
+    assert 'tx_def.get("antenna_preset", tx_default_preset_key)' in source
+    assert 'rx_def.get("antenna_preset", rx_default_preset_key)' in source
+    assert 'tx_def.get("azimuth", tx_default_az)' in source
+    assert 'rx_def.get("azimuth", rx_default_az)' in source
+
+
+def test_batch_many_to_one_summary_prints_tx_candidate_coordinates():
+    source = _batch_source()
+    assert 'coord_lat = r["tx_lat"] if mode == 1 else r["rx_lat"]' in source
+    assert 'coord_lon = r["tx_lon"] if mode == 1 else r["rx_lon"]' in source
