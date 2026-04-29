@@ -1358,8 +1358,7 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
 
         def _make_toggle(key):
             def _toggle(state):
-                from qgis.PyQt.QtCore import Qt
-                toggle_state[key] = state == Qt.CheckState.Checked
+                toggle_state[key] = int(state) == int(Qt.CheckState.Checked)
                 update_visibility()
             return _toggle
 
