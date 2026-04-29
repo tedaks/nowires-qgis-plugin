@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# This program is free software under GPLv3 or later. See LICENSE.
 """Unit tests for coverage palette and legend entries."""
 
 from coverage_palette import SIGNAL_LEVELS, build_heatmap_stops, build_legend_entries
@@ -10,7 +12,7 @@ EXPECTED_SIGNAL_LEVELS = [
     (-85.0, (180, 220, 40, 195), "Fair"),
     (-95.0, (240, 180, 40, 190), "Marginal"),
     (-105.0, (230, 110, 40, 185), "Weak"),
-    (-120.0, (200, 40, 40, 0), "No service"),
+    (-120.0, (200, 40, 40, 180), "No service"),
 ]
 
 

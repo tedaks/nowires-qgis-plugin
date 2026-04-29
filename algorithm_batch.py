@@ -3,12 +3,12 @@
 /***************************************************************************
  NoWires
                      A QGIS plugin
-  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
+ Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
-         begin                : 2026-04-22
-         copyright            : (C) 2026 by Bortre Tenamo
-         email                : tedaks@gmail.com
-  ***************************************************************************/
+        begin                : 2026-04-22
+        copyright            : (C) 2026 Bortre Tenamo
+        email                : tedaks@gmail.com
+ ***************************************************************************/
 
 /***************************************************************************
  *                                                                         *
@@ -17,7 +17,7 @@
  *   the Free Software Foundation; either version 3 of the License, or     *
  *   (at your option) any later version.                                   *
  *                                                                         *
-  ***************************************************************************/
+ ***************************************************************************/
 
 
 Batch P2P Analysis Algorithm.
@@ -46,10 +46,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
     Qgis,
     QgsProcessingAlgorithm,
-    QgsProject,
-    QgsProcessingContext,
     QgsProcessingException,
-    QgsProcessingParameterBoolean,
     QgsProcessingParameterEnum,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterFile,
@@ -68,6 +65,12 @@ from .elevation import ElevationGrid, bearing_deg, haversine_m
 from .radio import (
     ITM_MIN_FREQUENCY_MHZ,
     ITM_MAX_FREQUENCY_MHZ,
+    ITM_MIN_TERMINAL_HEIGHT_M,
+    ITM_MAX_TERMINAL_HEIGHT_M,
+    ITM_MIN_N0,
+    ITM_MAX_N0,
+    ITM_MIN_SIGMA,
+    K_FACTOR_PRESETS,
     build_pfl,
     itm_p2p_loss,
     resolve_k_factor,
@@ -87,6 +90,7 @@ from .clutter import (
     compute_terminal_clutter_losses,
     ensure_clutter_grid_for_area,
 )
+from .processing_utils import queue_layer_for_loading
 from .report_payloads import ogr_driver_for_path, _remove_existing_ogr_dataset
 
 BATCH_MODE_OPTIONS = ["One-to-Many (single TX → multiple RX)", "Many-to-One (multiple TX → single RX)"]
@@ -94,32 +98,29 @@ RANK_BY_OPTIONS = ["Link margin (descending)", "Path loss (ascending)", "Clearan
 
 
 def _feat_attr(feat, name, default):
+    """Return feat.attribute(name) cast to the same type as default.
+
+    If default is None, returns float for numeric values or str for strings.
+    Returns default on NULL attribute, missing field, or cast failure.
+    """
     val = feat.attribute(name)
     if val is None or val == _QGIS_NULL:
         return default
+    if default is None:
+        if isinstance(val, (int, float)):
+            return float(val)
+        return str(val) if isinstance(val, str) else default
     try:
-        if isinstance(val, type(default)):
-            return val
-        return type(default)(val)
+        if isinstance(default, float):
+            return float(val)
+        if isinstance(default, int):
+            return int(float(val))
+        if isinstance(default, str):
+            return str(val)
+        return default
     except (ValueError, TypeError):
         return default
 
-
-def _queue_layer_for_loading(context, layer, name):
-    """Hand a layer to Processing for loading instead of mutating the project."""
-    if layer is None or not layer.isValid():
-        return False
-    if not (
-        hasattr(context, "temporaryLayerStore")
-        and hasattr(context, "addLayerToLoadOnCompletion")
-    ):
-        return False
-    project = QgsProject.instance()
-    context.temporaryLayerStore().addMapLayer(layer)
-    context.addLayerToLoadOnCompletion(
-        layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
-    )
-    return True
 
 
 class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
@@ -204,8 +205,8 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
                 "TX antenna height (m)",
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=30.0,
-                minValue=0.5,
-                maxValue=3000.0,
+                minValue=ITM_MIN_TERMINAL_HEIGHT_M,
+                maxValue=ITM_MAX_TERMINAL_HEIGHT_M,
             )
         )
         self.addParameter(
@@ -214,8 +215,8 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
                 "RX antenna height (m)",
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=10.0,
-                minValue=0.5,
-                maxValue=3000.0,
+                minValue=ITM_MIN_TERMINAL_HEIGHT_M,
+                maxValue=ITM_MAX_TERMINAL_HEIGHT_M,
             )
         )
         self.addParameter(
@@ -224,8 +225,8 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
                 "Frequency (MHz)",
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=300.0,
-                minValue=20.0,
-                maxValue=20000.0,
+                minValue=ITM_MIN_FREQUENCY_MHZ,
+                maxValue=ITM_MAX_FREQUENCY_MHZ,
             )
         )
         self.addParameter(
@@ -366,6 +367,7 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
                     "1.33 - Standard atmosphere",
                     "2.00 - Super-refractive",
                     "4.00 - Strong super-refractive",
+                    "Custom",
                 ],
                 defaultValue=2,
             )
@@ -386,8 +388,8 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             "Surface refractivity N0 (N-units)",
             type=QgsProcessingParameterNumber.Double,
             defaultValue=301.0,
-            minValue=250.0,
-            maxValue=400.0,
+            minValue=ITM_MIN_N0,
+            maxValue=ITM_MAX_N0,
         )
         n0_param.setFlags(
             n0_param.flags() | QgsProcessingParameterNumber.FlagAdvanced
@@ -409,7 +411,7 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             "Earth conductivity (sigma, S/m)",
             type=QgsProcessingParameterNumber.Double,
             defaultValue=0.005,
-            minValue=1e-6,
+            minValue=ITM_MIN_SIGMA,
         )
         sigma_param.setFlags(
             sigma_param.flags() | QgsProcessingParameterNumber.FlagAdvanced
@@ -477,13 +479,13 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
                 geom = feat.geometry()
                 if geom is None or geom.isEmpty():
                     continue
-                pt = geom.asPoint()
-                if pt is None:
+                if geom.isMultipart():
                     continue
+                pt = geom.asPoint()
                 height = _feat_attr(feat, "height", 10.0)
                 preset_key = str(_feat_attr(feat, "antenna_preset", "omni"))
                 az = _feat_attr(feat, "azimuth", 0.0)
-                gain = _feat_attr(feat, "gain_db", 0.0)
+                gain = _feat_attr(feat, "gain_db", None)
                 rx_points.append({
                     "id": feat.id(),
                     "lat": pt.y(),
@@ -514,13 +516,13 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
                 geom = feat.geometry()
                 if geom is None or geom.isEmpty():
                     continue
-                pt = geom.asPoint()
-                if pt is None:
+                if geom.isMultipart():
                     continue
+                pt = geom.asPoint()
                 height = _feat_attr(feat, "height", 30.0)
                 preset_key = str(_feat_attr(feat, "antenna_preset", "omni"))
                 az = _feat_attr(feat, "azimuth", 0.0)
-                gain = _feat_attr(feat, "gain_db", 0.0)
+                gain = _feat_attr(feat, "gain_db", None)
                 candidate_tx.append({
                     "id": feat.id(),
                     "lat": pt.y(),
@@ -562,22 +564,14 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
         rx_gain_default = self.parameterAsDouble(parameters, self.RX_GAIN, context)
         cable_loss = self.parameterAsDouble(parameters, self.CABLE_LOSS, context)
         rx_sens = self.parameterAsDouble(parameters, self.RX_SENSITIVITY, context)
-        has_preset = self.K_FACTOR_PRESET in parameters
-        has_custom = self.K_FACTOR in parameters
-        if not has_preset and has_custom:
-            k_factor = resolve_k_factor(
-                has_preset=False,
-                has_custom=True,
-                custom_value=self.parameterAsDouble(parameters, self.K_FACTOR, context),
-                preset_index=0,
-            )
-        else:
-            k_factor = resolve_k_factor(
-                has_preset=has_preset,
-                has_custom=has_custom,
-                custom_value=0.0,
-                preset_index=self.parameterAsEnum(parameters, self.K_FACTOR_PRESET, context),
-            )
+        preset_index = self.parameterAsEnum(parameters, self.K_FACTOR_PRESET, context)
+        custom_k_factor = self.parameterAsDouble(parameters, self.K_FACTOR, context)
+        k_factor = resolve_k_factor(
+            has_preset=preset_index < len(K_FACTOR_PRESETS),
+            has_custom=True,
+            custom_value=custom_k_factor,
+            preset_index=preset_index,
+        )
         n0 = self.parameterAsDouble(parameters, self.N0, context)
         epsilon = self.parameterAsDouble(parameters, self.EPSILON, context)
         sigma = self.parameterAsDouble(parameters, self.SIGMA, context)
@@ -625,12 +619,10 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             south - pad, north + pad, west - pad, east + pad, feedback=feedback
         )
         if dem_path is None:
-            raise RuntimeError("Failed to obtain DEM data for the analysis area.")
+            raise QgsProcessingException("Failed to obtain DEM data for the analysis area.")
         feedback.pushInfo("Building elevation grid...")
         feedback.setProgress(15)
         elev = ElevationGrid(dem_path)
-
-        eirp_dbm = tx_power + tx_gain_default - cable_loss
 
         feedback.pushInfo("Computing batch P2P links...")
         feedback.setProgress(20)
@@ -638,6 +630,9 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
         results = []
         total = len(candidate_tx) * len(rx_points)
         count = 0
+        wavelength_m = 299792458.0 / (f_mhz * 1e6)
+        tx_front_back_db = self.parameterAsDouble(parameters, self.TX_FRONT_BACK_DB, context)
+        rx_front_back_db = self.parameterAsDouble(parameters, self.RX_FRONT_BACK_DB, context)
 
         for tx_def in candidate_tx:
             tx_lat = tx_def["lat"]
@@ -645,132 +640,139 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             tx_h_eff = tx_def["height"] if tx_def["height"] is not None else tx_h
 
             for rx_def in rx_points:
+                if feedback.isCanceled():
+                    raise QgsProcessingException("Batch analysis cancelled by user.")
                 rx_lat = rx_def["lat"]
                 rx_lon = rx_def["lon"]
                 rx_h_eff = rx_def["height"] if rx_def["height"] is not None else rx_h
 
-                dist_m = haversine_m(tx_lat, tx_lon, rx_lat, rx_lon)
-                if dist_m < 1.0:
+                try:
+                    dist_m = haversine_m(tx_lat, tx_lon, rx_lat, rx_lon)
+                    if dist_m < 1.0:
+                        count += 1
+                        continue
+
+                    profile_points = elev.terrain_profile(tx_lat, tx_lon, rx_lat, rx_lon, step_m=30.0)
+                    if len(profile_points) < 2:
+                        count += 1
+                        continue
+                    distances = [p[0] for p in profile_points]
+                    elevations = [p[1] for p in profile_points]
+                    elevations = [0.0 if math.isnan(e) else e for e in elevations]
+                    step_m_val = dist_m / max(len(distances) - 1, 1)
+                    pfl = build_pfl(elevations, step_m_val)
+
+                    itm_result = itm_p2p_loss(
+                        h_tx__meter=tx_h_eff,
+                        h_rx__meter=rx_h_eff,
+                        profile=pfl,
+                        climate=climate,
+                        N0=n0,
+                        f__mhz=f_mhz,
+                        polarization=polarization,
+                        epsilon=epsilon,
+                        sigma=sigma,
+                        time_pct=time_pct,
+                        location_pct=location_pct,
+                        situation_pct=situation_pct,
+                    )
+
+                    clutter_losses = compute_terminal_clutter_losses(
+                        tx_lat=tx_lat,
+                        tx_lon=tx_lon,
+                        rx_lat=rx_lat,
+                        rx_lon=rx_lon,
+                        frequency_mhz=f_mhz,
+                        enabled=clutter_enabled,
+                        land_cover_grid=clutter_grid,
+                        tx_override=tx_clutter_override,
+                        rx_override=rx_clutter_override,
+                    )
+
+                    total_loss_db = itm_result.loss_db + clutter_losses.total_loss_db
+
+                    tx_bearing = bearing_deg(tx_lat, tx_lon, rx_lat, rx_lon)
+                    rx_bearing = bearing_deg(rx_lat, rx_lon, tx_lat, tx_lon)
+                    vertical_angle = math.degrees(
+                        math.atan2((elevations[-1] + rx_h_eff) - (elevations[0] + tx_h_eff), max(dist_m, 1.0))
+                    )
+
+                    tx_gain_eff = tx_def["gain_db"] if tx_def["gain_db"] is not None else tx_gain_default
+                    rx_gain_eff = rx_def["gain_db"] if rx_def["gain_db"] is not None else rx_gain_default
+
+                    tx_preset_key = tx_def.get("antenna_preset", "omni")
+                    if tx_preset_key not in ANTENNA_PRESET_KEYS:
+                        tx_preset_key = "omni"
+                    tx_preset_idx = ANTENNA_PRESET_KEYS.index(tx_preset_key)
+                    tx_ant_config = antenna_config_from_values(
+                        preset=tx_preset_idx,
+                        azimuth_deg=tx_def.get("azimuth", 0.0),
+                        front_back_db=tx_front_back_db,
+                    )
+                    rx_preset_key = rx_def.get("antenna_preset", "omni")
+                    if rx_preset_key not in ANTENNA_PRESET_KEYS:
+                        rx_preset_key = "omni"
+                    rx_preset_idx = ANTENNA_PRESET_KEYS.index(rx_preset_key)
+                    rx_ant_config = antenna_config_from_values(
+                        preset=rx_preset_idx,
+                        azimuth_deg=rx_def.get("azimuth", 0.0),
+                        front_back_db=rx_front_back_db,
+                    )
+
+                    tx_ant_adj = antenna_gain_adjustment_db(tx_bearing, vertical_angle, tx_ant_config)
+                    rx_ant_adj = antenna_gain_adjustment_db(rx_bearing, -vertical_angle, rx_ant_config)
+                    ant_gain_adj_total = tx_ant_adj + rx_ant_adj
+
+                    eirp_eff = tx_power + tx_gain_eff - cable_loss
+                    prx_dbm = eirp_eff + rx_gain_eff + ant_gain_adj_total - total_loss_db
+                    margin_db = prx_dbm - rx_sens
+
+                    fresnel_r_arr = []
+                    for i in range(len(distances)):
+                        d1 = distances[i]
+                        d2 = dist_m - d1
+                        if d1 > 0 and d2 > 0:
+                            fr = math.sqrt(wavelength_m * d1 * d2 / dist_m)
+                            fresnel_r_arr.append(fr)
+                        else:
+                            fresnel_r_arr.append(0.0)
+
+                    fresnel_r_arr = np.array(fresnel_r_arr, dtype=np.float64)
+                    elev_arr = np.array(elevations, dtype=np.float64)
+                    dist_arr = np.array(distances, dtype=np.float64)
+
+                    tx_antenna_h = elevations[0] + tx_h_eff
+                    rx_antenna_h = elevations[-1] + rx_h_eff
+                    t = np.divide(dist_arr, dist_m, out=np.zeros_like(dist_arr), where=dist_m > 0)
+                    a_eff = k_factor * 6371000.0
+                    bulge = (dist_arr * (dist_m - dist_arr)) / (2.0 * a_eff)
+                    los_h = tx_antenna_h + t * (rx_antenna_h - tx_antenna_h)
+                    terrain_bulge = elev_arr + bulge
+                    fresnel_clearance = (los_h - fresnel_r_arr) - terrain_bulge
+                    clearance_pct = float(
+                        np.sum(fresnel_clearance > 0) / max(len(fresnel_clearance), 1) * 100
+                    )
+
+                    results.append({
+                        "tx_lat": tx_lat,
+                        "tx_lon": tx_lon,
+                        "rx_lat": rx_lat,
+                        "rx_lon": rx_lon,
+                        "dist_m": dist_m,
+                        "dist_km": dist_m / 1000.0,
+                        "itm_loss_db": itm_result.loss_db,
+                        "total_loss_db": total_loss_db,
+                        "prx_dbm": prx_dbm,
+                        "margin_db": margin_db,
+                        "clearance_pct": clearance_pct,
+                        "status": "VIABLE" if margin_db >= 0 else "NOT VIABLE",
+                        "tx_height": tx_h_eff,
+                        "rx_height": rx_h_eff,
+                    })
+                except Exception as exc:
+                    logger.warning("Skipping TX(%.5f,%.5f)→RX(%.5f,%.5f): %s", tx_lat, tx_lon, rx_lat, rx_lon, exc)
                     count += 1
                     continue
-
-                profile_points = elev.terrain_profile(tx_lat, tx_lon, rx_lat, rx_lon, step_m=30.0)
-                if len(profile_points) < 2:
-                    count += 1
-                    continue
-                distances = [p[0] for p in profile_points]
-                elevations = [p[1] for p in profile_points]
-                elevations = [0.0 if math.isnan(e) else e for e in elevations]
-                step_m_val = dist_m / max(len(distances) - 1, 1)
-                pfl = build_pfl(elevations, step_m_val)
-
-                itm_result = itm_p2p_loss(
-                    h_tx__meter=tx_h_eff,
-                    h_rx__meter=rx_h_eff,
-                    profile=pfl,
-                    climate=climate,
-                    N0=n0,
-                    f__mhz=f_mhz,
-                    polarization=polarization,
-                    epsilon=epsilon,
-                    sigma=sigma,
-                    time_pct=time_pct,
-                    location_pct=location_pct,
-                    situation_pct=situation_pct,
-                )
-
-                clutter_losses = compute_terminal_clutter_losses(
-                    tx_lat=tx_lat,
-                    tx_lon=tx_lon,
-                    rx_lat=rx_lat,
-                    rx_lon=rx_lon,
-                    frequency_mhz=f_mhz,
-                    enabled=clutter_enabled,
-                    land_cover_grid=clutter_grid,
-                    tx_override=tx_clutter_override,
-                    rx_override=rx_clutter_override,
-                )
-
-                total_loss_db = itm_result.loss_db + clutter_losses.total_loss_db
-
-                tx_bearing = bearing_deg(tx_lat, tx_lon, rx_lat, rx_lon)
-                rx_bearing = bearing_deg(rx_lat, rx_lon, tx_lat, tx_lon)
-                vertical_angle = math.degrees(
-                    math.atan2((elevations[-1] + rx_h_eff) - (elevations[0] + tx_h_eff), max(dist_m, 1.0))
-                )
-
-                tx_gain_eff = tx_def["gain_db"] if tx_def.get("gain_db", 0.0) != 0.0 else tx_gain_default
-                rx_gain_eff = rx_def["gain_db"] if rx_def.get("gain_db", 0.0) != 0.0 else rx_gain_default
-
-                tx_preset_key = tx_def.get("antenna_preset", "omni")
-                if tx_preset_key not in ANTENNA_PRESET_KEYS:
-                    tx_preset_key = "omni"
-                tx_preset_idx = ANTENNA_PRESET_KEYS.index(tx_preset_key)
-                tx_ant_config = antenna_config_from_values(
-                    preset=tx_preset_idx,
-                    azimuth_deg=tx_def.get("azimuth", 0.0),
-                    front_back_db=self.parameterAsDouble(parameters, self.TX_FRONT_BACK_DB, context),
-                )
-                rx_preset_key = rx_def.get("antenna_preset", "omni")
-                if rx_preset_key not in ANTENNA_PRESET_KEYS:
-                    rx_preset_key = "omni"
-                rx_preset_idx = ANTENNA_PRESET_KEYS.index(rx_preset_key)
-                rx_ant_config = antenna_config_from_values(
-                    preset=rx_preset_idx,
-                    azimuth_deg=rx_def.get("azimuth", 0.0),
-                    front_back_db=self.parameterAsDouble(parameters, self.RX_FRONT_BACK_DB, context),
-                )
-
-                tx_ant_adj = antenna_gain_adjustment_db(tx_bearing, vertical_angle, tx_ant_config)
-                rx_ant_adj = antenna_gain_adjustment_db(rx_bearing, -vertical_angle, rx_ant_config)
-                ant_gain_adj_total = tx_ant_adj + rx_ant_adj
-
-                prx_dbm = eirp_dbm + rx_gain_eff + ant_gain_adj_total - total_loss_db
-                margin_db = prx_dbm - rx_sens
-
-                fresnel_r_arr = []
-                for i in range(len(distances)):
-                    d1 = distances[i]
-                    d2 = dist_m - d1
-                    if d1 > 0 and d2 > 0:
-                        wl = 299792458.0 / (f_mhz * 1e6)
-                        fr = math.sqrt(wl * d1 * d2 / dist_m)
-                        fresnel_r_arr.append(fr)
-                    else:
-                        fresnel_r_arr.append(0.0)
-
-                fresnel_r_arr = np.array(fresnel_r_arr, dtype=np.float64)
-                elev_arr = np.array(elevations, dtype=np.float64)
-                dist_arr = np.array(distances, dtype=np.float64)
-
-                tx_antenna_h = elevations[0] + tx_h_eff
-                rx_antenna_h = elevations[-1] + rx_h_eff
-                t = np.divide(dist_arr, dist_m, out=np.zeros_like(dist_arr), where=dist_m > 0)
-                a_eff = k_factor * 6371000.0
-                bulge = (dist_arr * (dist_m - dist_arr)) / (2.0 * a_eff)
-                los_h = tx_antenna_h + t * (rx_antenna_h - tx_antenna_h)
-                terrain_bulge = elev_arr + bulge
-                fresnel_clearance = (los_h - fresnel_r_arr) - terrain_bulge
-                clearance_pct = float(
-                    np.sum(fresnel_clearance > 0) / max(len(fresnel_clearance), 1) * 100
-                )
-
-                results.append({
-                    "tx_lat": tx_lat,
-                    "tx_lon": tx_lon,
-                    "rx_lat": rx_lat,
-                    "rx_lon": rx_lon,
-                    "dist_m": dist_m,
-                    "dist_km": dist_m / 1000.0,
-                    "itm_loss_db": itm_result.loss_db,
-                    "total_loss_db": total_loss_db,
-                    "prx_dbm": prx_dbm,
-                    "margin_db": margin_db,
-                    "clearance_pct": clearance_pct,
-                    "status": "VIABLE" if margin_db >= 0 else "NOT VIABLE",
-                    "tx_height": tx_h_eff,
-                    "rx_height": rx_h_eff,
-                })
 
                 count += 1
                 if count % 100 == 0 or count == total:
@@ -807,33 +809,47 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
 
         feedback.setProgress(85)
 
-        markers_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_MARKERS, context)
-        markers_path = (
-            markers_dest if markers_dest else os.path.join(
-                tempfile.mkdtemp(prefix="nowires_batch_"), "batch_markers.gpkg"
-            )
-        )
-        self._write_batch_marker_layer(markers_path, results, feedback, mode)
+        _batch_tmp = None
+        try:
+            markers_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_MARKERS, context)
+            if markers_dest:
+                markers_path = markers_dest
+            else:
+                _batch_tmp = tempfile.mkdtemp(prefix="nowires_batch_")
+                markers_path = os.path.join(_batch_tmp, "batch_markers.gpkg")
+                feedback.pushInfo(
+                    "Temporary outputs are intentionally left on disk for QGIS layer loading: {}".format(
+                        _batch_tmp
+                    )
+                )
+            self._write_batch_marker_layer(markers_path, results, feedback, mode)
 
-        from qgis.core import QgsVectorLayer
-        marker_layer = QgsVectorLayer(markers_path, "Batch P2P Markers")
-        _queue_layer_for_loading(context, marker_layer, "Batch P2P Markers")
+            from qgis.core import QgsVectorLayer
+            marker_layer = QgsVectorLayer(markers_path, "Batch P2P Markers")
+            queue_layer_for_loading(context, marker_layer, "Batch P2P Markers")
 
-        csv_path = self.parameterAsFileOutput(parameters, self.OUTPUT_CSV, context)
-        json_path = self.parameterAsFileOutput(parameters, self.OUTPUT_JSON, context)
+            csv_path = self.parameterAsFileOutput(parameters, self.OUTPUT_CSV, context)
+            json_path = self.parameterAsFileOutput(parameters, self.OUTPUT_JSON, context)
 
-        if csv_path:
-            self._write_batch_csv(csv_path, results, mode)
-        if json_path:
-            self._write_batch_json(json_path, results, parameters, context, mode)
+            if csv_path:
+                self._write_batch_csv(csv_path, results, mode)
+            if json_path:
+                self._write_batch_json(json_path, results, parameters, context, mode)
 
-        feedback.setProgress(100)
+            feedback.setProgress(100)
 
-        return {
-            self.OUTPUT_MARKERS: markers_path,
-            self.OUTPUT_CSV: csv_path,
-            self.OUTPUT_JSON: json_path,
-        }
+            output = {}
+            if markers_path:
+                output[self.OUTPUT_MARKERS] = markers_path
+            if csv_path:
+                output[self.OUTPUT_CSV] = csv_path
+            if json_path:
+                output[self.OUTPUT_JSON] = json_path
+
+            return output
+        finally:
+            if _batch_tmp is not None:
+                pass
 
     def _write_batch_marker_layer(self, path, results, feedback, mode):
         driver = ogr.GetDriverByName(ogr_driver_for_path(path))
@@ -881,6 +897,7 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
             feat.SetField("rx_lat", r["rx_lat"])
             feat.SetField("rx_lon", r["rx_lon"])
             layer.CreateFeature(feat)
+            feat = None
 
         ds = None
         feedback.pushInfo("Wrote ranked marker layer to: {}".format(path))

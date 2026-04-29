@@ -6,8 +6,7 @@
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
         begin                : 2026-04-22
-        copyright            : (C) 2024 Bortre Tenamo
-                               Adaptations (C) 2026 by Bortre Tenamo
+        copyright            : (C) 2026 Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
 
@@ -43,10 +42,7 @@ logger = logging.getLogger(__name__)
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
     Qgis,
-    QgsColorRampShader,
-    QgsLayerTreeLayer,
     QgsProcessingAlgorithm,
-    QgsProcessingContext,
     QgsProcessingParameterEnum,
     QgsProcessingParameterFile,
     QgsProcessingParameterFileDestination,
@@ -54,15 +50,12 @@ from qgis.core import (
     QgsProcessingParameterPoint,
     QgsProject,
     QgsRasterLayer,
-    QgsRasterShader,
-    QgsSingleBandPseudoColorRenderer,
 )
 from osgeo import gdal, osr
 
 from .dem_downloader import ensure_dem_for_area
-from .elevation import ElevationGrid, haversine_m
+from .elevation import ElevationGrid
 from .coverage_legend import show_coverage_legend
-from .coverage_palette import build_heatmap_stops
 from .coverage_summary import summarize_coverage_grid
 from .coverage_compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
 from .coverage_engine import compute_coverage
@@ -98,21 +91,7 @@ POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
 METERS_PER_DEGREE_LAT = 111320.0
 
 
-def _queue_layer_for_loading(context, layer, name):
-    """Hand a layer to Processing for loading instead of mutating the project."""
-    if layer is None or not layer.isValid():
-        return False
-    if not (
-        hasattr(context, "temporaryLayerStore")
-        and hasattr(context, "addLayerToLoadOnCompletion")
-    ):
-        return False
-    project = QgsProject.instance()
-    context.temporaryLayerStore().addMapLayer(layer)
-    context.addLayerToLoadOnCompletion(
-        layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
-    )
-    return True
+from .processing_utils import queue_layer_for_loading
 
 
 class CoverageAlgorithm(QgsProcessingAlgorithm):
@@ -444,6 +423,7 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
         )
 
     def processAlgorithm(self, parameters, context, feedback):
+        self._raster_layer_ids = []
         from qgis.core import QgsCoordinateReferenceSystem
 
         tx_point = self.parameterAsPoint(
@@ -576,7 +556,7 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
             enabled=clutter_enabled,
             land_cover_grid=clutter_grid,
             tx_override=tx_clutter_override,
-            rx_override=tx_clutter_override,
+            rx_override=rx_clutter_override,
         )
 
         feedback.pushInfo("Computing coverage...")
@@ -639,13 +619,16 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
 
         # Write GeoTIFF
         tif_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_RASTER, context)
-        tif_path = (
-            tif_dest
-            if tif_dest
-            else os.path.join(
-                tempfile.mkdtemp(prefix="nowires_coverage_"), "coverage_prx.tif"
+        _coverage_tmpdir = None
+        tif_path = tif_dest
+        if not tif_path:
+            _coverage_tmpdir = tempfile.mkdtemp(prefix="nowires_coverage_")
+            tif_path = os.path.join(_coverage_tmpdir, "coverage_prx.tif")
+            feedback.pushInfo(
+                "Temporary raster outputs are intentionally left on disk for QGIS layer loading: {}".format(
+                    _coverage_tmpdir
+                )
             )
-        )
         report_csv_path = self.parameterAsFileOutput(
             parameters, self.OUTPUT_REPORT_CSV, context
         )
@@ -686,7 +669,7 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
         raster_layer = QgsRasterLayer(tif_path, layer_name)
 
         if raster_layer.isValid():
-            self._apply_coverage_style(raster_layer, rx_sens)
+            self._apply_coverage_style(raster_layer)
             raster_layer.setOpacity(1.0)
 
             dem_layer = QgsRasterLayer(dem_path, "NoWires DEM (GLO-30)")
@@ -695,13 +678,13 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
                 elev_props.setEnabled(True)
                 elev_props.setMode(Qgis.RasterElevationMode.RepresentsElevationSurface)
                 elev_props.setBandNumber(1)
-                _queue_layer_for_loading(context, dem_layer, "NoWires DEM (GLO-30)")
+                queue_layer_for_loading(context, dem_layer, "NoWires DEM (GLO-30)")
                 self._raster_layer_ids.append(dem_layer.id())
                 QgsProject.instance().writeEntry(
                     "NoWires", "last_dem_layer_id", dem_layer.id()
                 )
 
-            _queue_layer_for_loading(context, raster_layer, layer_name)
+            queue_layer_for_loading(context, raster_layer, layer_name)
             QgsProject.instance().writeEntry(
                 "NoWires", "last_coverage_layer_id", raster_layer.id()
             )
@@ -901,38 +884,22 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
         else:
             feedback.pushInfo("Warning: Could not load coverage raster layer.")
 
-        feedback.setProgress(100)
-        return {
-            self.OUTPUT_RASTER: tif_path,
-            self.OUTPUT_REPORT_CSV: report_csv_path,
-            self.OUTPUT_REPORT_JSON: report_json_path,
-            self.OUTPUT_REPORT_HTML: report_html_path,
-        }
+        try:
+            feedback.setProgress(100)
+            return {
+                self.OUTPUT_RASTER: tif_path,
+                self.OUTPUT_REPORT_CSV: report_csv_path,
+                self.OUTPUT_REPORT_JSON: report_json_path,
+                self.OUTPUT_REPORT_HTML: report_html_path,
+            }
+        finally:
+            if _coverage_tmpdir and os.path.isdir(_coverage_tmpdir):
+                pass
 
-    def _apply_coverage_style(self, layer, rx_sensitivity_dbm):
+    def _apply_coverage_style(self, layer):
         """Apply a color ramp renderer based on signal level thresholds."""
-        provider = layer.dataProvider()
-
-        entries = []
-        for value, rgba, label in build_heatmap_stops():
-            entry = QgsColorRampShader.ColorRampItem()
-            entry.value = value
-            from qgis.PyQt.QtGui import QColor
-
-            entry.color = QColor(rgba[0], rgba[1], rgba[2], rgba[3])
-            entry.label = "{} ({:.0f} dBm)".format(label, value)
-            entries.append(entry)
-
-        color_ramp_shader = QgsColorRampShader()
-        color_ramp_shader.setColorRampType(QgsColorRampShader.Interpolated)
-        color_ramp_shader.setColorRampItemList(entries)
-
-        shader = QgsRasterShader()
-        shader.setRasterShaderFunction(color_ramp_shader)
-
-        renderer = QgsSingleBandPseudoColorRenderer(provider, 1, shader)
-        layer.setRenderer(renderer)
-        layer.triggerRepaint()
+        from .coverage_palette import apply_coverage_style
+        apply_coverage_style(layer)
 
     def postProcessAlgorithm(self, context, feedback):
         root = QgsProject.instance().layerTreeRoot()

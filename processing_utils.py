@@ -18,14 +18,25 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+
+
+Shared processing utilities for NoWires algorithms.
 """
 
+from qgis.core import QgsProject, QgsProcessingContext
 
-def classFactory(iface):
-    """Load NoWires plugin class.
 
-    :param iface: A QGIS interface instance.
-    :type iface: QgsInterface
-    """
-    from .nowires import NoWiresPlugin
-    return NoWiresPlugin(iface)
+def queue_layer_for_loading(context, layer, name):
+    if layer is None or not layer.isValid():
+        return False
+    if not (
+        hasattr(context, "temporaryLayerStore")
+        and hasattr(context, "addLayerToLoadOnCompletion")
+    ):
+        return False
+    project = QgsProject.instance()
+    context.temporaryLayerStore().addMapLayer(layer)
+    context.addLayerToLoadOnCompletion(
+        layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
+    )
+    return True

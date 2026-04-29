@@ -2,14 +2,13 @@
 """
 /***************************************************************************
  NoWires
-                      A QGIS plugin
-  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                              -------------------
-         begin                : 2026-04-22
-         copyright            : (C) 2024 Bortre Tenamo
-                                Adaptations (C) 2026 by Bortre Tenamo
-         email                : tedaks@gmail.com
-  ***************************************************************************/
+                     A QGIS plugin
+ Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
+                             -------------------
+        begin                : 2026-04-22
+        copyright            : (C) 2026 Bortre Tenamo
+        email                : tedaks@gmail.com
+ ***************************************************************************/
 
 /***************************************************************************
  *                                                                         *
@@ -18,7 +17,7 @@
  *   the Free Software Foundation; either version 3 of the License, or     *
  *   (at your option) any later version.                                   *
  *                                                                         *
-  ***************************************************************************/
+ ***************************************************************************/
 
 
 Coverage Comparison Algorithm.
@@ -45,13 +44,13 @@ from qgis.core import (
     Qgis,
     QgsColorRampShader,
     QgsProcessingAlgorithm,
-    QgsProcessingContext,
+    QgsProcessingException,
     QgsProcessingParameterEnum,
     QgsProcessingParameterFile,
     QgsProcessingParameterFileDestination,
+    QgsProcessingParameterFolderDestination,
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
-    QgsProject,
     QgsRasterLayer,
     QgsRasterShader,
     QgsSingleBandPseudoColorRenderer,
@@ -59,11 +58,11 @@ from qgis.core import (
 from osgeo import gdal, osr
 
 from .dem_downloader import ensure_dem_for_area
-from .elevation import ElevationGrid, haversine_m
+from .elevation import ElevationGrid
 from .coverage_engine import compute_coverage
 from .coverage_compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
-from .coverage_palette import build_heatmap_stops
 from .antenna import ANTENNA_PRESET_OPTIONS
+from .processing_utils import queue_layer_for_loading
 from .clutter import (
     CLUTTER_MODEL_OPTIONS,
     CLUTTER_OVERRIDE_OPTIONS,
@@ -74,14 +73,11 @@ from .clutter import (
     ensure_clutter_grid_for_area,
 )
 from .radio import (
-    CLIMATE_NAMES,
     ITM_MAX_FREQUENCY_MHZ,
     ITM_MAX_N0,
-    ITM_MAX_TERMINAL_HEIGHT_M,
     ITM_MIN_FREQUENCY_MHZ,
     ITM_MIN_N0,
     ITM_MIN_SIGMA,
-    ITM_MIN_TERMINAL_HEIGHT_M,
     validate_itm_input_ranges,
 )
 
@@ -91,23 +87,6 @@ METERS_PER_DEGREE_LAT = 111320.0
 
 DELTA_STYLE_OPTIONS = ["diverging", "threshold"]
 DELTA_THRESHOLD_DEFAULTS = [3.0, 5.0, 10.0]
-
-
-def _queue_layer_for_loading(context, layer, name):
-    """Hand a layer to Processing for loading instead of mutating the project."""
-    if layer is None or not layer.isValid():
-        return False
-    if not (
-        hasattr(context, "temporaryLayerStore")
-        and hasattr(context, "addLayerToLoadOnCompletion")
-    ):
-        return False
-    project = QgsProject.instance()
-    context.temporaryLayerStore().addMapLayer(layer)
-    context.addLayerToLoadOnCompletion(
-        layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
-    )
-    return True
 
 
 class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
@@ -506,10 +485,9 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         self._add_panel_params("PANEL_B", panel_config)
 
         self.addParameter(
-            QgsProcessingParameterFileDestination(
+            QgsProcessingParameterFolderDestination(
                 self.OUTPUT_DIR,
                 "Output directory for coverage comparison files",
-                fileFilter="Directory",
                 optional=True,
             )
         )
@@ -663,7 +641,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             enabled=clutter_enabled,
             land_cover_grid=clutter_grid,
             tx_override=tx_clutter_override,
-            rx_override=tx_clutter_override,
+            rx_override=rx_clutter_override,
         )
 
         result = compute_coverage(
@@ -704,31 +682,57 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             feedback=feedback,
         )
 
-        return result, clutter_source, tx_clutter_for_report, clutter_enabled, antenna_preset, tx_lat, tx_lon, tx_h, rx_h, f_mhz, radius_km, grid_size, polarization, time_pct, location_pct, situation_pct, tx_power, tx_gain, rx_gain, cable_loss, rx_sens, clutter_enabled
+        return {
+            "result": result,
+            "clutter_source": clutter_source,
+            "tx_clutter_for_report": tx_clutter_for_report,
+            "clutter_enabled": clutter_enabled,
+            "antenna_preset": antenna_preset,
+            "tx_lat": tx_lat,
+            "tx_lon": tx_lon,
+            "tx_h": tx_h,
+            "rx_h": rx_h,
+            "f_mhz": f_mhz,
+            "radius_km": radius_km,
+            "grid_size": grid_size,
+            "polarization": polarization,
+            "time_pct": time_pct,
+            "location_pct": location_pct,
+            "situation_pct": situation_pct,
+            "tx_power": tx_power,
+            "tx_gain": tx_gain,
+            "rx_gain": rx_gain,
+            "cable_loss": cable_loss,
+            "rx_sens": rx_sens,
+        }
 
     def _write_coverage_raster(self, tif_path, prx_grid, min_lat, max_lat, min_lon, max_lon, rx_sens):
         """Write a coverage raster to GeoTIFF."""
         driver = gdal.GetDriverByName("GTiff")
         n_rows, n_cols = prx_grid.shape
         ds = driver.Create(tif_path, n_cols, n_rows, 1, gdal.GDT_Float32)
-        ds.SetGeoTransform(
-            [
-                min_lon,
-                (max_lon - min_lon) / n_cols,
-                0,
-                max_lat,
-                0,
-                -(max_lat - min_lat) / n_rows,
-            ]
-        )
-        srs = osr.SpatialReference()
-        srs.ImportFromEPSG(4326)
-        ds.SetProjection(srs.ExportToWkt())
-        band = ds.GetRasterBand(1)
-        band.SetNoDataValue(-9999.0)
-        band.WriteArray(prx_grid[::-1])
-        band.FlushCache()
-        ds = None
+        if ds is None:
+            raise QgsProcessingException("Failed to create GeoTIFF: {}".format(tif_path))
+        try:
+            ds.SetGeoTransform(
+                [
+                    min_lon,
+                    (max_lon - min_lon) / n_cols,
+                    0,
+                    max_lat,
+                    0,
+                    -(max_lat - min_lat) / n_rows,
+                ]
+            )
+            srs = osr.SpatialReference()
+            srs.ImportFromEPSG(4326)
+            ds.SetProjection(srs.ExportToWkt())
+            band = ds.GetRasterBand(1)
+            band.SetNoDataValue(-9999.0)
+            band.WriteArray(prx_grid[::-1])
+            band.FlushCache()
+        finally:
+            ds = None
 
     def _apply_delta_style(self, layer, threshold_db, style="diverging"):
         """Apply color ramp to delta raster. 'diverging' uses blue-white-red;
@@ -800,7 +804,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         rows = []
         for panel, label in [(panel_a, "Panel A"), (panel_b, "Panel B")]:
             rows.append(f"<h3>{label}</h3>")
-            rows.append(f"<table>")
+            rows.append("<table>")
             rows.append(f"<tr><th>TX Location</th><td>{panel['tx_lat']:.5f}, {panel['tx_lon']:.5f}</td></tr>")
             rows.append(f"<tr><th>TX Height</th><td>{panel['tx_h']:.1f} m</td></tr>")
             rows.append(f"<tr><th>RX Height</th><td>{panel['rx_h']:.1f} m</td></tr>")
@@ -812,13 +816,13 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             rows.append(f"<tr><th>Cable Loss</th><td>{panel['cable_loss']:.1f} dB</td></tr>")
             rows.append(f"<tr><th>Valid Pixels</th><td>{panel['valid_pixels']} / {panel['total_pixels']}</td></tr>")
             rows.append(f"<tr><th>Mean Received Power</th><td>{panel['mean_prx']:.1f} dBm</td></tr>")
-            rows.append(f"</table>")
+            rows.append("</table>")
 
         delta_rows = f"""
         <h3>Delta Summary (A - B)</h3>
         <table>
             <tr><th>Metric</th><th>Value</th></tr>
-            <tr><th>Delta Style</th><td>{delta['style']}</td></tr>
+            <tr><th>Delta Style</th><td>{html.escape(delta['style'])}</td></tr>
             <tr><th>Threshold</th><td>{delta['threshold_db']:.1f} dB</td></tr>
             <tr><th>Valid Delta Pixels</th><td>{delta['valid_pixels']}</td></tr>
             <tr><th>Improved (A better than B)</th><td>{delta['improved_pixels']} ({delta['improved_pct']:.1f}%)</td></tr>
@@ -859,9 +863,10 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         path.write_text(document, encoding="utf-8")
 
     def processAlgorithm(self, parameters, context, feedback):
+        self._raster_layer_ids = []
         from qgis.core import QgsCoordinateReferenceSystem
 
-        output_dir = self.parameterAsFileOutput(parameters, self.OUTPUT_DIR, context)
+        output_dir = self.parameterAsString(parameters, self.OUTPUT_DIR, context)
         delta_style_index = self.parameterAsEnum(parameters, self.DELTA_STYLE, context)
         delta_style = DELTA_STYLE_OPTIONS[delta_style_index]
         threshold_db = self.parameterAsDouble(parameters, self.DELTA_THRESHOLD_DB, context)
@@ -885,6 +890,17 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         tx_lat_b = tx_point_b.y()
         tx_lon_b = tx_point_b.x()
         radius_km_b = self.parameterAsDouble(parameters, self.PANEL_B_RADIUS_KM, context)
+
+        if (abs(tx_lat_a - tx_lat_b) > 1e-9 or abs(tx_lon_a - tx_lon_b) > 1e-9):
+            raise QgsProcessingException(
+                "Panel A and B TX positions differ. "
+                "Delta comparison requires co-located transmitters."
+            )
+        if abs(radius_km_a - radius_km_b) > 1e-9:
+            raise QgsProcessingException(
+                "Panel A and B radii differ. "
+                "Delta comparison requires identical analysis radii."
+            )
 
         radius_km = max(radius_km_a, radius_km_b)
         tx_lat_center = (tx_lat_a + tx_lat_b) / 2.0
@@ -914,7 +930,7 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("Running Panel A coverage...")
         feedback.pushInfo("=" * 50)
         feedback.setProgress(10)
-        result_a, clutter_source_a, tx_clutter_a, clutter_enabled_a, antenna_preset_a, tx_lat_a, tx_lon_a, tx_h_a, rx_h_a, f_mhz_a, radius_km_a, grid_size_a, polarization_a, time_pct_a, location_pct_a, situation_pct_a, tx_power_a, tx_gain_a, rx_gain_a, cable_loss_a, rx_sens_a, clutter_enabled_check_a = self._run_panel_coverage(
+        panel_a = self._run_panel_coverage(
             "PANEL_A", parameters, context, feedback, elev, south, north, west, east
         )
 
@@ -927,16 +943,19 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             max_lon_a,
             itm_loss_grid_a,
             clutter_loss_grid_a,
-        ) = result_a
+        ) = panel_a["result"]
 
         if prx_grid_a is None:
             raise RuntimeError("Panel A coverage computation was cancelled.")
+
+        if feedback and feedback.isCanceled():
+            return {}
 
         feedback.pushInfo("=" * 50)
         feedback.pushInfo("Running Panel B coverage...")
         feedback.pushInfo("=" * 50)
         feedback.setProgress(45)
-        result_b, clutter_source_b, tx_clutter_b, clutter_enabled_b, antenna_preset_b, tx_lat_b, tx_lon_b, tx_h_b, rx_h_b, f_mhz_b, radius_km_b, grid_size_b, polarization_b, time_pct_b, location_pct_b, situation_pct_b, tx_power_b, tx_gain_b, rx_gain_b, cable_loss_b, rx_sens_b, clutter_enabled_check_b = self._run_panel_coverage(
+        panel_b = self._run_panel_coverage(
             "PANEL_B", parameters, context, feedback, elev, south, north, west, east
         )
 
@@ -949,10 +968,17 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             max_lon_b,
             itm_loss_grid_b,
             clutter_loss_grid_b,
-        ) = result_b
+        ) = panel_b["result"]
 
         if prx_grid_b is None:
             raise RuntimeError("Panel B coverage computation was cancelled.")
+
+        tx_lat_a = panel_a["tx_lat"]
+        tx_lon_a = panel_a["tx_lon"]
+        tx_lat_b = panel_b["tx_lat"]
+        tx_lon_b = panel_b["tx_lon"]
+        radius_km_a = panel_a["radius_km"]
+        radius_km_b = panel_b["radius_km"]
 
         feedback.pushInfo("Computing delta raster...")
         feedback.setProgress(80)
@@ -975,62 +1001,75 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
         output_delta_path = self.parameterAsFileOutput(parameters, self.OUTPUT_DELTA, context)
         output_report_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_HTML, context)
 
-        if output_dir and not output_a_path:
+        if output_dir:
             os.makedirs(output_dir, exist_ok=True)
-            output_a_path = os.path.join(output_dir, "coverage_a.tif")
-            output_b_path = os.path.join(output_dir, "coverage_b.tif")
-            output_delta_path = os.path.join(output_dir, "coverage_delta.tif")
-            if not output_report_path:
-                output_report_path = os.path.join(output_dir, "comparison_report.html")
+            output_a_path = output_a_path or os.path.join(output_dir, "coverage_a.tif")
+            output_b_path = output_b_path or os.path.join(output_dir, "coverage_b.tif")
+            output_delta_path = output_delta_path or os.path.join(output_dir, "coverage_delta.tif")
+            output_report_path = output_report_path or os.path.join(output_dir, "comparison_report.html")
 
+        _comp_tmpdir = None
+        if not output_a_path or not output_b_path or not output_delta_path:
+            _comp_tmpdir = tempfile.mkdtemp(prefix="nowires_comp_")
+            feedback.pushInfo(
+                "Temporary raster outputs are intentionally left on disk for QGIS layer loading: {}".format(
+                    _comp_tmpdir
+                )
+            )
         if not output_a_path:
-            output_a_path = os.path.join(tempfile.mkdtemp(prefix="nowires_comp_"), "coverage_a.tif")
+            output_a_path = os.path.join(_comp_tmpdir, "coverage_a.tif")
         if not output_b_path:
-            output_b_path = os.path.join(tempfile.mkdtemp(prefix="nowires_comp_"), "coverage_b.tif")
+            output_b_path = os.path.join(_comp_tmpdir, "coverage_b.tif")
         if not output_delta_path:
-            output_delta_path = os.path.join(tempfile.mkdtemp(prefix="nowires_comp_"), "coverage_delta.tif")
+            output_delta_path = os.path.join(_comp_tmpdir, "coverage_delta.tif")
 
-        self._write_coverage_raster(output_a_path, prx_grid_a, min_lat_a, max_lat_a, min_lon_a, max_lon_a, rx_sens_a)
-        self._write_coverage_raster(output_b_path, prx_grid_b, min_lat_b, max_lat_b, min_lon_b, max_lon_b, rx_sens_b)
+        self._write_coverage_raster(output_a_path, prx_grid_a, min_lat_a, max_lat_a, min_lon_a, max_lon_a, panel_a["rx_sens"])
+        self._write_coverage_raster(output_b_path, prx_grid_b, min_lat_b, max_lat_b, min_lon_b, max_lon_b, panel_b["rx_sens"])
 
         driver = gdal.GetDriverByName("GTiff")
         n_rows, n_cols = loss_delta_grid.shape
         ds_delta = driver.Create(output_delta_path, n_cols, n_rows, 1, gdal.GDT_Float32)
-        ds_delta.SetGeoTransform(
-            [
-                min_lon_a,
-                (max_lon_a - min_lon_a) / n_cols,
-                0,
-                max_lat_a,
-                0,
-                -(max_lat_a - min_lat_a) / n_rows,
-            ]
-        )
-        srs = osr.SpatialReference()
-        srs.ImportFromEPSG(4326)
-        ds_delta.SetProjection(srs.ExportToWkt())
-        band_delta = ds_delta.GetRasterBand(1)
-        band_delta.SetNoDataValue(-9999.0)
-        band_delta.WriteArray(loss_delta_grid[::-1])
-        band_delta.FlushCache()
-        ds_delta = None
+        if ds_delta is None:
+            raise QgsProcessingException("Failed to create GeoTIFF: {}".format(output_delta_path))
+        try:
+            ds_delta.SetGeoTransform(
+                [
+                    min_lon_a,
+                    (max_lon_a - min_lon_a) / n_cols,
+                    0,
+                    max_lat_a,
+                    0,
+                    -(max_lat_a - min_lat_a) / n_rows,
+                ]
+            )
+            srs = osr.SpatialReference()
+            srs.ImportFromEPSG(4326)
+            ds_delta.SetProjection(srs.ExportToWkt())
+            band_delta = ds_delta.GetRasterBand(1)
+            band_delta.SetNoDataValue(-9999.0)
+            band_delta.WriteArray(loss_delta_grid[::-1])
+            band_delta.FlushCache()
+        finally:
+            ds_delta = None
 
         layer_delta = QgsRasterLayer(output_delta_path, "Coverage Delta (A - B dB)")
         if layer_delta.isValid():
             self._apply_delta_style(layer_delta, threshold_db, style=delta_style)
-            _queue_layer_for_loading(context, layer_delta, "Coverage Delta (A - B dB)")
+            queue_layer_for_loading(context, layer_delta, "Coverage Delta (A - B dB)")
             self._raster_layer_ids.append(layer_delta.id())
 
         layer_a = QgsRasterLayer(output_a_path, "Coverage Panel A")
         if layer_a.isValid():
-            self._apply_coverage_style(layer_a, rx_sens_a)
-            _queue_layer_for_loading(context, layer_a, "Coverage Panel A")
+            from .coverage_palette import apply_coverage_style
+            apply_coverage_style(layer_a)
+            queue_layer_for_loading(context, layer_a, "Coverage Panel A")
             self._raster_layer_ids.append(layer_a.id())
 
         layer_b = QgsRasterLayer(output_b_path, "Coverage Panel B")
         if layer_b.isValid():
-            self._apply_coverage_style(layer_b, rx_sens_b)
-            _queue_layer_for_loading(context, layer_b, "Coverage Panel B")
+            from .coverage_palette import apply_coverage_style as _apply_cov_b
+            _apply_cov_b(layer_b)
+            queue_layer_for_loading(context, layer_b, "Coverage Panel B")
             self._raster_layer_ids.append(layer_b.id())
 
         valid_delta = valid_mask & ~np.isnan(loss_delta_grid)
@@ -1050,17 +1089,17 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             min_delta = max_delta = mean_delta = 0.0
 
         panel_a_info = {
-            "tx_lat": tx_lat_a, "tx_lon": tx_lon_a, "tx_h": tx_h_a, "rx_h": rx_h_a,
-            "f_mhz": f_mhz_a, "radius_km": radius_km_a, "tx_power": tx_power_a,
-            "tx_gain": tx_gain_a, "rx_gain": rx_gain_a, "cable_loss": cable_loss_a,
+            "tx_lat": panel_a["tx_lat"], "tx_lon": panel_a["tx_lon"], "tx_h": panel_a["tx_h"], "rx_h": panel_a["rx_h"],
+            "f_mhz": panel_a["f_mhz"], "radius_km": panel_a["radius_km"], "tx_power": panel_a["tx_power"],
+            "tx_gain": panel_a["tx_gain"], "rx_gain": panel_a["rx_gain"], "cable_loss": panel_a["cable_loss"],
             "valid_pixels": int((~np.isnan(prx_grid_a)).sum()),
             "total_pixels": int(prx_grid_a.size),
             "mean_prx": float(np.nanmean(prx_grid_a)) if np.any(~np.isnan(prx_grid_a)) else float('nan'),
         }
         panel_b_info = {
-            "tx_lat": tx_lat_b, "tx_lon": tx_lon_b, "tx_h": tx_h_b, "rx_h": rx_h_b,
-            "f_mhz": f_mhz_b, "radius_km": radius_km_b, "tx_power": tx_power_b,
-            "tx_gain": tx_gain_b, "rx_gain": rx_gain_b, "cable_loss": cable_loss_b,
+            "tx_lat": panel_b["tx_lat"], "tx_lon": panel_b["tx_lon"], "tx_h": panel_b["tx_h"], "rx_h": panel_b["rx_h"],
+            "f_mhz": panel_b["f_mhz"], "radius_km": panel_b["radius_km"], "tx_power": panel_b["tx_power"],
+            "tx_gain": panel_b["tx_gain"], "rx_gain": panel_b["rx_gain"], "cable_loss": panel_b["cable_loss"],
             "valid_pixels": int((~np.isnan(prx_grid_b)).sum()),
             "total_pixels": int(prx_grid_b.size),
             "mean_prx": float(np.nanmean(prx_grid_b)) if np.any(~np.isnan(prx_grid_b)) else float('nan'),
@@ -1093,39 +1132,24 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
 
         if output_report_path:
             from pathlib import Path
-            self._write_html_report(Path(output_report_path), panel_a_info, panel_b_info, delta_info)
-            feedback.pushInfo(f"Comparison report written to: {output_report_path}")
+            try:
+                self._write_html_report(Path(output_report_path), panel_a_info, panel_b_info, delta_info)
+            except OSError as exc:
+                feedback.pushWarning("Could not write comparison report: {}".format(exc))
+            else:
+                feedback.pushInfo(f"Comparison report written to: {output_report_path}")
 
-        feedback.setProgress(100)
-        return {
-            self.OUTPUT_A: output_a_path,
-            self.OUTPUT_B: output_b_path,
-            self.OUTPUT_DELTA: output_delta_path,
-            self.OUTPUT_REPORT_HTML: output_report_path,
-        }
-
-    def _apply_coverage_style(self, layer, rx_sensitivity_dbm):
-        """Apply a color ramp renderer based on signal level thresholds."""
-        provider = layer.dataProvider()
-        entries = []
-        for value, rgba, label in build_heatmap_stops():
-            entry = QgsColorRampShader.ColorRampItem()
-            entry.value = value
-            from qgis.PyQt.QtGui import QColor
-            entry.color = QColor(rgba[0], rgba[1], rgba[2], rgba[3])
-            entry.label = "{} ({:.0f} dBm)".format(label, value)
-            entries.append(entry)
-
-        color_ramp_shader = QgsColorRampShader()
-        color_ramp_shader.setColorRampType(QgsColorRampShader.Interpolated)
-        color_ramp_shader.setColorRampItemList(entries)
-
-        shader = QgsRasterShader()
-        shader.setRasterShaderFunction(color_ramp_shader)
-
-        renderer = QgsSingleBandPseudoColorRenderer(provider, 1, shader)
-        layer.setRenderer(renderer)
-        layer.triggerRepaint()
+        try:
+            feedback.setProgress(100)
+            return {
+                self.OUTPUT_A: output_a_path,
+                self.OUTPUT_B: output_b_path,
+                self.OUTPUT_DELTA: output_delta_path,
+                self.OUTPUT_REPORT_HTML: output_report_path,
+            }
+        finally:
+            if _comp_tmpdir and os.path.isdir(_comp_tmpdir):
+                pass
 
     def postProcessAlgorithm(self, context, feedback):
         from qgis.core import QgsProject

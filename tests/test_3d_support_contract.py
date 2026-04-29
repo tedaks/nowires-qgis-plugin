@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# This program is free software under GPLv3 or later. See LICENSE.
 """Regression tests for NoWires 3D support wiring."""
 
 import os
@@ -49,6 +51,13 @@ def test_three_d_module_windows_warning_mentions_native_menu_and_dem():
     assert "NoWires DEM" in source
     assert "terrain" in source
     assert "highlight" in source.lower()
+
+
+def test_three_d_windows_fallback_uses_clicked_button_and_checked_default():
+    source = _text(THREE_D_SOURCE)
+    assert "cb.setChecked(True)" in source
+    assert "dialog.clickedButton()" in source
+    assert "dialog.highlight_button" in source
 
 
 def test_plugin_adds_open_3d_view_action():

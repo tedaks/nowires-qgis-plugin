@@ -2,8 +2,9 @@
 """
 Derived from tedaks/pyitm, a Python port of NTIA's Irregular Terrain Model.
 Original work: Copyright NTIA and distributed under the NTIA Software
-Disclaimer / Release. Local adaptations are limited to plugin packaging and
-import-path adjustments. See NOTICE.md for attribution details.
+Disclaimer / Release. This file has been modified from the original
+for plugin packaging and import-path adjustments. See NOTICE.md for
+attribution details.
 """
 
 from __future__ import annotations

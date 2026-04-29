@@ -6,8 +6,7 @@
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
         begin                : 2026-04-22
-        copyright            : (C) 2024 Bortre Tenamo
-                               Adaptations (C) 2026 by Bortre Tenamo
+        copyright            : (C) 2026 Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
 
@@ -139,6 +138,9 @@ def _itm_worker(args):
         task.target_lon,
         task.n_pts,
     )
+    if np.all(np.isnan(elevs)):
+        return None
+    elevs = np.where(np.isnan(elevs), 0.0, elevs)
 
     vertical_angle_deg = math.degrees(
         math.atan2(
@@ -244,8 +246,8 @@ def build_coverage_tasks(
 ):
     from .clutter import compute_terminal_clutter_losses
 
-    lat_per_m = 1.0 / 111320.0
-    lon_per_m = 1.0 / (111320.0 * max(math.cos(math.radians(tx_lat)), 0.01))
+    lat_per_m = 1.0 / METERS_PER_DEGREE_LAT
+    lon_per_m = 1.0 / (METERS_PER_DEGREE_LAT * max(math.cos(math.radians(tx_lat)), 0.01))
     dlat = (lats[:, np.newaxis] - tx_lat) / lat_per_m
     dlon = (lons[np.newaxis, :] - tx_lon) / lon_per_m
     dist_grid = np.sqrt(dlat * dlat + dlon * dlon)
@@ -414,7 +416,7 @@ def compute_coverage(
         enabled=clutter_enabled,
         land_cover_grid=clutter_grid,
         tx_override=tx_clutter_override,
-        rx_override=tx_clutter_override,
+        rx_override=rx_clutter_override,
     )
 
     tasks = build_coverage_tasks(
@@ -475,6 +477,7 @@ def compute_coverage(
     chunk_size = _dynamic_chunk_size(len(tasks))
     chunks = [tasks[i : i + chunk_size] for i in range(0, len(tasks), chunk_size)]
 
+    cancelled = False
     use_multiprocessing = should_use_multiprocessing()
     if use_multiprocessing:
         if feedback:
@@ -493,8 +496,8 @@ def compute_coverage(
                 ):
                     if feedback and feedback.isCanceled():
                         logger.info("Coverage cancelled by user")
-                        _release_shared_memory(shm)
-                        return None, None, 0, 0, 0, 0, None, None
+                        cancelled = True
+                        break
                     for result in batch_results:
                         if result is not None:
                             i, j, loss_db, prx, itm_loss_db, clutter_tx_db, clutter_rx_db = result
@@ -529,30 +532,35 @@ def compute_coverage(
         _cov_grid_data = grid_data
         _cov_grid_meta = grid_meta
 
-        for task_idx, task in enumerate(tasks):
-            if feedback and feedback.isCanceled():
-                logger.info("Coverage cancelled by user")
-                return None, None, 0, 0, 0, 0, None, None
-            result = _itm_worker(task)
-            if result is not None:
-                i, j, loss_db, prx, itm_loss_db, clutter_tx_db, clutter_rx_db = result
-                loss_grid[i, j] = loss_db
-                prx_grid[i, j] = prx
-                itm_loss_grid[i, j] = itm_loss_db
-                clutter_loss_grid[i, j] = clutter_tx_db + clutter_rx_db
-            else:
-                pixels_failed += 1
-            pixels_done += 1
-            if feedback and task_idx % 500 == 0:
-                pct = int(pixels_done / len(tasks) * 80)
-                feedback.setProgress(pct)
-
-        # Clear globals after sequential run
-        _cov_grid_data = None
-        _cov_grid_meta = {}
+        try:
+            for task_idx, task in enumerate(tasks):
+                if feedback and feedback.isCanceled():
+                    logger.info("Coverage cancelled by user")
+                    cancelled = True
+                    break
+                result = _itm_worker(task)
+                if result is not None:
+                    i, j, loss_db, prx, itm_loss_db, clutter_tx_db, clutter_rx_db = result
+                    loss_grid[i, j] = loss_db
+                    prx_grid[i, j] = prx
+                    itm_loss_grid[i, j] = itm_loss_db
+                    clutter_loss_grid[i, j] = clutter_tx_db + clutter_rx_db
+                else:
+                    pixels_failed += 1
+                pixels_done += 1
+                if feedback and task_idx % 500 == 0:
+                    pct = int(pixels_done / len(tasks) * 80)
+                    feedback.setProgress(pct)
+        finally:
+            _cov_grid_data = None
+            _cov_grid_meta = {}
 
     # Always clean up shared memory
     _release_shared_memory(shm)
+    shm = None
+
+    if cancelled:
+        return None, None, 0, 0, 0, 0, None, None
 
     total = len(tasks)
     if feedback:

@@ -6,7 +6,7 @@
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
         begin                : 2026-04-22
-        copyright            : (C) 2026 by Bortre Tenamo
+        copyright            : (C) 2026 Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
 
@@ -101,6 +101,7 @@ class NoWiresPlugin:
         )
         self.comparison_action.triggered.connect(self.run_comparison)
         self.iface.addPluginToMenu("&NoWires", self.comparison_action)
+        self.iface.addToolBarIcon(self.comparison_action)
 
         # Batch P2P Analysis action
         self.batch_action = QAction(
@@ -108,6 +109,7 @@ class NoWiresPlugin:
         )
         self.batch_action.triggered.connect(self.run_batch)
         self.iface.addPluginToMenu("&NoWires", self.batch_action)
+        self.iface.addToolBarIcon(self.batch_action)
 
         self._opacity_dialog = None
 
@@ -126,6 +128,8 @@ class NoWiresPlugin:
         self.iface.removePluginMenu("&NoWires", self.comparison_action)
         self.iface.removePluginMenu("&NoWires", self.batch_action)
         self.iface.removeToolBarIcon(self.p2p_action)
+        self.iface.removeToolBarIcon(self.comparison_action)
+        self.iface.removeToolBarIcon(self.batch_action)
 
     def run_p2p(self):
         processing.execAlgorithmDialog("nowires:p2p_analysis")

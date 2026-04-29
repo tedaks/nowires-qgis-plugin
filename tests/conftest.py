@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# This program is free software under GPLv3 or later. See LICENSE.
 """pytest configuration.
 
 When tests are run via ``pytest tests/`` from the repo root, the osgeo
@@ -39,7 +41,6 @@ for _submodule_name in (
     "coverage_palette",
     "coverage_summary",
     "elevation",
-    "radio",
     "reliability",
     "worldcover_downloader",
 ):
@@ -50,6 +51,7 @@ for _submodule_name in (
 # Submodules that use relative imports — must be imported through the
 # NoWires package so that ``from .xxx import ...`` resolves correctly.
 for _pkg_sub in (
+    "radio",
     "coverage_compute",
     "coverage_engine",
     "report_payloads",
@@ -58,5 +60,8 @@ for _pkg_sub in (
     "benchmarks.reference_cases",
 ):
     _mod = __import__(f"NoWires.{_pkg_sub}", fromlist=[""])
+    _leaf = _pkg_sub.split(".")[-1]
     sys.modules[f"NoWires.{_pkg_sub}"] = _mod
-    setattr(_no_wires_pkg, _pkg_sub.split(".")[-1], _mod)
+    setattr(_no_wires_pkg, _leaf, _mod)
+    if _leaf not in sys.modules:
+        sys.modules[_leaf] = _mod
