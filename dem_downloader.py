@@ -363,12 +363,19 @@ def ensure_dem_for_area(south, north, west, east, feedback=None, proxy_opener=No
     if feedback:
         feedback.pushInfo("Clipping and merging DEM tiles")
 
+    merge_temp_dir = tempfile.mkdtemp(prefix="nowires_dem_", dir=temp_dir)
+    if feedback:
+        feedback.pushInfo(
+            "Merged DEM outputs are kept in a per-run folder for QGIS layer loading: "
+            + merge_temp_dir
+        )
+
     return clip_and_merge(
         tile_paths,
         south,
         north,
         west,
         east,
-        temp_dir=temp_dir,
+        temp_dir=merge_temp_dir,
         feedback=feedback,
     )

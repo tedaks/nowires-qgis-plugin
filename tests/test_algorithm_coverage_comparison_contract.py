@@ -102,3 +102,11 @@ def test_comparison_algorithm_tx_position_warning():
     source = _comp_source()
     assert "QgsProcessingException" in source
     assert "TX positions differ" in source
+
+
+def test_comparison_algorithm_allows_negative_antenna_gains():
+    source = _comp_source()
+    assert '"gain_param"' in source
+    assert 'f"{prefix}_TX_GAIN",' in source
+    assert 'f"{prefix}_RX_GAIN",' in source
+    assert 'config["gain_param"]' in source
