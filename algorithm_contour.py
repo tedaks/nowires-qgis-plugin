@@ -282,6 +282,8 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
         self.status_total = 0.0
         self.progress = 0.0
         self._temp_subdirs = []
+        self._persistent_temp_subdirs = []
+        self._overlay_temp_dir = None
         self._temp_files = []
         os.makedirs(self.temp_dir, exist_ok=True)
         feedback.pushInfo("\nTemporary folder: " + self.temp_dir)
@@ -841,6 +843,13 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
     def _prepare_elevation_overlay_raster(self, source_dem_path, context, feedback):
         """Build a lighter hillshade raster so the overlay draws quickly in QGIS."""
         feedback.pushInfo("Optimizing overlay raster for display...")
+        if self._overlay_temp_dir is None:
+            self._overlay_temp_dir = tempfile.mkdtemp(dir=self.temp_dir, prefix="contour_overlay_")
+            self._persistent_temp_subdirs.append(self._overlay_temp_dir)
+            feedback.pushInfo(
+                "Elevation overlay outputs are kept in a per-run folder for QGIS layer loading: "
+                + self._overlay_temp_dir
+            )
 
         source_ds = gdal.Open(source_dem_path)
         if source_ds is None:
@@ -853,9 +862,9 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
         overlay_width, overlay_height, scale = choose_overlay_dimensions(
             src_width, src_height
         )
-        overlay_dem_path = os.path.join(self.temp_dir, "elevation_overlay_dem.tif")
+        overlay_dem_path = os.path.join(self._overlay_temp_dir, "elevation_overlay_dem.tif")
         overlay_hillshade_path = os.path.join(
-            self.temp_dir, "elevation_overlay_hillshade.tif"
+            self._overlay_temp_dir, "elevation_overlay_hillshade.tif"
         )
 
         project_crs = context.project().crs()

@@ -277,14 +277,14 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            config["db_param"](
+            config["gain_param"](
                 f"{prefix}_TX_GAIN",
                 f"Panel {prefix.split('_')[1]} TX antenna gain (dBi)",
                 defaultValue=8.0,
             )
         )
         self.addParameter(
-            config["db_param"](
+            config["gain_param"](
                 f"{prefix}_RX_GAIN",
                 f"Panel {prefix.split('_')[1]} RX antenna gain (dBi)",
                 defaultValue=2.0,
@@ -440,6 +440,10 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
                 **kw
             ),
             "dbm_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
+                name, desc, type=QgsProcessingParameterNumber.Double,
+                **kw
+            ),
+            "gain_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
                 name, desc, type=QgsProcessingParameterNumber.Double,
                 **kw
             ),
