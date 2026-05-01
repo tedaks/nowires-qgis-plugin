@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# This program is free software under GPLv3 or later. See LICENSE.
 """Regression tests for point-to-point algorithm parameter wiring."""
 
 import os
@@ -63,6 +65,7 @@ def test_p2p_algorithm_exposes_k_factor_preset_and_legacy_numeric_parameter():
                     "1.33 - Standard atmosphere",
                     "2.00 - Super-refractive",
                     "4.00 - Strong super-refractive",
+                    "Custom",
                 ],
                 defaultValue=2,"""
     assert expected_block in source
@@ -120,9 +123,14 @@ def test_p2p_algorithm_wires_resolve_k_factor_helper():
     """The algorithm must delegate to the helper, not inline the branch."""
     source = _p2p_source()
     assert "resolve_k_factor" in source
-    assert "K_FACTOR_PRESETS[" not in source, (
-        "Algorithm should call resolve_k_factor instead of indexing presets directly"
-    )
+    assert "custom_k_factor" in source
+    assert "preset_index < len(K_FACTOR_PRESETS)" in source
+
+
+def test_p2p_algorithm_keeps_temporary_outputs_alive_for_qgis_loading():
+    source = _p2p_source()
+    assert "shutil.rmtree(temp_dir" not in source
+    assert "Temporary outputs are intentionally left on disk" in source
 
 
 def test_p2p_algorithm_exposes_marker_output():
@@ -171,10 +179,8 @@ def test_p2p_algorithm_constrains_inputs_to_bundled_itm_limits():
 
 def test_p2p_algorithm_uses_processing_context_for_layer_loading():
     source = _p2p_source()
-    assert "_queue_layer_for_loading(" in source
-    assert "context.temporaryLayerStore().addMapLayer(layer)" in source
-    assert "addLayerToLoadOnCompletion" in source
-    assert "QgsProject.instance().addMapLayer(" not in source
+    assert "queue_layer_for_loading(" in source
+    assert "processing_utils" in source
 
 
 def test_p2p_algorithm_removes_existing_profile_and_fresnel_outputs():
@@ -182,6 +188,13 @@ def test_p2p_algorithm_removes_existing_profile_and_fresnel_outputs():
     assert "_remove_existing_ogr_dataset(driver, path)" in source
     assert "_remove_existing_ogr_dataset(poly_driver, poly_path)" in source
     assert "_remove_existing_ogr_dataset(lines_driver, lines_path)" in source
+
+
+def test_p2p_vector_writers_close_ogr_datasources_in_finally_blocks():
+    source = _p2p_source()
+    assert "finally:\n            ds = None" in source
+    assert "finally:\n            ds_poly = None" in source
+    assert "finally:\n            ds_lines = None" in source
 
 
 def test_p2p_profile_chart_uses_direct_qt6_enums():

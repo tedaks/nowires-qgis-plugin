@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# This program is free software under GPLv3 or later. See LICENSE.
 """Regression tests for coverage engine importability and fallback behavior."""
 
 import importlib
 import os
 import py_compile
+import pytest
 import sys
 import types
 from unittest.mock import MagicMock
@@ -127,5 +130,71 @@ def test_compute_coverage_cleans_shared_memory_when_cancelled(monkeypatch):
     )
 
     assert result == (None, None, 0, 0, 0, 0, None, None)
+    assert fake_shm.closed is True
+    assert fake_shm.unlinked is True
+
+
+def test_compute_coverage_falls_back_on_pool_error_and_cleans_shared_memory(monkeypatch):
+    """When the process pool raises any exception (including ValueError),
+    compute_coverage should fall back to sequential mode, clean up shared
+    memory, and still produce a valid result.
+    """
+    coverage_engine = _import_coverage_engine()
+
+    class FakeSharedMemory:
+        def __init__(self):
+            self.name = "fake_shared_memory"
+            self.closed = False
+            self.unlinked = False
+
+        def close(self):
+            self.closed = True
+
+        def unlink(self):
+            self.unlinked = True
+
+    class ExplodingExecutor:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def map(self, *args, **kwargs):
+            raise ValueError("unexpected worker serialization failure")
+
+    fake_shm = FakeSharedMemory()
+    monkeypatch.setattr(coverage_engine, "should_use_multiprocessing", lambda: True)
+    monkeypatch.setattr(coverage_engine, "_make_shared_grid", lambda grid: fake_shm)
+    monkeypatch.setattr(coverage_engine, "ProcessPoolExecutor", ExplodingExecutor)
+    monkeypatch.setattr(
+        coverage_engine,
+        "_itm_worker",
+        lambda task: (task[0], task[1], 123.0, -77.0, 120.0, 2.0, 1.0),
+    )
+
+    # ValueError from the pool is now caught and triggers sequential fallback,
+    # so compute_coverage returns a valid result instead of propagating the exception.
+    result = coverage_engine.compute_coverage(
+        elev_grid=_DummyGrid(),
+        tx_lat=0.0,
+        tx_lon=0.0,
+        tx_h_m=30.0,
+        rx_h_m=10.0,
+        f_mhz=300.0,
+        radius_km=0.01,
+        grid_size=3,
+    )
+
+    # Should have fallen back to sequential mode and produced valid grids
+    prx_grid = result[0]
+    loss_grid = result[1]
+    assert prx_grid is not None
+    assert loss_grid is not None
+    assert prx_grid.shape == (3, 3)
+    # SHM must be cleaned up even on pool failure
     assert fake_shm.closed is True
     assert fake_shm.unlinked is True

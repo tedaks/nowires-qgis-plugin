@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# This program is free software under GPLv3 or later. See LICENSE.
 """Regression tests for coverage algorithm naming and wiring."""
 
 import os
@@ -152,7 +154,7 @@ def test_coverage_algorithm_loads_dem_as_elevation_layer():
     assert "elev_props.setEnabled(True)" in source
     assert "Qgis.RasterElevationMode.RepresentsElevationSurface" in source
     assert "elev_props.setBandNumber(1)" in source
-    assert '_queue_layer_for_loading(context, dem_layer, "NoWires DEM (GLO-30)")' in source
+    assert 'queue_layer_for_loading(context, dem_layer, "NoWires DEM (GLO-30)")' in source
 
 
 def test_coverage_algorithm_exposes_report_outputs():
@@ -213,10 +215,14 @@ def test_coverage_algorithm_writes_reports_even_when_no_pixels_are_valid():
 
 def test_coverage_algorithm_uses_processing_context_for_layer_loading():
     source = _coverage_source()
-    assert "_queue_layer_for_loading(" in source
-    assert "context.temporaryLayerStore().addMapLayer(layer)" in source
-    assert "addLayerToLoadOnCompletion" in source
-    assert "QgsProject.instance().addMapLayer(" not in source
+    assert "queue_layer_for_loading(" in source
+    assert "processing_utils" in source
+
+
+def test_coverage_algorithm_keeps_temporary_outputs_alive_for_qgis_loading():
+    source = _coverage_source()
+    assert "shutil.rmtree(_coverage_tmpdir" not in source
+    assert "Temporary raster outputs are intentionally left on disk" in source
 
 
 def test_coverage_algorithm_exposes_antenna_and_clutter_parameters():

@@ -26,5 +26,18 @@ build/
 dist/
 *.egg-info/
 
+.venv/
+venv/
+env/
+*.egg
+
+.idea/
+.vscode/
+*.swp
+*.swo
+
 # docs
 /docs
+
+ISSUES.md
+codereview_1may2026.md

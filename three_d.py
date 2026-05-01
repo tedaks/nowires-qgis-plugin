@@ -1,9 +1,33 @@
 # -*- coding: utf-8 -*-
-"""Shared helpers for NoWires 3D scene support."""
+"""
+/***************************************************************************
+ NoWires
+                     A QGIS plugin
+ Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
+                             -------------------
+        begin                : 2026-04-22
+        copyright            : (C) 2026 Bortre Tenamo
+        email                : tedaks@gmail.com
+ ***************************************************************************/
 
-import os
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 3 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
-from qgis.core import Qgis, QgsProject, QgsRasterDemTerrainProvider
+
+Shared helpers for NoWires 3D scene support.
+"""
+
+import sys
+
+from qgis.core import Qgis, QgsProject
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtWidgets import QCheckBox, QMessageBox
 
 
 SCENE_MODE_LOCAL = "local"
@@ -13,6 +37,58 @@ COVERAGE_LAYER_KEY = "last_coverage_layer_id"
 DEM_LAYER_KEY = "last_dem_layer_id"
 CONTOUR_LAYER_KEY = "last_contour_layer_id"
 VIEW_NAME_PREFIX = "NoWires 3D View"
+
+
+class Windows3DFallbackDialog(QMessageBox):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("3D View Not Available on Windows")
+        self.setText(
+            "Plugin-launched 3D view crashes QGIS on Windows due to a Qt/OpenGL conflict on Windows.\n\n"
+            "You can still view your results in 3D manually:\n\n"
+            "1. Go to View > 3D Map Views > New 3D Map View\n"
+            "2. In the 3D view panel, click the wrench icon to configure terrain\n"
+            "3. Set the DEM layer as the terrain elevation source\n\n"
+            "The NoWires DEM and coverage layers will be highlighted in\n"
+            "the layer panel so you can find them easily."
+        )
+        self.setIcon(QMessageBox.Icon.Warning)
+        self.highlight_button = self.addButton(
+            "Highlight Layers", QMessageBox.ButtonRole.AcceptRole
+        )
+        self.addButton("Close", QMessageBox.ButtonRole.RejectRole)
+
+        try:
+            cb = QCheckBox("Highlight NoWires layers in layer tree")
+            cb.setChecked(True)
+            self.setCheckBox(cb)
+        except (AttributeError, TypeError):
+            cb = None
+        self.highlight_checkbox = cb
+
+
+def highlight_nowires_layers(iface):
+    """Select and expand NoWires DEM, coverage, and contour layers in layer tree."""
+    try:
+        project = QgsProject.instance()
+        dem_id = project.readEntry("NoWires", "last_dem_layer_id")[0]
+        coverage_id = project.readEntry("NoWires", "last_coverage_layer_id")[0]
+        contour_id = project.readEntry("NoWires", "last_contour_layer_id")[0]
+
+        root = project.layerTreeRoot()
+        for layer_id in [dem_id, coverage_id, contour_id]:
+            if not layer_id:
+                continue
+            layer = project.mapLayer(layer_id)
+            if layer:
+                tree_layer = root.findLayer(layer.id())
+                if tree_layer:
+                    tree_layer.setItemChecked(Qt.CheckState.Checked)
+                    parent = tree_layer.parent()
+                    if parent and parent != root:
+                        parent.setExpanded(True)
+    except Exception:
+        pass
 
 
 def remember_nowires_3d_layers(
@@ -71,25 +147,13 @@ def _next_3d_view_name(iface):
 
 def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
     """Create a new QGIS 3D map canvas using the latest NoWires layers."""
-    os_name = os.name
-    if os_name == "nt":
-        layers = resolve_nowires_3d_layers(QgsProject.instance())
-        dem_layer = layers["dem_layer"]
-        coverage_layer = layers["coverage_layer"]
-        contour_layer = layers["contour_layer"]
-        if contour_layer is not None:
-            _set_layer_visible(QgsProject.instance(), contour_layer)
-        if coverage_layer is not None:
-            _set_layer_visible(QgsProject.instance(), coverage_layer)
-        if dem_layer is not None:
-            _set_layer_visible(QgsProject.instance(), dem_layer)
-        iface.messageBar().pushWarning(
-            "NoWires",
-            "Opening 3D views from the plugin crashes QGIS on Windows. "
-            "The latest NoWires layers are ready. "
-            "Use View > 3D Map Views > New 3D Map View, then use the NoWires DEM "
-            "layer as terrain.",
-        )
+    is_windows = sys.platform == "win32"
+    if is_windows:
+        dialog = Windows3DFallbackDialog()
+        dialog.exec()
+        if dialog.clickedButton() == dialog.highlight_button:
+            if dialog.highlight_checkbox and dialog.highlight_checkbox.isChecked():
+                highlight_nowires_layers(iface)
         return None
 
     project = QgsProject.instance()
@@ -122,7 +186,12 @@ def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
     if hasattr(project, "elevationProperties"):
         elevation_props = project.elevationProperties()
         if elevation_props is not None and hasattr(elevation_props, "setTerrainProvider"):
-            provider = QgsRasterDemTerrainProvider()
+            try:
+                from qgis.core import QgsRasterDemTerrainProvider
+                _provider_cls = QgsRasterDemTerrainProvider
+            except ImportError:
+                return None
+            provider = _provider_cls()
             provider.setLayer(dem_layer)
             elevation_props.setTerrainProvider(provider)
 

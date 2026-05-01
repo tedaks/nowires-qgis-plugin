@@ -2,8 +2,9 @@
 """
 Derived from tedaks/pyitm, a Python port of NTIA's Irregular Terrain Model.
 Original work: Copyright NTIA and distributed under the NTIA Software
-Disclaimer / Release. Local adaptations are limited to plugin packaging and
-import-path adjustments. See NOTICE.md for attribution details.
+Disclaimer / Release. This file has been modified from the original
+for plugin packaging and import-path adjustments. See NOTICE.md for
+attribution details.
 """
 
 from __future__ import annotations
@@ -26,6 +27,8 @@ def find_horizons(
     Returns (theta_hzn[2], d_hzn__meter[2]).
     """
     np_ = len(elevations) - 1
+    if np_ < 1:
+        raise ValueError("find_horizons requires at least 2 elevation points")
     xi = resolution
     d__meter = np_ * xi
 
@@ -41,6 +44,9 @@ def find_horizons(
 
     # Vectorized computation of horizon angles
     indices = np.arange(1, np_)
+    if indices.size == 0:
+        return theta_hzn, d_hzn__meter
+
     d_tx_arr = indices * xi
     d_rx_arr = (np_ - indices) * xi
 

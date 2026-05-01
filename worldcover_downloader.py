@@ -1,9 +1,33 @@
 # -*- coding: utf-8 -*-
-"""ESA WorldCover 2020 v100 tile download, caching, and merging.
+"""
+/***************************************************************************
+ NoWires
+                     A QGIS plugin
+ Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
+                             -------------------
+        begin                : 2026-04-22
+        copyright            : (C) 2026 Bortre Tenamo
+        email                : tedaks@gmail.com
+ ***************************************************************************/
+
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 3 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+
+ESA WorldCover 2020 v100 tile download, caching, and merging.
 
 Downloads Cloud-Optimized GeoTIFF tiles from the ESA WorldCover AWS
 Open Data bucket on demand, caches them locally, and provides
 utilities to clip/merge for a given area of interest.
+
+ESA WorldCover 2020 data is provided under the ESA WorldCover licence.
+See NOTICE.md for full attribution and licence details.
 """
 
 import logging
@@ -15,6 +39,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import getpass
 
 from osgeo import gdal, ogr, osr
 
@@ -26,12 +51,16 @@ WORLDCOVER_BASE_URL = (
 )
 WORLDCOVER_TILE_SIZE_DEG = 3
 _DOWNLOAD_RETRIES = 3
+_SOCKET_TIMEOUT = 120  # seconds; covers TCP connect + individual socket reads
 _MAX_TILES = 200
 _VALID_TILE_RE = re.compile(r"^[NS]\d{2}[EW]\d{3}$")
 
 
 def get_worldcover_dir():
-    worldcover_dir = os.path.join(tempfile.gettempdir(), "NoWires", "worldcover")
+    username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
+    worldcover_dir = os.path.join(
+        tempfile.gettempdir(), "NoWires-" + username, "worldcover"
+    )
     os.makedirs(worldcover_dir, mode=0o700, exist_ok=True)
     return worldcover_dir
 
@@ -87,6 +116,9 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
     available = []
 
     for tile_id in tile_list:
+        if feedback and feedback.isCanceled():
+            return available
+
         if not _VALID_TILE_RE.match(tile_id):
             logger.error("Invalid WorldCover tile ID rejected: %s", tile_id)
             continue
@@ -95,11 +127,17 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
         local_tif = os.path.join(temp_dir, filename)
 
         if os.path.exists(local_tif):
-            logger.debug("WorldCover cache hit: %s", tile_id)
-            if feedback:
-                feedback.pushInfo("WorldCover cache hit: " + tile_id)
-            available.append(local_tif)
-            continue
+            if gdal.Open(local_tif) is not None:
+                logger.debug("WorldCover cache hit: %s", tile_id)
+                if feedback:
+                    feedback.pushInfo("WorldCover cache hit: " + tile_id)
+                available.append(local_tif)
+                continue
+            logger.warning("Cached WorldCover tile %s failed validation; re-downloading", tile_id)
+            try:
+                os.unlink(local_tif)
+            except OSError:
+                pass
 
         tile_url = worldcover_tile_url(tile_id)
         if feedback:
@@ -110,7 +148,10 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
 
         for attempt in range(_DOWNLOAD_RETRIES):
             try:
-                with opener.open(tile_url, timeout=120) as response:
+                with opener.open(tile_url, timeout=_SOCKET_TIMEOUT) as response:
+                    final_url = response.geturl()
+                    if not final_url.startswith(WORLDCOVER_BASE_URL):
+                        raise RuntimeError("Unexpected redirect to: " + final_url)
                     expected_size = int(response.headers.get("Content-Length", 0))
                     bytes_received = 0
                     tmp_path = local_tif + ".tmp"
@@ -152,9 +193,10 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
                     if attempt < _DOWNLOAD_RETRIES - 1:
                         time.sleep(2 ** attempt)
                         continue
+                    break
                 test_ds = None
 
-                os.rename(local_tif + ".tmp", local_tif)
+                os.replace(local_tif + ".tmp", local_tif)
                 available.append(local_tif)
                 downloaded = True
                 break
@@ -168,6 +210,19 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
                         )
                     break
                 else:
+                    retry_after = e.headers.get("Retry-After")
+                    if retry_after:
+                        try:
+                            wait_secs = max(int(retry_after), 1)
+                        except ValueError:
+                            wait_secs = 2 ** attempt
+                        logger.info(
+                            "HTTP %d downloading %s — Retry-After: %ds (attempt %d/%d)",
+                            e.code, tile_id, wait_secs,
+                            attempt + 1, _DOWNLOAD_RETRIES,
+                        )
+                    else:
+                        wait_secs = 2 ** attempt
                     logger.warning(
                         "HTTP %d downloading %s (attempt %d/%d): %s",
                         e.code,
@@ -177,7 +232,7 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
                         e,
                     )
                     if attempt < _DOWNLOAD_RETRIES - 1:
-                        time.sleep(2 ** attempt)
+                        time.sleep(wait_secs)
             except Exception as e:
                 logger.warning(
                     "Error downloading %s (attempt %d/%d): %s",
@@ -195,8 +250,11 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
                 if attempt < _DOWNLOAD_RETRIES - 1:
                     time.sleep(2 ** attempt)
 
-        if not downloaded and not os.path.exists(local_tif):
-            pass
+        if not downloaded and os.path.exists(local_tif + ".tmp"):
+            try:
+                os.unlink(local_tif + ".tmp")
+            except OSError:
+                pass
 
     return available
 
@@ -321,12 +379,19 @@ def ensure_worldcover_for_area(south, north, west, east, feedback=None):
     if feedback:
         feedback.pushInfo("Clipping and merging WorldCover tiles")
 
+    merge_temp_dir = tempfile.mkdtemp(prefix="nowires_worldcover_", dir=temp_dir)
+    if feedback:
+        feedback.pushInfo(
+            "Merged WorldCover outputs are kept in a per-run folder: "
+            + merge_temp_dir
+        )
+
     return clip_and_merge_worldcover(
         tile_paths,
         south,
         north,
         west,
         east,
-        temp_dir=temp_dir,
+        temp_dir=merge_temp_dir,
         feedback=feedback,
     )
