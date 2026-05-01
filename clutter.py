@@ -1,5 +1,27 @@
 # -*- coding: utf-8 -*-
-"""Terminal clutter correction helpers for NoWires."""
+"""
+/***************************************************************************
+ NoWires
+                     A QGIS plugin
+ Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
+                             -------------------
+        begin                : 2026-04-22
+        copyright            : (C) 2026 Bortre Tenamo
+        email                : tedaks@gmail.com
+ ***************************************************************************/
+
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 3 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+
+Terminal clutter correction helpers for NoWires.
+"""
 
 import logging
 from dataclasses import dataclass
@@ -33,21 +55,33 @@ class TerminalClutterLosses:
 
 
 def worldcover_class_to_clutter_category(class_id):
+    """Map ESA WorldCover 2020 v100 class IDs to NoWires clutter categories.
+
+    Convention:
+      - "vegetation": classes with significant woody/shrubby plant cover
+        (tree cover, shrubland, mangroves, moss/lichen)
+      - "rural": classes with herbaceous or cultivated cover (grassland, cropland)
+      - "urban": built-up
+      - "open": bare, sparse, snow/ice, water, wetland
+    """
     value = int(class_id)
-    if value in (10, 95, 100):
+    if value in (10, 20, 95, 100):
         return "vegetation"
-    if value in (20, 30, 40):
+    if value in (30, 40):
         return "rural"
     if value == 50:
         return "urban"
-    if value == 60:
-        return "open"
-    if value in (70, 80, 90):
+    if value in (60, 70, 80, 90):
         return "open"
     return "open"
 
 
 def clutter_loss_db(category, frequency_mhz):
+    """Return excess clutter loss for a given category.
+
+    Currently frequency-independent. A future version may apply
+    frequency-dependent corrections per ITU-R P.1812.
+    """
     del frequency_mhz
     return CLUTTER_LOSS_DB.get(category, 0.0)
 

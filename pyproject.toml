@@ -21,3 +21,9 @@ replace = "## [{new_version}]"
 filename = "metadata.txt"
 search = "Version {current_version}"
 replace = "Version {new_version}"
+
+[tool.ruff]
+line-length = 99
+
+[tool.ruff.lint]
+ignore = ["E402"]

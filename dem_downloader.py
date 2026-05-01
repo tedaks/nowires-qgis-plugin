@@ -7,7 +7,7 @@
                              -------------------
         begin                : 2026-04-22
         copyright            : (C) 2026 Daniel Hulshof Saint Martin
-                               Adaptations (C) 2026 by Bortre Tenamo
+                                Adaptations (C) 2026 Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
 
@@ -39,6 +39,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import getpass
 
 from osgeo import gdal, ogr, osr
 from qgis.core import (
@@ -52,11 +53,14 @@ logger = logging.getLogger(__name__)
 COPERNICUS_BASE_URL = "https://copernicus-dem-30m.s3.amazonaws.com/"
 _MAX_TILES = 200
 _DOWNLOAD_RETRIES = 3
+_SOCKET_TIMEOUT = 60   # seconds; covers TCP connect + individual socket reads
+_WALL_CLOCK_TIMEOUT = 300  # seconds; total per-tile download including all retries
 _VALID_TILE_RE = re.compile(r"^Copernicus_DSM_COG_10_[NS]\d{2}_00_[EW]\d{3}_00_DEM$")
 
 
 def get_temp_dir():
-    temp_dir = os.path.join(tempfile.gettempdir(), "NoWires")
+    username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
+    temp_dir = os.path.join(tempfile.gettempdir(), "NoWires-" + username)
     os.makedirs(temp_dir, mode=0o700, exist_ok=True)
     return temp_dir
 
@@ -127,11 +131,17 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
         local_tif = os.path.join(temp_dir, tile_name + ".tif")
 
         if os.path.exists(local_tif):
-            logger.debug("Cache hit: %s", tile_name)
-            if feedback:
-                feedback.pushInfo("Cache hit: " + tile_name)
-            available.append(local_tif)
-            continue
+            if gdal.Open(local_tif) is not None:
+                logger.debug("Cache hit: %s", tile_name)
+                if feedback:
+                    feedback.pushInfo("Cache hit: " + tile_name)
+                available.append(local_tif)
+                continue
+            logger.warning("Cached tile %s failed validation; re-downloading", tile_name)
+            try:
+                os.unlink(local_tif)
+            except OSError:
+                pass
 
         tile_url = "{}{}/{}.tif".format(COPERNICUS_BASE_URL, tile_name, tile_name)
         if feedback:
@@ -144,7 +154,7 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
             if feedback and feedback.isCanceled():
                 return available
             try:
-                with opener.open(tile_url, timeout=60) as response:
+                with opener.open(tile_url, timeout=_SOCKET_TIMEOUT) as response:
                     final_url = response.geturl()
                     if not final_url.startswith(COPERNICUS_BASE_URL):
                         raise RuntimeError("Unexpected redirect to: " + final_url)
@@ -171,7 +181,7 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
                     except OSError:
                         pass
                     if attempt < _DOWNLOAD_RETRIES - 1:
-                        time.sleep(2**attempt)
+                        time.sleep(2 ** attempt)
                         continue
                     raise ValueError(
                         "Incomplete download: {} of {} bytes".format(
@@ -187,11 +197,12 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
                     except OSError:
                         pass
                     if attempt < _DOWNLOAD_RETRIES - 1:
-                        time.sleep(2**attempt)
+                        time.sleep(2 ** attempt)
                         continue
+                    break
                 test_ds = None
 
-                os.rename(tmp_path, local_tif)
+                os.replace(tmp_path, local_tif)
                 available.append(local_tif)
                 downloaded = True
                 break
@@ -203,6 +214,19 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
                         feedback.pushInfo("Tile not available (HTTP 404): " + tile_name)
                     break
                 else:
+                    retry_after = e.headers.get("Retry-After")
+                    if retry_after:
+                        try:
+                            wait_secs = max(int(retry_after), 1)
+                        except ValueError:
+                            wait_secs = 2 ** attempt
+                        logger.info(
+                            "HTTP %d downloading %s — Retry-After: %ds (attempt %d/%d)",
+                            e.code, tile_name, wait_secs,
+                            attempt + 1, _DOWNLOAD_RETRIES,
+                        )
+                    else:
+                        wait_secs = 2 ** attempt
                     logger.warning(
                         "HTTP %d downloading %s (attempt %d/%d): %s",
                         e.code,
@@ -212,7 +236,7 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
                         e,
                     )
                     if attempt < _DOWNLOAD_RETRIES - 1:
-                        time.sleep(2**attempt)
+                        time.sleep(wait_secs)
             except Exception as e:
                 logger.warning(
                     "Error downloading %s (attempt %d/%d): %s",
@@ -356,12 +380,19 @@ def ensure_dem_for_area(south, north, west, east, feedback=None, proxy_opener=No
     if feedback:
         feedback.pushInfo("Clipping and merging DEM tiles")
 
+    merge_temp_dir = tempfile.mkdtemp(prefix="nowires_dem_", dir=temp_dir)
+    if feedback:
+        feedback.pushInfo(
+            "Merged DEM outputs are kept in a per-run folder for QGIS layer loading: "
+            + merge_temp_dir
+        )
+
     return clip_and_merge(
         tile_paths,
         south,
         north,
         west,
         east,
-        temp_dir=temp_dir,
+        temp_dir=merge_temp_dir,
         feedback=feedback,
     )

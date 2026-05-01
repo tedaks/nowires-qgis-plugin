@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# This program is free software under GPLv3 or later. See LICENSE.
 """Unit tests for elevation.py — haversine, bearing, and ElevationGrid."""
 
 import math
@@ -45,6 +47,17 @@ class TestHaversine:
         d2 = haversine_m(51.5074, -0.1278, 40.7128, -74.006)
         assert d1 == pytest.approx(d2, rel=1e-10)
 
+    def test_nearly_antipodal_rounding_is_clamped(self):
+        """Nearly antipodal points can round just above asin's domain."""
+        d = haversine_m(
+            63.01910731527832,
+            95.04158568714416,
+            -63.019107315192336,
+            275.0415856871592,
+        )
+        assert math.isfinite(d)
+        assert d <= math.pi * 6371000.0 + 1.0
+
 
 class TestBearingDestination:
     """Tests for bearing_deg() and bearing_destination()."""
@@ -86,6 +99,12 @@ class TestBearingDestination:
         lat, lon = bearing_destination(0.0, 0.0, 90.0, 111_000)
         assert lat == pytest.approx(0.0, abs=0.01)
         assert lon == pytest.approx(1.0, abs=0.01)
+
+    def test_destination_longitude_is_normalized(self):
+        """Large eastward moves should wrap longitude into [-180, 180]."""
+        _lat, lon = bearing_destination(0.0, 179.0, 90.0, 300_000)
+        assert -180.0 <= lon <= 180.0
+        assert lon == pytest.approx(-178.302, abs=0.01)
 
 
 class TestGridSamplingOrientation:

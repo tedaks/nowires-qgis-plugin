@@ -6,8 +6,7 @@
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
         begin                : 2026-04-22
-        copyright            : (C) 2024 Bortre Tenamo
-                               Adaptations (C) 2026 by Bortre Tenamo
+        copyright            : (C) 2026 Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
 
@@ -110,6 +109,19 @@ def _ensure_path():
         sys.path.insert(0, plugin_dir)
 
 
+def _final_cov_pool():
+    """Finalizer: close the per-worker shared-memory handle on pool shutdown."""
+    global _cov_shm, _cov_grid_data, _cov_grid_meta
+    if _cov_grid_data is not None:
+        _cov_grid_data = None
+    if _cov_shm is not None:
+        try:
+            _cov_shm.close()
+        except Exception:
+            pass
+        _cov_shm = None
+
+
 def _init_cov_pool(shm_name, shape, dtype_str, grid_meta):
     _ensure_path()
     global _cov_shm, _cov_grid_data, _cov_grid_meta
@@ -139,6 +151,9 @@ def _itm_worker(args):
         task.target_lon,
         task.n_pts,
     )
+    if np.all(np.isnan(elevs)):
+        return None
+    elevs = np.where(np.isnan(elevs), 0.0, elevs)
 
     vertical_angle_deg = math.degrees(
         math.atan2(
@@ -187,13 +202,26 @@ def _itm_worker(args):
     )
 
 
-def _itm_worker_batch(batch):
+def _itm_worker_batch(batch_and_event):
+    """Process a batch of coverage pixel tasks.
+
+    *batch_and_event* is a tuple ``(batch, cancel_event)`` where
+    *cancel_event* is a ``multiprocessing.Event`` (or None) used for
+    early cancellation.
+    """
+    batch, cancel_event = batch_and_event
     results = []
-    # Cancellation is checked between chunks at the caller level;
-    # per-task cancellation inside workers is not possible because
-    # we cannot propagate feedback signals into the worker process.
+    # Per-task exception handling: a single bad pixel no longer kills
+    # the entire chunk.  Cancellation is checked between tasks when a
+    # shared mp.Event is provided, reducing cancellation latency.
     for args in batch:
-        results.append(_itm_worker(args))
+        if cancel_event is not None and cancel_event.is_set():
+            break
+        try:
+            results.append(_itm_worker(args))
+        except Exception as exc:
+            logger.warning("Coverage pixel task failed: %s", exc)
+            results.append(None)
     return results
 
 
@@ -244,8 +272,8 @@ def build_coverage_tasks(
 ):
     from .clutter import compute_terminal_clutter_losses
 
-    lat_per_m = 1.0 / 111320.0
-    lon_per_m = 1.0 / (111320.0 * max(math.cos(math.radians(tx_lat)), 0.01))
+    lat_per_m = 1.0 / METERS_PER_DEGREE_LAT
+    lon_per_m = 1.0 / (METERS_PER_DEGREE_LAT * max(math.cos(math.radians(tx_lat)), 0.01))
     dlat = (lats[:, np.newaxis] - tx_lat) / lat_per_m
     dlon = (lons[np.newaxis, :] - tx_lon) / lon_per_m
     dist_grid = np.sqrt(dlat * dlat + dlon * dlon)
@@ -414,7 +442,7 @@ def compute_coverage(
         enabled=clutter_enabled,
         land_cover_grid=clutter_grid,
         tx_override=tx_clutter_override,
-        rx_override=tx_clutter_override,
+        rx_override=rx_clutter_override,
     )
 
     tasks = build_coverage_tasks(
@@ -475,6 +503,7 @@ def compute_coverage(
     chunk_size = _dynamic_chunk_size(len(tasks))
     chunks = [tasks[i : i + chunk_size] for i in range(0, len(tasks), chunk_size)]
 
+    cancelled = False
     use_multiprocessing = should_use_multiprocessing()
     if use_multiprocessing:
         if feedback:
@@ -482,43 +511,49 @@ def compute_coverage(
                 "Computing {} pixels with {} workers...".format(len(tasks), n_workers)
             )
         try:
-            shm = _make_shared_grid(grid_data)
-            with ProcessPoolExecutor(
-                max_workers=n_workers,
-                initializer=_init_cov_pool,
-                initargs=(shm.name, grid_data.shape, str(grid_data.dtype), grid_meta),
-            ) as pool:
-                for chunk_idx, batch_results in enumerate(
-                    pool.map(_itm_worker_batch, chunks, chunksize=1)
-                ):
-                    if feedback and feedback.isCanceled():
-                        logger.info("Coverage cancelled by user")
-                        _release_shared_memory(shm)
-                        return None, None, 0, 0, 0, 0, None, None
-                    for result in batch_results:
-                        if result is not None:
-                            i, j, loss_db, prx, itm_loss_db, clutter_tx_db, clutter_rx_db = result
-                            loss_grid[i, j] = loss_db
-                            prx_grid[i, j] = prx
-                            itm_loss_grid[i, j] = itm_loss_db
-                            clutter_loss_grid[i, j] = clutter_tx_db + clutter_rx_db
-                        else:
-                            pixels_failed += 1
-                        pixels_done += 1
-                    if feedback and chunk_idx % 50 == 0:
-                        pct = int(pixels_done / len(tasks) * 80)
-                        feedback.setProgress(pct)
-        except (_BrokenPool, ImportError, OSError, RuntimeError) as exc:
-            logger.warning(
-                "Multiprocessing failed (%s: %s), falling back to sequential",
-                type(exc).__name__,
-                exc,
-            )
-            if feedback:
-                feedback.pushInfo(
-                    "Multiprocessing unavailable, using single-threaded mode..."
+            try:
+                shm = _make_shared_grid(grid_data)
+                cancel_event = multiprocessing.Event()
+                with ProcessPoolExecutor(
+                    max_workers=n_workers,
+                    initializer=_init_cov_pool,
+                    initargs=(shm.name, grid_data.shape, str(grid_data.dtype), grid_meta),
+                ) as pool:
+                    for chunk_idx, batch_results in enumerate(
+                        pool.map(_itm_worker_batch, [(c, cancel_event) for c in chunks], chunksize=1)
+                    ):
+                        if feedback and feedback.isCanceled():
+                            logger.info("Coverage cancelled by user")
+                            cancelled = True
+                            cancel_event.set()
+                            break
+                        for result in batch_results:
+                            if result is not None:
+                                i, j, loss_db, prx, itm_loss_db, clutter_tx_db, clutter_rx_db = result
+                                loss_grid[i, j] = loss_db
+                                prx_grid[i, j] = prx
+                                itm_loss_grid[i, j] = itm_loss_db
+                                clutter_loss_grid[i, j] = clutter_tx_db + clutter_rx_db
+                            else:
+                                pixels_failed += 1
+                            pixels_done += 1
+                        if feedback and chunk_idx % 50 == 0:
+                            pct = int(pixels_done / len(tasks) * 80)
+                            feedback.setProgress(pct)
+            except Exception as exc:
+                logger.warning(
+                    "Multiprocessing failed (%s: %s), falling back to sequential",
+                    type(exc).__name__,
+                    exc,
                 )
-            use_multiprocessing = False
+                if feedback:
+                    feedback.pushInfo(
+                        "Multiprocessing unavailable, using single-threaded mode..."
+                    )
+                use_multiprocessing = False
+        finally:
+            _release_shared_memory(shm)
+            shm = None
     elif feedback:
         feedback.pushInfo(
             "Using single-threaded mode on Windows (multiprocessing unsafe)..."
@@ -529,30 +564,35 @@ def compute_coverage(
         _cov_grid_data = grid_data
         _cov_grid_meta = grid_meta
 
-        for task_idx, task in enumerate(tasks):
-            if feedback and feedback.isCanceled():
-                logger.info("Coverage cancelled by user")
-                return None, None, 0, 0, 0, 0, None, None
-            result = _itm_worker(task)
-            if result is not None:
-                i, j, loss_db, prx, itm_loss_db, clutter_tx_db, clutter_rx_db = result
-                loss_grid[i, j] = loss_db
-                prx_grid[i, j] = prx
-                itm_loss_grid[i, j] = itm_loss_db
-                clutter_loss_grid[i, j] = clutter_tx_db + clutter_rx_db
-            else:
-                pixels_failed += 1
-            pixels_done += 1
-            if feedback and task_idx % 500 == 0:
-                pct = int(pixels_done / len(tasks) * 80)
-                feedback.setProgress(pct)
-
-        # Clear globals after sequential run
-        _cov_grid_data = None
-        _cov_grid_meta = {}
+        try:
+            for task_idx, task in enumerate(tasks):
+                if feedback and feedback.isCanceled():
+                    logger.info("Coverage cancelled by user")
+                    cancelled = True
+                    break  # sequential: no cancel_event needed
+                result = _itm_worker(task)
+                if result is not None:
+                    i, j, loss_db, prx, itm_loss_db, clutter_tx_db, clutter_rx_db = result
+                    loss_grid[i, j] = loss_db
+                    prx_grid[i, j] = prx
+                    itm_loss_grid[i, j] = itm_loss_db
+                    clutter_loss_grid[i, j] = clutter_tx_db + clutter_rx_db
+                else:
+                    pixels_failed += 1
+                pixels_done += 1
+                if feedback and task_idx % 500 == 0:
+                    pct = int(pixels_done / len(tasks) * 80)
+                    feedback.setProgress(pct)
+        finally:
+            _cov_grid_data = None
+            _cov_grid_meta = {}
 
     # Always clean up shared memory
     _release_shared_memory(shm)
+    shm = None
+
+    if cancelled:
+        return None, None, 0, 0, 0, 0, None, None
 
     total = len(tasks)
     if feedback:

@@ -6,7 +6,7 @@
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
         begin                : 2026-04-22
-        copyright            : (C) 2026 by Bortre Tenamo
+        copyright            : (C) 2026 Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
 
@@ -44,11 +44,15 @@ class NoWiresProvider(QgsProcessingProvider):
     def loadAlgorithms(self):
         from .algorithm_p2p import P2PAlgorithm
         from .algorithm_coverage import CoverageAlgorithm
+        from .algorithm_coverage_comparison import CoverageComparisonAlgorithm
         from .algorithm_contour import ContourLinesAlgorithm
+        from .algorithm_batch import BatchAnalysisAlgorithm
 
         self.addAlgorithm(P2PAlgorithm())
         self.addAlgorithm(CoverageAlgorithm())
+        self.addAlgorithm(CoverageComparisonAlgorithm())
         self.addAlgorithm(ContourLinesAlgorithm())
+        self.addAlgorithm(BatchAnalysisAlgorithm())
 
     def id(self):
         return "nowires"

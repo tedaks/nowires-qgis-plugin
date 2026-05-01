@@ -6,7 +6,7 @@
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
         begin                : 2026-04-22
-        copyright            : (C) 2026 by Bortre Tenamo
+        copyright            : (C) 2026 Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
 
@@ -95,6 +95,22 @@ class NoWiresPlugin:
         self.open_3d_action.triggered.connect(self.run_open_3d_view)
         self.iface.addPluginToMenu("&NoWires", self.open_3d_action)
 
+        # Coverage Comparison action
+        self.comparison_action = QAction(
+            QIcon(icon), "Coverage Comparison", self.iface.mainWindow()
+        )
+        self.comparison_action.triggered.connect(self.run_comparison)
+        self.iface.addPluginToMenu("&NoWires", self.comparison_action)
+        self.iface.addToolBarIcon(self.comparison_action)
+
+        # Batch P2P Analysis action
+        self.batch_action = QAction(
+            QIcon(icon), "Batch P2P Analysis", self.iface.mainWindow()
+        )
+        self.batch_action.triggered.connect(self.run_batch)
+        self.iface.addPluginToMenu("&NoWires", self.batch_action)
+        self.iface.addToolBarIcon(self.batch_action)
+
         self._opacity_dialog = None
 
     def unload(self):
@@ -103,13 +119,19 @@ class NoWiresPlugin:
             self._opacity_dialog.close()
             self._opacity_dialog = None
         remove_coverage_legend()
-        QgsApplication.processingRegistry().removeProvider(self.provider)
+        if self.provider is not None:
+            QgsApplication.processingRegistry().removeProvider(self.provider)
+            self.provider = None
         self.iface.removePluginMenu("&NoWires", self.p2p_action)
         self.iface.removePluginMenu("&NoWires", self.coverage_action)
         self.iface.removePluginMenu("&NoWires", self.contour_action)
         self.iface.removePluginMenu("&NoWires", self.opacity_action)
         self.iface.removePluginMenu("&NoWires", self.open_3d_action)
+        self.iface.removePluginMenu("&NoWires", self.comparison_action)
+        self.iface.removePluginMenu("&NoWires", self.batch_action)
         self.iface.removeToolBarIcon(self.p2p_action)
+        self.iface.removeToolBarIcon(self.comparison_action)
+        self.iface.removeToolBarIcon(self.batch_action)
 
     def run_p2p(self):
         processing.execAlgorithmDialog("nowires:p2p_analysis")
@@ -151,3 +173,9 @@ class NoWiresPlugin:
         QTimer.singleShot(
             0, lambda mode=scene_mode: open_nowires_3d_view(self.iface, scene_mode=mode)
         )
+
+    def run_comparison(self):
+        processing.execAlgorithmDialog("nowires:coverage_comparison")
+
+    def run_batch(self):
+        processing.execAlgorithmDialog("nowires:batch_p2p_analysis")

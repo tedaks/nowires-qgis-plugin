@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# This program is free software under GPLv3 or later. See LICENSE.
 """Unit tests for radio.py — Fresnel zone analysis and signal levels."""
 
 import math
 
 import numpy as np
+import pytest
 from radio import (
     fresnel_radius,
     earth_bulge,
@@ -27,7 +30,7 @@ class TestFresnelRadius:
         """At the midpoint (d1 == d2), Fresnel radius should equal
         sqrt(wavelength * d / 4) for d1 = d2 = d/2."""
         f_mhz = 300.0  # 1m wavelength
-        d = 1000.0  # 1km total distance
+        _ = 1000.0  # 1km total distance
         r_mid = fresnel_radius(500, 500, f_mhz)
         wavelength = 299792458.0 / (f_mhz * 1e6)
         expected = math.sqrt(wavelength * 500 * 500 / 1000)
@@ -176,9 +179,6 @@ class TestSignalLevels:
             assert isinstance(threshold, float)
             assert len(rgba) == 4
             assert isinstance(label, str)
-
-
-import pytest
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -454,6 +454,11 @@ Important constants:
 - Dynamic chunk size via `_dynamic_chunk_size()`
 - `_MIN_COVERAGE_DISTANCE_M = 1.0`
 - `METERS_PER_DEGREE_LAT = 111320.0`
+- `COVERAGE_NODATA = -9999.0` — NoData sentinel for coverage rasters. Chosen because GDAL Float32 NoData requires a finite value (NaN is not universally supported). -9999 is well outside both valid path-loss range (0–400 dB) and received-power range (≈-120 to +80 dBm).
+
+### Raster NoData Convention
+
+Coverage rasters use `COVERAGE_NODATA = -9999.0` as the missing-data sentinel. This value is outside the range of physically meaningful dB-loss and dBm values, so it cannot be confused with valid data. Programs consuming the raster programmatically should treat this value as missing, or use GDAL's NoData mask to filter it before arithmetic operations. NaN is not used because many GIS formats and GDAL drivers do not reliably round-trip NaN NoData values for Float32 rasters.
 
 ### Near-Transmitter Coverage Cells
 
@@ -656,6 +661,27 @@ A `postProcessAlgorithm` override in the coverage and contour algorithms reorder
 - The coverage radius-sweep implementation has been removed.
 - DEM access depends on external network availability.
 - The repository test suite does not substitute for in-QGIS manual validation.
+
+## ITM Propagation Edge Cases
+
+The bundled ITM implementation (`itm/propagation.py`) handles several edge cases that can arise with extreme parameter combinations:
+
+### Smooth Earth Diffraction (NC1 Fix)
+
+When `K = 0.017778 × C₀ × f^(-⅓) / |Z_g|` exceeds 1.607, the term `B₀ = 1.607 − K` goes negative. This occurs at low frequencies (≤ 20 MHz) with vertical polarization over high-conductivity ground (small `|Z_g|`). Previously this caused `ValueError` from `log10(≤0)`. The fix:
+
+- `height_function(x__km, K)` returns `200.0` (a large finite dB loss) when `x__km ≤ 0` or `K ≤ 0`
+- `smooth_earth_diffraction` clamps `B₀[i]` to a minimum of `1e-12` when `K > 1.607`
+- When `x__km[0] ≤ 0`, `G_x__db` returns a large loss value instead of calling `log10`
+
+This preserves monotonicity and produces a physically reasonable high-loss result instead of crashing.
+
+### Coverage Engine Robustness (NC2 / NI1 / NI2 Fixes)
+
+- Per-task exception handling in `_itm_worker_batch` prevents one bad pixel from killing an entire chunk of coverage tasks
+- The outer `except` clause in `compute_coverage` catches all `Exception` types, not just specific ones, ensuring fallback to sequential mode for any worker failure
+- A shared `multiprocessing.Event` propagates cancellation from the QGIS feedback thread into worker processes with task-level granularity
+- `_final_cov_pool()` closes per-worker shared-memory handles on pool shutdown
 
 ## Public Repository Files
 

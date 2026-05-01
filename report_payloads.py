@@ -1,5 +1,27 @@
 # -*- coding: utf-8 -*-
-"""Pure-Python helpers for NoWires report payloads and marker outputs."""
+"""
+/***************************************************************************
+ NoWires
+                     A QGIS plugin
+ Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
+                             -------------------
+        begin                : 2026-04-22
+        copyright            : (C) 2026 Bortre Tenamo
+        email                : tedaks@gmail.com
+ ***************************************************************************/
+
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 3 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+
+Pure-Python helpers for NoWires report payloads and marker outputs.
+"""
 
 from __future__ import annotations
 
@@ -184,7 +206,7 @@ def build_coverage_report_payload(
 ):
     """Build the structured coverage report payload."""
     reliability = summarize_reliability(
-        margin_db=max_prx_dbm - rx_sensitivity_dbm,
+        margin_db=mean_prx_dbm - rx_sensitivity_dbm,
         frequency_mhz=f_mhz,
         distance_km=max_distance_km,
         los_blocked=False,

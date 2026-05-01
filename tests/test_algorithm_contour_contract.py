@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# This program is free software under GPLv3 or later. See LICENSE.
 """Regression tests for the contour Processing output contract."""
 
 import os
@@ -41,13 +43,25 @@ def test_contour_algorithm_stores_latest_3d_layer_ids():
 
 def test_contour_algorithm_uses_processing_context_for_layer_loading():
     source = _source_text()
-    assert "_queue_layer_for_loading(" in source
-    assert "context.temporaryLayerStore().addMapLayer(layer)" in source
-    assert "addLayerToLoadOnCompletion" in source
-    assert "QgsProject.instance().addMapLayer(" not in source
+    assert "queue_layer_for_loading(" in source
+    assert "processing_utils" in source
 
 
 def test_contour_algorithm_uses_direct_qt6_painter_blend_enum():
     source = _source_text()
     assert "QPainter.CompositionMode.CompositionMode_ColorDodge" in source
     assert "painter_blend_mode_color_dodge" not in source
+
+
+def test_raster_calc_explicitly_closes_gdal_datasets():
+    source = _source_text()
+    assert "out_ds = None" in source
+    assert "while datasets:" in source
+    assert "datasets.pop()" in source
+
+
+def test_blur_vrt_closes_buildvrt_dataset_before_xml_parse():
+    source = _source_text()
+    assert "vrt_ds = gdal.BuildVRT(vrt_path, src_path)" in source
+    assert "vrt_ds = None" in source
+    assert source.index("vrt_ds = None") < source.index("ET.parse(vrt_path)")

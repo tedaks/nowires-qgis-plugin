@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# This program is free software under GPLv3 or later. See LICENSE.
 """Regression tests for the coverage benchmark helper."""
 
 import importlib
 
 import numpy as np
+import pytest
 
 
 def test_benchmark_module_exists():
@@ -28,11 +31,14 @@ def test_run_case_reports_elapsed_and_pixels(monkeypatch):
             0.01,
             -0.01,
             0.01,
+            np.full((grid_size, grid_size), 0.0, dtype=np.float32),
+            np.full((grid_size, grid_size), 0.0, dtype=np.float32),
         )
 
     monkeypatch.setattr(module, "compute_coverage", fake_compute_coverage)
 
-    case = module.BenchmarkCase(label="smoke", radius_km=1.0, grid_size=8, frequency_mhz=900.0)
+    from NoWires.benchmarks.reference_cases import CoverageCase
+    case = CoverageCase(label="smoke", radius_km=1.0, grid_size=8, frequency_mhz=900.0)
     result = module.run_case(case)
 
     assert calls["kwargs"]["grid_size"] == 8
@@ -41,3 +47,19 @@ def test_run_case_reports_elapsed_and_pixels(monkeypatch):
     assert result["pixels"] == 64
     assert result["elapsed_s"] == 0.5
     assert result["pixels_per_second"] == 128.0
+
+
+@pytest.mark.benchmark
+def test_coverage_small_case_loads():
+    from NoWires.benchmarks.reference_cases import COVERAGE_CASES
+    case = next(c for c in COVERAGE_CASES if c.label == "small")
+    assert case.radius_km == 2.0
+    assert case.grid_size == 64
+
+
+@pytest.mark.benchmark
+def test_coverage_medium_case_loads():
+    from NoWires.benchmarks.reference_cases import COVERAGE_CASES
+    case = next(c for c in COVERAGE_CASES if c.label == "medium")
+    assert case.radius_km == 5.0
+    assert case.grid_size == 128

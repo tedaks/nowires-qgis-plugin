@@ -6,8 +6,7 @@
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
         begin                : 2026-04-22
-        copyright            : (C) 2024 Bortre Tenamo
-                               Adaptations (C) 2026 by Bortre Tenamo
+        copyright            : (C) 2026 Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
 
@@ -43,8 +42,6 @@ logger = logging.getLogger(__name__)
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
     Qgis,
-    QgsGeometry,
-    QgsPointXY,
     QgsProcessingAlgorithm,
     QgsProcessingParameterFileDestination,
     QgsProcessingParameterBoolean,
@@ -52,8 +49,6 @@ from qgis.core import (
     QgsProcessingParameterFile,
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
-    QgsProject,
-    QgsProcessingContext,
     QgsVectorLayer,
 )
 from osgeo import ogr, osr
@@ -71,7 +66,6 @@ from .radio import (
     ITM_MIN_TERMINAL_HEIGHT_M,
     K_FACTOR_PRESETS,
     PROP_MODE_NAMES,
-    SIGNAL_LEVELS,
     build_pfl,
     fresnel_profile_analysis,
     itm_p2p_loss,
@@ -98,25 +92,10 @@ from .clutter import (
     compute_terminal_clutter_losses,
     ensure_clutter_grid_for_area,
 )
+from .processing_utils import queue_layer_for_loading
 
 POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
 
-
-def _queue_layer_for_loading(context, layer, name):
-    """Hand a layer to Processing for loading instead of mutating the project."""
-    if layer is None or not layer.isValid():
-        return False
-    if not (
-        hasattr(context, "temporaryLayerStore")
-        and hasattr(context, "addLayerToLoadOnCompletion")
-    ):
-        return False
-    project = QgsProject.instance()
-    context.temporaryLayerStore().addMapLayer(layer)
-    context.addLayerToLoadOnCompletion(
-        layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
-    )
-    return True
 
 
 class P2PAlgorithm(QgsProcessingAlgorithm):
@@ -381,6 +360,7 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
                     "1.33 - Standard atmosphere",
                     "2.00 - Super-refractive",
                     "4.00 - Strong super-refractive",
+                    "Custom",
                 ],
                 defaultValue=2,
             )
@@ -473,7 +453,7 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
 
         self.addParameter(
             QgsProcessingParameterBoolean(
-                "SHOW_CHART",
+                self.SHOW_CHART,
                 "Show profile chart after analysis",
                 defaultValue=True,
                 optional=False,
@@ -518,26 +498,14 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         rx_gain = self.parameterAsDouble(parameters, self.RX_GAIN, context)
         cable_loss = self.parameterAsDouble(parameters, self.CABLE_LOSS, context)
         rx_sens = self.parameterAsDouble(parameters, self.RX_SENSITIVITY, context)
-        has_preset = self.K_FACTOR_PRESET in parameters
-        has_custom = self.K_FACTOR in parameters
-        if not has_preset and has_custom:
-            k_factor = resolve_k_factor(
-                has_preset=False,
-                has_custom=True,
-                custom_value=self.parameterAsDouble(
-                    parameters, self.K_FACTOR, context
-                ),
-                preset_index=0,
-            )
-        else:
-            k_factor = resolve_k_factor(
-                has_preset=has_preset,
-                has_custom=has_custom,
-                custom_value=0.0,
-                preset_index=self.parameterAsEnum(
-                    parameters, self.K_FACTOR_PRESET, context
-                ),
-            )
+        preset_index = self.parameterAsEnum(parameters, self.K_FACTOR_PRESET, context)
+        custom_k_factor = self.parameterAsDouble(parameters, self.K_FACTOR, context)
+        k_factor = resolve_k_factor(
+            has_preset=preset_index < len(K_FACTOR_PRESETS),
+            has_custom=True,
+            custom_value=custom_k_factor,
+            preset_index=preset_index,
+        )
         n0 = self.parameterAsDouble(parameters, self.N0, context)
         epsilon = self.parameterAsDouble(parameters, self.EPSILON, context)
         sigma = self.parameterAsDouble(parameters, self.SIGMA, context)
@@ -717,7 +685,6 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         feedback.setProgress(70)
 
         # --- Create output layers ---
-        temp_dir = tempfile.mkdtemp(prefix="nowires_p2p_")
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(4326)
         srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
@@ -729,251 +696,267 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         fresnel_dest = self.parameterAsFileOutput(
             parameters, self.OUTPUT_FRESNEL, context
         )
-
-        # 1. Profile line layer
-        profile_path = (
-            profile_dest if profile_dest else os.path.join(temp_dir, "profile_line.shp")
-        )
-        self._write_profile_line(
-            profile_path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result
-        )
-
-        # 2. Fresnel zone polygon + terrain/LOS lines layers (separate files)
-        fresnel_poly_path = (
-            fresnel_dest if fresnel_dest else os.path.join(temp_dir, "fresnel_zone.shp")
-        )
         markers_dest = self.parameterAsFileOutput(
             parameters, self.OUTPUT_MARKERS, context
         )
-        markers_path = (
-            markers_dest if markers_dest else os.path.join(temp_dir, "p2p_markers.shp")
-        )
-        # Derive the lines path from the polygon path. Use os.path.splitext
-        # so it works for any extension (.shp, .gpkg, .geojson, ...) — the
-        # old ".shp" string replace was a silent no-op for non-shapefile
-        # destinations and led to both layers writing to the same file.
-        _poly_root, _poly_ext = os.path.splitext(fresnel_poly_path)
-        fresnel_lines_path = "{}_lines{}".format(_poly_root, _poly_ext)
 
-        self._write_fresnel_zone(
-            fresnel_poly_path,
-            fresnel_lines_path,
-            srs,
-            tx_lat,
-            tx_lon,
-            rx_lat,
-            rx_lon,
-            dist_arr,
-            terrain_bulge,
-            los_h,
-            fresnel_r,
-            dist_m,
-        )
-        write_p2p_marker_layer(
-            markers_path,
-            tx_lat=tx_lat,
-            tx_lon=tx_lon,
-            rx_lat=rx_lat,
-            rx_lon=rx_lon,
-            tx_h=tx_h,
-            rx_h=rx_h,
-            tx_gain=tx_gain,
-            rx_gain=rx_gain,
-            tx_power_dbm=tx_power,
-            rx_sensitivity_dbm=rx_sens,
-        )
+        needs_temp_dir = not (profile_dest and fresnel_dest and markers_dest)
+        if needs_temp_dir:
+            temp_dir = tempfile.mkdtemp(prefix="nowires_p2p_")
+            feedback.pushInfo(
+                "Temporary outputs are intentionally left on disk for QGIS layer loading: {}".format(
+                    temp_dir
+                )
+            )
+        else:
+            temp_dir = None
 
-        report_payload = build_p2p_report_payload(
-            tx_lat=tx_lat,
-            tx_lon=tx_lon,
-            rx_lat=rx_lat,
-            rx_lon=rx_lon,
-            tx_h=tx_h,
-            rx_h=rx_h,
-            f_mhz=f_mhz,
-            polarization_name=POLARIZATION_NAMES.get(polarization, str(polarization)),
-            climate_name=CLIMATE_NAMES.get(climate, str(climate)),
-            k_factor=k_factor,
-            dist_m=dist_m,
-            propagation_mode=result.mode,
-            propagation_mode_name=PROP_MODE_NAMES.get(result.mode, "Unknown"),
-            fspl_db=fspl_db,
-            itm_loss_db=result.loss_db,
-            tx_power=tx_power,
-            tx_gain=tx_gain,
-            rx_gain=rx_gain,
-            cable_loss=cable_loss,
-            eirp_dbm=eirp_dbm,
-            prx_dbm=prx_dbm,
-            rx_sensitivity_dbm=rx_sens,
-            margin_db=margin_db,
-            los_blocked=los_blocked,
-            fresnel_1_violated=f1_violated,
-            fresnel_60_violated=f60_violated,
-            max_fresnel_radius_m=float(fresnel_r.max()),
-            total_path_loss_db=total_path_loss_db,
-            clutter_tx_db=clutter_losses.tx_loss_db,
-            clutter_rx_db=clutter_losses.rx_loss_db,
-            clutter_source=clutter_losses.source,
-            tx_antenna_preset=tx_antenna_config.preset,
-            rx_antenna_preset=rx_antenna_config.preset,
-            antenna_gain_adjustment_db=antenna_gain_adjustment_db_total,
-        )
-        report_csv_path = self.parameterAsFileOutput(
-            parameters, self.OUTPUT_REPORT_CSV, context
-        )
-        report_json_path = self.parameterAsFileOutput(
-            parameters, self.OUTPUT_REPORT_JSON, context
-        )
-        report_html_path = self.parameterAsFileOutput(
-            parameters, self.OUTPUT_REPORT_HTML, context
-        )
-        if report_csv_path:
-            write_report_csv(report_csv_path, report_payload)
-        if report_json_path:
-            write_report_json(report_json_path, report_payload)
-        if report_html_path:
-            write_report_html(report_html_path, report_payload, title="NoWires P2P Report")
+        try:
+            profile_path = (
+                profile_dest if profile_dest else os.path.join(temp_dir, "profile_line.shp")
+            )
+            self._write_profile_line(
+                profile_path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result
+            )
 
-        feedback.setProgress(90)
+            # 2. Fresnel zone polygon + terrain/LOS lines layers (separate files)
+            fresnel_poly_path = (
+                fresnel_dest if fresnel_dest else os.path.join(temp_dir, "fresnel_zone.shp")
+            )
+            markers_path = (
+                markers_dest if markers_dest else os.path.join(temp_dir, "p2p_markers.shp")
+            )
+            # Derive the lines path from the polygon path. Use os.path.splitext
+            # so it works for any extension (.shp, .gpkg, .geojson, ...) — the
+            # old ".shp" string replace was a silent no-op for non-shapefile
+            # destinations and led to both layers writing to the same file.
+            _poly_root, _poly_ext = os.path.splitext(fresnel_poly_path)
+            fresnel_lines_path = "{}_lines{}".format(_poly_root, _poly_ext)
 
-        # Load layers
-        profile_layer = QgsVectorLayer(
-            profile_path,
-            "P2P Link ({:.0f} MHz, {:.1f} km)".format(f_mhz, dist_m / 1000),
-        )
-        fresnel_poly_layer = QgsVectorLayer(
-            fresnel_poly_path, "Fresnel Zone Analysis"
-        )
-        fresnel_lines_layer = QgsVectorLayer(
-            fresnel_lines_path, "Fresnel Zone Lines"
-        )
-        marker_layer = QgsVectorLayer(markers_path, "P2P TX/RX Markers")
-
-        _queue_layer_for_loading(context, fresnel_poly_layer, "Fresnel Zone Analysis")
-        _queue_layer_for_loading(context, fresnel_lines_layer, "Fresnel Zone Lines")
-        _queue_layer_for_loading(
-            context,
-            profile_layer,
-            "P2P Link ({:.0f} MHz, {:.1f} km)".format(f_mhz, dist_m / 1000),
-        )
-        _queue_layer_for_loading(context, marker_layer, "P2P TX/RX Markers")
-
-        # Show profile chart if requested
-        show_chart = self.parameterAsBool(parameters, self.SHOW_CHART, context)
-        if show_chart:
-            self._show_profile_chart(
+            self._write_fresnel_zone(
+                fresnel_poly_path,
+                fresnel_lines_path,
+                srs,
+                tx_lat,
+                tx_lon,
+                rx_lat,
+                rx_lon,
                 dist_arr,
-                elev_arr,
                 terrain_bulge,
                 los_h,
                 fresnel_r,
                 dist_m,
-                tx_h,
-                rx_h,
-                f_mhz,
-                result,
-                k_factor,
-                tx_power,
-                tx_gain,
-                rx_gain,
-                cable_loss,
-                rx_sens,
+            )
+            write_p2p_marker_layer(
+                markers_path,
+                tx_lat=tx_lat,
+                tx_lon=tx_lon,
+                rx_lat=rx_lat,
+                rx_lon=rx_lon,
+                tx_h=tx_h,
+                rx_h=rx_h,
+                tx_gain=tx_gain,
+                rx_gain=rx_gain,
+                tx_power_dbm=tx_power,
+                rx_sensitivity_dbm=rx_sens,
             )
 
-        feedback.setProgress(100)
+            report_payload = build_p2p_report_payload(
+                tx_lat=tx_lat,
+                tx_lon=tx_lon,
+                rx_lat=rx_lat,
+                rx_lon=rx_lon,
+                tx_h=tx_h,
+                rx_h=rx_h,
+                f_mhz=f_mhz,
+                polarization_name=POLARIZATION_NAMES.get(polarization, str(polarization)),
+                climate_name=CLIMATE_NAMES.get(climate, str(climate)),
+                k_factor=k_factor,
+                dist_m=dist_m,
+                propagation_mode=result.mode,
+                propagation_mode_name=PROP_MODE_NAMES.get(result.mode, "Unknown"),
+                fspl_db=fspl_db,
+                itm_loss_db=result.loss_db,
+                tx_power=tx_power,
+                tx_gain=tx_gain,
+                rx_gain=rx_gain,
+                cable_loss=cable_loss,
+                eirp_dbm=eirp_dbm,
+                prx_dbm=prx_dbm,
+                rx_sensitivity_dbm=rx_sens,
+                margin_db=margin_db,
+                los_blocked=los_blocked,
+                fresnel_1_violated=f1_violated,
+                fresnel_60_violated=f60_violated,
+                max_fresnel_radius_m=float(fresnel_r.max()),
+                total_path_loss_db=total_path_loss_db,
+                clutter_tx_db=clutter_losses.tx_loss_db,
+                clutter_rx_db=clutter_losses.rx_loss_db,
+                clutter_source=clutter_losses.source,
+                tx_antenna_preset=tx_antenna_config.preset,
+                rx_antenna_preset=rx_antenna_config.preset,
+                antenna_gain_adjustment_db=antenna_gain_adjustment_db_total,
+            )
+            report_csv_path = self.parameterAsFileOutput(
+                parameters, self.OUTPUT_REPORT_CSV, context
+            )
+            report_json_path = self.parameterAsFileOutput(
+                parameters, self.OUTPUT_REPORT_JSON, context
+            )
+            report_html_path = self.parameterAsFileOutput(
+                parameters, self.OUTPUT_REPORT_HTML, context
+            )
+            if report_csv_path:
+                write_report_csv(report_csv_path, report_payload)
+            if report_json_path:
+                write_report_json(report_json_path, report_payload)
+            if report_html_path:
+                write_report_html(report_html_path, report_payload, title="NoWires P2P Report")
 
-        # Report
-        feedback.pushInfo("")
-        feedback.pushInfo("=" * 50)
-        feedback.pushInfo("P2P ANALYSIS RESULTS")
-        feedback.pushInfo("=" * 50)
-        feedback.pushInfo(
-            "Distance: {:.1f} m ({:.2f} km)".format(dist_m, dist_m / 1000)
-        )
-        feedback.pushInfo("Frequency: {:.1f} MHz".format(f_mhz))
-        feedback.pushInfo(
-            "Propagation mode: {} ({})".format(
-                result.mode, PROP_MODE_NAMES.get(result.mode, "Unknown")
-            )
-        )
-        feedback.pushInfo("")
-        feedback.pushInfo("LINK BUDGET")
-        feedback.pushInfo("  TX Power:       {:.2f} dBm".format(tx_power))
-        feedback.pushInfo("  TX Gain:        {:.2f} dBi".format(tx_gain))
-        feedback.pushInfo("  Cable Loss:     {:.2f} dB".format(cable_loss))
-        feedback.pushInfo("  EIRP:           {:.2f} dBm".format(eirp_dbm))
-        feedback.pushInfo("  Free Space Loss:{:.2f} dB".format(fspl_db))
-        feedback.pushInfo("  ITM Path Loss:  {:.2f} dB".format(result.loss_db))
-        feedback.pushInfo("  Clutter TX Loss:{:.2f} dB".format(clutter_losses.tx_loss_db))
-        feedback.pushInfo("  Clutter RX Loss:{:.2f} dB".format(clutter_losses.rx_loss_db))
-        feedback.pushInfo("  Total Path Loss:{:.2f} dB".format(total_path_loss_db))
-        feedback.pushInfo("  Antenna Pattern:{:.2f} dB".format(antenna_gain_adjustment_db_total))
-        feedback.pushInfo(
-            "  Excess Loss:    {:.2f} dB".format(result.loss_db - fspl_db)
-        )
-        feedback.pushInfo("  RX Gain:        {:.2f} dBi".format(rx_gain))
-        feedback.pushInfo("  Received Power: {:.2f} dBm".format(prx_dbm))
-        feedback.pushInfo("  RX Sensitivity: {:.2f} dBm".format(rx_sens))
-        feedback.pushInfo("  Link Margin:    {:.2f} dB".format(margin_db))
-        feedback.pushInfo(
-            "  Fade Margin Class: {}".format(
-                report_payload["results"]["fade_margin_class"]
-            )
-        )
-        feedback.pushInfo(
-            "  Reliability:     {}".format(
-                report_payload["results"]["reliability_summary"]
-            )
-        )
-        feedback.pushInfo(
-            "  Availability Method: {}".format(
-                report_payload["results"]["availability_method"]
-            )
-        )
-        if report_payload["results"]["availability_estimate_pct"] is not None:
-            feedback.pushInfo(
-                "  Availability Estimate: {:.2f}%".format(
-                    report_payload["results"]["availability_estimate_pct"]
-                )
-            )
-        feedback.pushInfo("")
-        feedback.pushInfo("FRESNEL ZONE ANALYSIS (k={:.3f})".format(k_factor))
-        feedback.pushInfo(
-            "  LOS Blocked:         {}".format("YES" if los_blocked else "NO")
-        )
-        feedback.pushInfo(
-            "  1st Fresnel violated: {}".format("YES" if f1_violated else "NO")
-        )
-        feedback.pushInfo(
-            "  60% Fresnel rule violated: {}".format("YES" if f60_violated else "NO")
-        )
-        feedback.pushInfo(
-            "  Max 1st Fresnel radius: {:.1f} m".format(float(fresnel_r.max()))
-        )
-        feedback.pushInfo("")
-        if margin_db >= 0:
-            feedback.pushInfo(
-                "LINK STATUS: VIABLE (margin {:.1f} dB above sensitivity)".format(
-                    margin_db
-                )
-            )
-        else:
-            feedback.pushInfo(
-                "LINK STATUS: NOT VIABLE (margin {:.1f} dB below sensitivity)".format(
-                    margin_db
-                )
-            )
-        feedback.pushInfo("=" * 50)
+            feedback.setProgress(90)
 
-        return {
-            self.OUTPUT_PROFILE: profile_path,
-            self.OUTPUT_FRESNEL: fresnel_poly_path,
-            self.OUTPUT_MARKERS: markers_path,
-            self.OUTPUT_REPORT_CSV: report_csv_path,
-            self.OUTPUT_REPORT_JSON: report_json_path,
-            self.OUTPUT_REPORT_HTML: report_html_path,
-        }
+            # Load layers
+            profile_layer = QgsVectorLayer(
+                profile_path,
+                "P2P Link ({:.0f} MHz, {:.1f} km)".format(f_mhz, dist_m / 1000),
+            )
+            fresnel_poly_layer = QgsVectorLayer(
+                fresnel_poly_path, "Fresnel Zone Analysis"
+            )
+            fresnel_lines_layer = QgsVectorLayer(
+                fresnel_lines_path, "Fresnel Zone Lines"
+            )
+            marker_layer = QgsVectorLayer(markers_path, "P2P TX/RX Markers")
+
+            queue_layer_for_loading(context, fresnel_poly_layer, "Fresnel Zone Analysis")
+            queue_layer_for_loading(context, fresnel_lines_layer, "Fresnel Zone Lines")
+            queue_layer_for_loading(
+                context,
+                profile_layer,
+                "P2P Link ({:.0f} MHz, {:.1f} km)".format(f_mhz, dist_m / 1000),
+            )
+            queue_layer_for_loading(context, marker_layer, "P2P TX/RX Markers")
+
+            # Show profile chart if requested
+            show_chart = self.parameterAsBool(parameters, self.SHOW_CHART, context)
+            if show_chart:
+                self._show_profile_chart(
+                    dist_arr,
+                    elev_arr,
+                    terrain_bulge,
+                    los_h,
+                    fresnel_r,
+                    dist_m,
+                    tx_h,
+                    rx_h,
+                    f_mhz,
+                    result,
+                    k_factor,
+                    tx_power,
+                    tx_gain,
+                    rx_gain,
+                    cable_loss,
+                    rx_sens,
+                    prx_dbm=prx_dbm,
+                    margin_db=margin_db,
+                )
+
+            feedback.setProgress(100)
+
+            # Report
+            feedback.pushInfo("")
+            feedback.pushInfo("=" * 50)
+            feedback.pushInfo("P2P ANALYSIS RESULTS")
+            feedback.pushInfo("=" * 50)
+            feedback.pushInfo(
+                "Distance: {:.1f} m ({:.2f} km)".format(dist_m, dist_m / 1000)
+            )
+            feedback.pushInfo("Frequency: {:.1f} MHz".format(f_mhz))
+            feedback.pushInfo(
+                "Propagation mode: {} ({})".format(
+                    result.mode, PROP_MODE_NAMES.get(result.mode, "Unknown")
+                )
+            )
+            feedback.pushInfo("")
+            feedback.pushInfo("LINK BUDGET")
+            feedback.pushInfo("  TX Power:       {:.2f} dBm".format(tx_power))
+            feedback.pushInfo("  TX Gain:        {:.2f} dBi".format(tx_gain))
+            feedback.pushInfo("  Cable Loss:     {:.2f} dB".format(cable_loss))
+            feedback.pushInfo("  EIRP:           {:.2f} dBm".format(eirp_dbm))
+            feedback.pushInfo("  Free Space Loss:{:.2f} dB".format(fspl_db))
+            feedback.pushInfo("  ITM Path Loss:  {:.2f} dB".format(result.loss_db))
+            feedback.pushInfo("  Clutter TX Loss:{:.2f} dB".format(clutter_losses.tx_loss_db))
+            feedback.pushInfo("  Clutter RX Loss:{:.2f} dB".format(clutter_losses.rx_loss_db))
+            feedback.pushInfo("  Total Path Loss:{:.2f} dB".format(total_path_loss_db))
+            feedback.pushInfo("  Antenna Pattern:{:.2f} dB".format(antenna_gain_adjustment_db_total))
+            feedback.pushInfo(
+                "  Excess Loss:    {:.2f} dB".format(result.loss_db - fspl_db)
+            )
+            feedback.pushInfo("  RX Gain:        {:.2f} dBi".format(rx_gain))
+            feedback.pushInfo("  Received Power: {:.2f} dBm".format(prx_dbm))
+            feedback.pushInfo("  RX Sensitivity: {:.2f} dBm".format(rx_sens))
+            feedback.pushInfo("  Link Margin:    {:.2f} dB".format(margin_db))
+            feedback.pushInfo(
+                "  Fade Margin Class: {}".format(
+                    report_payload["results"]["fade_margin_class"]
+                )
+            )
+            feedback.pushInfo(
+                "  Reliability:     {}".format(
+                    report_payload["results"]["reliability_summary"]
+                )
+            )
+            feedback.pushInfo(
+                "  Availability Method: {}".format(
+                    report_payload["results"]["availability_method"]
+                )
+            )
+            if report_payload["results"]["availability_estimate_pct"] is not None:
+                feedback.pushInfo(
+                    "  Availability Estimate: {:.2f}%".format(
+                        report_payload["results"]["availability_estimate_pct"]
+                    )
+                )
+            feedback.pushInfo("")
+            feedback.pushInfo("FRESNEL ZONE ANALYSIS (k={:.3f})".format(k_factor))
+            feedback.pushInfo(
+                "  LOS Blocked:         {}".format("YES" if los_blocked else "NO")
+            )
+            feedback.pushInfo(
+                "  1st Fresnel violated: {}".format("YES" if f1_violated else "NO")
+            )
+            feedback.pushInfo(
+                "  60% Fresnel rule violated: {}".format("YES" if f60_violated else "NO")
+            )
+            feedback.pushInfo(
+                "  Max 1st Fresnel radius: {:.1f} m".format(float(fresnel_r.max()))
+            )
+            feedback.pushInfo("")
+            if margin_db >= 0:
+                feedback.pushInfo(
+                    "LINK STATUS: VIABLE (margin {:.1f} dB above sensitivity)".format(
+                        margin_db
+                    )
+                )
+            else:
+                feedback.pushInfo(
+                    "LINK STATUS: NOT VIABLE (margin {:.1f} dB below sensitivity)".format(
+                        margin_db
+                    )
+                )
+            feedback.pushInfo("=" * 50)
+            return {
+                self.OUTPUT_PROFILE: profile_path,
+                self.OUTPUT_FRESNEL: fresnel_poly_path,
+                self.OUTPUT_MARKERS: markers_path,
+                self.OUTPUT_REPORT_CSV: report_csv_path,
+                self.OUTPUT_REPORT_JSON: report_json_path,
+                self.OUTPUT_REPORT_HTML: report_html_path,
+            }
+        finally:
+            if temp_dir:
+                pass
+
 
     def _write_profile_line(
         self, path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result
@@ -982,24 +965,27 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
 
         driver = ogr.GetDriverByName(ogr_driver_for_path(path))
         _remove_existing_ogr_dataset(driver, path)
-        ds = driver.CreateDataSource(path)
-        layer = ds.CreateLayer("link", srs=srs, geom_type=ogr.wkbLineString)
-        layer.CreateField(ogr.FieldDefn("distance", ogr.OFTReal))
-        layer.CreateField(ogr.FieldDefn("loss_db", ogr.OFTReal))
-        layer.CreateField(ogr.FieldDefn("mode", ogr.OFTInteger))
-        layer.CreateField(ogr.FieldDefn("mode_name", ogr.OFTString))
-
-        feat = ogr.Feature(layer.GetLayerDefn())
-        geom = ogr.Geometry(ogr.wkbLineString)
-        geom.AddPoint(tx_lon, tx_lat)
-        geom.AddPoint(rx_lon, rx_lat)
-        feat.SetGeometry(geom)
-        feat.SetField("distance", dist_m)
-        feat.SetField("loss_db", result.loss_db)
-        feat.SetField("mode", result.mode)
-        feat.SetField("mode_name", PROP_MODE_NAMES.get(result.mode, "Unknown"))
-        layer.CreateFeature(feat)
         ds = None
+        try:
+            ds = driver.CreateDataSource(path)
+            layer = ds.CreateLayer("link", srs=srs, geom_type=ogr.wkbLineString)
+            layer.CreateField(ogr.FieldDefn("distance", ogr.OFTReal))
+            layer.CreateField(ogr.FieldDefn("loss_db", ogr.OFTReal))
+            layer.CreateField(ogr.FieldDefn("mode", ogr.OFTInteger))
+            layer.CreateField(ogr.FieldDefn("mode_name", ogr.OFTString))
+
+            feat = ogr.Feature(layer.GetLayerDefn())
+            geom = ogr.Geometry(ogr.wkbLineString)
+            geom.AddPoint(tx_lon, tx_lat)
+            geom.AddPoint(rx_lon, rx_lat)
+            feat.SetGeometry(geom)
+            feat.SetField("distance", dist_m)
+            feat.SetField("loss_db", result.loss_db)
+            feat.SetField("mode", result.mode)
+            feat.SetField("mode_name", PROP_MODE_NAMES.get(result.mode, "Unknown"))
+            layer.CreateFeature(feat)
+        finally:
+            ds = None
 
     def _write_fresnel_zone(
         self,
@@ -1046,92 +1032,96 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
             return pts
 
         # ---- Polygon layer (Fresnel zones) ----
-        ds_poly = poly_driver.CreateDataSource(poly_path)
-        layer_poly = ds_poly.CreateLayer(
-            "fresnel_zones", srs=srs, geom_type=ogr.wkbPolygon
-        )
-        layer_poly.CreateField(ogr.FieldDefn("type", ogr.OFTString))
-        layer_poly.CreateField(ogr.FieldDefn("blocked", ogr.OFTInteger))
-
-        # 1st Fresnel zone polygon
-        upper_pts = _geo_points(los_h + fresnel_r)
-        lower_pts = _geo_points(los_h - fresnel_r)
-
-        ring_f1 = ogr.Geometry(ogr.wkbLinearRing)
-        for lon, lat, z in upper_pts:
-            ring_f1.AddPoint(lon, lat, z)
-        for lon, lat, z in reversed(lower_pts):
-            ring_f1.AddPoint(lon, lat, z)
-        ring_f1.AddPoint(upper_pts[0][0], upper_pts[0][1], upper_pts[0][2])
-
-        poly_f1 = ogr.Geometry(ogr.wkbPolygon)
-        poly_f1.AddGeometry(ring_f1)
-
-        feat_f1 = ogr.Feature(layer_poly.GetLayerDefn())
-        feat_f1.SetGeometry(poly_f1)
-        feat_f1.SetField("type", "fresnel_zone")
-        feat_f1.SetField("blocked", 0)
-        layer_poly.CreateFeature(feat_f1)
-
-        # Fresnel violation band: the slice between the 1st-Fresnel lower
-        # boundary (los_h - r) and the 60% lower boundary (los_h - 0.6r).
-        # Terrain entering this band already eats more than 40% of the
-        # first Fresnel zone, which is the conventional engineering limit.
-        # This is NOT a symmetric ±0.6r zone around the LOS.
-        upper_band = _geo_points(los_h - 0.6 * fresnel_r)
-        lower_band = _geo_points(los_h - fresnel_r)
-
-        ring_band = ogr.Geometry(ogr.wkbLinearRing)
-        for lon, lat, z in upper_band:
-            ring_band.AddPoint(lon, lat, z)
-        for lon, lat, z in reversed(lower_band):
-            ring_band.AddPoint(lon, lat, z)
-        ring_band.AddPoint(upper_band[0][0], upper_band[0][1], upper_band[0][2])
-
-        poly_band = ogr.Geometry(ogr.wkbPolygon)
-        poly_band.AddGeometry(ring_band)
-
-        feat_band = ogr.Feature(layer_poly.GetLayerDefn())
-        feat_band.SetGeometry(poly_band)
-        feat_band.SetField("type", "fresnel_violation_band_60pct")
-        feat_band.SetField("blocked", 0)
-        layer_poly.CreateFeature(feat_band)
-
         ds_poly = None
+        try:
+            ds_poly = poly_driver.CreateDataSource(poly_path)
+            layer_poly = ds_poly.CreateLayer(
+                "fresnel_zones", srs=srs, geom_type=ogr.wkbPolygon
+            )
+            layer_poly.CreateField(ogr.FieldDefn("type", ogr.OFTString))
+            layer_poly.CreateField(ogr.FieldDefn("blocked", ogr.OFTInteger))
+
+            # 1st Fresnel zone polygon
+            upper_pts = _geo_points(los_h + fresnel_r)
+            lower_pts = _geo_points(los_h - fresnel_r)
+
+            ring_f1 = ogr.Geometry(ogr.wkbLinearRing)
+            for lon, lat, z in upper_pts:
+                ring_f1.AddPoint(lon, lat, z)
+            for lon, lat, z in reversed(lower_pts):
+                ring_f1.AddPoint(lon, lat, z)
+            ring_f1.AddPoint(upper_pts[0][0], upper_pts[0][1], upper_pts[0][2])
+
+            poly_f1 = ogr.Geometry(ogr.wkbPolygon)
+            poly_f1.AddGeometry(ring_f1)
+
+            feat_f1 = ogr.Feature(layer_poly.GetLayerDefn())
+            feat_f1.SetGeometry(poly_f1)
+            feat_f1.SetField("type", "fresnel_zone")
+            feat_f1.SetField("blocked", 0)
+            layer_poly.CreateFeature(feat_f1)
+
+            # Fresnel violation band: the slice between the 1st-Fresnel lower
+            # boundary (los_h - r) and the 60% lower boundary (los_h - 0.6r).
+            # Terrain entering this band already eats more than 40% of the
+            # first Fresnel zone, which is the conventional engineering limit.
+            # This is NOT a symmetric ±0.6r zone around the LOS.
+            upper_band = _geo_points(los_h - 0.6 * fresnel_r)
+            lower_band = _geo_points(los_h - fresnel_r)
+
+            ring_band = ogr.Geometry(ogr.wkbLinearRing)
+            for lon, lat, z in upper_band:
+                ring_band.AddPoint(lon, lat, z)
+            for lon, lat, z in reversed(lower_band):
+                ring_band.AddPoint(lon, lat, z)
+            ring_band.AddPoint(upper_band[0][0], upper_band[0][1], upper_band[0][2])
+
+            poly_band = ogr.Geometry(ogr.wkbPolygon)
+            poly_band.AddGeometry(ring_band)
+
+            feat_band = ogr.Feature(layer_poly.GetLayerDefn())
+            feat_band.SetGeometry(poly_band)
+            feat_band.SetField("type", "fresnel_violation_band_60pct")
+            feat_band.SetField("blocked", 0)
+            layer_poly.CreateFeature(feat_band)
+        finally:
+            ds_poly = None
 
         # ---- Line layer (terrain + LOS) ----
-        ds_lines = lines_driver.CreateDataSource(lines_path)
-        layer_lines = ds_lines.CreateLayer(
-            "fresnel_lines", srs=srs, geom_type=ogr.wkbLineString
-        )
-        layer_lines.CreateField(ogr.FieldDefn("type", ogr.OFTString))
-        layer_lines.CreateField(ogr.FieldDefn("blocked", ogr.OFTInteger))
-
-        # Terrain profile line
-        terrain_pts = _geo_points(terrain_bulge)
-        terrain_line = ogr.Geometry(ogr.wkbLineString)
-        for lon, lat, z in terrain_pts:
-            terrain_line.AddPoint(lon, lat, z)
-
-        feat_ter = ogr.Feature(layer_lines.GetLayerDefn())
-        feat_ter.SetGeometry(terrain_line)
-        feat_ter.SetField("type", "terrain")
-        feat_ter.SetField("blocked", int(bool((terrain_bulge > los_h).any())))
-        layer_lines.CreateFeature(feat_ter)
-
-        # LOS line
-        los_pts = _geo_points(los_h)
-        los_line = ogr.Geometry(ogr.wkbLineString)
-        for lon, lat, z in los_pts:
-            los_line.AddPoint(lon, lat, z)
-
-        feat_los = ogr.Feature(layer_lines.GetLayerDefn())
-        feat_los.SetGeometry(los_line)
-        feat_los.SetField("type", "los")
-        feat_los.SetField("blocked", 0)
-        layer_lines.CreateFeature(feat_los)
-
         ds_lines = None
+        try:
+            ds_lines = lines_driver.CreateDataSource(lines_path)
+            layer_lines = ds_lines.CreateLayer(
+                "fresnel_lines", srs=srs, geom_type=ogr.wkbLineString
+            )
+            layer_lines.CreateField(ogr.FieldDefn("type", ogr.OFTString))
+            layer_lines.CreateField(ogr.FieldDefn("blocked", ogr.OFTInteger))
+
+            # Terrain profile line
+            terrain_pts = _geo_points(terrain_bulge)
+            terrain_line = ogr.Geometry(ogr.wkbLineString)
+            for lon, lat, z in terrain_pts:
+                terrain_line.AddPoint(lon, lat, z)
+
+            feat_ter = ogr.Feature(layer_lines.GetLayerDefn())
+            feat_ter.SetGeometry(terrain_line)
+            feat_ter.SetField("type", "terrain")
+            feat_ter.SetField("blocked", int(bool((terrain_bulge > los_h).any())))
+            layer_lines.CreateFeature(feat_ter)
+
+            # LOS line
+            los_pts = _geo_points(los_h)
+            los_line = ogr.Geometry(ogr.wkbLineString)
+            for lon, lat, z in los_pts:
+                los_line.AddPoint(lon, lat, z)
+
+            feat_los = ogr.Feature(layer_lines.GetLayerDefn())
+            feat_los.SetGeometry(los_line)
+            feat_los.SetField("type", "los")
+            feat_los.SetField("blocked", 0)
+            layer_lines.CreateFeature(feat_los)
+        finally:
+            ds_lines = None
         return poly_path, lines_path
 
     def _show_profile_chart(
@@ -1152,56 +1142,60 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         rx_gain,
         cable_loss,
         rx_sens,
+        prx_dbm=None,
+        margin_db=None,
     ):
         """Show a matplotlib profile chart as a non-modal dialog."""
         try:
             import matplotlib
             matplotlib.use("QtAgg")
             import matplotlib.pyplot as plt
-            from qgis.PyQt.QtWidgets import QDockWidget
+            from qgis.PyQt.QtWidgets import (
+                QDockWidget,
+                QWidget,
+                QVBoxLayout,
+                QToolBar,
+                QCheckBox,
+                QPushButton,
+                QFileDialog,
+                QMessageBox,
+            )
             from qgis.PyQt.QtCore import Qt
             from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
         except ImportError:
             logger.warning("matplotlib not available, skipping profile chart")
             return
-
+    
         d_km = np.asarray(distances, dtype=np.float64) / 1000.0
-
+    
         fig, ax = plt.subplots(figsize=(10, 5))
-
-        # Terrain + earth bulge
-        ax.fill_between(
+    
+        terrain_fill = ax.fill_between(
             d_km, np.min(terrain_bulge) - 10, terrain_bulge,
             color="#8B6914", alpha=0.5, label="Terrain",
         )
-        ax.plot(d_km, terrain_bulge, color="#8B6914", linewidth=1.0)
-
-        # LOS
-        ax.plot(d_km, los_h, "g--", linewidth=1.2, label="Line of Sight")
-
-        # 1st Fresnel zone (upper and lower boundaries)
-        f1_upper = los_h + fresnel_r
-        f1_lower = los_h - fresnel_r
-        ax.fill_between(
-            d_km, f1_lower, f1_upper,
+    
+        los_line, = ax.plot(d_km, los_h, "g--", linewidth=1.2, label="Line of Sight")
+    
+        f1_upper, = ax.plot(d_km, los_h + fresnel_r, "c:", linewidth=0.8)
+        f1_lower, = ax.plot(d_km, los_h - fresnel_r, "c:", linewidth=0.8)
+        f1_fill = ax.fill_between(
+            d_km, los_h - fresnel_r, los_h + fresnel_r,
             color="cyan", alpha=0.15, label="1st Fresnel Zone",
         )
-        ax.plot(d_km, f1_upper, "c:", linewidth=0.8)
-        ax.plot(d_km, f1_lower, "c:", linewidth=0.8)
-
-        # Fresnel violation band: terrain reaching into this slice already
-        # blocks >40% of the 1st Fresnel zone (the engineering limit).
-        f60_upper = los_h - 0.6 * fresnel_r
-        ax.fill_between(
-            d_km, f1_lower, f60_upper,
+    
+        f60_upper, = ax.plot(d_km, los_h - 0.6 * fresnel_r, "b-", linewidth=0.5)
+        f60_fill = ax.fill_between(
+            d_km, los_h - fresnel_r, los_h - 0.6 * fresnel_r,
             color="blue", alpha=0.12, label="Fresnel Violation Band (>40%)",
         )
-
-        # TX and RX antenna markers
-        ax.plot(0, los_h[0], "r^", markersize=12, label="TX", zorder=5)
-        ax.plot(d_km[-1], los_h[-1], "rv", markersize=12, label="RX", zorder=5)
-
-        # Labels and styling
+    
+        tx_marker, = ax.plot(0, los_h[0], "r^", markersize=12, label="TX", zorder=5)
+        rx_marker, = ax.plot(d_km[-1], los_h[-1], "rv", markersize=12, label="RX", zorder=5)
+    
+        ax.set_xlim(d_km[0], d_km[-1])
+        ax.set_ylim(np.min(terrain_bulge) - 10, max(np.max(los_h + fresnel_r), np.max(terrain_bulge) + 10))
+    
         ax.set_xlabel("Distance (km)")
         ax.set_ylabel("Height (m)")
         ax.set_title(
@@ -1211,11 +1205,9 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
         )
         ax.legend(loc="upper right", fontsize=8)
         ax.grid(True, alpha=0.3)
-
-        # Add link budget text box
-        eirp = tx_power + tx_gain - cable_loss
-        prx = eirp + rx_gain - result.loss_db
-        margin = prx - rx_sens
+    
+        prx = prx_dbm
+        margin = margin_db
         status = "VIABLE" if margin >= 0 else "NOT VIABLE"
         textstr = (
             "Loss: {:.1f} dB\n"
@@ -1229,16 +1221,227 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
             transform=ax.transAxes, fontsize=9,
             verticalalignment="top", bbox=props,
         )
+    
+        clearances = los_h - fresnel_r - terrain_bulge
+        obstruction_indices = np.where(terrain_bulge > los_h - fresnel_r)[0]
 
+        def _local_maxima(indices, arr):
+            """Return indices that are local maxima of arr, sorted by value descending, capped at 5."""
+            index_set = set(indices)
+            peaks = []
+            for idx in indices:
+                is_peak = True
+                for offset in [-1, 1]:
+                    neighbor = idx + offset
+                    if 0 <= neighbor < len(arr) and neighbor in index_set:
+                        if arr[neighbor] > arr[idx]:
+                            is_peak = False
+                            break
+                        elif arr[neighbor] == arr[idx] and neighbor < idx:
+                            is_peak = False
+                            break
+                if is_peak:
+                    peaks.append(idx)
+            peaks.sort(key=lambda i: arr[i], reverse=True)
+            return peaks[:5]
+
+        obstruction_peaks = _local_maxima(list(obstruction_indices), terrain_bulge)
+        obstruction_annotations = []
+        for idx in obstruction_peaks:
+            ob_x = d_km[idx]
+            ob_y = terrain_bulge[idx]
+            deficit = ob_y - (los_h[idx] - fresnel_r[idx])
+            ann = ax.annotate(
+                "OBSTRUCTION\n"
+                "Dist: {:.1f} km\n"
+                "Height: {:.1f} m\n"
+                "Deficit: {:.1f} m".format(ob_x, ob_y, max(0, deficit)),
+                xy=(ob_x, ob_y),
+                xytext=(0, 20),
+                arrowprops=dict(arrowstyle="->", color="red", lw=1.2),
+                textcoords="offset points",
+                fontsize=7,
+                color="red",
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.7),
+                ha="center",
+            )
+            obstruction_annotations.append(ann)
+    
         fig.tight_layout()
-
-        # Embed in a QGIS dock widget so it doesn't block the UI
+    
         canvas = FigureCanvasQTAgg(fig)
+    
+        toggle_state = {"terrain": True, "los": True,
+                        "fresnel": True, "violation_band": True, "antennas": True,
+                        "obstructions": True}
+    
+        def update_visibility():
+            terrain_fill.set_visible(toggle_state["terrain"])
+            los_line.set_visible(toggle_state["los"])
+            f1_upper.set_visible(toggle_state["fresnel"])
+            f1_lower.set_visible(toggle_state["fresnel"])
+            f1_fill.set_visible(toggle_state["fresnel"])
+            f60_upper.set_visible(toggle_state["violation_band"])
+            f60_fill.set_visible(toggle_state["violation_band"])
+            tx_marker.set_visible(toggle_state["antennas"])
+            rx_marker.set_visible(toggle_state["antennas"])
+            for ann in obstruction_annotations:
+                ann.set_visible(toggle_state["obstructions"])
+            fig.canvas.draw_idle()
+    
+
+        def save_png():
+            try:
+                default_name = "p2p_profile_{:.0f}MHz_{:.1f}km.png".format(f_mhz, dist_m / 1000)
+                path, _ = QFileDialog.getSaveFileName(
+                    dock, "Save PNG", default_name, "PNG Files (*.png)"
+                )
+                if path:
+                    if not path.lower().endswith(".png"):
+                        path += ".png"
+                    fig.savefig(path, dpi=300, bbox_inches="tight")
+                    QMessageBox.information(dock, "Saved", "Chart saved to:\n" + path)
+            except Exception as e:
+                logger.warning("Failed to save PNG: %s", e)
+                QMessageBox.warning(dock, "Error", "Failed to save PNG: " + str(e))
+
+        def export_csv():
+            try:
+                default_name = "p2p_profile_{:.0f}MHz_{:.1f}km.csv".format(f_mhz, dist_m / 1000)
+                path, _ = QFileDialog.getSaveFileName(
+                    dock, "Export CSV", default_name, "CSV Files (*.csv)"
+                )
+                if path:
+                    if not path.lower().endswith(".csv"):
+                        path += ".csv"
+                    obstructs_los = terrain_bulge > los_h
+                    with open(path, "w") as f:
+                        f.write("distance_m,terrain_elevation_m,los_m,fresnel_radius_m,clearance_m,obstructs_los\n")
+                        for i in range(len(distances)):
+                            f.write(
+                                "{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.0f}\n".format(
+                                    distances[i],
+                                    terrain_bulge[i],
+                                    los_h[i],
+                                    fresnel_r[i],
+                                    clearances[i],
+                                    1 if obstructs_los[i] else 0,
+                                )
+                            )
+                    QMessageBox.information(dock, "Exported", "Data exported to:\n" + path)
+            except Exception as e:
+                logger.warning("Failed to export CSV: %s", e)
+                QMessageBox.warning(dock, "Error", "Failed to export CSV: " + str(e))
+    
         from qgis.utils import iface as qgis_iface
         dock = QDockWidget("P2P Profile Chart", qgis_iface.mainWindow())
-        dock.setWidget(canvas)
+        dock.setWidget(QWidget())
         dock.setFloating(True)
         dock.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+
+        def _on_dock_destroyed():
+            import matplotlib.pyplot as plt
+            plt.close(fig)
+        dock.destroyed.connect(_on_dock_destroyed)
+
+        toolbar = QToolBar("Chart Controls")
+        btn_png = QPushButton("Save PNG", toolbar)
+        btn_csv = QPushButton("Export CSV", toolbar)
+        btn_png.clicked.connect(save_png)
+        btn_csv.clicked.connect(export_csv)
+    
+        cb_terrain = QCheckBox("Terrain", toolbar)
+        cb_terrain.setChecked(True)
+        cb_los = QCheckBox("LOS", toolbar)
+        cb_los.setChecked(True)
+        cb_fresnel = QCheckBox("Fresnel", toolbar)
+        cb_fresnel.setChecked(True)
+        cb_violation = QCheckBox("60% Band", toolbar)
+        cb_violation.setChecked(True)
+        cb_antennas = QCheckBox("Antennas", toolbar)
+        cb_antennas.setChecked(True)
+        cb_obstructions = QCheckBox("Obstructions", toolbar)
+        cb_obstructions.setChecked(True)
+
+        def _make_toggle(key):
+            def _toggle(state):
+                toggle_state[key] = int(state) == int(Qt.CheckState.Checked)
+                update_visibility()
+            return _toggle
+
+        cb_terrain.checkStateChanged.connect(_make_toggle("terrain"))
+        cb_los.checkStateChanged.connect(_make_toggle("los"))
+        cb_fresnel.checkStateChanged.connect(_make_toggle("fresnel"))
+        cb_violation.checkStateChanged.connect(_make_toggle("violation_band"))
+        cb_antennas.checkStateChanged.connect(_make_toggle("antennas"))
+        cb_obstructions.checkStateChanged.connect(_make_toggle("obstructions"))
+    
+        toolbar.addWidget(btn_png)
+        toolbar.addWidget(btn_csv)
+        toolbar.addSeparator()
+        toolbar.addWidget(cb_terrain)
+        toolbar.addWidget(cb_los)
+        toolbar.addWidget(cb_fresnel)
+        toolbar.addWidget(cb_violation)
+        toolbar.addWidget(cb_antennas)
+        toolbar.addWidget(cb_obstructions)
+    
+        tooltip = ax.text(0, 0, "", fontsize=8, visible=False,
+                          bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue", alpha=0.8))
+        vline = ax.axvline(x=0, color="gray", linewidth=0.8, visible=False)
+    
+        def on_motion(event):
+            if event.inaxes != ax:
+                tooltip.set_visible(False)
+                vline.set_visible(False)
+                fig.canvas.draw_idle()
+                return
+            mouse_x = event.xdata
+            if mouse_x is None:
+                tooltip.set_visible(False)
+                vline.set_visible(False)
+                fig.canvas.draw_idle()
+                return
+            if len(d_km) == 0:
+                return
+            idx = np.argmin(np.abs(d_km - mouse_x))
+            if idx >= len(distances):
+                return
+            dist_val = distances[idx]
+            elev_val = terrain_bulge[idx]
+            los_val = los_h[idx]
+            fresnel_val = fresnel_r[idx]
+            clear_val = los_val - fresnel_val - elev_val
+            tooltip.set_text(
+                "Dist: {:.1f} km\n"
+                "Terrain: {:.1f} m\n"
+                "LOS: {:.1f} m\n"
+                "Fresnel R: {:.1f} m\n"
+                "Clearance: {:.1f} m".format(
+                    dist_val / 1000, elev_val, los_val, fresnel_val, clear_val
+                )
+            )
+            tooltip.set_visible(True)
+            vline.set_visible(True)
+            vline.set_xdata([mouse_x, mouse_x])
+            tooltip_x = mouse_x
+            if tooltip_x > (d_km[-1] + d_km[0]) / 2:
+                tooltip_x = mouse_x - (d_km[-1] - d_km[0]) * 0.15
+            else:
+                tooltip_x = mouse_x + (d_km[-1] - d_km[0]) * 0.02
+            y_pos = max(elev_val, los_val) + 3
+            tooltip.set_position((tooltip_x, y_pos))
+            fig.canvas.draw_idle()
+    
+        fig.canvas.mpl_connect("motion_notify_event", on_motion)
+    
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(toolbar)
+        layout.addWidget(canvas)
+    
+        dock.setWidget(container)
         qgis_iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
 
     def name(self):
