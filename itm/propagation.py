@@ -84,7 +84,13 @@ def knife_edge_diffraction(
 
 
 def height_function(x__km: float, K: float) -> float:
-    """Height gain function F(x, K) for smooth earth diffraction. [Vogler 1964]"""
+    """Height gain function F(x, K) for smooth earth diffraction. [Vogler 1964]
+
+    Returns a large positive value when x__km <= 0 or K <= 0 (extreme
+    diffraction regime) to avoid calling log/log10 on non-positive arguments.
+    """
+    if x__km <= 0.0 or K <= 0.0:
+        return 200.0
     if x__km < 200.0:
         w = -math.log(K)
         if K < 1e-5 or x__km * w**3 > 5495.0:
@@ -133,7 +139,10 @@ def smooth_earth_diffraction(
     C_0 = [pow((4.0 / 3.0) * a_0__meter / a__meter[i], THIRD) for i in range(3)]
     # [Vogler 1964, Eqn 6a / 7a]
     K = [0.017778 * C_0[i] * pow(f__mhz, -THIRD) / abs(Z_g) for i in range(3)]
-    B_0 = [1.607 - K[i] for i in range(3)]
+    # Clamp B_0 to a small positive minimum to prevent negative x__km values
+    # that would cause log/log10 domain errors. When K > 1.607 the diffraction
+    # geometry is in an extreme-loss regime; the clamp preserves monotonicity.
+    B_0 = [max(1.607 - K[i], 1e-12) for i in range(3)]
 
     x__km = [0.0, 0.0, 0.0]
     x__km[1] = B_0[1] * C_0[1] ** 2 * f__mhz**THIRD * d__km_vogler[1]
@@ -144,7 +153,12 @@ def smooth_earth_diffraction(
 
     F_x = [height_function(x__km[1], K[1]), height_function(x__km[2], K[2])]
 
-    G_x__db = 0.05751 * x__km[0] - 10.0 * math.log10(x__km[0])
+    if x__km[0] <= 0.0:
+        # Extreme diffraction regime: return a large loss consistent with
+        # the asymptotic behaviour of the Vogler model.
+        G_x__db = 0.05751 * max(x__km[0], 0.01) + 20.0
+    else:
+        G_x__db = 0.05751 * x__km[0] - 10.0 * math.log10(x__km[0])
 
     return G_x__db - F_x[0] - F_x[1] - 20.0
 

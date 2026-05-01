@@ -519,9 +519,6 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
             contour_layer = shp_ds.CreateLayer("Contour Lines", srs=srs_4326)
             contour_layer.CreateField(ogr.FieldDefn("ID", ogr.OFTInteger))
             contour_layer.CreateField(ogr.FieldDefn("ELEV", ogr.OFTReal))
-            type_field = ogr.FieldDefn("TYPE", ogr.OFTString)
-            type_field.SetWidth(50)
-            contour_layer.CreateField(type_field)
 
             merged_ds = gdal.Open(merged_path)
             merged_band = merged_ds.GetRasterBand(1)

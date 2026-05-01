@@ -134,7 +134,11 @@ def test_compute_coverage_cleans_shared_memory_when_cancelled(monkeypatch):
     assert fake_shm.unlinked is True
 
 
-def test_compute_coverage_cleans_shared_memory_on_unhandled_pool_error(monkeypatch):
+def test_compute_coverage_falls_back_on_pool_error_and_cleans_shared_memory(monkeypatch):
+    """When the process pool raises any exception (including ValueError),
+    compute_coverage should fall back to sequential mode, clean up shared
+    memory, and still produce a valid result.
+    """
     coverage_engine = _import_coverage_engine()
 
     class FakeSharedMemory:
@@ -166,18 +170,31 @@ def test_compute_coverage_cleans_shared_memory_on_unhandled_pool_error(monkeypat
     monkeypatch.setattr(coverage_engine, "should_use_multiprocessing", lambda: True)
     monkeypatch.setattr(coverage_engine, "_make_shared_grid", lambda grid: fake_shm)
     monkeypatch.setattr(coverage_engine, "ProcessPoolExecutor", ExplodingExecutor)
+    monkeypatch.setattr(
+        coverage_engine,
+        "_itm_worker",
+        lambda task: (task[0], task[1], 123.0, -77.0, 120.0, 2.0, 1.0),
+    )
 
-    with pytest.raises(ValueError, match="unexpected worker serialization failure"):
-        coverage_engine.compute_coverage(
-            elev_grid=_DummyGrid(),
-            tx_lat=0.0,
-            tx_lon=0.0,
-            tx_h_m=30.0,
-            rx_h_m=10.0,
-            f_mhz=300.0,
-            radius_km=0.01,
-            grid_size=3,
-        )
+    # ValueError from the pool is now caught and triggers sequential fallback,
+    # so compute_coverage returns a valid result instead of propagating the exception.
+    result = coverage_engine.compute_coverage(
+        elev_grid=_DummyGrid(),
+        tx_lat=0.0,
+        tx_lon=0.0,
+        tx_h_m=30.0,
+        rx_h_m=10.0,
+        f_mhz=300.0,
+        radius_km=0.01,
+        grid_size=3,
+    )
 
+    # Should have fallen back to sequential mode and produced valid grids
+    prx_grid = result[0]
+    loss_grid = result[1]
+    assert prx_grid is not None
+    assert loss_grid is not None
+    assert prx_grid.shape == (3, 3)
+    # SHM must be cleaned up even on pool failure
     assert fake_shm.closed is True
     assert fake_shm.unlinked is True

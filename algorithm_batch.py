@@ -103,6 +103,7 @@ def _feat_attr(feat, name, default):
 
     If default is None, returns float for numeric values or str for strings.
     Returns default on NULL attribute, missing field, or cast failure.
+    Logs a warning when coercion truncates a value or fails entirely.
     """
     val = feat.attribute(name)
     if val is None or val == _QGIS_NULL:
@@ -110,16 +111,29 @@ def _feat_attr(feat, name, default):
     if default is None:
         if isinstance(val, (int, float)):
             return float(val)
-        return str(val) if isinstance(val, str) else default
+        if isinstance(val, str):
+            return str(val)
+        logger.debug("Attribute '%s': unexpected type %s, using default", name, type(val).__name__)
+        return default
     try:
         if isinstance(default, float):
             return float(val)
         if isinstance(default, int):
-            return int(float(val))
+            coerced = int(float(val))
+            if float(val) != coerced and isinstance(val, float):
+                logger.warning(
+                    "Attribute '%s': value %s truncated to %d for int field",
+                    name, val, coerced,
+                )
+            return coerced
         if isinstance(default, str):
             return str(val)
         return default
-    except (ValueError, TypeError):
+    except (ValueError, TypeError) as exc:
+        logger.warning(
+            "Attribute '%s': cannot coerce value %r to %s (%s), using default %r",
+            name, val, type(default).__name__, exc, default,
+        )
         return default
 
 

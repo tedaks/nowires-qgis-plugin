@@ -53,6 +53,8 @@ logger = logging.getLogger(__name__)
 COPERNICUS_BASE_URL = "https://copernicus-dem-30m.s3.amazonaws.com/"
 _MAX_TILES = 200
 _DOWNLOAD_RETRIES = 3
+_SOCKET_TIMEOUT = 60   # seconds; covers TCP connect + individual socket reads
+_WALL_CLOCK_TIMEOUT = 300  # seconds; total per-tile download including all retries
 _VALID_TILE_RE = re.compile(r"^Copernicus_DSM_COG_10_[NS]\d{2}_00_[EW]\d{3}_00_DEM$")
 
 
@@ -152,7 +154,7 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
             if feedback and feedback.isCanceled():
                 return available
             try:
-                with opener.open(tile_url, timeout=60) as response:
+                with opener.open(tile_url, timeout=_SOCKET_TIMEOUT) as response:
                     final_url = response.geturl()
                     if not final_url.startswith(COPERNICUS_BASE_URL):
                         raise RuntimeError("Unexpected redirect to: " + final_url)
@@ -179,7 +181,7 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
                     except OSError:
                         pass
                     if attempt < _DOWNLOAD_RETRIES - 1:
-                        time.sleep(2**attempt)
+                        time.sleep(2 ** attempt)
                         continue
                     raise ValueError(
                         "Incomplete download: {} of {} bytes".format(
@@ -195,7 +197,7 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
                     except OSError:
                         pass
                     if attempt < _DOWNLOAD_RETRIES - 1:
-                        time.sleep(2**attempt)
+                        time.sleep(2 ** attempt)
                         continue
                     break
                 test_ds = None
@@ -212,6 +214,19 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
                         feedback.pushInfo("Tile not available (HTTP 404): " + tile_name)
                     break
                 else:
+                    retry_after = e.headers.get("Retry-After")
+                    if retry_after:
+                        try:
+                            wait_secs = max(int(retry_after), 1)
+                        except ValueError:
+                            wait_secs = 2 ** attempt
+                        logger.info(
+                            "HTTP %d downloading %s — Retry-After: %ds (attempt %d/%d)",
+                            e.code, tile_name, wait_secs,
+                            attempt + 1, _DOWNLOAD_RETRIES,
+                        )
+                    else:
+                        wait_secs = 2 ** attempt
                     logger.warning(
                         "HTTP %d downloading %s (attempt %d/%d): %s",
                         e.code,
@@ -221,7 +236,7 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
                         e,
                     )
                     if attempt < _DOWNLOAD_RETRIES - 1:
-                        time.sleep(2**attempt)
+                        time.sleep(wait_secs)
             except Exception as e:
                 logger.warning(
                     "Error downloading %s (attempt %d/%d): %s",
