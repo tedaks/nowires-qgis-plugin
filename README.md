@@ -64,7 +64,7 @@ This plugin also adapts code from [tedaks/nowires](https://github.com/tedaks/now
 - `three_d.py`: 3D layer tracking and scene helpers
 - `benchmarks/coverage_runtime.py`: synthetic coverage runtime benchmark
 - `itm/`: bundled ITM implementation
-- `tests/`: regression and unit tests
+- `tests/`: regression and unit tests, including ITM reference-vector tests (`test_itm_reference_vectors.py`)
 - `metadata.txt`: QGIS plugin metadata
 
 ## Usage
@@ -98,6 +98,8 @@ The test suite in this repository is designed to run outside QGIS for fast regre
 ```bash
 pytest -q
 ```
+
+The test suite includes ITM reference-vector tests (`tests/test_itm_reference_vectors.py`) that verify propagation primitives, edge cases for smooth earth diffraction, and end-to-end predict_p2p scenarios across all climate zones and boundary conditions.
 
 ### Typical local workflow
 
