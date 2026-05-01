@@ -47,6 +47,7 @@ def haversine_m(lat1, lon1, lat2, lon2):
         math.sin(dphi / 2) ** 2
         + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
     )
+    a = max(0.0, min(1.0, a))
     return 2 * R * math.asin(math.sqrt(a))
 
 
@@ -74,7 +75,8 @@ def bearing_destination(lat, lon, bearing_deg_val, dist_m):
         math.sin(brng) * math.sin(d_r) * math.cos(lat_r),
         math.cos(d_r) - math.sin(lat_r) * math.sin(lat2),
     )
-    return math.degrees(lat2), math.degrees(lon2)
+    lon_deg = (math.degrees(lon2) + 540.0) % 360.0 - 180.0
+    return math.degrees(lat2), lon_deg
 
 
 class ElevationGrid:

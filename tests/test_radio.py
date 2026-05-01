@@ -6,6 +6,7 @@
 import math
 
 import numpy as np
+import pytest
 from radio import (
     fresnel_radius,
     earth_bulge,
@@ -178,9 +179,6 @@ class TestSignalLevels:
             assert isinstance(threshold, float)
             assert len(rgba) == 4
             assert isinstance(label, str)
-
-
-import pytest
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

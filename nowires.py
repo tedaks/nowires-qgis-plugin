@@ -119,7 +119,9 @@ class NoWiresPlugin:
             self._opacity_dialog.close()
             self._opacity_dialog = None
         remove_coverage_legend()
-        QgsApplication.processingRegistry().removeProvider(self.provider)
+        if self.provider is not None:
+            QgsApplication.processingRegistry().removeProvider(self.provider)
+            self.provider = None
         self.iface.removePluginMenu("&NoWires", self.p2p_action)
         self.iface.removePluginMenu("&NoWires", self.coverage_action)
         self.iface.removePluginMenu("&NoWires", self.contour_action)

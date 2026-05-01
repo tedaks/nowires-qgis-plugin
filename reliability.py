@@ -63,12 +63,11 @@ def estimate_heuristic_availability_pct(margin_db, distance_km, frequency_mhz):
     """Return a bounded heuristic availability percentage in [0, 100].
 
     This is a lightweight placeholder, **not** ITU-R P.530. The blend
-    favours larger fade margins, penalises long paths, and adds a small
-    nudge for higher frequencies. The frequency term always inflates
-    availability slightly — this is a known limitation of the heuristic.
+    favours larger fade margins, penalises long paths, and applies a small
+    penalty for higher frequencies.
     Replace with a P.530-derived calculation if/when that is implemented.
     """
-    value = 90.0 + margin_db * 0.4 - distance_km * 0.3 + frequency_mhz / 100000.0
+    value = 90.0 + margin_db * 0.4 - distance_km * 0.3 - frequency_mhz / 100000.0
     return max(0.0, min(100.0, round(value, 2)))
 
 

@@ -51,3 +51,17 @@ def test_contour_algorithm_uses_direct_qt6_painter_blend_enum():
     source = _source_text()
     assert "QPainter.CompositionMode.CompositionMode_ColorDodge" in source
     assert "painter_blend_mode_color_dodge" not in source
+
+
+def test_raster_calc_explicitly_closes_gdal_datasets():
+    source = _source_text()
+    assert "out_ds = None" in source
+    assert "while datasets:" in source
+    assert "datasets.pop()" in source
+
+
+def test_blur_vrt_closes_buildvrt_dataset_before_xml_parse():
+    source = _source_text()
+    assert "vrt_ds = gdal.BuildVRT(vrt_path, src_path)" in source
+    assert "vrt_ds = None" in source
+    assert source.index("vrt_ds = None") < source.index("ET.parse(vrt_path)")

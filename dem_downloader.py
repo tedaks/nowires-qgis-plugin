@@ -39,6 +39,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import getpass
 
 from osgeo import gdal, ogr, osr
 from qgis.core import (
@@ -56,7 +57,8 @@ _VALID_TILE_RE = re.compile(r"^Copernicus_DSM_COG_10_[NS]\d{2}_00_[EW]\d{3}_00_D
 
 
 def get_temp_dir():
-    temp_dir = os.path.join(tempfile.gettempdir(), "NoWires")
+    username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
+    temp_dir = os.path.join(tempfile.gettempdir(), "NoWires-" + username)
     os.makedirs(temp_dir, mode=0o700, exist_ok=True)
     return temp_dir
 
@@ -198,7 +200,7 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
                     break
                 test_ds = None
 
-                os.rename(tmp_path, local_tif)
+                os.replace(tmp_path, local_tif)
                 available.append(local_tif)
                 downloaded = True
                 break

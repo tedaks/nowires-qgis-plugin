@@ -90,6 +90,7 @@ def _raster_calc(calc_func, output_path, nodata=-32768, overwrite=False, **input
     geo_transform = None
     projection = None
     rows = cols = 0
+    out_ds = None
     try:
         for name, path in inputs.items():
             ds = gdal.Open(path)
@@ -119,9 +120,13 @@ def _raster_calc(calc_func, output_path, nodata=-32768, overwrite=False, **input
         out_band.SetNoDataValue(nodata)
         out_band.WriteArray(result)
         out_band.FlushCache()
+        out_band = None
         out_ds = None
     finally:
-        datasets.clear()
+        out_ds = None
+        while datasets:
+            ds = datasets.pop()
+            ds = None
 
 
 def _gaussian_kernel_2d(size, sigma=None):
@@ -155,7 +160,8 @@ def _make_blur_vrt(vrt_path, src_path, kernel_size, sigma=None):
     Creates the VRT from the source raster, then patches it to use GDAL's
     ``KernelFilteredSource`` with the generated Gaussian coefficients.
     """
-    gdal.BuildVRT(vrt_path, src_path)
+    vrt_ds = gdal.BuildVRT(vrt_path, src_path)
+    vrt_ds = None
 
     tree = ET.parse(vrt_path)
     root = tree.getroot()

@@ -6,6 +6,7 @@
 import importlib
 import os
 import py_compile
+import pytest
 import sys
 import types
 from unittest.mock import MagicMock
@@ -129,5 +130,54 @@ def test_compute_coverage_cleans_shared_memory_when_cancelled(monkeypatch):
     )
 
     assert result == (None, None, 0, 0, 0, 0, None, None)
+    assert fake_shm.closed is True
+    assert fake_shm.unlinked is True
+
+
+def test_compute_coverage_cleans_shared_memory_on_unhandled_pool_error(monkeypatch):
+    coverage_engine = _import_coverage_engine()
+
+    class FakeSharedMemory:
+        def __init__(self):
+            self.name = "fake_shared_memory"
+            self.closed = False
+            self.unlinked = False
+
+        def close(self):
+            self.closed = True
+
+        def unlink(self):
+            self.unlinked = True
+
+    class ExplodingExecutor:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def map(self, *args, **kwargs):
+            raise ValueError("unexpected worker serialization failure")
+
+    fake_shm = FakeSharedMemory()
+    monkeypatch.setattr(coverage_engine, "should_use_multiprocessing", lambda: True)
+    monkeypatch.setattr(coverage_engine, "_make_shared_grid", lambda grid: fake_shm)
+    monkeypatch.setattr(coverage_engine, "ProcessPoolExecutor", ExplodingExecutor)
+
+    with pytest.raises(ValueError, match="unexpected worker serialization failure"):
+        coverage_engine.compute_coverage(
+            elev_grid=_DummyGrid(),
+            tx_lat=0.0,
+            tx_lon=0.0,
+            tx_h_m=30.0,
+            rx_h_m=10.0,
+            f_mhz=300.0,
+            radius_km=0.01,
+            grid_size=3,
+        )
+
     assert fake_shm.closed is True
     assert fake_shm.unlinked is True
