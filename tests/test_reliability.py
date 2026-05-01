@@ -43,3 +43,18 @@ def test_estimate_heuristic_availability_pct_stays_in_percent_range():
         frequency_mhz=5800.0,
     )
     assert 0.0 <= value <= 100.0
+
+
+def test_estimate_heuristic_availability_penalizes_higher_frequency():
+    lower = estimate_heuristic_availability_pct(
+        margin_db=10.0,
+        distance_km=10.0,
+        frequency_mhz=3000.0,
+    )
+    higher = estimate_heuristic_availability_pct(
+        margin_db=10.0,
+        distance_km=10.0,
+        frequency_mhz=18000.0,
+    )
+
+    assert higher < lower

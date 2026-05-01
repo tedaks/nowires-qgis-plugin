@@ -190,6 +190,13 @@ def test_p2p_algorithm_removes_existing_profile_and_fresnel_outputs():
     assert "_remove_existing_ogr_dataset(lines_driver, lines_path)" in source
 
 
+def test_p2p_vector_writers_close_ogr_datasources_in_finally_blocks():
+    source = _p2p_source()
+    assert "finally:\n            ds = None" in source
+    assert "finally:\n            ds_poly = None" in source
+    assert "finally:\n            ds_lines = None" in source
+
+
 def test_p2p_profile_chart_uses_direct_qt6_enums():
     source = _p2p_source()
     assert "Qt.WidgetAttribute.WA_DeleteOnClose" in source

@@ -56,6 +56,13 @@ def test_plugin_unload_clears_coverage_legend():
     assert "remove_coverage_legend()" in source
 
 
+def test_plugin_unload_guards_missing_provider():
+    source = _text(PLUGIN_SOURCE)
+    assert "if self.provider is not None:" in source
+    assert "removeProvider(self.provider)" in source
+    assert "self.provider = None" in source
+
+
 def test_provider_registers_batch_algorithm():
     assert "BatchAnalysisAlgorithm" in _text(PROVIDER_SOURCE)
 

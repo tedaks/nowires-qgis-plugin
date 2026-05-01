@@ -965,24 +965,27 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
 
         driver = ogr.GetDriverByName(ogr_driver_for_path(path))
         _remove_existing_ogr_dataset(driver, path)
-        ds = driver.CreateDataSource(path)
-        layer = ds.CreateLayer("link", srs=srs, geom_type=ogr.wkbLineString)
-        layer.CreateField(ogr.FieldDefn("distance", ogr.OFTReal))
-        layer.CreateField(ogr.FieldDefn("loss_db", ogr.OFTReal))
-        layer.CreateField(ogr.FieldDefn("mode", ogr.OFTInteger))
-        layer.CreateField(ogr.FieldDefn("mode_name", ogr.OFTString))
-
-        feat = ogr.Feature(layer.GetLayerDefn())
-        geom = ogr.Geometry(ogr.wkbLineString)
-        geom.AddPoint(tx_lon, tx_lat)
-        geom.AddPoint(rx_lon, rx_lat)
-        feat.SetGeometry(geom)
-        feat.SetField("distance", dist_m)
-        feat.SetField("loss_db", result.loss_db)
-        feat.SetField("mode", result.mode)
-        feat.SetField("mode_name", PROP_MODE_NAMES.get(result.mode, "Unknown"))
-        layer.CreateFeature(feat)
         ds = None
+        try:
+            ds = driver.CreateDataSource(path)
+            layer = ds.CreateLayer("link", srs=srs, geom_type=ogr.wkbLineString)
+            layer.CreateField(ogr.FieldDefn("distance", ogr.OFTReal))
+            layer.CreateField(ogr.FieldDefn("loss_db", ogr.OFTReal))
+            layer.CreateField(ogr.FieldDefn("mode", ogr.OFTInteger))
+            layer.CreateField(ogr.FieldDefn("mode_name", ogr.OFTString))
+
+            feat = ogr.Feature(layer.GetLayerDefn())
+            geom = ogr.Geometry(ogr.wkbLineString)
+            geom.AddPoint(tx_lon, tx_lat)
+            geom.AddPoint(rx_lon, rx_lat)
+            feat.SetGeometry(geom)
+            feat.SetField("distance", dist_m)
+            feat.SetField("loss_db", result.loss_db)
+            feat.SetField("mode", result.mode)
+            feat.SetField("mode_name", PROP_MODE_NAMES.get(result.mode, "Unknown"))
+            layer.CreateFeature(feat)
+        finally:
+            ds = None
 
     def _write_fresnel_zone(
         self,
@@ -1029,92 +1032,96 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
             return pts
 
         # ---- Polygon layer (Fresnel zones) ----
-        ds_poly = poly_driver.CreateDataSource(poly_path)
-        layer_poly = ds_poly.CreateLayer(
-            "fresnel_zones", srs=srs, geom_type=ogr.wkbPolygon
-        )
-        layer_poly.CreateField(ogr.FieldDefn("type", ogr.OFTString))
-        layer_poly.CreateField(ogr.FieldDefn("blocked", ogr.OFTInteger))
-
-        # 1st Fresnel zone polygon
-        upper_pts = _geo_points(los_h + fresnel_r)
-        lower_pts = _geo_points(los_h - fresnel_r)
-
-        ring_f1 = ogr.Geometry(ogr.wkbLinearRing)
-        for lon, lat, z in upper_pts:
-            ring_f1.AddPoint(lon, lat, z)
-        for lon, lat, z in reversed(lower_pts):
-            ring_f1.AddPoint(lon, lat, z)
-        ring_f1.AddPoint(upper_pts[0][0], upper_pts[0][1], upper_pts[0][2])
-
-        poly_f1 = ogr.Geometry(ogr.wkbPolygon)
-        poly_f1.AddGeometry(ring_f1)
-
-        feat_f1 = ogr.Feature(layer_poly.GetLayerDefn())
-        feat_f1.SetGeometry(poly_f1)
-        feat_f1.SetField("type", "fresnel_zone")
-        feat_f1.SetField("blocked", 0)
-        layer_poly.CreateFeature(feat_f1)
-
-        # Fresnel violation band: the slice between the 1st-Fresnel lower
-        # boundary (los_h - r) and the 60% lower boundary (los_h - 0.6r).
-        # Terrain entering this band already eats more than 40% of the
-        # first Fresnel zone, which is the conventional engineering limit.
-        # This is NOT a symmetric ±0.6r zone around the LOS.
-        upper_band = _geo_points(los_h - 0.6 * fresnel_r)
-        lower_band = _geo_points(los_h - fresnel_r)
-
-        ring_band = ogr.Geometry(ogr.wkbLinearRing)
-        for lon, lat, z in upper_band:
-            ring_band.AddPoint(lon, lat, z)
-        for lon, lat, z in reversed(lower_band):
-            ring_band.AddPoint(lon, lat, z)
-        ring_band.AddPoint(upper_band[0][0], upper_band[0][1], upper_band[0][2])
-
-        poly_band = ogr.Geometry(ogr.wkbPolygon)
-        poly_band.AddGeometry(ring_band)
-
-        feat_band = ogr.Feature(layer_poly.GetLayerDefn())
-        feat_band.SetGeometry(poly_band)
-        feat_band.SetField("type", "fresnel_violation_band_60pct")
-        feat_band.SetField("blocked", 0)
-        layer_poly.CreateFeature(feat_band)
-
         ds_poly = None
+        try:
+            ds_poly = poly_driver.CreateDataSource(poly_path)
+            layer_poly = ds_poly.CreateLayer(
+                "fresnel_zones", srs=srs, geom_type=ogr.wkbPolygon
+            )
+            layer_poly.CreateField(ogr.FieldDefn("type", ogr.OFTString))
+            layer_poly.CreateField(ogr.FieldDefn("blocked", ogr.OFTInteger))
+
+            # 1st Fresnel zone polygon
+            upper_pts = _geo_points(los_h + fresnel_r)
+            lower_pts = _geo_points(los_h - fresnel_r)
+
+            ring_f1 = ogr.Geometry(ogr.wkbLinearRing)
+            for lon, lat, z in upper_pts:
+                ring_f1.AddPoint(lon, lat, z)
+            for lon, lat, z in reversed(lower_pts):
+                ring_f1.AddPoint(lon, lat, z)
+            ring_f1.AddPoint(upper_pts[0][0], upper_pts[0][1], upper_pts[0][2])
+
+            poly_f1 = ogr.Geometry(ogr.wkbPolygon)
+            poly_f1.AddGeometry(ring_f1)
+
+            feat_f1 = ogr.Feature(layer_poly.GetLayerDefn())
+            feat_f1.SetGeometry(poly_f1)
+            feat_f1.SetField("type", "fresnel_zone")
+            feat_f1.SetField("blocked", 0)
+            layer_poly.CreateFeature(feat_f1)
+
+            # Fresnel violation band: the slice between the 1st-Fresnel lower
+            # boundary (los_h - r) and the 60% lower boundary (los_h - 0.6r).
+            # Terrain entering this band already eats more than 40% of the
+            # first Fresnel zone, which is the conventional engineering limit.
+            # This is NOT a symmetric ±0.6r zone around the LOS.
+            upper_band = _geo_points(los_h - 0.6 * fresnel_r)
+            lower_band = _geo_points(los_h - fresnel_r)
+
+            ring_band = ogr.Geometry(ogr.wkbLinearRing)
+            for lon, lat, z in upper_band:
+                ring_band.AddPoint(lon, lat, z)
+            for lon, lat, z in reversed(lower_band):
+                ring_band.AddPoint(lon, lat, z)
+            ring_band.AddPoint(upper_band[0][0], upper_band[0][1], upper_band[0][2])
+
+            poly_band = ogr.Geometry(ogr.wkbPolygon)
+            poly_band.AddGeometry(ring_band)
+
+            feat_band = ogr.Feature(layer_poly.GetLayerDefn())
+            feat_band.SetGeometry(poly_band)
+            feat_band.SetField("type", "fresnel_violation_band_60pct")
+            feat_band.SetField("blocked", 0)
+            layer_poly.CreateFeature(feat_band)
+        finally:
+            ds_poly = None
 
         # ---- Line layer (terrain + LOS) ----
-        ds_lines = lines_driver.CreateDataSource(lines_path)
-        layer_lines = ds_lines.CreateLayer(
-            "fresnel_lines", srs=srs, geom_type=ogr.wkbLineString
-        )
-        layer_lines.CreateField(ogr.FieldDefn("type", ogr.OFTString))
-        layer_lines.CreateField(ogr.FieldDefn("blocked", ogr.OFTInteger))
-
-        # Terrain profile line
-        terrain_pts = _geo_points(terrain_bulge)
-        terrain_line = ogr.Geometry(ogr.wkbLineString)
-        for lon, lat, z in terrain_pts:
-            terrain_line.AddPoint(lon, lat, z)
-
-        feat_ter = ogr.Feature(layer_lines.GetLayerDefn())
-        feat_ter.SetGeometry(terrain_line)
-        feat_ter.SetField("type", "terrain")
-        feat_ter.SetField("blocked", int(bool((terrain_bulge > los_h).any())))
-        layer_lines.CreateFeature(feat_ter)
-
-        # LOS line
-        los_pts = _geo_points(los_h)
-        los_line = ogr.Geometry(ogr.wkbLineString)
-        for lon, lat, z in los_pts:
-            los_line.AddPoint(lon, lat, z)
-
-        feat_los = ogr.Feature(layer_lines.GetLayerDefn())
-        feat_los.SetGeometry(los_line)
-        feat_los.SetField("type", "los")
-        feat_los.SetField("blocked", 0)
-        layer_lines.CreateFeature(feat_los)
-
         ds_lines = None
+        try:
+            ds_lines = lines_driver.CreateDataSource(lines_path)
+            layer_lines = ds_lines.CreateLayer(
+                "fresnel_lines", srs=srs, geom_type=ogr.wkbLineString
+            )
+            layer_lines.CreateField(ogr.FieldDefn("type", ogr.OFTString))
+            layer_lines.CreateField(ogr.FieldDefn("blocked", ogr.OFTInteger))
+
+            # Terrain profile line
+            terrain_pts = _geo_points(terrain_bulge)
+            terrain_line = ogr.Geometry(ogr.wkbLineString)
+            for lon, lat, z in terrain_pts:
+                terrain_line.AddPoint(lon, lat, z)
+
+            feat_ter = ogr.Feature(layer_lines.GetLayerDefn())
+            feat_ter.SetGeometry(terrain_line)
+            feat_ter.SetField("type", "terrain")
+            feat_ter.SetField("blocked", int(bool((terrain_bulge > los_h).any())))
+            layer_lines.CreateFeature(feat_ter)
+
+            # LOS line
+            los_pts = _geo_points(los_h)
+            los_line = ogr.Geometry(ogr.wkbLineString)
+            for lon, lat, z in los_pts:
+                los_line.AddPoint(lon, lat, z)
+
+            feat_los = ogr.Feature(layer_lines.GetLayerDefn())
+            feat_los.SetGeometry(los_line)
+            feat_los.SetField("type", "los")
+            feat_los.SetField("blocked", 0)
+            layer_lines.CreateFeature(feat_los)
+        finally:
+            ds_lines = None
         return poly_path, lines_path
 
     def _show_profile_chart(

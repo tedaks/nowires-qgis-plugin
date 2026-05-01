@@ -39,6 +39,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import getpass
 
 from osgeo import gdal, ogr, osr
 
@@ -55,7 +56,10 @@ _VALID_TILE_RE = re.compile(r"^[NS]\d{2}[EW]\d{3}$")
 
 
 def get_worldcover_dir():
-    worldcover_dir = os.path.join(tempfile.gettempdir(), "NoWires", "worldcover")
+    username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
+    worldcover_dir = os.path.join(
+        tempfile.gettempdir(), "NoWires-" + username, "worldcover"
+    )
     os.makedirs(worldcover_dir, mode=0o700, exist_ok=True)
     return worldcover_dir
 
@@ -191,7 +195,7 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
                     break
                 test_ds = None
 
-                os.rename(local_tif + ".tmp", local_tif)
+                os.replace(local_tif + ".tmp", local_tif)
                 available.append(local_tif)
                 downloaded = True
                 break
@@ -232,8 +236,11 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
                 if attempt < _DOWNLOAD_RETRIES - 1:
                     time.sleep(2 ** attempt)
 
-        if not downloaded and not os.path.exists(local_tif):
-            pass
+        if not downloaded and os.path.exists(local_tif + ".tmp"):
+            try:
+                os.unlink(local_tif + ".tmp")
+            except OSError:
+                pass
 
     return available
 

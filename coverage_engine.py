@@ -485,43 +485,47 @@ def compute_coverage(
                 "Computing {} pixels with {} workers...".format(len(tasks), n_workers)
             )
         try:
-            shm = _make_shared_grid(grid_data)
-            with ProcessPoolExecutor(
-                max_workers=n_workers,
-                initializer=_init_cov_pool,
-                initargs=(shm.name, grid_data.shape, str(grid_data.dtype), grid_meta),
-            ) as pool:
-                for chunk_idx, batch_results in enumerate(
-                    pool.map(_itm_worker_batch, chunks, chunksize=1)
-                ):
-                    if feedback and feedback.isCanceled():
-                        logger.info("Coverage cancelled by user")
-                        cancelled = True
-                        break
-                    for result in batch_results:
-                        if result is not None:
-                            i, j, loss_db, prx, itm_loss_db, clutter_tx_db, clutter_rx_db = result
-                            loss_grid[i, j] = loss_db
-                            prx_grid[i, j] = prx
-                            itm_loss_grid[i, j] = itm_loss_db
-                            clutter_loss_grid[i, j] = clutter_tx_db + clutter_rx_db
-                        else:
-                            pixels_failed += 1
-                        pixels_done += 1
-                    if feedback and chunk_idx % 50 == 0:
-                        pct = int(pixels_done / len(tasks) * 80)
-                        feedback.setProgress(pct)
-        except (_BrokenPool, ImportError, OSError, RuntimeError) as exc:
-            logger.warning(
-                "Multiprocessing failed (%s: %s), falling back to sequential",
-                type(exc).__name__,
-                exc,
-            )
-            if feedback:
-                feedback.pushInfo(
-                    "Multiprocessing unavailable, using single-threaded mode..."
+            try:
+                shm = _make_shared_grid(grid_data)
+                with ProcessPoolExecutor(
+                    max_workers=n_workers,
+                    initializer=_init_cov_pool,
+                    initargs=(shm.name, grid_data.shape, str(grid_data.dtype), grid_meta),
+                ) as pool:
+                    for chunk_idx, batch_results in enumerate(
+                        pool.map(_itm_worker_batch, chunks, chunksize=1)
+                    ):
+                        if feedback and feedback.isCanceled():
+                            logger.info("Coverage cancelled by user")
+                            cancelled = True
+                            break
+                        for result in batch_results:
+                            if result is not None:
+                                i, j, loss_db, prx, itm_loss_db, clutter_tx_db, clutter_rx_db = result
+                                loss_grid[i, j] = loss_db
+                                prx_grid[i, j] = prx
+                                itm_loss_grid[i, j] = itm_loss_db
+                                clutter_loss_grid[i, j] = clutter_tx_db + clutter_rx_db
+                            else:
+                                pixels_failed += 1
+                            pixels_done += 1
+                        if feedback and chunk_idx % 50 == 0:
+                            pct = int(pixels_done / len(tasks) * 80)
+                            feedback.setProgress(pct)
+            except (_BrokenPool, ImportError, OSError, RuntimeError) as exc:
+                logger.warning(
+                    "Multiprocessing failed (%s: %s), falling back to sequential",
+                    type(exc).__name__,
+                    exc,
                 )
-            use_multiprocessing = False
+                if feedback:
+                    feedback.pushInfo(
+                        "Multiprocessing unavailable, using single-threaded mode..."
+                    )
+                use_multiprocessing = False
+        finally:
+            _release_shared_memory(shm)
+            shm = None
     elif feedback:
         feedback.pushInfo(
             "Using single-threaded mode on Windows (multiprocessing unsafe)..."

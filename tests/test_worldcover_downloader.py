@@ -4,8 +4,10 @@
 """Unit tests for worldcover_downloader — ESA WorldCover tile naming and computation."""
 
 import pytest
+from types import SimpleNamespace
 
 from worldcover_downloader import (
+    get_worldcover_dir,
     worldcover_tile_id,
     required_worldcover_tiles,
     WORLDCOVER_BASE_URL,
@@ -54,6 +56,20 @@ def test_base_url_points_to_esa_worldcover():
     assert WORLDCOVER_BASE_URL.endswith("/")
 
 
+def test_worldcover_cache_directory_is_per_user(tmp_path, monkeypatch):
+    import worldcover_downloader as wd
+
+    monkeypatch.setattr(wd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        wd,
+        "getpass",
+        SimpleNamespace(getuser=lambda: "alice"),
+        raising=False,
+    )
+
+    assert get_worldcover_dir() == str(tmp_path / "NoWires-alice" / "worldcover")
+
+
 def test_download_worldcover_tiles_replaces_corrupt_cache(tmp_path, monkeypatch):
     import worldcover_downloader as wd
 
@@ -95,6 +111,71 @@ def test_download_worldcover_tiles_replaces_corrupt_cache(tmp_path, monkeypatch)
     assert paths == [str(local_tif)]
     assert open_calls == [(wd.worldcover_tile_url(tile_id), 120)]
     assert local_tif.read_bytes() == b"good"
+
+
+def test_download_worldcover_tiles_finalizes_download_with_os_replace(tmp_path, monkeypatch):
+    import worldcover_downloader as wd
+
+    tile_id = "N00E000"
+    local_tif = tmp_path / wd.worldcover_tile_filename(tile_id)
+    replace_calls = []
+    original_replace = wd.os.replace
+
+    class FakeResponse:
+        headers = {"Content-Length": "4"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def geturl(self):
+            return wd.worldcover_tile_url(tile_id)
+
+        def read(self, _size):
+            if getattr(self, "_read", False):
+                return b""
+            self._read = True
+            return b"good"
+
+    class FakeOpener:
+        def open(self, url, timeout):
+            return FakeResponse()
+
+    def fake_replace(src, dst):
+        replace_calls.append((src, dst))
+        original_replace(src, dst)
+
+    monkeypatch.setattr(wd.gdal, "Open", lambda _path: object())
+    monkeypatch.setattr(wd.urllib.request, "build_opener", lambda *_args, **_kwargs: FakeOpener())
+    monkeypatch.setattr(wd.os, "replace", fake_replace)
+
+    paths = wd.download_worldcover_tiles([tile_id], temp_dir=str(tmp_path))
+
+    assert paths == [str(local_tif)]
+    assert replace_calls == [(str(local_tif) + ".tmp", str(local_tif))]
+    assert local_tif.read_bytes() == b"good"
+
+
+def test_download_worldcover_tiles_removes_leftover_tmp_after_failed_download(tmp_path, monkeypatch):
+    import urllib.error
+    import worldcover_downloader as wd
+
+    tile_id = "N00E000"
+    local_tif = tmp_path / wd.worldcover_tile_filename(tile_id)
+    tmp_path_leftover = tmp_path / (wd.worldcover_tile_filename(tile_id) + ".tmp")
+    tmp_path_leftover.write_bytes(b"partial")
+
+    class FakeOpener:
+        def open(self, url, timeout):
+            raise urllib.error.HTTPError(url, 404, "not found", hdrs=None, fp=None)
+
+    monkeypatch.setattr(wd.urllib.request, "build_opener", lambda *_args, **_kwargs: FakeOpener())
+
+    assert wd.download_worldcover_tiles([tile_id], temp_dir=str(tmp_path)) == []
+    assert not local_tif.exists()
+    assert not tmp_path_leftover.exists()
 
 
 if __name__ == "__main__":
