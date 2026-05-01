@@ -37,8 +37,27 @@ DEFAULT_PROFILE_STEP_M = 100.0
 DEFAULT_MAX_PROFILE_PTS = 200
 
 
-def grid_to_raster_array(grid, nodata=-9999.0):
-    """Return a top-origin raster array with missing cells encoded as nodata."""
+COVERAGE_NODATA = -9999.0
+"""NoData sentinel for coverage rasters.
+
+Chosen because GDAL's Float32 NoData requires a finite value (NaN is not
+universally supported as NoData in all GDAL drivers/formats).  -9999 is
+well outside both valid path-loss range (0–400 dB) and received-power
+range (≈-120 to +80 dBm), so it cannot be confused with legitimate
+values.  If this raster is later used as input to another computation,
+its NoData flag must be explicitly masked via GDAL or numpy before
+arithmetic operations.
+"""
+
+
+def grid_to_raster_array(grid, nodata=COVERAGE_NODATA):
+    """Return a top-origin raster array with missing cells encoded as nodata.
+
+    Uses *nodata* (default -9999) rather than NaN because many GIS formats
+    and GDAL drivers do not reliably round-trip NaN NoData values for
+    Float32 rasters.  Callers that consume the raster programmatically
+    should treat *nodata* as missing.
+    """
     arr = np.asarray(grid, dtype=np.float32)
     return np.where(np.isnan(arr), nodata, arr)[::-1]
 

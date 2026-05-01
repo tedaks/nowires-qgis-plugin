@@ -51,6 +51,7 @@ WORLDCOVER_BASE_URL = (
 )
 WORLDCOVER_TILE_SIZE_DEG = 3
 _DOWNLOAD_RETRIES = 3
+_SOCKET_TIMEOUT = 120  # seconds; covers TCP connect + individual socket reads
 _MAX_TILES = 200
 _VALID_TILE_RE = re.compile(r"^[NS]\d{2}[EW]\d{3}$")
 
@@ -147,7 +148,7 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
 
         for attempt in range(_DOWNLOAD_RETRIES):
             try:
-                with opener.open(tile_url, timeout=120) as response:
+                with opener.open(tile_url, timeout=_SOCKET_TIMEOUT) as response:
                     final_url = response.geturl()
                     if not final_url.startswith(WORLDCOVER_BASE_URL):
                         raise RuntimeError("Unexpected redirect to: " + final_url)
@@ -209,6 +210,19 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
                         )
                     break
                 else:
+                    retry_after = e.headers.get("Retry-After")
+                    if retry_after:
+                        try:
+                            wait_secs = max(int(retry_after), 1)
+                        except ValueError:
+                            wait_secs = 2 ** attempt
+                        logger.info(
+                            "HTTP %d downloading %s — Retry-After: %ds (attempt %d/%d)",
+                            e.code, tile_id, wait_secs,
+                            attempt + 1, _DOWNLOAD_RETRIES,
+                        )
+                    else:
+                        wait_secs = 2 ** attempt
                     logger.warning(
                         "HTTP %d downloading %s (attempt %d/%d): %s",
                         e.code,
@@ -218,7 +232,7 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
                         e,
                     )
                     if attempt < _DOWNLOAD_RETRIES - 1:
-                        time.sleep(2 ** attempt)
+                        time.sleep(wait_secs)
             except Exception as e:
                 logger.warning(
                     "Error downloading %s (attempt %d/%d): %s",
