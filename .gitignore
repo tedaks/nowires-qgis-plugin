@@ -1,43 +1,54 @@
+# Python
 __pycache__/
 *.py[cod]
 *.so
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-coverage/
-htmlcov/
-
-.DS_Store
-Thumbs.db
-
-*.log
-
-*.tif
-*.tiff
-*.shp
-*.shx
-*.dbf
-*.prj
-*.cpg
-*.qmd
-*.png
-
-build/
-dist/
 *.egg-info/
+*.egg
 
+# Virtual environments
 .venv/
 venv/
 env/
-*.egg
 
+# Build
+build/
+dist/
+
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# docs
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+htmlcov/
+
+# GIS output (runtime generated data layers)
+*.tif
+*.tiff
+*.shp
+*.shx
+*.dbf
+*.cpg
+*.qmd
+
+# Projection files (runtime only, not shipped)
+/*.prj
+
+# Docs
 /docs
 
+# Temporary
 ISSUES.md
 codereview_1may2026.md
