@@ -40,6 +40,7 @@ from .comparison_params import (
     DELTA_STYLE_OPTIONS,
     OUTPUT_CONSTANTS,
 )
+from .constants import CLIMATE_OPTIONS, GRID_SIZE_OPTIONS
 
 __all__ = ["add_panel_params", "add_comparison_params"]
 
@@ -72,8 +73,7 @@ def add_panel_params(algorithm, prefix, config):
     algorithm.addParameter(
         QgsProcessingParameterEnum(
             f"{prefix}_GRID_SIZE", f"Panel {panel_label} Grid size resolution",
-            options=["64 x 64", "128 x 128", "192 x 192", "256 x 256",
-                     "384 x 384", "512 x 512", "768 x 768", "1024 x 1024"],
+            options=GRID_SIZE_OPTIONS,
             defaultValue=2,
         )
     )
@@ -86,9 +86,7 @@ def add_panel_params(algorithm, prefix, config):
     algorithm.addParameter(
         QgsProcessingParameterEnum(
             f"{prefix}_CLIMATE", f"Panel {panel_label} Climate zone",
-            options=["Equatorial", "Continental Subtropical", "Maritime Subtropical",
-                     "Desert", "Continental Temperate", "Maritime Temperate (land)",
-                     "Maritime Temperate (sea)"],
+            options=CLIMATE_OPTIONS,
             defaultValue=1,
         )
     )

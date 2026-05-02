@@ -11,6 +11,7 @@ COVERAGE_SOURCES = [
     os.path.join(PLUGIN_DIR, f)
     for f in (
         "base_algorithm.py",
+        "constants.py",
         "algorithm_coverage.py",
         "coverage_params.py",
         "coverage_reporting.py",

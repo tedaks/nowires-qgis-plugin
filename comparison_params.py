@@ -27,6 +27,11 @@ Extracted from algorithm_coverage_comparison.py for modularity.
 
 from qgis.core import QgsProcessingParameterNumber
 
+from .constants import (
+    METERS_PER_DEGREE_LAT,
+    POLARIZATION_NAMES,
+    GRID_SIZE_PRESETS,
+)
 from .radio import (
     ITM_MAX_FREQUENCY_MHZ,
     ITM_MAX_N0,
@@ -47,10 +52,6 @@ __all__ = [
     "make_panel_config",
     "add_comparison_params",
 ]
-
-GRID_SIZE_PRESETS = [64, 128, 192, 256, 384, 512, 768, 1024]
-POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
-METERS_PER_DEGREE_LAT = 111320.0
 
 DELTA_STYLE_OPTIONS = ["diverging", "threshold"]
 DELTA_THRESHOLD_DEFAULTS = [3.0, 5.0, 10.0]

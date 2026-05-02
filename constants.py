@@ -1,0 +1,24 @@
+METERS_PER_DEGREE_LAT = 111320.0
+
+POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
+
+CLIMATE_OPTIONS = [
+    "Equatorial", "Continental Subtropical", "Maritime Subtropical", "Desert",
+    "Continental Temperate", "Maritime Temperate (land)", "Maritime Temperate (sea)",
+]
+
+GRID_SIZE_PRESETS = [64, 128, 192, 256, 384, 512, 768, 1024]
+
+GRID_SIZE_OPTIONS = [
+    "64 x 64", "128 x 128", "192 x 192", "256 x 256",
+    "384 x 384", "512 x 512", "768 x 768", "1024 x 1024",
+]
+
+K_FACTOR_PRESETS_OPTIONS = [
+    "0.67 - Sub-refractive",
+    "1.00 - Geometric",
+    "1.33 - Standard atmosphere",
+    "2.00 - Super-refractive",
+    "4.00 - Strong super-refractive",
+    "Custom",
+]

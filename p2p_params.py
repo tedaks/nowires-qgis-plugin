@@ -41,6 +41,7 @@ from .radio import (
 )
 from .antenna import ANTENNA_PRESET_OPTIONS
 from .clutter import CLUTTER_MODEL_OPTIONS, CLUTTER_OVERRIDE_OPTIONS
+from .constants import POLARIZATION_NAMES, CLIMATE_OPTIONS, K_FACTOR_PRESETS_OPTIONS
 from .p2p_report_display import report_p2p_results
 
 __all__ = [
@@ -64,22 +65,6 @@ _PARAM_NAMES = (
     "OUTPUT_REPORT_CSV", "OUTPUT_REPORT_JSON", "OUTPUT_REPORT_HTML", "SHOW_CHART",
 )
 PARAM_CONSTANTS = {k: k for k in _PARAM_NAMES}
-
-POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
-
-K_FACTOR_PRESETS_OPTIONS = [
-    "0.67 - Sub-refractive",
-    "1.00 - Geometric",
-    "1.33 - Standard atmosphere",
-    "2.00 - Super-refractive",
-    "4.00 - Strong super-refractive",
-    "Custom",
-]
-
-_CLIMATE_OPTIONS = [
-    "Equatorial", "Continental Subtropical", "Maritime Subtropical", "Desert",
-    "Continental Temperate", "Maritime Temperate (land)", "Maritime Temperate (sea)",
-]
 
 _DBL = QgsProcessingParameterNumber.Double
 
@@ -110,7 +95,7 @@ def _add_basic_link_params(algorithm):
         options=["Horizontal", "Vertical"], defaultValue=1))
     algorithm.addParameter(QgsProcessingParameterEnum(
         algorithm.CLIMATE, "Climate zone",
-        options=_CLIMATE_OPTIONS, defaultValue=1))
+        options=CLIMATE_OPTIONS, defaultValue=1))
     algorithm.addParameter(QgsProcessingParameterNumber(
         algorithm.TIME_PCT, "Time percentage", type=_DBL,
         defaultValue=50.0, minValue=0.01, maxValue=99.99))
