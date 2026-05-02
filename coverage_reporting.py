@@ -26,7 +26,6 @@ Extracted from algorithm_coverage.py for modularity.
 """
 
 import numpy as np
-from osgeo import gdal, osr
 
 from .coverage_params import POLARIZATION_NAMES
 from .clutter import CLUTTER_MODEL_OPTIONS
@@ -37,7 +36,7 @@ from .report_payloads import (
     build_coverage_report_payload,
     build_empty_coverage_report_payload,
 )
-from .coverage_compute import grid_to_raster_array
+from .raster_io import write_geotiff
 
 
 def build_coverage_report_payload_for_grid(
@@ -206,18 +205,4 @@ def report_coverage_results(feedback, report_payload, raster_grid, valid, rx_sen
 
 
 def write_coverage_geotiff(prx_grid, min_lat, max_lat, min_lon, max_lon, tif_path):
-    driver = gdal.GetDriverByName("GTiff")
-    n_rows, n_cols = prx_grid.shape
-    ds = driver.Create(tif_path, n_cols, n_rows, 1, gdal.GDT_Float32)
-    ds.SetGeoTransform(
-        [min_lon, (max_lon - min_lon) / n_cols, 0,
-         max_lat, 0, -(max_lat - min_lat) / n_rows]
-    )
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(4326)
-    ds.SetProjection(srs.ExportToWkt())
-    band = ds.GetRasterBand(1)
-    band.SetNoDataValue(-9999.0)
-    band.WriteArray(grid_to_raster_array(prx_grid))
-    band.FlushCache()
-    ds = None
+    write_geotiff(tif_path, prx_grid, min_lat, max_lat, min_lon, max_lon)

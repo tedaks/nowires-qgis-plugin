@@ -11,6 +11,7 @@ COMP_SOURCES = [
     os.path.join(PLUGIN_DIR, f)
     for f in (
         "base_algorithm.py",
+        "raster_io.py",
         "algorithm_coverage_comparison.py",
         "comparison_params.py",
         "comparison_add_params.py",
