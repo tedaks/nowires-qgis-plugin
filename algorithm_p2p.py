@@ -30,13 +30,9 @@ and were originally distributed under the MIT License. See NOTICE.md for
 attribution details.
 """
 
-from qgis.PyQt.QtCore import QCoreApplication
-from qgis.core import (
-    Qgis,
-    QgsCoordinateReferenceSystem,
-    QgsProcessingAlgorithm,
-)
+from qgis.core import QgsCoordinateReferenceSystem
 
+from .base_algorithm import NoWiresAlgorithm, install_constants
 from .radio import K_FACTOR_PRESETS, validate_itm_input_ranges, resolve_k_factor
 from .antenna import antenna_config_from_values
 from .clutter import (
@@ -46,16 +42,12 @@ from .clutter import (
 from .p2p_params import (
     PARAM_CONSTANTS,
     add_p2p_params,
-    _install_constants,
 )
 from .p2p_compute import run_p2p_analysis
 
 
-class P2PAlgorithm(QgsProcessingAlgorithm):
+class P2PAlgorithm(NoWiresAlgorithm):
     """Point-to-point radio link analysis."""
-
-    def flags(self):
-        return super().flags() | Qgis.ProcessingAlgorithmFlag.NoThreading
 
     def initAlgorithm(self, config):
         add_p2p_params(self)
@@ -182,17 +174,8 @@ class P2PAlgorithm(QgsProcessingAlgorithm):
     def displayName(self):
         return self.tr("Point-to-Point Analysis")
 
-    def group(self):
-        return self.tr("Radio Propagation")
-
-    def groupId(self):
-        return "radio_propagation"
-
-    def tr(self, string):
-        return QCoreApplication.translate("Processing", string)
-
     def createInstance(self):
         return P2PAlgorithm()
 
 
-_install_constants(P2PAlgorithm, PARAM_CONSTANTS)
+install_constants(P2PAlgorithm, PARAM_CONSTANTS)
