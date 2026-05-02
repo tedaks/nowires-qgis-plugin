@@ -10,6 +10,7 @@ PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
 COMP_SOURCES = [
     os.path.join(PLUGIN_DIR, f)
     for f in (
+        "base_algorithm.py",
         "algorithm_coverage_comparison.py",
         "comparison_params.py",
         "comparison_add_params.py",

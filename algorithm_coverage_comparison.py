@@ -35,8 +35,8 @@ import math
 import os
 import tempfile
 import numpy as np
-from qgis.PyQt.QtCore import QCoreApplication
-from qgis.core import Qgis, QgsProcessingAlgorithm, QgsProcessingException, QgsRasterLayer
+from qgis.core import Qgis, QgsProcessingException, QgsRasterLayer
+from .base_algorithm import NoWiresAlgorithm, install_constants
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
 from .processing_utils import queue_layer_for_loading
@@ -52,11 +52,6 @@ from .comparison_reporting import build_panel_info, build_delta_info, report_com
 
 
 logger = logging.getLogger(__name__)
-
-
-def _install_constants(cls, constants_dict):
-    for key, value in constants_dict.items():
-        setattr(cls, key, value)
 
 
 def _validate_panels(tx_point_a, tx_point_b, radius_km_a, radius_km_b):
@@ -113,15 +108,12 @@ def _load_comparison_layers(context, output_a, output_b, output_delta, threshold
     return raster_layer_ids
 
 
-class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
+class CoverageComparisonAlgorithm(NoWiresAlgorithm):
     """Dual-panel coverage comparison with delta raster output."""
 
     def __init__(self):
         super().__init__()
         self._raster_layer_ids = []
-
-    def flags(self):
-        return super().flags() | Qgis.ProcessingAlgorithmFlag.NoThreading
 
     def initAlgorithm(self, config):
         panel_config = make_panel_config()
@@ -257,18 +249,6 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
             if _comp_tmpdir and os.path.isdir(_comp_tmpdir):
                 pass
 
-    def postProcessAlgorithm(self, context, feedback):
-        from qgis.core import QgsProject
-        root = QgsProject.instance().layerTreeRoot()
-        for layer_id in self._raster_layer_ids:
-            node = root.findLayer(layer_id)
-            if node is not None:
-                clone = node.clone()
-                parent = node.parent()
-                parent.removeChildNode(node)
-                parent.insertChildNode(0, clone)
-        return {}
-
     def shortHelpString(self):
         return (
             "Run two coverage analyses side-by-side and produce a delta raster "
@@ -283,19 +263,10 @@ class CoverageComparisonAlgorithm(QgsProcessingAlgorithm):
     def displayName(self):
         return self.tr("Coverage Comparison")
 
-    def group(self):
-        return self.tr("Radio Propagation")
-
-    def groupId(self):
-        return "radio_propagation"
-
-    def tr(self, string):
-        return QCoreApplication.translate("Processing", string)
-
     def createInstance(self):
         return CoverageComparisonAlgorithm()
 
 
-_install_constants(CoverageComparisonAlgorithm, PANEL_A_CONSTANTS)
-_install_constants(CoverageComparisonAlgorithm, PANEL_B_CONSTANTS)
-_install_constants(CoverageComparisonAlgorithm, OUTPUT_CONSTANTS)
+install_constants(CoverageComparisonAlgorithm, PANEL_A_CONSTANTS)
+install_constants(CoverageComparisonAlgorithm, PANEL_B_CONSTANTS)
+install_constants(CoverageComparisonAlgorithm, OUTPUT_CONSTANTS)

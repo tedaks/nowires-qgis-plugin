@@ -25,8 +25,8 @@ Portions adapted from tedaks/nowires (MIT). See NOTICE.md.
 import logging
 import os
 import tempfile
-from qgis.PyQt.QtCore import QCoreApplication
-from qgis.core import Qgis, QgsProcessingAlgorithm, QgsProcessingException
+from qgis.core import Qgis, QgsProcessingException
+from .base_algorithm import NoWiresAlgorithm, install_constants
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
 from .radio import K_FACTOR_PRESETS, resolve_k_factor, validate_itm_input_ranges
@@ -40,11 +40,6 @@ from .batch_outputs import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _install_constants(cls, constants_dict):
-    for key, value in constants_dict.items():
-        setattr(cls, key, value)
 
 
 def _features_to_points(features, source_crs, transform_fn, default_height):
@@ -196,11 +191,8 @@ def _write_batch_outputs(algorithm, parameters, context, feedback, results, mode
             pass
 
 
-class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
+class BatchAnalysisAlgorithm(NoWiresAlgorithm):
     """Batch point-to-point link analysis."""
-
-    def flags(self):
-        return super().flags() | Qgis.ProcessingAlgorithmFlag.NoThreading
 
     def initAlgorithm(self, config):
         add_batch_params(self)
@@ -235,17 +227,8 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
     def displayName(self):
         return self.tr("Batch P2P Analysis")
 
-    def group(self):
-        return self.tr("Radio Propagation")
-
-    def groupId(self):
-        return "radio_propagation"
-
-    def tr(self, string):
-        return QCoreApplication.translate("Processing", string)
-
     def createInstance(self):
         return BatchAnalysisAlgorithm()
 
 
-_install_constants(BatchAnalysisAlgorithm, BATCH_PARAM_CONSTANTS)
+install_constants(BatchAnalysisAlgorithm, BATCH_PARAM_CONSTANTS)

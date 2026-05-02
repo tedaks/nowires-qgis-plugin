@@ -35,12 +35,10 @@ attribution details.
 import os
 import shutil
 
-from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
     Qgis,
     QgsCoordinateReferenceSystem,
     QgsGeometry,
-    QgsProcessingAlgorithm,
     QgsProcessingParameterAuthConfig,
     QgsProcessingParameterBoolean,
     QgsProcessingParameterColor,
@@ -51,6 +49,8 @@ from qgis.core import (
     QgsProject,
     QgsVectorLayer,
 )
+
+from .base_algorithm import NoWiresAlgorithm
 
 from .contour_generation import generate_contour_lines, reproject_and_export
 from .contour_pipeline import (
@@ -70,8 +70,11 @@ from .three_d import configure_contours_for_3d
 MAX_AOI_EXTENT_DEGREES = 5.0
 
 
-class ContourLinesAlgorithm(QgsProcessingAlgorithm):
+class ContourLinesAlgorithm(NoWiresAlgorithm):
     """Generate contour lines from Copernicus GLO-30 DEM."""
+
+    GROUP_NAME = "Terrain Analysis"
+    GROUP_ID = "terrain_analysis"
 
     AREA_OF_INTEREST = "AREA_OF_INTEREST"
     INTERVAL = "INTERVAL"
@@ -89,9 +92,6 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
         self.status_total = 0.0
         self.progress = 0.0
         self._raster_layer_ids = []
-
-    def flags(self):
-        return super().flags() | Qgis.ProcessingAlgorithmFlag.NoThreading
 
     def initAlgorithm(self, config):
         self.addParameter(QgsProcessingParameterExtent(
@@ -252,31 +252,11 @@ class ContourLinesAlgorithm(QgsProcessingAlgorithm):
                 except OSError:
                     pass
 
-    def postProcessAlgorithm(self, context, feedback):
-        root = QgsProject.instance().layerTreeRoot()
-        for layer_id in self._raster_layer_ids:
-            node = root.findLayer(layer_id)
-            if node is not None:
-                clone = node.clone()
-                parent = node.parent()
-                parent.removeChildNode(node)
-                parent.insertChildNode(0, clone)
-        return {}
-
     def name(self):
         return "contour_lines"
 
     def displayName(self):
         return self.tr("Contour Lines")
-
-    def group(self):
-        return self.tr("Terrain Analysis")
-
-    def groupId(self):
-        return "terrain_analysis"
-
-    def tr(self, string):
-        return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
         return ContourLinesAlgorithm()

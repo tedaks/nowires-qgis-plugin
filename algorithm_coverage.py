@@ -30,9 +30,9 @@ import tempfile
 
 logger = logging.getLogger(__name__)
 
-from qgis.PyQt.QtCore import QCoreApplication
-from qgis.core import Qgis, QgsProcessingAlgorithm, QgsProject, QgsRasterLayer
+from qgis.core import Qgis, QgsProject, QgsRasterLayer
 
+from .base_algorithm import NoWiresAlgorithm, install_constants
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
 from .coverage_legend import show_coverage_legend
@@ -44,7 +44,7 @@ from .clutter import (
 )
 from .report_export import write_report_csv, write_report_html, write_report_json
 from .coverage_params import (
-    METERS_PER_DEGREE_LAT, PARAM_CONSTANTS, _install_constants,
+    METERS_PER_DEGREE_LAT, PARAM_CONSTANTS,
     add_coverage_params, extract_coverage_params,
     CLUTTER_MODEL_OPTIONS, ANTENNA_PRESET_OPTIONS,
 )
@@ -55,15 +55,12 @@ from .coverage_reporting import (
 from .processing_utils import queue_layer_for_loading
 
 
-class CoverageAlgorithm(QgsProcessingAlgorithm):
+class CoverageAlgorithm(NoWiresAlgorithm):
     """Coverage analysis heatmap prediction."""
 
     def __init__(self):
         super().__init__()
         self._raster_layer_ids = []
-
-    def flags(self):
-        return super().flags() | Qgis.ProcessingAlgorithmFlag.NoThreading
 
     def initAlgorithm(self, config):
         add_coverage_params(self)
@@ -233,34 +230,14 @@ class CoverageAlgorithm(QgsProcessingAlgorithm):
         from .coverage_palette import apply_coverage_style
         apply_coverage_style(layer)
 
-    def postProcessAlgorithm(self, context, feedback):
-        root = QgsProject.instance().layerTreeRoot()
-        for layer_id in self._raster_layer_ids:
-            node = root.findLayer(layer_id)
-            if node is not None:
-                clone = node.clone()
-                parent = node.parent()
-                parent.removeChildNode(node)
-                parent.insertChildNode(0, clone)
-        return {}
-
     def name(self):
         return "coverage_analysis"
 
     def displayName(self):
         return self.tr("Coverage Analysis")
 
-    def group(self):
-        return self.tr("Radio Propagation")
-
-    def groupId(self):
-        return "radio_propagation"
-
-    def tr(self, string):
-        return QCoreApplication.translate("Processing", string)
-
     def createInstance(self):
         return CoverageAlgorithm()
 
 
-_install_constants(CoverageAlgorithm, PARAM_CONSTANTS)
+install_constants(CoverageAlgorithm, PARAM_CONSTANTS)
