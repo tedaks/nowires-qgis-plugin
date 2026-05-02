@@ -60,6 +60,138 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 
+def _compute_single_link(
+    tx_def, rx_def, elev, tx_h, rx_h, f_mhz, polarization,
+    climate, time_pct, location_pct, situation_pct, n0, epsilon, sigma,
+    tx_power, tx_gain_default, rx_gain_default, cable_loss, rx_sens,
+    tx_default_preset_key, rx_default_preset_key,
+    tx_default_az, rx_default_az, tx_front_back_db, rx_front_back_db,
+    k_factor, clutter_enabled, clutter_grid, tx_clutter_override,
+    rx_clutter_override, wavelength_m,
+):
+    rx_lat = rx_def["lat"]
+    rx_lon = rx_def["lon"]
+    rx_h_eff = rx_def["height"] if rx_def["height"] is not None else rx_h
+
+    dist_m = haversine_m(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon)
+    if dist_m < 1.0:
+        return None
+
+    profile_points = elev.terrain_profile(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon, step_m=30.0)
+    if len(profile_points) < 2:
+        return None
+    distances = [p[0] for p in profile_points]
+    elevations = [p[1] for p in profile_points]
+    elevations = [0.0 if math.isnan(e) else e for e in elevations]
+    step_m_val = dist_m / max(len(distances) - 1, 1)
+    pfl = build_pfl(elevations, step_m_val)
+
+    itm_result = itm_p2p_loss(
+        h_tx__meter=tx_def["height"] if tx_def["height"] is not None else tx_h,
+        h_rx__meter=rx_h_eff,
+        profile=pfl,
+        climate=climate,
+        N0=n0,
+        f__mhz=f_mhz,
+        polarization=polarization,
+        epsilon=epsilon,
+        sigma=sigma,
+        time_pct=time_pct,
+        location_pct=location_pct,
+        situation_pct=situation_pct,
+    )
+
+    clutter_losses = compute_terminal_clutter_losses(
+        tx_lat=tx_def["lat"], tx_lon=tx_def["lon"],
+        rx_lat=rx_lat, rx_lon=rx_lon,
+        frequency_mhz=f_mhz, enabled=clutter_enabled,
+        land_cover_grid=clutter_grid,
+        tx_override=tx_clutter_override, rx_override=rx_clutter_override,
+    )
+
+    total_loss_db = itm_result.loss_db + clutter_losses.total_loss_db
+
+    tx_bearing = bearing_deg(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon)
+    rx_bearing = bearing_deg(rx_lat, rx_lon, tx_def["lat"], tx_def["lon"])
+    vertical_angle = math.degrees(
+        math.atan2((elevations[-1] + rx_h_eff) - (elevations[0] + (tx_def["height"] if tx_def["height"] is not None else tx_h)), max(dist_m, 1.0))
+    )
+
+    tx_gain_eff = tx_def["gain_db"] if tx_def["gain_db"] is not None else tx_gain_default
+    rx_gain_eff = rx_def["gain_db"] if rx_def["gain_db"] is not None else rx_gain_default
+
+    tx_preset_key = tx_def.get("antenna_preset", tx_default_preset_key)
+    if tx_preset_key not in ANTENNA_PRESET_KEYS:
+        tx_preset_key = tx_default_preset_key
+    tx_preset_idx = ANTENNA_PRESET_KEYS.index(tx_preset_key)
+    tx_ant_config = antenna_config_from_values(
+        preset=tx_preset_idx,
+        azimuth_deg=tx_def.get("azimuth", tx_default_az),
+        front_back_db=tx_front_back_db,
+    )
+    rx_preset_key = rx_def.get("antenna_preset", rx_default_preset_key)
+    if rx_preset_key not in ANTENNA_PRESET_KEYS:
+        rx_preset_key = rx_default_preset_key
+    rx_preset_idx = ANTENNA_PRESET_KEYS.index(rx_preset_key)
+    rx_ant_config = antenna_config_from_values(
+        preset=rx_preset_idx,
+        azimuth_deg=rx_def.get("azimuth", rx_default_az),
+        front_back_db=rx_front_back_db,
+    )
+
+    tx_ant_adj = antenna_gain_adjustment_db(tx_bearing, vertical_angle, tx_ant_config)
+    rx_ant_adj = antenna_gain_adjustment_db(rx_bearing, -vertical_angle, rx_ant_config)
+    ant_gain_adj_total = tx_ant_adj + rx_ant_adj
+
+    eirp_eff = tx_power + tx_gain_eff - cable_loss
+    prx_dbm = eirp_eff + rx_gain_eff + ant_gain_adj_total - total_loss_db
+    margin_db = prx_dbm - rx_sens
+
+    fresnel_r_arr = []
+    for i in range(len(distances)):
+        d1 = distances[i]
+        d2 = dist_m - d1
+        if d1 > 0 and d2 > 0:
+            fr = math.sqrt(wavelength_m * d1 * d2 / dist_m)
+            fresnel_r_arr.append(fr)
+        else:
+            fresnel_r_arr.append(0.0)
+
+    fresnel_r_arr = np.array(fresnel_r_arr, dtype=np.float64)
+    elev_arr = np.array(elevations, dtype=np.float64)
+    dist_arr = np.array(distances, dtype=np.float64)
+
+    tx_h_eff_actual = tx_def["height"] if tx_def["height"] is not None else tx_h
+    rx_antenna_h = elevations[-1] + rx_h_eff
+    tx_antenna_h = elevations[0] + tx_h_eff_actual
+    t = np.divide(dist_arr, dist_m, out=np.zeros_like(dist_arr), where=dist_m > 0)
+    a_eff = k_factor * 6371000.0
+    bulge = (dist_arr * (dist_m - dist_arr)) / (2.0 * a_eff)
+    los_h = tx_antenna_h + t * (rx_antenna_h - tx_antenna_h)
+    terrain_bulge = elev_arr + bulge
+    fresnel_clearance = (los_h - fresnel_r_arr) - terrain_bulge
+    clearance_pct = float(
+        np.sum(fresnel_clearance > 0) / max(len(fresnel_clearance), 1) * 100
+    )
+
+    return {
+        "tx_lat": tx_def["lat"],
+        "tx_lon": tx_def["lon"],
+        "rx_lat": rx_lat,
+        "rx_lon": rx_lon,
+        "dist_m": dist_m,
+        "dist_km": dist_m / 1000.0,
+        "itm_loss_db": itm_result.loss_db,
+        "total_loss_db": total_loss_db,
+        "prx_dbm": prx_dbm,
+        "margin_db": margin_db,
+        "clearance_pct": clearance_pct,
+        "status": "VIABLE" if margin_db >= 0 else "NOT VIABLE",
+        "tx_height": tx_h_eff_actual,
+        "rx_height": rx_h_eff,
+    }
+
+
 def compute_batch_links(
     candidate_tx, rx_points, elev, tx_h, rx_h, f_mhz, polarization,
     climate, time_pct, location_pct, situation_pct, n0, epsilon, sigma,
@@ -74,145 +206,24 @@ def compute_batch_links(
     count = 0
 
     for tx_def in candidate_tx:
-        tx_lat = tx_def["lat"]
-        tx_lon = tx_def["lon"]
-        tx_h_eff = tx_def["height"] if tx_def["height"] is not None else tx_h
-
         for rx_def in rx_points:
             if feedback.isCanceled():
                 raise QgsProcessingException("Batch analysis cancelled by user.")
-            rx_lat = rx_def["lat"]
-            rx_lon = rx_def["lon"]
-            rx_h_eff = rx_def["height"] if rx_def["height"] is not None else rx_h
-
             try:
-                dist_m = haversine_m(tx_lat, tx_lon, rx_lat, rx_lon)
-                if dist_m < 1.0:
-                    count += 1
-                    continue
-
-                profile_points = elev.terrain_profile(tx_lat, tx_lon, rx_lat, rx_lon, step_m=30.0)
-                if len(profile_points) < 2:
-                    count += 1
-                    continue
-                distances = [p[0] for p in profile_points]
-                elevations = [p[1] for p in profile_points]
-                elevations = [0.0 if math.isnan(e) else e for e in elevations]
-                step_m_val = dist_m / max(len(distances) - 1, 1)
-                pfl = build_pfl(elevations, step_m_val)
-
-                itm_result = itm_p2p_loss(
-                    h_tx__meter=tx_h_eff,
-                    h_rx__meter=rx_h_eff,
-                    profile=pfl,
-                    climate=climate,
-                    N0=n0,
-                    f__mhz=f_mhz,
-                    polarization=polarization,
-                    epsilon=epsilon,
-                    sigma=sigma,
-                    time_pct=time_pct,
-                    location_pct=location_pct,
-                    situation_pct=situation_pct,
+                result = _compute_single_link(
+                    tx_def, rx_def, elev, tx_h, rx_h, f_mhz, polarization,
+                    climate, time_pct, location_pct, situation_pct, n0, epsilon, sigma,
+                    tx_power, tx_gain_default, rx_gain_default, cable_loss, rx_sens,
+                    tx_default_preset_key, rx_default_preset_key,
+                    tx_default_az, rx_default_az, tx_front_back_db, rx_front_back_db,
+                    k_factor, clutter_enabled, clutter_grid, tx_clutter_override,
+                    rx_clutter_override, wavelength_m,
                 )
-
-                clutter_losses = compute_terminal_clutter_losses(
-                    tx_lat=tx_lat,
-                    tx_lon=tx_lon,
-                    rx_lat=rx_lat,
-                    rx_lon=rx_lon,
-                    frequency_mhz=f_mhz,
-                    enabled=clutter_enabled,
-                    land_cover_grid=clutter_grid,
-                    tx_override=tx_clutter_override,
-                    rx_override=rx_clutter_override,
-                )
-
-                total_loss_db = itm_result.loss_db + clutter_losses.total_loss_db
-
-                tx_bearing = bearing_deg(tx_lat, tx_lon, rx_lat, rx_lon)
-                rx_bearing = bearing_deg(rx_lat, rx_lon, tx_lat, tx_lon)
-                vertical_angle = math.degrees(
-                    math.atan2((elevations[-1] + rx_h_eff) - (elevations[0] + tx_h_eff), max(dist_m, 1.0))
-                )
-
-                tx_gain_eff = tx_def["gain_db"] if tx_def["gain_db"] is not None else tx_gain_default
-                rx_gain_eff = rx_def["gain_db"] if rx_def["gain_db"] is not None else rx_gain_default
-
-                tx_preset_key = tx_def.get("antenna_preset", tx_default_preset_key)
-                if tx_preset_key not in ANTENNA_PRESET_KEYS:
-                    tx_preset_key = tx_default_preset_key
-                tx_preset_idx = ANTENNA_PRESET_KEYS.index(tx_preset_key)
-                tx_ant_config = antenna_config_from_values(
-                    preset=tx_preset_idx,
-                    azimuth_deg=tx_def.get("azimuth", tx_default_az),
-                    front_back_db=tx_front_back_db,
-                )
-                rx_preset_key = rx_def.get("antenna_preset", rx_default_preset_key)
-                if rx_preset_key not in ANTENNA_PRESET_KEYS:
-                    rx_preset_key = rx_default_preset_key
-                rx_preset_idx = ANTENNA_PRESET_KEYS.index(rx_preset_key)
-                rx_ant_config = antenna_config_from_values(
-                    preset=rx_preset_idx,
-                    azimuth_deg=rx_def.get("azimuth", rx_default_az),
-                    front_back_db=rx_front_back_db,
-                )
-
-                tx_ant_adj = antenna_gain_adjustment_db(tx_bearing, vertical_angle, tx_ant_config)
-                rx_ant_adj = antenna_gain_adjustment_db(rx_bearing, -vertical_angle, rx_ant_config)
-                ant_gain_adj_total = tx_ant_adj + rx_ant_adj
-
-                eirp_eff = tx_power + tx_gain_eff - cable_loss
-                prx_dbm = eirp_eff + rx_gain_eff + ant_gain_adj_total - total_loss_db
-                margin_db = prx_dbm - rx_sens
-
-                fresnel_r_arr = []
-                for i in range(len(distances)):
-                    d1 = distances[i]
-                    d2 = dist_m - d1
-                    if d1 > 0 and d2 > 0:
-                        fr = math.sqrt(wavelength_m * d1 * d2 / dist_m)
-                        fresnel_r_arr.append(fr)
-                    else:
-                        fresnel_r_arr.append(0.0)
-
-                fresnel_r_arr = np.array(fresnel_r_arr, dtype=np.float64)
-                elev_arr = np.array(elevations, dtype=np.float64)
-                dist_arr = np.array(distances, dtype=np.float64)
-
-                tx_antenna_h = elevations[0] + tx_h_eff
-                rx_antenna_h = elevations[-1] + rx_h_eff
-                t = np.divide(dist_arr, dist_m, out=np.zeros_like(dist_arr), where=dist_m > 0)
-                a_eff = k_factor * 6371000.0
-                bulge = (dist_arr * (dist_m - dist_arr)) / (2.0 * a_eff)
-                los_h = tx_antenna_h + t * (rx_antenna_h - tx_antenna_h)
-                terrain_bulge = elev_arr + bulge
-                fresnel_clearance = (los_h - fresnel_r_arr) - terrain_bulge
-                clearance_pct = float(
-                    np.sum(fresnel_clearance > 0) / max(len(fresnel_clearance), 1) * 100
-                )
-
-                results.append({
-                    "tx_lat": tx_lat,
-                    "tx_lon": tx_lon,
-                    "rx_lat": rx_lat,
-                    "rx_lon": rx_lon,
-                    "dist_m": dist_m,
-                    "dist_km": dist_m / 1000.0,
-                    "itm_loss_db": itm_result.loss_db,
-                    "total_loss_db": total_loss_db,
-                    "prx_dbm": prx_dbm,
-                    "margin_db": margin_db,
-                    "clearance_pct": clearance_pct,
-                    "status": "VIABLE" if margin_db >= 0 else "NOT VIABLE",
-                    "tx_height": tx_h_eff,
-                    "rx_height": rx_h_eff,
-                })
+                if result is not None:
+                    results.append(result)
             except Exception as exc:
-                logger.warning("Skipping TX(%.5f,%.5f)→RX(%.5f,%.5f): %s", tx_lat, tx_lon, rx_lat, rx_lon, exc)
-                count += 1
-                continue
-
+                logger.warning("Skipping TX(%.5f,%.5f)→RX(%.5f,%.5f): %s",
+                              tx_def["lat"], tx_def["lon"], rx_def["lat"], rx_def["lon"], exc)
             count += 1
             if count % 100 == 0 or count == total:
                 feedback.setProgress(20 + int(60 * count / max(total, 1)))
