@@ -36,12 +36,12 @@ import os
 import re
 import ssl
 import tempfile
-import time
-import urllib.error
 import urllib.request
 import getpass
 
 from osgeo import gdal, ogr, osr
+
+from .tile_download_base import download_tile_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ WORLDCOVER_BASE_URL = (
 )
 WORLDCOVER_TILE_SIZE_DEG = 3
 _DOWNLOAD_RETRIES = 3
-_SOCKET_TIMEOUT = 120  # seconds; covers TCP connect + individual socket reads
+_SOCKET_TIMEOUT = 120
 _MAX_TILES = 200
 _VALID_TILE_RE = re.compile(r"^[NS]\d{2}[EW]\d{3}$")
 
@@ -119,142 +119,23 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
         if feedback and feedback.isCanceled():
             return available
 
-        if not _VALID_TILE_RE.match(tile_id):
-            logger.error("Invalid WorldCover tile ID rejected: %s", tile_id)
-            continue
-
         filename = worldcover_tile_filename(tile_id)
         local_tif = os.path.join(temp_dir, filename)
-
-        if os.path.exists(local_tif):
-            if gdal.Open(local_tif) is not None:
-                logger.debug("WorldCover cache hit: %s", tile_id)
-                if feedback:
-                    feedback.pushInfo("WorldCover cache hit: " + tile_id)
-                available.append(local_tif)
-                continue
-            logger.warning("Cached WorldCover tile %s failed validation; re-downloading", tile_id)
-            try:
-                os.unlink(local_tif)
-            except OSError:
-                pass
-
         tile_url = worldcover_tile_url(tile_id)
-        if feedback:
-            feedback.pushInfo("Downloading WorldCover: " + tile_url)
 
-        opener = default_opener
-        downloaded = False
-
-        for attempt in range(_DOWNLOAD_RETRIES):
-            try:
-                with opener.open(tile_url, timeout=_SOCKET_TIMEOUT) as response:
-                    final_url = response.geturl()
-                    if not final_url.startswith(WORLDCOVER_BASE_URL):
-                        raise RuntimeError("Unexpected redirect to: " + final_url)
-                    expected_size = int(response.headers.get("Content-Length", 0))
-                    bytes_received = 0
-                    tmp_path = local_tif + ".tmp"
-                    with open(tmp_path, "wb") as f:
-                        while True:
-                            chunk = response.read(65536)
-                            if not chunk:
-                                break
-                            f.write(chunk)
-                            bytes_received += len(chunk)
-
-                if expected_size > 0 and bytes_received != expected_size:
-                    logger.warning(
-                        "Incomplete WorldCover download %s: %d/%d bytes",
-                        tile_id,
-                        bytes_received,
-                        expected_size,
-                    )
-                    try:
-                        os.unlink(local_tif + ".tmp")
-                    except OSError:
-                        pass
-                    if attempt < _DOWNLOAD_RETRIES - 1:
-                        time.sleep(2 ** attempt)
-                        continue
-                    raise ValueError(
-                        "Incomplete WorldCover download: {} of {} bytes".format(
-                            bytes_received, expected_size
-                        )
-                    )
-
-                test_ds = gdal.Open(local_tif + ".tmp")
-                if test_ds is None:
-                    logger.warning("Downloaded WorldCover tile is corrupt: %s", tile_id)
-                    try:
-                        os.unlink(local_tif + ".tmp")
-                    except OSError:
-                        pass
-                    if attempt < _DOWNLOAD_RETRIES - 1:
-                        time.sleep(2 ** attempt)
-                        continue
-                    break
-                test_ds = None
-
-                os.replace(local_tif + ".tmp", local_tif)
-                available.append(local_tif)
-                downloaded = True
-                break
-
-            except urllib.error.HTTPError as e:
-                if e.code == 404:
-                    logger.info("WorldCover tile not available (404): %s", tile_id)
-                    if feedback:
-                        feedback.pushInfo(
-                            "WorldCover tile not available (HTTP 404): " + tile_id
-                        )
-                    break
-                else:
-                    retry_after = e.headers.get("Retry-After")
-                    if retry_after:
-                        try:
-                            wait_secs = max(int(retry_after), 1)
-                        except ValueError:
-                            wait_secs = 2 ** attempt
-                        logger.info(
-                            "HTTP %d downloading %s — Retry-After: %ds (attempt %d/%d)",
-                            e.code, tile_id, wait_secs,
-                            attempt + 1, _DOWNLOAD_RETRIES,
-                        )
-                    else:
-                        wait_secs = 2 ** attempt
-                    logger.warning(
-                        "HTTP %d downloading %s (attempt %d/%d): %s",
-                        e.code,
-                        tile_id,
-                        attempt + 1,
-                        _DOWNLOAD_RETRIES,
-                        e,
-                    )
-                    if attempt < _DOWNLOAD_RETRIES - 1:
-                        time.sleep(wait_secs)
-            except Exception as e:
-                logger.warning(
-                    "Error downloading %s (attempt %d/%d): %s",
-                    tile_id,
-                    attempt + 1,
-                    _DOWNLOAD_RETRIES,
-                    e,
-                )
-                if feedback:
-                    feedback.pushInfo(
-                        "Error downloading {} (attempt {}): {}".format(
-                            tile_id, attempt + 1, str(e)
-                        )
-                    )
-                if attempt < _DOWNLOAD_RETRIES - 1:
-                    time.sleep(2 ** attempt)
-
-        if not downloaded and os.path.exists(local_tif + ".tmp"):
-            try:
-                os.unlink(local_tif + ".tmp")
-            except OSError:
-                pass
+        result = download_tile_with_retry(
+            tile_url=tile_url,
+            local_tif=local_tif,
+            base_name_label=tile_id,
+            feedback=feedback,
+            max_retries=_DOWNLOAD_RETRIES,
+            socket_timeout=_SOCKET_TIMEOUT,
+            valid_tile_re=_VALID_TILE_RE,
+            base_url=WORLDCOVER_BASE_URL,
+            opener=default_opener,
+        )
+        if result is not None:
+            available.append(result)
 
     return available
 

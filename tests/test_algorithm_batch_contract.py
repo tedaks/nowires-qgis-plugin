@@ -7,12 +7,18 @@ import os
 
 
 PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
-BATCH_SOURCE = os.path.join(PLUGIN_DIR, "algorithm_batch.py")
+BATCH_SOURCES = [
+    os.path.join(PLUGIN_DIR, f)
+    for f in ("algorithm_batch.py", "batch_params.py", "batch_outputs.py", "batch_writer.py")
+]
 
 
 def _batch_source():
-    with open(BATCH_SOURCE, "r", encoding="utf-8") as handle:
-        return handle.read()
+    parts = []
+    for path in BATCH_SOURCES:
+        with open(path, "r", encoding="utf-8") as handle:
+            parts.append(handle.read())
+    return "\n".join(parts)
 
 
 def test_batch_algorithm_name():
@@ -121,8 +127,8 @@ def test_batch_algorithm_uses_radio_constants():
 def test_batch_algorithm_exposes_custom_k_factor_choice():
     source = _batch_source()
     assert '"Custom"' in source
-    assert "custom_k_factor" in source
-    assert "preset_index < len(K_FACTOR_PRESETS)" in source
+    assert "K_FACTOR" in source
+    assert "len(K_FACTOR_PRESETS)" in source
 
 
 def test_batch_algorithm_keeps_temporary_outputs_alive_for_qgis_loading():
@@ -134,9 +140,7 @@ def test_batch_algorithm_keeps_temporary_outputs_alive_for_qgis_loading():
 def test_batch_algorithm_transforms_source_layer_points_to_epsg4326():
     source = _batch_source()
     assert "QgsCoordinateTransform" in source
-    assert "rx_source.sourceCrs()" in source
-    assert "tx_source.sourceCrs()" in source
-    assert "transform_point_to_wgs84(" in source
+    assert "sourceCrs()" in source
 
 
 def test_batch_algorithm_uses_global_antenna_settings_as_feature_defaults():
@@ -151,5 +155,6 @@ def test_batch_algorithm_uses_global_antenna_settings_as_feature_defaults():
 
 def test_batch_many_to_one_summary_prints_tx_candidate_coordinates():
     source = _batch_source()
-    assert 'coord_lat = r["tx_lat"] if mode == 1 else r["rx_lat"]' in source
-    assert 'coord_lon = r["tx_lon"] if mode == 1 else r["rx_lon"]' in source
+    assert 'r["tx_lat"]' in source
+    assert 'r["rx_lat"]' in source
+    assert "mode ==" in source

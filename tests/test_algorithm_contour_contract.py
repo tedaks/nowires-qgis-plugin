@@ -7,12 +7,25 @@ import os
 
 
 PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
-SOURCE_PATH = os.path.join(PLUGIN_DIR, "algorithm_contour.py")
+CONTOUR_SOURCES = [
+    os.path.join(PLUGIN_DIR, f)
+    for f in (
+        "algorithm_contour.py",
+        "contour_smoothing.py",
+        "contour_overlay.py",
+        "contour_symbology.py",
+        "contour_generation.py",
+        "contour_pipeline.py",
+    )
+]
 
 
 def _source_text():
-    with open(SOURCE_PATH, "r", encoding="utf-8") as handle:
-        return handle.read()
+    parts = []
+    for path in CONTOUR_SOURCES:
+        with open(path, "r", encoding="utf-8") as handle:
+            parts.append(handle.read())
+    return "\n".join(parts)
 
 
 def test_contour_algorithm_declares_output_destination_parameter():
