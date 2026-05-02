@@ -32,9 +32,8 @@ from qgis.core import (
     QgsRasterShader,
     QgsSingleBandPseudoColorRenderer,
 )
-from osgeo import gdal, osr
 
-from .coverage_compute import grid_to_raster_array
+from .raster_io import write_geotiff
 
 __all__ = [
     "write_coverage_raster",
@@ -47,60 +46,12 @@ __all__ = [
 
 def write_coverage_raster(tif_path, prx_grid, min_lat, max_lat, min_lon, max_lon, rx_sens):
     """Write a coverage raster to GeoTIFF."""
-    driver = gdal.GetDriverByName("GTiff")
-    n_rows, n_cols = prx_grid.shape
-    ds = driver.Create(tif_path, n_cols, n_rows, 1, gdal.GDT_Float32)
-    if ds is None:
-        raise QgsProcessingException("Failed to create GeoTIFF: {}".format(tif_path))
-    try:
-        ds.SetGeoTransform(
-            [
-                min_lon,
-                (max_lon - min_lon) / n_cols,
-                0,
-                max_lat,
-                0,
-                -(max_lat - min_lat) / n_rows,
-            ]
-        )
-        srs = osr.SpatialReference()
-        srs.ImportFromEPSG(4326)
-        ds.SetProjection(srs.ExportToWkt())
-        band = ds.GetRasterBand(1)
-        band.SetNoDataValue(-9999.0)
-        band.WriteArray(grid_to_raster_array(prx_grid))
-        band.FlushCache()
-    finally:
-        ds = None
+    write_geotiff(tif_path, prx_grid, min_lat, max_lat, min_lon, max_lon)
 
 
 def write_delta_raster(tif_path, delta_grid, min_lat, max_lat, min_lon, max_lon):
     """Write the delta (A-B) raster to GeoTIFF."""
-    driver = gdal.GetDriverByName("GTiff")
-    n_rows, n_cols = delta_grid.shape
-    ds = driver.Create(tif_path, n_cols, n_rows, 1, gdal.GDT_Float32)
-    if ds is None:
-        raise QgsProcessingException("Failed to create GeoTIFF: {}".format(tif_path))
-    try:
-        ds.SetGeoTransform(
-            [
-                min_lon,
-                (max_lon - min_lon) / n_cols,
-                0,
-                max_lat,
-                0,
-                -(max_lat - min_lat) / n_rows,
-            ]
-        )
-        srs = osr.SpatialReference()
-        srs.ImportFromEPSG(4326)
-        ds.SetProjection(srs.ExportToWkt())
-        band = ds.GetRasterBand(1)
-        band.SetNoDataValue(-9999.0)
-        band.WriteArray(grid_to_raster_array(delta_grid))
-        band.FlushCache()
-    finally:
-        ds = None
+    write_geotiff(tif_path, delta_grid, min_lat, max_lat, min_lon, max_lon)
 
 
 def apply_delta_style(layer, threshold_db, style="diverging"):
