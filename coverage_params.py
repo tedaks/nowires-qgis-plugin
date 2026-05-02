@@ -50,10 +50,13 @@ from .clutter import (
     LandCoverGrid,
     clutter_override_value,
 )
-
-GRID_SIZE_PRESETS = [64, 128, 192, 256, 384, 512, 768, 1024]
-POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
-METERS_PER_DEGREE_LAT = 111320.0
+from .constants import (
+    METERS_PER_DEGREE_LAT,
+    POLARIZATION_NAMES,
+    CLIMATE_OPTIONS,
+    GRID_SIZE_PRESETS,
+    GRID_SIZE_OPTIONS,
+)
 
 _PARAM_NAMES = (
     "TX_POINT", "AREA", "TX_HEIGHT", "RX_HEIGHT", "FREQ_MHZ", "RADIUS_KM",
@@ -75,16 +78,6 @@ def _install_constants(cls, constants_dict):
 
 _DBL = QgsProcessingParameterNumber.Double
 
-_GRID_SIZE_OPTIONS = [
-    "64 x 64", "128 x 128", "192 x 192", "256 x 256",
-    "384 x 384", "512 x 512", "768 x 768", "1024 x 1024",
-]
-
-_CLIMATE_OPTIONS = [
-    "Equatorial", "Continental Subtropical", "Maritime Subtropical", "Desert",
-    "Continental Temperate", "Maritime Temperate (land)", "Maritime Temperate (sea)",
-]
-
 
 def _add_basic_params(alg):
     alg.addParameter(QgsProcessingParameterPoint(
@@ -103,13 +96,13 @@ def _add_basic_params(alg):
         defaultValue=50.0, minValue=1.0, maxValue=500.0))
     alg.addParameter(QgsProcessingParameterEnum(
         alg.GRID_SIZE, "Grid size resolution",
-        options=_GRID_SIZE_OPTIONS, defaultValue=2))
+        options=GRID_SIZE_OPTIONS, defaultValue=2))
     alg.addParameter(QgsProcessingParameterEnum(
         alg.POLARIZATION, "Polarization",
         options=["Horizontal", "Vertical"], defaultValue=1))
     alg.addParameter(QgsProcessingParameterEnum(
         alg.CLIMATE, "Climate zone",
-        options=_CLIMATE_OPTIONS, defaultValue=1))
+        options=CLIMATE_OPTIONS, defaultValue=1))
 
 
 def _add_pct_params(alg):

@@ -24,7 +24,8 @@ import math
 
 import numpy as np
 
-METERS_PER_DEGREE_LAT = 111320.0
+from .constants import METERS_PER_DEGREE_LAT
+
 _MIN_COVERAGE_DISTANCE_M = 1.0
 
 

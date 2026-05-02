@@ -43,6 +43,7 @@ from .radio import (
 )
 from .antenna import ANTENNA_PRESET_OPTIONS
 from .clutter import CLUTTER_MODEL_OPTIONS, CLUTTER_OVERRIDE_OPTIONS
+from .constants import CLIMATE_OPTIONS, K_FACTOR_PRESETS_OPTIONS
 
 __all__ = [
     "MODE", "TX_POINT", "RX_LAYER", "RX_POINT", "TX_LAYER",
@@ -173,10 +174,7 @@ def _add_link_params(algorithm):
         POLARIZATION, "Polarization",
         options=["Horizontal", "Vertical"], defaultValue=1))
     algorithm.addParameter(QgsProcessingParameterEnum(
-        CLIMATE, "Climate zone", options=[
-            "Equatorial", "Continental Subtropical", "Maritime Subtropical",
-            "Desert", "Continental Temperate", "Maritime Temperate (land)",
-            "Maritime Temperate (sea)"], defaultValue=1))
+        CLIMATE, "Climate zone", options=CLIMATE_OPTIONS, defaultValue=1))
     algorithm.addParameter(QgsProcessingParameterNumber(
         TIME_PCT, "Time percentage",
         type=QgsProcessingParameterNumber.Double,
@@ -246,10 +244,7 @@ def _add_advanced_params(algorithm):
         p.setFlags(p.flags() | QgsProcessingParameterNumber.FlagAdvanced)
         return p
     algorithm.addParameter(QgsProcessingParameterEnum(
-        K_FACTOR_PRESET, "Earth radius factor preset (k)", options=[
-            "0.67 - Sub-refractive", "1.00 - Geometric",
-            "1.33 - Standard atmosphere", "2.00 - Super-refractive",
-            "4.00 - Strong super-refractive", "Custom"], defaultValue=2))
+        K_FACTOR_PRESET, "Earth radius factor preset (k)", options=K_FACTOR_PRESETS_OPTIONS, defaultValue=2))
     algorithm.addParameter(_adv(QgsProcessingParameterNumber(
         K_FACTOR, "Custom Earth radius factor (k)",
         type=QgsProcessingParameterNumber.Double,

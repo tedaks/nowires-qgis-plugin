@@ -10,6 +10,8 @@ PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
 P2P_SOURCES = [
     os.path.join(PLUGIN_DIR, f)
     for f in (
+        "base_algorithm.py",
+        "constants.py",
         "algorithm_p2p.py",
         "p2p_params.py",
         "p2p_compute.py",
