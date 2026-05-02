@@ -44,6 +44,7 @@ from .radio import (
 from .antenna import ANTENNA_PRESET_OPTIONS
 from .clutter import CLUTTER_MODEL_OPTIONS, CLUTTER_OVERRIDE_OPTIONS
 from .constants import CLIMATE_OPTIONS, K_FACTOR_PRESETS_OPTIONS
+from .shared_params import add_link_budget_params, add_clutter_params, add_advanced_itm_params
 
 __all__ = [
     "MODE", "TX_POINT", "RX_LAYER", "RX_POINT", "TX_LAYER",
@@ -189,24 +190,6 @@ def _add_link_params(algorithm):
         defaultValue=50.0, minValue=0.01, maxValue=99.99))
 
 
-def _add_budget_params(algorithm):
-    algorithm.addParameter(QgsProcessingParameterNumber(
-        TX_POWER, "TX power (dBm)",
-        type=QgsProcessingParameterNumber.Double, defaultValue=43.0))
-    algorithm.addParameter(QgsProcessingParameterNumber(
-        TX_GAIN, "TX antenna gain (dBi)",
-        type=QgsProcessingParameterNumber.Double, defaultValue=8.0))
-    algorithm.addParameter(QgsProcessingParameterNumber(
-        RX_GAIN, "RX antenna gain (dBi)",
-        type=QgsProcessingParameterNumber.Double, defaultValue=2.0))
-    algorithm.addParameter(QgsProcessingParameterNumber(
-        CABLE_LOSS, "Cable loss (dB)",
-        type=QgsProcessingParameterNumber.Double, defaultValue=2.0, minValue=0.0))
-    algorithm.addParameter(QgsProcessingParameterNumber(
-        RX_SENSITIVITY, "RX sensitivity (dBm)",
-        type=QgsProcessingParameterNumber.Double, defaultValue=-100.0))
-
-
 def _add_antenna_params(algorithm, prefix):
     label = prefix.rstrip("_")
     algorithm.addParameter(QgsProcessingParameterEnum(
@@ -222,45 +205,6 @@ def _add_antenna_params(algorithm, prefix):
         getattr(algorithm, prefix + "FRONT_BACK_DB"),
         label + " front-to-back ratio (dB)",
         type=QgsProcessingParameterNumber.Double, defaultValue=25.0, minValue=0.0))
-
-
-def _add_clutter_params(algorithm):
-    algorithm.addParameter(QgsProcessingParameterEnum(
-        CLUTTER_MODEL, "Clutter correction",
-        options=CLUTTER_MODEL_OPTIONS, defaultValue=0))
-    algorithm.addParameter(QgsProcessingParameterFile(
-        CLUTTER_RASTER, "Land-cover raster (auto-downloaded if blank)",
-        extension="tif", optional=True))
-    algorithm.addParameter(QgsProcessingParameterEnum(
-        TX_CLUTTER_OVERRIDE, "TX clutter override",
-        options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0))
-    algorithm.addParameter(QgsProcessingParameterEnum(
-        RX_CLUTTER_OVERRIDE, "RX clutter override",
-        options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0))
-
-
-def _add_advanced_params(algorithm):
-    def _adv(p):
-        p.setFlags(p.flags() | QgsProcessingParameterNumber.FlagAdvanced)
-        return p
-    algorithm.addParameter(QgsProcessingParameterEnum(
-        K_FACTOR_PRESET, "Earth radius factor preset (k)", options=K_FACTOR_PRESETS_OPTIONS, defaultValue=2))
-    algorithm.addParameter(_adv(QgsProcessingParameterNumber(
-        K_FACTOR, "Custom Earth radius factor (k)",
-        type=QgsProcessingParameterNumber.Double,
-        defaultValue=4.0 / 3.0, minValue=0.1)))
-    algorithm.addParameter(_adv(QgsProcessingParameterNumber(
-        N0, "Surface refractivity N0 (N-units)",
-        type=QgsProcessingParameterNumber.Double,
-        defaultValue=301.0, minValue=ITM_MIN_N0, maxValue=ITM_MAX_N0)))
-    algorithm.addParameter(_adv(QgsProcessingParameterNumber(
-        EPSILON, "Earth permittivity (epsilon)",
-        type=QgsProcessingParameterNumber.Double,
-        defaultValue=15.0, minValue=1.0)))
-    algorithm.addParameter(_adv(QgsProcessingParameterNumber(
-        SIGMA, "Earth conductivity (sigma, S/m)",
-        type=QgsProcessingParameterNumber.Double,
-        defaultValue=0.005, minValue=ITM_MIN_SIGMA)))
 
 
 def _add_output_params(algorithm):
@@ -280,9 +224,9 @@ def _add_output_params(algorithm):
 def add_batch_params(algorithm):
     _add_mode_params(algorithm)
     _add_link_params(algorithm)
-    _add_budget_params(algorithm)
+    add_link_budget_params(algorithm)
     _add_antenna_params(algorithm, "TX_")
     _add_antenna_params(algorithm, "RX_")
-    _add_clutter_params(algorithm)
-    _add_advanced_params(algorithm)
+    add_clutter_params(algorithm)
+    add_advanced_itm_params(algorithm)
     _add_output_params(algorithm)

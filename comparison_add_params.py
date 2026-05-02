@@ -35,12 +35,12 @@ from qgis.core import (
 )
 
 from .antenna import ANTENNA_PRESET_OPTIONS
-from .clutter import CLUTTER_MODEL_OPTIONS, CLUTTER_OVERRIDE_OPTIONS
 from .comparison_params import (
     DELTA_STYLE_OPTIONS,
     OUTPUT_CONSTANTS,
 )
 from .constants import CLIMATE_OPTIONS, GRID_SIZE_OPTIONS
+from .shared_params import add_clutter_params
 
 __all__ = ["add_panel_params", "add_comparison_params"]
 
@@ -169,31 +169,7 @@ def add_panel_params(algorithm, prefix, config):
             extension="csv", optional=True,
         )
     )
-    algorithm.addParameter(
-        QgsProcessingParameterEnum(
-            f"{prefix}_CLUTTER_MODEL", f"Panel {panel_label} Clutter correction",
-            options=CLUTTER_MODEL_OPTIONS, defaultValue=0,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterFile(
-            f"{prefix}_CLUTTER_RASTER",
-            f"Panel {panel_label} Land-cover raster (auto-downloaded if blank)",
-            extension="tif", optional=True,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterEnum(
-            f"{prefix}_TX_CLUTTER_OVERRIDE", f"Panel {panel_label} TX clutter override",
-            options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterEnum(
-            f"{prefix}_RX_CLUTTER_OVERRIDE", f"Panel {panel_label} RX clutter override",
-            options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0,
-        )
-    )
+    add_clutter_params(algorithm, attr_getter=lambda name: getattr(algorithm, f"{prefix}_{name}"))
     n0_param = config["n0_param"](
         f"{prefix}_N0", f"Panel {panel_label} Surface refractivity N0 (N-units)", defaultValue=301.0,
     )
