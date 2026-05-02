@@ -57,6 +57,7 @@ from .constants import (
     GRID_SIZE_PRESETS,
     GRID_SIZE_OPTIONS,
 )
+from .shared_params import add_link_budget_params, add_clutter_params, add_advanced_itm_params
 
 _PARAM_NAMES = (
     "TX_POINT", "AREA", "TX_HEIGHT", "RX_HEIGHT", "FREQ_MHZ", "RADIUS_KM",
@@ -115,20 +116,6 @@ def _add_pct_params(alg):
             attr, label, type=_DBL, defaultValue=50.0, minValue=0.01, maxValue=99.99))
 
 
-def _add_link_budget_params(alg):
-    alg.addParameter(QgsProcessingParameterNumber(
-        alg.TX_POWER, "TX power (dBm)", type=_DBL, defaultValue=43.0))
-    alg.addParameter(QgsProcessingParameterNumber(
-        alg.TX_GAIN, "TX antenna gain (dBi)", type=_DBL, defaultValue=8.0))
-    alg.addParameter(QgsProcessingParameterNumber(
-        alg.RX_GAIN, "RX antenna gain (dBi)", type=_DBL, defaultValue=2.0))
-    alg.addParameter(QgsProcessingParameterNumber(
-        alg.CABLE_LOSS, "Cable loss (dB)", type=_DBL,
-        defaultValue=2.0, minValue=0.0))
-    alg.addParameter(QgsProcessingParameterNumber(
-        alg.RX_SENSITIVITY, "RX sensitivity (dBm)", type=_DBL, defaultValue=-100.0))
-
-
 def _add_antenna_params(alg):
     alg.addParameter(QgsProcessingParameterNumber(
         alg.ANTENNA_AZ, "Antenna azimuth (deg, blank=omni)", type=_DBL,
@@ -151,41 +138,6 @@ def _add_antenna_params(alg):
         alg.V_PATTERN, "TX vertical pattern CSV", extension="csv", optional=True))
 
 
-def _add_clutter_params(alg):
-    alg.addParameter(QgsProcessingParameterEnum(
-        alg.CLUTTER_MODEL, "Clutter correction",
-        options=CLUTTER_MODEL_OPTIONS, defaultValue=0))
-    alg.addParameter(QgsProcessingParameterFile(
-        alg.CLUTTER_RASTER, "Land-cover raster (auto-downloaded if blank)",
-        extension="tif", optional=True))
-    alg.addParameter(QgsProcessingParameterEnum(
-        alg.TX_CLUTTER_OVERRIDE, "TX clutter override",
-        options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0))
-    alg.addParameter(QgsProcessingParameterEnum(
-        alg.RX_CLUTTER_OVERRIDE, "RX clutter override",
-        options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0))
-
-
-def _add_advanced_param(alg, attr, label, default, min_val=None, max_val=None):
-    kwargs = {"type": _DBL, "defaultValue": default}
-    if min_val is not None:
-        kwargs["minValue"] = min_val
-    if max_val is not None:
-        kwargs["maxValue"] = max_val
-    param = QgsProcessingParameterNumber(attr, label, **kwargs)
-    param.setFlags(param.flags() | QgsProcessingParameterNumber.FlagAdvanced)
-    alg.addParameter(param)
-
-
-def _add_advanced_params(alg):
-    _add_advanced_param(alg, alg.N0, "Surface refractivity N0 (N-units)",
-                        301.0, min_val=ITM_MIN_N0, max_val=ITM_MAX_N0)
-    _add_advanced_param(alg, alg.EPSILON, "Earth permittivity (epsilon)",
-                        15.0, min_val=1.0)
-    _add_advanced_param(alg, alg.SIGMA, "Earth conductivity (sigma, S/m)",
-                        0.005, min_val=ITM_MIN_SIGMA)
-
-
 def _add_output_params(alg):
     alg.addParameter(QgsProcessingParameterFileDestination(
         alg.OUTPUT_RASTER, "Coverage raster output", "GeoTIFF files (*.tif)"))
@@ -203,10 +155,10 @@ def _add_output_params(alg):
 def add_coverage_params(algorithm):
     _add_basic_params(algorithm)
     _add_pct_params(algorithm)
-    _add_link_budget_params(algorithm)
+    add_link_budget_params(algorithm)
     _add_antenna_params(algorithm)
-    _add_clutter_params(algorithm)
-    _add_advanced_params(algorithm)
+    add_clutter_params(algorithm)
+    add_advanced_itm_params(algorithm, include_k_factor=False)
     _add_output_params(algorithm)
 
 

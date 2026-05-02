@@ -12,6 +12,7 @@ P2P_SOURCES = [
     for f in (
         "base_algorithm.py",
         "constants.py",
+        "shared_params.py",
         "algorithm_p2p.py",
         "p2p_params.py",
         "p2p_compute.py",
@@ -72,7 +73,7 @@ def test_p2p_algorithm_exposes_k_factor_preset_and_legacy_numeric_parameter():
     assert "Custom" in source
     assert "defaultValue=2" in source
     assert "K_FACTOR" in source
-    assert '"Custom Earth radius factor (k)"' in source
+    assert "Custom Earth radius factor (k)" in source
     assert "QgsProcessingParameterNumber(" in source
 
 
