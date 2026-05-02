@@ -36,8 +36,6 @@ import os
 import re
 import ssl
 import tempfile
-import time
-import urllib.error
 import urllib.request
 import getpass
 
@@ -48,13 +46,15 @@ from qgis.core import (
     QgsRectangle,
 )
 
+from .tile_download_base import download_tile_with_retry
+
 logger = logging.getLogger(__name__)
 
 COPERNICUS_BASE_URL = "https://copernicus-dem-30m.s3.amazonaws.com/"
 _MAX_TILES = 200
 _DOWNLOAD_RETRIES = 3
-_SOCKET_TIMEOUT = 60   # seconds; covers TCP connect + individual socket reads
-_WALL_CLOCK_TIMEOUT = 300  # seconds; total per-tile download including all retries
+_SOCKET_TIMEOUT = 60
+_WALL_CLOCK_TIMEOUT = 300
 _VALID_TILE_RE = re.compile(r"^Copernicus_DSM_COG_10_[NS]\d{2}_00_[EW]\d{3}_00_DEM$")
 
 
@@ -106,11 +106,6 @@ def required_tiles(south, north, west, east, feedback=None, max_tiles=_MAX_TILES
 
 
 def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
-    # NOTE: This function is NOT safe for concurrent invocation from multiple
-    # threads or processes. The os.path.exists() cache check (TOCTOU race)
-    # could result in two threads downloading the same tile simultaneously.
-    # Since QGIS Processing algorithms use FlagNoThreading, this is acceptable
-    # for the current single-threaded usage pattern.
     if temp_dir is None:
         temp_dir = get_temp_dir()
 
@@ -124,141 +119,22 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
         if feedback and feedback.isCanceled():
             return available
 
-        if not _VALID_TILE_RE.match(tile_name):
-            logger.error("Invalid tile name rejected: %s", tile_name)
-            continue
-
         local_tif = os.path.join(temp_dir, tile_name + ".tif")
-
-        if os.path.exists(local_tif):
-            if gdal.Open(local_tif) is not None:
-                logger.debug("Cache hit: %s", tile_name)
-                if feedback:
-                    feedback.pushInfo("Cache hit: " + tile_name)
-                available.append(local_tif)
-                continue
-            logger.warning("Cached tile %s failed validation; re-downloading", tile_name)
-            try:
-                os.unlink(local_tif)
-            except OSError:
-                pass
-
         tile_url = "{}{}/{}.tif".format(COPERNICUS_BASE_URL, tile_name, tile_name)
-        if feedback:
-            feedback.pushInfo("Downloading: " + tile_url)
 
-        opener = proxy_opener or default_opener
-        downloaded = False
-
-        for attempt in range(_DOWNLOAD_RETRIES):
-            if feedback and feedback.isCanceled():
-                return available
-            try:
-                with opener.open(tile_url, timeout=_SOCKET_TIMEOUT) as response:
-                    final_url = response.geturl()
-                    if not final_url.startswith(COPERNICUS_BASE_URL):
-                        raise RuntimeError("Unexpected redirect to: " + final_url)
-                    expected_size = int(response.headers.get("Content-Length", 0))
-                    bytes_received = 0
-                    tmp_path = local_tif + ".tmp"
-                    with open(tmp_path, "wb") as f:
-                        while True:
-                            chunk = response.read(65536)
-                            if not chunk:
-                                break
-                            f.write(chunk)
-                            bytes_received += len(chunk)
-
-                if expected_size > 0 and bytes_received != expected_size:
-                    logger.warning(
-                        "Incomplete download %s: %d/%d bytes",
-                        tile_name,
-                        bytes_received,
-                        expected_size,
-                    )
-                    try:
-                        os.unlink(tmp_path)
-                    except OSError:
-                        pass
-                    if attempt < _DOWNLOAD_RETRIES - 1:
-                        time.sleep(2 ** attempt)
-                        continue
-                    raise ValueError(
-                        "Incomplete download: {} of {} bytes".format(
-                            bytes_received, expected_size
-                        )
-                    )
-
-                test_ds = gdal.Open(tmp_path)
-                if test_ds is None:
-                    logger.warning("Downloaded tile is corrupt: %s", tile_name)
-                    try:
-                        os.unlink(tmp_path)
-                    except OSError:
-                        pass
-                    if attempt < _DOWNLOAD_RETRIES - 1:
-                        time.sleep(2 ** attempt)
-                        continue
-                    break
-                test_ds = None
-
-                os.replace(tmp_path, local_tif)
-                available.append(local_tif)
-                downloaded = True
-                break
-
-            except urllib.error.HTTPError as e:
-                if e.code == 404:
-                    logger.info("Tile not available (404): %s", tile_name)
-                    if feedback:
-                        feedback.pushInfo("Tile not available (HTTP 404): " + tile_name)
-                    break
-                else:
-                    retry_after = e.headers.get("Retry-After")
-                    if retry_after:
-                        try:
-                            wait_secs = max(int(retry_after), 1)
-                        except ValueError:
-                            wait_secs = 2 ** attempt
-                        logger.info(
-                            "HTTP %d downloading %s — Retry-After: %ds (attempt %d/%d)",
-                            e.code, tile_name, wait_secs,
-                            attempt + 1, _DOWNLOAD_RETRIES,
-                        )
-                    else:
-                        wait_secs = 2 ** attempt
-                    logger.warning(
-                        "HTTP %d downloading %s (attempt %d/%d): %s",
-                        e.code,
-                        tile_name,
-                        attempt + 1,
-                        _DOWNLOAD_RETRIES,
-                        e,
-                    )
-                    if attempt < _DOWNLOAD_RETRIES - 1:
-                        time.sleep(wait_secs)
-            except Exception as e:
-                logger.warning(
-                    "Error downloading %s (attempt %d/%d): %s",
-                    tile_name,
-                    attempt + 1,
-                    _DOWNLOAD_RETRIES,
-                    e,
-                )
-                if feedback:
-                    feedback.pushInfo(
-                        "Error downloading {} (attempt {}): {}".format(
-                            tile_name, attempt + 1, str(e)
-                        )
-                    )
-                if attempt < _DOWNLOAD_RETRIES - 1:
-                    time.sleep(2**attempt)
-
-        if not downloaded and os.path.exists(local_tif + ".tmp"):
-            try:
-                os.unlink(local_tif + ".tmp")
-            except OSError:
-                pass
+        result = download_tile_with_retry(
+            tile_url=tile_url,
+            local_tif=local_tif,
+            base_name_label=tile_name,
+            feedback=feedback,
+            max_retries=_DOWNLOAD_RETRIES,
+            socket_timeout=_SOCKET_TIMEOUT,
+            valid_tile_re=_VALID_TILE_RE,
+            base_url=COPERNICUS_BASE_URL,
+            opener=proxy_opener or default_opener,
+        )
+        if result is not None:
+            available.append(result)
 
     return available
 

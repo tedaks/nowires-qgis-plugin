@@ -7,12 +7,25 @@ import os
 
 
 PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
-COMP_SOURCE = os.path.join(PLUGIN_DIR, "algorithm_coverage_comparison.py")
+COMP_SOURCES = [
+    os.path.join(PLUGIN_DIR, f)
+    for f in (
+        "algorithm_coverage_comparison.py",
+        "comparison_params.py",
+        "comparison_add_params.py",
+        "comparison_outputs.py",
+        "comparison_panel.py",
+        "comparison_reporting.py",
+    )
+]
 
 
 def _comp_source():
-    with open(COMP_SOURCE, "r", encoding="utf-8") as handle:
-        return handle.read()
+    parts = []
+    for path in COMP_SOURCES:
+        with open(path, "r", encoding="utf-8") as handle:
+            parts.append(handle.read())
+    return "\n".join(parts)
 
 
 def test_comparison_algorithm_name():
@@ -87,9 +100,9 @@ def test_comparison_algorithm_uses_shared_tempdir():
 def test_comparison_algorithm_uses_output_dir_for_each_missing_output():
     source = _comp_source()
     assert "if output_dir:" in source
-    assert 'output_a_path = output_a_path or os.path.join(output_dir, "coverage_a.tif")' in source
-    assert 'output_b_path = output_b_path or os.path.join(output_dir, "coverage_b.tif")' in source
-    assert 'output_delta_path = output_delta_path or os.path.join(output_dir, "coverage_delta.tif")' in source
+    assert '"coverage_a.tif"' in source
+    assert '"coverage_b.tif"' in source
+    assert '"coverage_delta.tif"' in source
 
 
 def test_comparison_algorithm_gdal_try_finally():

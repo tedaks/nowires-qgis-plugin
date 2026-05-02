@@ -8,7 +8,16 @@ import os
 
 PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
 PALETTE_SOURCE_PATH = os.path.join(PLUGIN_DIR, "coverage_palette.py")
-ALGORITHM_SOURCE_PATH = os.path.join(PLUGIN_DIR, "algorithm_coverage.py")
+ALGORITHM_SOURCES = [
+    os.path.join(PLUGIN_DIR, f)
+    for f in (
+        "algorithm_coverage.py",
+        "coverage_params.py",
+        "coverage_reporting.py",
+        "coverage_pool.py",
+        "coverage_tasks.py",
+    )
+]
 
 
 def _palette_source():
@@ -17,8 +26,11 @@ def _palette_source():
 
 
 def _algorithm_source():
-    with open(ALGORITHM_SOURCE_PATH, "r", encoding="utf-8") as handle:
-        return handle.read()
+    parts = []
+    for path in ALGORITHM_SOURCES:
+        with open(path, "r", encoding="utf-8") as handle:
+            parts.append(handle.read())
+    return "\n".join(parts)
 
 
 def test_coverage_algorithm_delegates_to_palette():

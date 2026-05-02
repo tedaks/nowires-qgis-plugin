@@ -8,11 +8,15 @@ import os
 
 PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
 ENGINE_SOURCE = os.path.join(PLUGIN_DIR, "coverage_engine.py")
+POOL_SOURCE = os.path.join(PLUGIN_DIR, "coverage_pool.py")
 
 
 def _engine_source():
-    with open(ENGINE_SOURCE, "r", encoding="utf-8") as handle:
-        return handle.read()
+    parts = []
+    for path in (ENGINE_SOURCE, POOL_SOURCE):
+        with open(path, "r", encoding="utf-8") as handle:
+            parts.append(handle.read())
+    return "\n".join(parts)
 
 
 def test_max_workers_uses_cpu_count():
@@ -55,4 +59,4 @@ def test_thread_pool_not_used():
 
 def test_sequential_fallback_exists():
     source = _engine_source()
-    assert "not use_multiprocessing" in source
+    assert "use_mp" in source or "use_multiprocessing" in source

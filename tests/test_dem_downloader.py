@@ -18,7 +18,23 @@ def _import_dem_downloader():
     qgis_core.QgsRectangle = MagicMock()
     sys.modules["qgis"] = qgis
     sys.modules["qgis.core"] = qgis_core
-    return importlib.import_module("dem_downloader")
+    import os
+    plugin_dir = os.path.join(os.path.dirname(__file__), "..")
+    if plugin_dir not in sys.path:
+        sys.path.insert(0, plugin_dir)
+    no_wires_pkg = types.ModuleType("NoWires")
+    no_wires_pkg.__path__ = [plugin_dir]
+    no_wires_pkg.__package__ = "NoWires"
+    no_wires_pkg.__name__ = "NoWires"
+    sys.modules["NoWires"] = no_wires_pkg
+    _tile_base = importlib.import_module("tile_download_base")
+    sys.modules["NoWires.tile_download_base"] = _tile_base
+    setattr(no_wires_pkg, "tile_download_base", _tile_base)
+    if "tile_download_base" not in sys.modules:
+        sys.modules["tile_download_base"] = _tile_base
+    dd = importlib.import_module("NoWires.dem_downloader")
+    setattr(no_wires_pkg, "dem_downloader", dd)
+    return dd
 
 
 def test_dem_cache_directory_is_per_user(tmp_path, monkeypatch):

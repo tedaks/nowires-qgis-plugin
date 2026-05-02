@@ -9,74 +9,191 @@
         copyright            : (C) 2026 Bortre Tenamo
         email                : tedaks@gmail.com
  ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 3 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
-
-
+ /***************************************************************************
+  *                                                                         *
+  *   This program is free software; you can redistribute it and/or modify  *
+  *   it under the terms of the GNU General Public License as published by  *
+  *   the Free Software Foundation; either version 3 of the License, or     *
+  *   (at your option) any later version.                                   *
+  *                                                                         *
+  ***************************************************************************/
 Batch P2P Analysis Algorithm.
-
-Supports two modes:
-- One-to-Many: single TX point to multiple RX points from a vector layer
-- Many-to-One: multiple candidate TX sites from a vector layer to single RX point
-
-Results are ranked by link margin and exported with a marker layer.
-
-Portions of this module are adapted from the tedaks/nowires web application
-and were originally distributed under the MIT License. See NOTICE.md for
-attribution details.
+Supports One-to-Many and Many-to-One modes. Results are ranked by link margin.
+Portions adapted from tedaks/nowires (MIT). See NOTICE.md.
 """
 
 import logging
 import os
 import tempfile
-
-logger = logging.getLogger(__name__)
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.core import (
-    Qgis,
-    QgsProcessingAlgorithm,
-    QgsProcessingException,
-)
-
+from qgis.core import Qgis, QgsProcessingAlgorithm, QgsProcessingException
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
-from .radio import (
-    K_FACTOR_PRESETS,
-    resolve_k_factor,
-    validate_itm_input_ranges,
-)
+from .radio import K_FACTOR_PRESETS, resolve_k_factor, validate_itm_input_ranges
 from .antenna import antenna_preset_key
-from .clutter import (
-    LandCoverGrid,
-    clutter_override_value,
-    ensure_clutter_grid_for_area,
-)
+from .clutter import LandCoverGrid, clutter_override_value, ensure_clutter_grid_for_area
 from .processing_utils import queue_layer_for_loading
-from .batch_params import (
-    BATCH_PARAM_CONSTANTS,
-    BATCH_MODE_OPTIONS,
-    add_batch_params,
-)
+from .batch_params import BATCH_PARAM_CONSTANTS, BATCH_MODE_OPTIONS, add_batch_params
 from .batch_outputs import (
-    _feat_attr,
-    compute_batch_links,
-    rank_batch_results,
-    write_batch_marker_layer,
-    write_batch_csv,
-    write_batch_json,
+    _feat_attr, compute_batch_links, rank_batch_results,
+    write_batch_marker_layer, write_batch_csv, write_batch_json,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _install_constants(cls, constants_dict):
     for key, value in constants_dict.items():
         setattr(cls, key, value)
+
+
+def _features_to_points(features, source_crs, transform_fn, default_height):
+    points = []
+    for feat in features:
+        geom = feat.geometry()
+        if geom is None or geom.isEmpty() or geom.isMultipart():
+            continue
+        pt = transform_fn(geom.asPoint(), source_crs)
+        pdef = {"id": feat.id(), "lat": pt.y(), "lon": pt.x(),
+                "height": _feat_attr(feat, "height", default_height),
+                "gain_db": _feat_attr(feat, "gain_db", None)}
+        pk = _feat_attr(feat, "antenna_preset", None)
+        az = _feat_attr(feat, "azimuth", None)
+        if pk is not None:
+            pdef["antenna_preset"] = str(pk)
+        if az is not None:
+            pdef["azimuth"] = az
+        points.append(pdef)
+    return points
+
+
+def _collect_batch_inputs(algorithm, parameters, context, feedback):
+    from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform
+    mode = algorithm.parameterAsEnum(parameters, algorithm.MODE, context)
+    wgs84 = QgsCoordinateReferenceSystem("EPSG:4326")
+    cache = {}
+    def _xform(point, src_crs):
+        if src_crs is None or not src_crs.isValid() or src_crs.authid().upper() == "EPSG:4326":
+            return point
+        key = src_crs.authid() or src_crs.toWkt()
+        t = cache.get(key) or QgsCoordinateTransform(src_crs, wgs84, context.transformContext())
+        cache.setdefault(key, t)
+        return t.transform(point)
+    if mode == 0:
+        tx_pt = algorithm.parameterAsPoint(parameters, algorithm.TX_POINT, context, crs=wgs84)
+        if tx_pt is None:
+            raise QgsProcessingException("TX point is required for One-to-Many mode.")
+        candidate_tx = [{"lat": tx_pt.y(), "lon": tx_pt.x(), "height": None, "is_tx": True}]
+        rx_src = algorithm.parameterAsFeatureSource(parameters, algorithm.RX_LAYER, context)
+        if rx_src is None:
+            raise QgsProcessingException("RX layer is required for One-to-Many mode.")
+        rx_points = _features_to_points(list(rx_src.getFeatures()), rx_src.sourceCrs(), _xform, 10.0)
+        if not rx_points:
+            raise QgsProcessingException("No valid RX points found.")
+        feedback.pushInfo("One-to-Many: {} RX points".format(len(rx_points)))
+    else:
+        tx_src = algorithm.parameterAsFeatureSource(parameters, algorithm.TX_LAYER, context)
+        if tx_src is None:
+            raise QgsProcessingException("TX layer is required for Many-to-One mode.")
+        candidate_tx = _features_to_points(list(tx_src.getFeatures()), tx_src.sourceCrs(), _xform, 30.0)
+        for tx in candidate_tx:
+            tx["is_tx"] = True
+        if not candidate_tx:
+            raise QgsProcessingException("No valid TX points found.")
+        rx_pt = algorithm.parameterAsPoint(parameters, algorithm.RX_POINT, context, crs=wgs84)
+        if rx_pt is None:
+            raise QgsProcessingException("RX point is required for Many-to-One mode.")
+        rx_points = [{"id": 0, "lat": rx_pt.y(), "lon": rx_pt.x(), "height": None, "is_tx": False}]
+        feedback.pushInfo("Many-to-One: {} TX sites".format(len(candidate_tx)))
+    p = parameters
+    _pD = algorithm.parameterAsDouble
+    _pE = algorithm.parameterAsEnum
+    _pF = algorithm.parameterAsFile
+    tx_h, rx_h = _pD(p, algorithm.TX_HEIGHT, context), _pD(p, algorithm.RX_HEIGHT, context)
+    f_mhz, polarization, climate = _pD(p, algorithm.FREQ_MHZ, context), _pE(p, algorithm.POLARIZATION, context), _pE(p, algorithm.CLIMATE, context)
+    time_pct, location_pct, situation_pct = _pD(p, algorithm.TIME_PCT, context), _pD(p, algorithm.LOCATION_PCT, context), _pD(p, algorithm.SITUATION_PCT, context)
+    tx_power, tx_gain_d, rx_gain_d = _pD(p, algorithm.TX_POWER, context), _pD(p, algorithm.TX_GAIN, context), _pD(p, algorithm.RX_GAIN, context)
+    cable_loss, rx_sens = _pD(p, algorithm.CABLE_LOSS, context), _pD(p, algorithm.RX_SENSITIVITY, context)
+    tx_pk, rx_pk = antenna_preset_key(_pE(p, algorithm.TX_ANTENNA_PRESET, context)), antenna_preset_key(_pE(p, algorithm.RX_ANTENNA_PRESET, context))
+    tx_az, rx_az = _pD(p, algorithm.TX_ANTENNA_AZ, context), _pD(p, algorithm.RX_ANTENNA_AZ, context)
+    pi = _pE(p, algorithm.K_FACTOR_PRESET, context)
+    kf = resolve_k_factor(has_preset=pi < len(K_FACTOR_PRESETS), has_custom=True, custom_value=_pD(p, algorithm.K_FACTOR, context), preset_index=pi)
+    n0, epsilon, sigma = _pD(p, algorithm.N0, context), _pD(p, algorithm.EPSILON, context), _pD(p, algorithm.SIGMA, context)
+    validate_itm_input_ranges(tx_height_m=tx_h, rx_height_m=rx_h, frequency_mhz=f_mhz, surface_refractivity_n0=n0, earth_conductivity_sigma=sigma)
+    ce = _pE(p, algorithm.CLUTTER_MODEL, context) == 1
+    cg = LandCoverGrid.from_raster(_pF(p, algorithm.CLUTTER_RASTER, context)) if _pF(p, algorithm.CLUTTER_RASTER, context) else None
+    tco, rco = clutter_override_value(_pE(p, algorithm.TX_CLUTTER_OVERRIDE, context)), clutter_override_value(_pE(p, algorithm.RX_CLUTTER_OVERRIDE, context))
+    tfb, rfb = _pD(p, algorithm.TX_FRONT_BACK_DB, context), _pD(p, algorithm.RX_FRONT_BACK_DB, context)
+    lats = [pt["lat"] for pt in candidate_tx] + [pt["lat"] for pt in rx_points]
+    lons = [pt["lon"] for pt in candidate_tx] + [pt["lon"] for pt in rx_points]
+    south, north, west, east = min(lats), max(lats), min(lons), max(lons)
+    pad = max(0.05, (north - south) * 0.1)
+    if cg is None and ce:
+        cg = ensure_clutter_grid_for_area(south=south - pad, north=north + pad, west=west - pad, east=east + pad, feedback=feedback)
+    feedback.pushInfo("Downloading DEM data...")
+    feedback.setProgress(5)
+    dem_path = ensure_dem_for_area(south - pad, north + pad, west - pad, east + pad, feedback=feedback)
+    if dem_path is None:
+        raise QgsProcessingException("Failed to obtain DEM data for the analysis area.")
+    feedback.pushInfo("Building elevation grid...")
+    feedback.setProgress(15)
+    elev = ElevationGrid(dem_path)
+    total = len(candidate_tx) * len(rx_points)
+    return dict(mode=mode, candidate_tx=candidate_tx, rx_points=rx_points, tx_h=tx_h, rx_h=rx_h,
+        f_mhz=f_mhz, polarization=polarization, climate=climate, time_pct=time_pct,
+        location_pct=location_pct, situation_pct=situation_pct, tx_power=tx_power,
+        tx_gain_default=tx_gain_d, rx_gain_default=rx_gain_d, cable_loss=cable_loss, rx_sens=rx_sens,
+        tx_default_preset_key=tx_pk, rx_default_preset_key=rx_pk, tx_default_az=tx_az, rx_default_az=rx_az,
+        tx_front_back_db=tfb, rx_front_back_db=rfb, k_factor=kf, n0=n0, epsilon=epsilon, sigma=sigma,
+        clutter_enabled=ce, clutter_grid=cg, tx_clutter_override=tco, rx_clutter_override=rco, elev=elev, total=total)
+
+
+def _report_batch_results(feedback, results, mode):
+    feedback.pushInfo("\n" + "=" * 50 + "\nBATCH P2P RESULTS\n" + "=" * 50)
+    feedback.pushInfo("Total links computed: {}".format(len(results)))
+    viable = sum(1 for r in results if r["status"] == "VIABLE")
+    feedback.pushInfo("Viable links: {} / {}".format(viable, len(results)))
+    feedback.pushInfo("Top 5 ranked results:")
+    for i, r in enumerate(results[:5]):
+        cl = r["tx_lat"] if mode == 1 else r["rx_lat"]
+        co = r["tx_lon"] if mode == 1 else r["rx_lon"]
+        feedback.pushInfo("  {}. {} ({:.5f},{:.5f}): {:.2f}km margin={:.1f}dB {}".format(
+            i + 1, "TX" if mode == 0 else "TXc", cl, co, r["dist_km"], r["margin_db"], r["status"]))
+    feedback.pushInfo("=" * 50)
+
+
+def _write_batch_outputs(algorithm, parameters, context, feedback, results, mode):
+    from qgis.core import QgsVectorLayer
+    _bt = None
+    try:
+        md = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_MARKERS, context)
+        if md:
+            mp = md
+        else:
+            _bt = tempfile.mkdtemp(prefix="nowires_batch_")
+            mp = os.path.join(_bt, "batch_markers.gpkg")
+            feedback.pushInfo(
+                "Temporary outputs are intentionally left on disk for QGIS layer loading: {}".format(_bt))
+        write_batch_marker_layer(mp, results, feedback, mode)
+        queue_layer_for_loading(context, QgsVectorLayer(mp, "Batch P2P Markers"), "Batch P2P Markers")
+        csv_p = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_CSV, context)
+        json_p = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_JSON, context)
+        if csv_p:
+            write_batch_csv(csv_p, results, mode)
+        if json_p:
+            write_batch_json(json_p, results, mode)
+        feedback.setProgress(100)
+        out = {}
+        if mp:
+            out[algorithm.OUTPUT_MARKERS] = mp
+        if csv_p:
+            out[algorithm.OUTPUT_CSV] = csv_p
+        if json_p:
+            out[algorithm.OUTPUT_JSON] = json_p
+        return out
+    finally:
+        if _bt is not None:
+            pass
 
 
 class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
@@ -89,293 +206,28 @@ class BatchAnalysisAlgorithm(QgsProcessingAlgorithm):
         add_batch_params(self)
 
     def processAlgorithm(self, parameters, context, feedback):
-        from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform
-
-        mode = self.parameterAsEnum(parameters, self.MODE, context)
         rank_by = self.parameterAsEnum(parameters, self.RANK_BY, context)
-        wgs84_crs = QgsCoordinateReferenceSystem("EPSG:4326")
-        transform_cache = {}
-
-        def transform_point_to_wgs84(point, source_crs):
-            if (
-                source_crs is None
-                or not source_crs.isValid()
-                or source_crs.authid().upper() == "EPSG:4326"
-            ):
-                return point
-            key = source_crs.authid() or source_crs.toWkt()
-            transform = transform_cache.get(key)
-            if transform is None:
-                transform = QgsCoordinateTransform(
-                    source_crs,
-                    wgs84_crs,
-                    context.transformContext(),
-                )
-                transform_cache[key] = transform
-            return transform.transform(point)
-
-        if mode == 0:
-            tx_point = self.parameterAsPoint(
-                parameters, self.TX_POINT, context, crs=wgs84_crs,
-            )
-            if tx_point is None:
-                raise QgsProcessingException("TX point is required for One-to-Many mode.")
-            tx_lat = tx_point.y()
-            tx_lon = tx_point.x()
-
-            rx_source = self.parameterAsFeatureSource(parameters, self.RX_LAYER, context)
-            if rx_source is None:
-                raise QgsProcessingException("RX layer is required for One-to-Many mode.")
-            rx_source_crs = rx_source.sourceCrs()
-            rx_features = list(rx_source.getFeatures())
-            if not rx_features:
-                raise QgsProcessingException("RX layer has no features.")
-
-            rx_points = []
-            for feat in rx_features:
-                geom = feat.geometry()
-                if geom is None or geom.isEmpty():
-                    continue
-                if geom.isMultipart():
-                    continue
-                pt = transform_point_to_wgs84(geom.asPoint(), rx_source_crs)
-                height = _feat_attr(feat, "height", 10.0)
-                preset_key = _feat_attr(feat, "antenna_preset", None)
-                az = _feat_attr(feat, "azimuth", None)
-                gain = _feat_attr(feat, "gain_db", None)
-                rx_def = {
-                    "id": feat.id(),
-                    "lat": pt.y(),
-                    "lon": pt.x(),
-                    "height": height,
-                    "gain_db": gain,
-                }
-                if preset_key is not None:
-                    rx_def["antenna_preset"] = str(preset_key)
-                if az is not None:
-                    rx_def["azimuth"] = az
-                rx_points.append(rx_def)
-            if not rx_points:
-                raise QgsProcessingException("No valid RX points found.")
-            feedback.pushInfo(
-                "One-to-Many: {} RX points from layer".format(len(rx_points))
-            )
-
-            candidate_tx = [{"lat": tx_lat, "lon": tx_lon, "height": None, "is_tx": True}]
-
-        else:
-            tx_source = self.parameterAsFeatureSource(parameters, self.TX_LAYER, context)
-            if tx_source is None:
-                raise QgsProcessingException("TX layer is required for Many-to-One mode.")
-            tx_source_crs = tx_source.sourceCrs()
-            tx_features = list(tx_source.getFeatures())
-            if not tx_features:
-                raise QgsProcessingException("TX layer has no features.")
-
-            candidate_tx = []
-            for feat in tx_features:
-                geom = feat.geometry()
-                if geom is None or geom.isEmpty():
-                    continue
-                if geom.isMultipart():
-                    continue
-                pt = transform_point_to_wgs84(geom.asPoint(), tx_source_crs)
-                height = _feat_attr(feat, "height", 30.0)
-                preset_key = _feat_attr(feat, "antenna_preset", None)
-                az = _feat_attr(feat, "azimuth", None)
-                gain = _feat_attr(feat, "gain_db", None)
-                tx_def = {
-                    "id": feat.id(),
-                    "lat": pt.y(),
-                    "lon": pt.x(),
-                    "height": height,
-                    "gain_db": gain,
-                    "is_tx": True,
-                }
-                if preset_key is not None:
-                    tx_def["antenna_preset"] = str(preset_key)
-                if az is not None:
-                    tx_def["azimuth"] = az
-                candidate_tx.append(tx_def)
-            if not candidate_tx:
-                raise QgsProcessingException("No valid TX points found.")
-
-            rx_point = self.parameterAsPoint(
-                parameters, self.RX_POINT, context, crs=wgs84_crs,
-            )
-            if rx_point is None:
-                raise QgsProcessingException("RX point is required for Many-to-One mode.")
-            rx_lat = rx_point.y()
-            rx_lon = rx_point.x()
-            rx_points = [{"id": 0, "lat": rx_lat, "lon": rx_lon, "height": None, "is_tx": False}]
-            feedback.pushInfo(
-                "Many-to-One: {} candidate TX sites".format(len(candidate_tx))
-            )
-
-        tx_h = self.parameterAsDouble(parameters, self.TX_HEIGHT, context)
-        rx_h = self.parameterAsDouble(parameters, self.RX_HEIGHT, context)
-        f_mhz = self.parameterAsDouble(parameters, self.FREQ_MHZ, context)
-        polarization = self.parameterAsEnum(parameters, self.POLARIZATION, context)
-        climate = self.parameterAsEnum(parameters, self.CLIMATE, context)
-        time_pct = self.parameterAsDouble(parameters, self.TIME_PCT, context)
-        location_pct = self.parameterAsDouble(parameters, self.LOCATION_PCT, context)
-        situation_pct = self.parameterAsDouble(parameters, self.SITUATION_PCT, context)
-        tx_power = self.parameterAsDouble(parameters, self.TX_POWER, context)
-        tx_gain_default = self.parameterAsDouble(parameters, self.TX_GAIN, context)
-        rx_gain_default = self.parameterAsDouble(parameters, self.RX_GAIN, context)
-        cable_loss = self.parameterAsDouble(parameters, self.CABLE_LOSS, context)
-        rx_sens = self.parameterAsDouble(parameters, self.RX_SENSITIVITY, context)
-        tx_default_preset_key = antenna_preset_key(
-            self.parameterAsEnum(parameters, self.TX_ANTENNA_PRESET, context)
-        )
-        rx_default_preset_key = antenna_preset_key(
-            self.parameterAsEnum(parameters, self.RX_ANTENNA_PRESET, context)
-        )
-        tx_default_az = self.parameterAsDouble(parameters, self.TX_ANTENNA_AZ, context)
-        rx_default_az = self.parameterAsDouble(parameters, self.RX_ANTENNA_AZ, context)
-        preset_index = self.parameterAsEnum(parameters, self.K_FACTOR_PRESET, context)
-        custom_k_factor = self.parameterAsDouble(parameters, self.K_FACTOR, context)
-        k_factor = resolve_k_factor(
-            has_preset=preset_index < len(K_FACTOR_PRESETS),
-            has_custom=True,
-            custom_value=custom_k_factor,
-            preset_index=preset_index,
-        )
-        n0 = self.parameterAsDouble(parameters, self.N0, context)
-        epsilon = self.parameterAsDouble(parameters, self.EPSILON, context)
-        sigma = self.parameterAsDouble(parameters, self.SIGMA, context)
-
-        validate_itm_input_ranges(
-            tx_height_m=tx_h, rx_height_m=rx_h,
-            frequency_mhz=f_mhz, surface_refractivity_n0=n0,
-            earth_conductivity_sigma=sigma,
-        )
-        clutter_enabled = self.parameterAsEnum(parameters, self.CLUTTER_MODEL, context) == 1
-        clutter_raster_path = self.parameterAsFile(parameters, self.CLUTTER_RASTER, context)
-        if clutter_raster_path:
-            clutter_grid = LandCoverGrid.from_raster(clutter_raster_path)
-        else:
-            clutter_grid = None
-        tx_clutter_override = clutter_override_value(
-            self.parameterAsEnum(parameters, self.TX_CLUTTER_OVERRIDE, context)
-        )
-        rx_clutter_override = clutter_override_value(
-            self.parameterAsEnum(parameters, self.RX_CLUTTER_OVERRIDE, context)
-        )
-
-        all_lats = [p["lat"] for p in candidate_tx] + [p["lat"] for p in rx_points]
-        all_lons = [p["lon"] for p in candidate_tx] + [p["lon"] for p in rx_points]
-        south = min(all_lats)
-        north = max(all_lats)
-        west = min(all_lons)
-        east = max(all_lons)
-        pad = max(0.05, (north - south) * 0.1)
-
-        if clutter_grid is None and clutter_enabled:
-            clutter_grid = ensure_clutter_grid_for_area(
-                south=south - pad, north=north + pad,
-                west=west - pad, east=east + pad,
-                feedback=feedback,
-            )
-
-        feedback.pushInfo("Downloading DEM data...")
-        feedback.setProgress(5)
-        dem_path = ensure_dem_for_area(
-            south - pad, north + pad, west - pad, east + pad, feedback=feedback
-        )
-        if dem_path is None:
-            raise QgsProcessingException("Failed to obtain DEM data for the analysis area.")
-        feedback.pushInfo("Building elevation grid...")
-        feedback.setProgress(15)
-        elev = ElevationGrid(dem_path)
-
+        inp = _collect_batch_inputs(self, parameters, context, feedback)
         feedback.pushInfo("Computing batch P2P links...")
         feedback.setProgress(20)
-
-        tx_front_back_db = self.parameterAsDouble(parameters, self.TX_FRONT_BACK_DB, context)
-        rx_front_back_db = self.parameterAsDouble(parameters, self.RX_FRONT_BACK_DB, context)
-        total = len(candidate_tx) * len(rx_points)
-
         results = compute_batch_links(
-            candidate_tx, rx_points, elev, tx_h, rx_h, f_mhz, polarization,
-            climate, time_pct, location_pct, situation_pct, n0, epsilon, sigma,
-            tx_power, tx_gain_default, rx_gain_default, cable_loss, rx_sens,
-            tx_default_preset_key, rx_default_preset_key,
-            tx_default_az, rx_default_az, tx_front_back_db, rx_front_back_db,
-            k_factor, clutter_enabled, clutter_grid, tx_clutter_override,
-            rx_clutter_override, feedback, total,
-        )
-
+            inp["candidate_tx"], inp["rx_points"], inp["elev"], inp["tx_h"], inp["rx_h"],
+            inp["f_mhz"], inp["polarization"], inp["climate"], inp["time_pct"],
+            inp["location_pct"], inp["situation_pct"], inp["n0"], inp["epsilon"],
+            inp["sigma"], inp["tx_power"], inp["tx_gain_default"], inp["rx_gain_default"],
+            inp["cable_loss"], inp["rx_sens"], inp["tx_default_preset_key"],
+            inp["rx_default_preset_key"], inp["tx_default_az"], inp["rx_default_az"],
+            inp["tx_front_back_db"], inp["rx_front_back_db"], inp["k_factor"],
+            inp["clutter_enabled"], inp["clutter_grid"], inp["tx_clutter_override"],
+            inp["rx_clutter_override"], feedback, inp["total"])
         results = rank_batch_results(results, rank_by)
-
-        feedback.pushInfo("")
-        feedback.pushInfo("=" * 50)
-        feedback.pushInfo("BATCH P2P RESULTS")
-        feedback.pushInfo("=" * 50)
-        feedback.pushInfo("Total links computed: {}".format(len(results)))
-        viable = sum(1 for r in results if r["status"] == "VIABLE")
-        feedback.pushInfo("Viable links: {} / {}".format(viable, len(results)))
-        feedback.pushInfo("Top 5 ranked results:")
-        for i, r in enumerate(results[:5]):
-            coord_lat = r["tx_lat"] if mode == 1 else r["rx_lat"]
-            coord_lon = r["tx_lon"] if mode == 1 else r["rx_lon"]
-            feedback.pushInfo(
-                "  {}. {} → ({:.5f}, {:.5f}): {:.2f} km, margin={:.1f} dB, {}".format(
-                    i + 1,
-                    "TX" if mode == 0 else "TX candidate",
-                    coord_lat, coord_lon,
-                    r["dist_km"], r["margin_db"], r["status"],
-                )
-            )
-        feedback.pushInfo("=" * 50)
+        _report_batch_results(feedback, results, inp["mode"])
         feedback.setProgress(85)
-
-        _batch_tmp = None
-        try:
-            markers_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_MARKERS, context)
-            if markers_dest:
-                markers_path = markers_dest
-            else:
-                _batch_tmp = tempfile.mkdtemp(prefix="nowires_batch_")
-                markers_path = os.path.join(_batch_tmp, "batch_markers.gpkg")
-                feedback.pushInfo(
-                    "Temporary outputs are intentionally left on disk for QGIS layer loading: {}".format(_batch_tmp))
-            write_batch_marker_layer(markers_path, results, feedback, mode)
-
-            from qgis.core import QgsVectorLayer
-            marker_layer = QgsVectorLayer(markers_path, "Batch P2P Markers")
-            queue_layer_for_loading(context, marker_layer, "Batch P2P Markers")
-
-            csv_path = self.parameterAsFileOutput(parameters, self.OUTPUT_CSV, context)
-            json_path = self.parameterAsFileOutput(parameters, self.OUTPUT_JSON, context)
-
-            if csv_path:
-                write_batch_csv(csv_path, results, mode)
-            if json_path:
-                write_batch_json(json_path, results, mode)
-
-            feedback.setProgress(100)
-
-            output = {}
-            if markers_path:
-                output[self.OUTPUT_MARKERS] = markers_path
-            if csv_path:
-                output[self.OUTPUT_CSV] = csv_path
-            if json_path:
-                output[self.OUTPUT_JSON] = json_path
-
-            return output
-        finally:
-            if _batch_tmp is not None:
-                pass
+        return _write_batch_outputs(self, parameters, context, feedback, results, inp["mode"])
 
     def shortHelpString(self):
-        return (
-            "Batch point-to-point link analysis supporting two modes:\n"
-            "- One-to-Many: single TX to multiple RX points from a vector layer\n"
-            "- Many-to-One: multiple candidate TX sites to a single RX point\n"
-            "Results are ranked by link margin, path loss, or Fresnel clearance."
-        )
+        return ("Batch P2P analysis: One-to-Many (single TX→multiple RX) or "
+                "Many-to-One (multiple TX→single RX). Ranked by margin/loss/clearance.")
 
     def name(self):
         return "batch_p2p_analysis"

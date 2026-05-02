@@ -33,28 +33,42 @@ _no_wires_pkg.__package__ = "NoWires"
 _no_wires_pkg.__name__ = "NoWires"
 sys.modules["NoWires"] = _no_wires_pkg
 
-# Submodules with no relative imports — can be loaded as top-level first,
-# then registered under the NoWires package.
+# Submodules with no relative imports and no top-level qgis dependency —
+# can be loaded as top-level first, then registered under the NoWires package.
 for _submodule_name in (
     "antenna",
-    "clutter",
     "coverage_palette",
     "coverage_summary",
     "elevation",
     "reliability",
-    "worldcover_downloader",
+    "fresnel",
+    "tile_download_base",
+    "p2p_report_display",
+    "comparison_reporting",
+    "contour_smoothing",
+    "report_markers",
+    "report_export",
+    "overlay_raster",
 ):
     _mod = __import__(_submodule_name, fromlist=[""])
     sys.modules[f"NoWires.{_submodule_name}"] = _mod
     setattr(_no_wires_pkg, _submodule_name, _mod)
 
-# Submodules that use relative imports — must be imported through the
-# NoWires package so that ``from .xxx import ...`` resolves correctly.
+# Submodules that use relative imports and have no top-level qgis dependency —
+# must be imported through the NoWires package so ``from .xxx import ...`` resolves.
 for _pkg_sub in (
     "radio",
     "coverage_compute",
     "coverage_engine",
     "report_payloads",
+    "clutter",
+    "worldcover_downloader",
+    "p2p_outputs",
+    "p2p_chart",
+    "coverage_pool",
+    "coverage_tasks",
+    "contour_overlay",
+    "contour_generation",
     "benchmarks.coverage_runtime",
     "benchmarks.p2p_runtime",
     "benchmarks.reference_cases",

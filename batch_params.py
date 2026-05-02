@@ -2,7 +2,7 @@
 """
 /***************************************************************************
  NoWires
-                     A QGIS plugin
+                 A QGIS plugin
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
         begin                : 2026-04-22
@@ -10,14 +10,14 @@
         email                : tedaks@gmail.com
  ***************************************************************************/
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 3 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+ /***************************************************************************
+  *                                                                         *
+  *   This program is free software; you can redistribute it and/or modify  *
+  *   it under the terms of the GNU General Public License as published by  *
+  *   the Free Software Foundation; either version 3 of the License, or     *
+  *   (at your option) any later version.                                   *
+  *                                                                         *
+  ***************************************************************************/
 
 
 Batch P2P parameter definitions and constants.
@@ -141,284 +141,153 @@ BATCH_PARAM_CONSTANTS = {
 }
 
 
-def add_batch_params(algorithm):
-    algorithm.addParameter(
-        QgsProcessingParameterEnum(
-            MODE, "Analysis mode", options=BATCH_MODE_OPTIONS, defaultValue=0
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterPoint(
-            TX_POINT, "TX point (for One-to-Many)", optional=True
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterFeatureSource(
-            RX_LAYER,
-            "RX point layer (for One-to-Many)",
-            [Qgis.GeometryType.Point],
-            optional=True,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterPoint(
-            RX_POINT, "RX point (for Many-to-One)", optional=True
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterFeatureSource(
-            TX_LAYER,
-            "TX candidate layer (for Many-to-One)",
-            [Qgis.GeometryType.Point],
-            optional=True,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterNumber(
-            TX_HEIGHT,
-            "TX antenna height (m)",
-            type=QgsProcessingParameterNumber.Double,
-            defaultValue=30.0,
-            minValue=ITM_MIN_TERMINAL_HEIGHT_M,
-            maxValue=ITM_MAX_TERMINAL_HEIGHT_M,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterNumber(
-            RX_HEIGHT,
-            "RX antenna height (m)",
-            type=QgsProcessingParameterNumber.Double,
-            defaultValue=10.0,
-            minValue=ITM_MIN_TERMINAL_HEIGHT_M,
-            maxValue=ITM_MAX_TERMINAL_HEIGHT_M,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterNumber(
-            FREQ_MHZ,
-            "Frequency (MHz)",
-            type=QgsProcessingParameterNumber.Double,
-            defaultValue=300.0,
-            minValue=ITM_MIN_FREQUENCY_MHZ,
-            maxValue=ITM_MAX_FREQUENCY_MHZ,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterEnum(
-            POLARIZATION,
-            "Polarization",
-            options=["Horizontal", "Vertical"],
-            defaultValue=1,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterEnum(
-            CLIMATE,
-            "Climate zone",
-            options=[
-                "Equatorial",
-                "Continental Subtropical",
-                "Maritime Subtropical",
-                "Desert",
-                "Continental Temperate",
-                "Maritime Temperate (land)",
-                "Maritime Temperate (sea)",
-            ],
-            defaultValue=1,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterNumber(
-            TIME_PCT,
-            "Time percentage",
-            type=QgsProcessingParameterNumber.Double,
-            defaultValue=50.0,
-            minValue=0.01,
-            maxValue=99.99,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterNumber(
-            LOCATION_PCT,
-            "Location percentage",
-            type=QgsProcessingParameterNumber.Double,
-            defaultValue=50.0,
-            minValue=0.01,
-            maxValue=99.99,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterNumber(
-            SITUATION_PCT,
-            "Situation percentage",
-            type=QgsProcessingParameterNumber.Double,
-            defaultValue=50.0,
-            minValue=0.01,
-            maxValue=99.99,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterNumber(
-            TX_POWER, "TX power (dBm)",
-            type=QgsProcessingParameterNumber.Double, defaultValue=43.0,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterNumber(
-            TX_GAIN, "TX antenna gain (dBi)",
-            type=QgsProcessingParameterNumber.Double, defaultValue=8.0,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterNumber(
-            RX_GAIN, "RX antenna gain (dBi)",
-            type=QgsProcessingParameterNumber.Double, defaultValue=2.0,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterNumber(
-            CABLE_LOSS, "Cable loss (dB)",
-            type=QgsProcessingParameterNumber.Double, defaultValue=2.0, minValue=0.0,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterNumber(
-            RX_SENSITIVITY, "RX sensitivity (dBm)",
-            type=QgsProcessingParameterNumber.Double, defaultValue=-100.0,
-        )
-    )
+def _add_mode_params(algorithm):
     algorithm.addParameter(QgsProcessingParameterEnum(
-        TX_ANTENNA_PRESET, "TX antenna preset",
-        options=ANTENNA_PRESET_OPTIONS, defaultValue=0,
-    ))
+        MODE, "Analysis mode", options=BATCH_MODE_OPTIONS, defaultValue=0))
+    algorithm.addParameter(QgsProcessingParameterPoint(
+        TX_POINT, "TX point (for One-to-Many)", optional=True))
+    algorithm.addParameter(QgsProcessingParameterFeatureSource(
+        RX_LAYER, "RX point layer (for One-to-Many)",
+        [Qgis.GeometryType.Point], optional=True))
+    algorithm.addParameter(QgsProcessingParameterPoint(
+        RX_POINT, "RX point (for Many-to-One)", optional=True))
+    algorithm.addParameter(QgsProcessingParameterFeatureSource(
+        TX_LAYER, "TX candidate layer (for Many-to-One)",
+        [Qgis.GeometryType.Point], optional=True))
+
+
+def _add_link_params(algorithm):
     algorithm.addParameter(QgsProcessingParameterNumber(
-        TX_ANTENNA_AZ, "TX antenna azimuth (deg)",
-        type=QgsProcessingParameterNumber.Double,
-        defaultValue=0.0, minValue=0.0, maxValue=360.0, optional=True,
-    ))
+        TX_HEIGHT, "TX antenna height (m)",
+        type=QgsProcessingParameterNumber.Double, defaultValue=30.0,
+        minValue=ITM_MIN_TERMINAL_HEIGHT_M, maxValue=ITM_MAX_TERMINAL_HEIGHT_M))
     algorithm.addParameter(QgsProcessingParameterNumber(
-        TX_FRONT_BACK_DB, "TX front-to-back ratio (dB)",
-        type=QgsProcessingParameterNumber.Double,
-        defaultValue=25.0, minValue=0.0,
-    ))
+        RX_HEIGHT, "RX antenna height (m)",
+        type=QgsProcessingParameterNumber.Double, defaultValue=10.0,
+        minValue=ITM_MIN_TERMINAL_HEIGHT_M, maxValue=ITM_MAX_TERMINAL_HEIGHT_M))
+    algorithm.addParameter(QgsProcessingParameterNumber(
+        FREQ_MHZ, "Frequency (MHz)",
+        type=QgsProcessingParameterNumber.Double, defaultValue=300.0,
+        minValue=ITM_MIN_FREQUENCY_MHZ, maxValue=ITM_MAX_FREQUENCY_MHZ))
     algorithm.addParameter(QgsProcessingParameterEnum(
-        RX_ANTENNA_PRESET, "RX antenna preset",
-        options=ANTENNA_PRESET_OPTIONS, defaultValue=0,
-    ))
+        POLARIZATION, "Polarization",
+        options=["Horizontal", "Vertical"], defaultValue=1))
+    algorithm.addParameter(QgsProcessingParameterEnum(
+        CLIMATE, "Climate zone", options=[
+            "Equatorial", "Continental Subtropical", "Maritime Subtropical",
+            "Desert", "Continental Temperate", "Maritime Temperate (land)",
+            "Maritime Temperate (sea)"], defaultValue=1))
     algorithm.addParameter(QgsProcessingParameterNumber(
-        RX_ANTENNA_AZ, "RX antenna azimuth (deg)",
+        TIME_PCT, "Time percentage",
         type=QgsProcessingParameterNumber.Double,
-        defaultValue=0.0, minValue=0.0, maxValue=360.0, optional=True,
-    ))
+        defaultValue=50.0, minValue=0.01, maxValue=99.99))
     algorithm.addParameter(QgsProcessingParameterNumber(
-        RX_FRONT_BACK_DB, "RX front-to-back ratio (dB)",
+        LOCATION_PCT, "Location percentage",
         type=QgsProcessingParameterNumber.Double,
-        defaultValue=25.0, minValue=0.0,
-    ))
+        defaultValue=50.0, minValue=0.01, maxValue=99.99))
+    algorithm.addParameter(QgsProcessingParameterNumber(
+        SITUATION_PCT, "Situation percentage",
+        type=QgsProcessingParameterNumber.Double,
+        defaultValue=50.0, minValue=0.01, maxValue=99.99))
+
+
+def _add_budget_params(algorithm):
+    algorithm.addParameter(QgsProcessingParameterNumber(
+        TX_POWER, "TX power (dBm)",
+        type=QgsProcessingParameterNumber.Double, defaultValue=43.0))
+    algorithm.addParameter(QgsProcessingParameterNumber(
+        TX_GAIN, "TX antenna gain (dBi)",
+        type=QgsProcessingParameterNumber.Double, defaultValue=8.0))
+    algorithm.addParameter(QgsProcessingParameterNumber(
+        RX_GAIN, "RX antenna gain (dBi)",
+        type=QgsProcessingParameterNumber.Double, defaultValue=2.0))
+    algorithm.addParameter(QgsProcessingParameterNumber(
+        CABLE_LOSS, "Cable loss (dB)",
+        type=QgsProcessingParameterNumber.Double, defaultValue=2.0, minValue=0.0))
+    algorithm.addParameter(QgsProcessingParameterNumber(
+        RX_SENSITIVITY, "RX sensitivity (dBm)",
+        type=QgsProcessingParameterNumber.Double, defaultValue=-100.0))
+
+
+def _add_antenna_params(algorithm, prefix):
+    label = prefix.rstrip("_")
+    algorithm.addParameter(QgsProcessingParameterEnum(
+        getattr(algorithm, prefix + "ANTENNA_PRESET"),
+        label + " antenna preset",
+        options=ANTENNA_PRESET_OPTIONS, defaultValue=0))
+    algorithm.addParameter(QgsProcessingParameterNumber(
+        getattr(algorithm, prefix + "ANTENNA_AZ"),
+        label + " antenna azimuth (deg)",
+        type=QgsProcessingParameterNumber.Double,
+        defaultValue=0.0, minValue=0.0, maxValue=360.0, optional=True))
+    algorithm.addParameter(QgsProcessingParameterNumber(
+        getattr(algorithm, prefix + "FRONT_BACK_DB"),
+        label + " front-to-back ratio (dB)",
+        type=QgsProcessingParameterNumber.Double, defaultValue=25.0, minValue=0.0))
+
+
+def _add_clutter_params(algorithm):
     algorithm.addParameter(QgsProcessingParameterEnum(
         CLUTTER_MODEL, "Clutter correction",
-        options=CLUTTER_MODEL_OPTIONS, defaultValue=0,
-    ))
+        options=CLUTTER_MODEL_OPTIONS, defaultValue=0))
     algorithm.addParameter(QgsProcessingParameterFile(
         CLUTTER_RASTER, "Land-cover raster (auto-downloaded if blank)",
-        extension="tif", optional=True,
-    ))
+        extension="tif", optional=True))
     algorithm.addParameter(QgsProcessingParameterEnum(
         TX_CLUTTER_OVERRIDE, "TX clutter override",
-        options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0,
-    ))
+        options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0))
     algorithm.addParameter(QgsProcessingParameterEnum(
         RX_CLUTTER_OVERRIDE, "RX clutter override",
-        options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0,
-    ))
-    algorithm.addParameter(
-        QgsProcessingParameterEnum(
-            K_FACTOR_PRESET,
-            "Earth radius factor preset (k)",
-            options=[
-                "0.67 - Sub-refractive",
-                "1.00 - Geometric",
-                "1.33 - Standard atmosphere",
-                "2.00 - Super-refractive",
-                "4.00 - Strong super-refractive",
-                "Custom",
-            ],
-            defaultValue=2,
-        )
-    )
-    k_factor_param = QgsProcessingParameterNumber(
-        K_FACTOR,
-        "Custom Earth radius factor (k)",
+        options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0))
+
+
+def _add_advanced_params(algorithm):
+    def _adv(p):
+        p.setFlags(p.flags() | QgsProcessingParameterNumber.FlagAdvanced)
+        return p
+    algorithm.addParameter(QgsProcessingParameterEnum(
+        K_FACTOR_PRESET, "Earth radius factor preset (k)", options=[
+            "0.67 - Sub-refractive", "1.00 - Geometric",
+            "1.33 - Standard atmosphere", "2.00 - Super-refractive",
+            "4.00 - Strong super-refractive", "Custom"], defaultValue=2))
+    algorithm.addParameter(_adv(QgsProcessingParameterNumber(
+        K_FACTOR, "Custom Earth radius factor (k)",
         type=QgsProcessingParameterNumber.Double,
-        defaultValue=4.0 / 3.0,
-        minValue=0.1,
-    )
-    k_factor_param.setFlags(
-        k_factor_param.flags() | QgsProcessingParameterNumber.FlagAdvanced
-    )
-    algorithm.addParameter(k_factor_param)
-    n0_param = QgsProcessingParameterNumber(
-        N0,
-        "Surface refractivity N0 (N-units)",
+        defaultValue=4.0 / 3.0, minValue=0.1)))
+    algorithm.addParameter(_adv(QgsProcessingParameterNumber(
+        N0, "Surface refractivity N0 (N-units)",
         type=QgsProcessingParameterNumber.Double,
-        defaultValue=301.0,
-        minValue=ITM_MIN_N0,
-        maxValue=ITM_MAX_N0,
-    )
-    n0_param.setFlags(
-        n0_param.flags() | QgsProcessingParameterNumber.FlagAdvanced
-    )
-    algorithm.addParameter(n0_param)
-    epsilon_param = QgsProcessingParameterNumber(
-        EPSILON,
-        "Earth permittivity (epsilon)",
+        defaultValue=301.0, minValue=ITM_MIN_N0, maxValue=ITM_MAX_N0)))
+    algorithm.addParameter(_adv(QgsProcessingParameterNumber(
+        EPSILON, "Earth permittivity (epsilon)",
         type=QgsProcessingParameterNumber.Double,
-        defaultValue=15.0,
-        minValue=1.0,
-    )
-    epsilon_param.setFlags(
-        epsilon_param.flags() | QgsProcessingParameterNumber.FlagAdvanced
-    )
-    algorithm.addParameter(epsilon_param)
-    sigma_param = QgsProcessingParameterNumber(
-        SIGMA,
-        "Earth conductivity (sigma, S/m)",
+        defaultValue=15.0, minValue=1.0)))
+    algorithm.addParameter(_adv(QgsProcessingParameterNumber(
+        SIGMA, "Earth conductivity (sigma, S/m)",
         type=QgsProcessingParameterNumber.Double,
-        defaultValue=0.005,
-        minValue=ITM_MIN_SIGMA,
-    )
-    sigma_param.setFlags(
-        sigma_param.flags() | QgsProcessingParameterNumber.FlagAdvanced
-    )
-    algorithm.addParameter(sigma_param)
-    algorithm.addParameter(
-        QgsProcessingParameterEnum(
-            RANK_BY,
-            "Rank results by",
-            options=RANK_BY_OPTIONS,
-            defaultValue=0,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterFileDestination(
-            OUTPUT_MARKERS,
-            "Ranked marker layer output",
-            "GeoPackage files (*.gpkg)",
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterFileDestination(
-            OUTPUT_CSV,
-            "Batch results CSV",
-            "CSV files (*.csv)",
-            optional=True,
-        )
-    )
-    algorithm.addParameter(
-        QgsProcessingParameterFileDestination(
-            OUTPUT_JSON,
-            "Batch results JSON",
-            "JSON files (*.json)",
-            optional=True,
-        )
-    )
+        defaultValue=0.005, minValue=ITM_MIN_SIGMA)))
+
+
+def _add_output_params(algorithm):
+    algorithm.addParameter(QgsProcessingParameterEnum(
+        RANK_BY, "Rank results by", options=RANK_BY_OPTIONS, defaultValue=0))
+    algorithm.addParameter(QgsProcessingParameterFileDestination(
+        OUTPUT_MARKERS, "Ranked marker layer output",
+        "GeoPackage files (*.gpkg)"))
+    algorithm.addParameter(QgsProcessingParameterFileDestination(
+        OUTPUT_CSV, "Batch results CSV",
+        "CSV files (*.csv)", optional=True))
+    algorithm.addParameter(QgsProcessingParameterFileDestination(
+        OUTPUT_JSON, "Batch results JSON",
+        "JSON files (*.json)", optional=True))
+
+
+def add_batch_params(algorithm):
+    _add_mode_params(algorithm)
+    _add_link_params(algorithm)
+    _add_budget_params(algorithm)
+    _add_antenna_params(algorithm, "TX_")
+    _add_antenna_params(algorithm, "RX_")
+    _add_clutter_params(algorithm)
+    _add_advanced_params(algorithm)
+    _add_output_params(algorithm)

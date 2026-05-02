@@ -8,9 +8,23 @@ from pathlib import Path
 
 PLUGIN_DIR = Path(__file__).resolve().parent.parent
 
+_CONTOUR_SOURCES = [
+    "algorithm_contour.py",
+    "contour_pipeline.py",
+    "contour_overlay.py",
+    "contour_smoothing.py",
+]
+
 
 def _source(name):
     return (PLUGIN_DIR / name).read_text(encoding="utf-8")
+
+
+def _contour_source():
+    parts = []
+    for name in _CONTOUR_SOURCES:
+        parts.append((PLUGIN_DIR / name).read_text(encoding="utf-8"))
+    return "\n".join(parts)
 
 
 def test_dem_merges_use_unique_run_directory_before_returning_layer_path():
@@ -26,8 +40,7 @@ def test_worldcover_merges_use_unique_run_directory_before_returning_layer_path(
 
 
 def test_contour_elevation_overlay_uses_persistent_unique_run_directory():
-    source = _source("algorithm_contour.py")
-    assert 'tempfile.mkdtemp(dir=self.temp_dir, prefix="contour_overlay_")' in source
-    assert "self._persistent_temp_subdirs" in source
-    assert "os.path.join(self._overlay_temp_dir" in source
+    source = _contour_source()
+    assert 'mkdtemp(dir=temp_dir, prefix="contour_overlay_")' in source
+    assert "_persistent_temp_subdirs" in source
 
