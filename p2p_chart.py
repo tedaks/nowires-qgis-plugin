@@ -27,6 +27,8 @@ import logging
 
 import numpy as np
 
+from .defaults import FRESNEL_60PCT_FACTOR
+
 logger = logging.getLogger(__name__)
 
 __all__ = ["show_profile_chart"]
@@ -187,9 +189,9 @@ def show_profile_chart(
         d_km, los_h - fresnel_r, los_h + fresnel_r,
         color="cyan", alpha=0.15, label="1st Fresnel Zone",
     )
-    f60_upper, = ax.plot(d_km, los_h - 0.6 * fresnel_r, "b-", linewidth=0.5)
+    f60_upper, = ax.plot(d_km, los_h - FRESNEL_60PCT_FACTOR * fresnel_r, "b-", linewidth=0.5)
     f60_fill = ax.fill_between(
-        d_km, los_h - fresnel_r, los_h - 0.6 * fresnel_r,
+        d_km, los_h - fresnel_r, los_h - FRESNEL_60PCT_FACTOR * fresnel_r,
         color="blue", alpha=0.12, label="Fresnel Violation Band (>40%)",
     )
     tx_marker, = ax.plot(0, los_h[0], "r^", markersize=12, label="TX", zorder=5)

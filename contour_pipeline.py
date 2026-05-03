@@ -122,7 +122,6 @@ def download_and_merge_tiles(
             return None, [], None, 0
         base = os.path.splitext(os.path.basename(tile_path))[0]
         fn_clip = os.path.join(temp_dir, base + "_clip.tif")
-        clipped_rasters.append(fn_clip)
         temp_files.append(fn_clip)
         feedback.pushInfo("Clipping: " + os.path.basename(tile_path))
         clip_result = gdal.Warp(
@@ -133,8 +132,17 @@ def download_and_merge_tiles(
         )
         if clip_result is not None:
             clip_result = None
+        else:
+            continue
+        if gdal.Open(fn_clip) is None:
+            continue
+        clipped_rasters.append(fn_clip)
         progress += 1
         feedback.setProgress(int(progress * status_total))
+
+    if not clipped_rasters:
+        feedback.pushInfo("\nNo DEM tiles clipped successfully.")
+        return None, temp_files, gdal_callback, len(tile_list)
 
     feedback.pushInfo("\nMerging clipped tiles")
     merged_path = os.path.join(temp_dir, "merged_contour.tif")

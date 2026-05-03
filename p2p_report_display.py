@@ -15,7 +15,7 @@
   *   This program is free software; you can redistribute it and/or modify  *
   *   it under the terms of the GNU General Public License as published by  *
   *   the Free Software Foundation; either version 3 of the License, or     *
-  *   (at your option) any later version.                                   *
+  *  (at your option) any later version.                                   *
   *                                                                         *
   ***************************************************************************/
 
@@ -25,13 +25,27 @@ Display helpers for Point-to-Point radio link analysis results.
 __all__ = ["report_p2p_results"]
 
 
-def report_p2p_results(
-    feedback, dist_m, f_mhz, result, PROP_MODE_NAMES,
-    tx_power, tx_gain, cable_loss, eirp_dbm, fspl_db,
-    clutter_losses, total_path_loss_db, antenna_gain_adjustment_db_total,
-    rx_gain, prx_dbm, rx_sens, margin_db, report_payload,
-    k_factor, los_blocked, f1_violated, f60_violated, fresnel_r_max,
-):
+def report_p2p_results(feedback, dist_m, f_mhz, result, report_payload,
+                        k_factor, los_blocked, fresnel_r_max):
+    pld = report_payload
+    inputs = pld["inputs"]
+    results = pld["results"]
+    tx_power = inputs["tx_power_dbm"]
+    tx_gain = inputs["tx_gain_dbi"]
+    cable_loss = inputs["cable_loss_db"]
+    eirp_dbm = results["eirp_dbm"]
+    fspl_db = results["free_space_loss_db"]
+    total_path_loss_db = results["total_path_loss_db"]
+    antenna_gain_adjustment_db_total = results["antenna_gain_adjustment_db"]
+    rx_gain = inputs["rx_gain_dbi"]
+    prx_dbm = results["received_power_dbm"]
+    rx_sens = inputs["rx_sensitivity_dbm"]
+    margin_db = results["link_margin_db"]
+    clutter_tx_db = results["clutter_tx_db"]
+    clutter_rx_db = results["clutter_rx_db"]
+    mode_name = results["propagation_mode_name"]
+    f1_violated = results["fresnel_1_violated"]
+    f60_violated = results["fresnel_60_violated"]
     feedback.pushInfo("")
     feedback.pushInfo("=" * 50)
     feedback.pushInfo("P2P ANALYSIS RESULTS")
@@ -41,9 +55,7 @@ def report_p2p_results(
     )
     feedback.pushInfo("Frequency: {:.1f} MHz".format(f_mhz))
     feedback.pushInfo(
-        "Propagation mode: {} ({})".format(
-            result.mode, PROP_MODE_NAMES.get(result.mode, "Unknown")
-        )
+        "Propagation mode: {} ({})".format(result.mode, mode_name)
     )
     feedback.pushInfo("")
     feedback.pushInfo("LINK BUDGET")
@@ -53,8 +65,8 @@ def report_p2p_results(
     feedback.pushInfo("  EIRP:           {:.2f} dBm".format(eirp_dbm))
     feedback.pushInfo("  Free Space Loss:{:.2f} dB".format(fspl_db))
     feedback.pushInfo("  ITM Path Loss:  {:.2f} dB".format(result.loss_db))
-    feedback.pushInfo("  Clutter TX Loss:{:.2f} dB".format(clutter_losses.tx_loss_db))
-    feedback.pushInfo("  Clutter RX Loss:{:.2f} dB".format(clutter_losses.rx_loss_db))
+    feedback.pushInfo("  Clutter TX Loss:{:.2f} dB".format(clutter_tx_db))
+    feedback.pushInfo("  Clutter RX Loss:{:.2f} dB".format(clutter_rx_db))
     feedback.pushInfo("  Total Path Loss:{:.2f} dB".format(total_path_loss_db))
     feedback.pushInfo("  Antenna Pattern:{:.2f} dB".format(antenna_gain_adjustment_db_total))
     feedback.pushInfo(
@@ -65,24 +77,18 @@ def report_p2p_results(
     feedback.pushInfo("  RX Sensitivity: {:.2f} dBm".format(rx_sens))
     feedback.pushInfo("  Link Margin:    {:.2f} dB".format(margin_db))
     feedback.pushInfo(
-        "  Fade Margin Class: {}".format(
-            report_payload["results"]["fade_margin_class"]
-        )
+        "  Fade Margin Class: {}".format(results["fade_margin_class"])
     )
     feedback.pushInfo(
-        "  Reliability:     {}".format(
-            report_payload["results"]["reliability_summary"]
-        )
+        "  Reliability:     {}".format(results["reliability_summary"])
     )
     feedback.pushInfo(
-        "  Availability Method: {}".format(
-            report_payload["results"]["availability_method"]
-        )
+        "  Availability Method: {}".format(results["availability_method"])
     )
-    if report_payload["results"]["availability_estimate_pct"] is not None:
+    if results["availability_estimate_pct"] is not None:
         feedback.pushInfo(
             "  Availability Estimate: {:.2f}%".format(
-                report_payload["results"]["availability_estimate_pct"]
+                results["availability_estimate_pct"]
             )
         )
     feedback.pushInfo("")

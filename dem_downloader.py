@@ -35,18 +35,20 @@ import math
 import os
 import re
 import ssl
+import time
 import tempfile
 import urllib.request
 import getpass
 
-from osgeo import gdal, ogr, osr
+
 from qgis.core import (
     QgsGeometry,
     QgsPointXY,
     QgsRectangle,
 )
 
-from .tile_download_base import download_tile_with_retry
+from .geo_bounds import longitude_intervals
+from .tile_download_base import clip_and_merge_tiles, download_tile_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +61,10 @@ _VALID_TILE_RE = re.compile(r"^Copernicus_DSM_COG_10_[NS]\d{2}_00_[EW]\d{3}_00_D
 
 
 def get_temp_dir():
-    username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
+    try:
+        username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
+    except (OSError, KeyError):
+        username = "nowires"
     temp_dir = os.path.join(tempfile.gettempdir(), "NoWires-" + username)
     os.makedirs(temp_dir, mode=0o700, exist_ok=True)
     return temp_dir
@@ -77,22 +82,23 @@ def required_tiles(south, north, west, east, feedback=None, max_tiles=_MAX_TILES
     aoi_geom = QgsGeometry.fromRect(QgsRectangle(west, south, east, north))
 
     tiles = []
-    for lat in range(math.floor(south), math.ceil(north)):
-        for lon in range(math.floor(west), math.ceil(east)):
-            tile_points = [
-                QgsPointXY(lon, lat),
-                QgsPointXY(lon + 1, lat),
-                QgsPointXY(lon + 1, lat + 1),
-                QgsPointXY(lon, lat + 1),
-            ]
-            tile_poly = QgsGeometry.fromPolygonXY([tile_points])
-            if tile_poly.intersection(aoi_geom).isEmpty():
-                continue
-            name = tile_name_for(lat, lon)
-            if name not in tiles:
-                tiles.append(name)
-                if feedback:
-                    feedback.pushInfo("Required tile: " + name)
+    for lon_west, lon_east in longitude_intervals(west, east):
+        for lat in range(math.floor(south), math.ceil(north)):
+            for lon in range(math.floor(lon_west), math.ceil(lon_east)):
+                tile_points = [
+                    QgsPointXY(lon, lat),
+                    QgsPointXY(lon + 1, lat),
+                    QgsPointXY(lon + 1, lat + 1),
+                    QgsPointXY(lon, lat + 1),
+                ]
+                tile_poly = QgsGeometry.fromPolygonXY([tile_points])
+                if tile_poly.intersection(aoi_geom).isEmpty():
+                    continue
+                name = tile_name_for(lat, lon)
+                if name not in tiles:
+                    tiles.append(name)
+                    if feedback:
+                        feedback.pushInfo("Required tile: " + name)
 
     if len(tiles) > max_tiles:
         raise ValueError(
@@ -114,10 +120,17 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
         urllib.request.HTTPSHandler(context=ctx)
     )
     available = []
+    deadline = time.monotonic() + _WALL_CLOCK_TIMEOUT
 
     for tile_name in tile_list:
         if feedback and feedback.isCanceled():
             return available
+        if time.monotonic() > deadline:
+            logger.warning("DEM download wall-clock timeout exceeded (%ds)", _WALL_CLOCK_TIMEOUT)
+            if feedback:
+                feedback.pushInfo(
+                    "Download timed out after {}s".format(_WALL_CLOCK_TIMEOUT))
+            break
 
         local_tif = os.path.join(temp_dir, tile_name + ".tif")
         tile_url = "{}{}/{}.tif".format(COPERNICUS_BASE_URL, tile_name, tile_name)
@@ -143,87 +156,10 @@ def clip_and_merge(tile_paths, south, north, west, east, temp_dir=None, feedback
     if temp_dir is None:
         temp_dir = get_temp_dir()
 
-    if not tile_paths:
-        return None
-
-    aoi_shp = os.path.join(temp_dir, "aoi_clip.shp")
-    shp_driver = ogr.GetDriverByName("ESRI Shapefile")
-    if os.path.exists(aoi_shp):
-        shp_driver.DeleteDataSource(aoi_shp)
-
-    ds = shp_driver.CreateDataSource(aoi_shp)
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(4326)
-    srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-    layer = ds.CreateLayer("aoi", srs=srs, geom_type=ogr.wkbPolygon)
-    feat_defn = layer.GetLayerDefn()
-    feature = ogr.Feature(feat_defn)
-
-    ring = ogr.Geometry(ogr.wkbLinearRing)
-    ring.AddPoint(west, south)
-    ring.AddPoint(east, south)
-    ring.AddPoint(east, north)
-    ring.AddPoint(west, north)
-    ring.AddPoint(west, south)
-    poly = ogr.Geometry(ogr.wkbPolygon)
-    poly.AddGeometry(ring)
-    feature.SetGeometry(poly)
-    layer.CreateFeature(feature)
-    ds = None
-
-    clipped = []
-    for path in tile_paths:
-        if feedback and feedback.isCanceled():
-            return None
-        base = os.path.splitext(os.path.basename(path))[0]
-        clip_path = os.path.join(temp_dir, base + "_clip.tif")
-
-        if feedback:
-            feedback.pushInfo("Clipping: " + os.path.basename(path))
-
-        result = gdal.Warp(
-            clip_path,
-            path,
-            cutlineDSName=aoi_shp,
-            cropToCutline=True,
-            dstNodata=-32768,
-            srcSRS="EPSG:4326",
-            dstSRS="EPSG:4326",
-            format="GTiff",
-            creationOptions=["COMPRESS=LZW", "TILED=YES"],
-        )
-        if result is None:
-            logger.warning("Warp failed for %s", os.path.basename(path))
-            continue
-        result = None
-
-        check = gdal.Open(clip_path)
-        if check is None:
-            logger.warning("Empty clip result for %s", os.path.basename(path))
-            continue
-        check = None
-        clipped.append(clip_path)
-
-    if not clipped:
-        return None
-
-    merged_path = os.path.join(temp_dir, "merged_dem.tif")
-    if feedback:
-        feedback.pushInfo("Merging {} clipped tiles".format(len(clipped)))
-
-    result = gdal.Warp(
-        merged_path,
-        clipped,
-        dstNodata=-32768,
-        format="GTiff",
-        creationOptions=["COMPRESS=LZW", "TILED=YES"],
+    return clip_and_merge_tiles(
+        tile_paths, south, north, west, east, temp_dir, feedback,
+        nodata_value=-32768, aoi_prefix="", merge_filename="merged_dem.tif",
     )
-    if result is None:
-        logger.error("Merge Warp failed")
-        return None
-    result = None
-
-    return merged_path
 
 
 def ensure_dem_for_area(south, north, west, east, feedback=None, proxy_opener=None):

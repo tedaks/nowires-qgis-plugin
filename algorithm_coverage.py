@@ -39,16 +39,15 @@ from .coverage_legend import show_coverage_legend
 from .coverage_compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
 from .coverage_engine import compute_coverage
 from .clutter import (
-    clutter_source_label, compute_terminal_clutter_losses,
+    CLUTTER_MODEL_OPTIONS, clutter_source_label, compute_terminal_clutter_losses,
     ensure_clutter_grid_for_area,
 )
 from .report_export import write_report_csv, write_report_html, write_report_json
 from .coverage_params import (
-    METERS_PER_DEGREE_LAT, PARAM_CONSTANTS,
-    add_coverage_params, extract_coverage_params,
-    CLUTTER_MODEL_OPTIONS, ANTENNA_PRESET_OPTIONS,
+    PARAM_CONSTANTS, add_coverage_params, extract_coverage_params,
 )
-from .constants import DEGREE_PADDING
+from .antenna import ANTENNA_PRESET_OPTIONS
+from .constants import DEGREE_PADDING, METERS_PER_DEGREE_LAT
 from .coverage_reporting import (
     build_coverage_report_payload_for_grid, report_coverage_results,
     write_coverage_geotiff,
@@ -199,20 +198,20 @@ class CoverageAlgorithm(NoWiresAlgorithm):
             QgsProject.instance().writeEntry(
                 "NoWires", "last_coverage_layer_id", raster_layer.id())
             show_coverage_legend(rx_sensitivity_dbm=p["rx_sens"])
-
-            report_coverage_results(
-                feedback, report_payload, raster_grid, valid, p["rx_sens"],
-                summary=summary)
-            if report_csv_path:
-                write_report_csv(report_csv_path, report_payload)
-            if report_json_path:
-                write_report_json(report_json_path, report_payload)
-            if report_html_path:
-                write_report_html(
-                    report_html_path, report_payload,
-                    title="NoWires Coverage Report")
         else:
             feedback.pushInfo("Warning: Could not load coverage raster layer.")
+
+        report_coverage_results(
+            feedback, report_payload, raster_grid, valid, p["rx_sens"],
+            summary=summary)
+        if report_csv_path:
+            write_report_csv(report_csv_path, report_payload)
+        if report_json_path:
+            write_report_json(report_json_path, report_payload)
+        if report_html_path:
+            write_report_html(
+                report_html_path, report_payload,
+                title="NoWires Coverage Report")
 
         feedback.setProgress(100)
         return {

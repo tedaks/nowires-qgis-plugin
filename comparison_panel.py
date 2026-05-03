@@ -40,6 +40,7 @@ from .clutter import (
     ensure_clutter_grid_for_area,
 )
 from .radio import validate_itm_input_ranges
+from .antenna import CUSTOM_ANTENNA_PRESET_INDEX
 from .comparison_params import GRID_SIZE_PRESETS
 
 __all__ = ["run_panel_coverage"]
@@ -101,7 +102,7 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
 
     antenna_bw_override = (
         None
-        if antenna_preset != 4 and antenna_bw == 360.0
+        if antenna_preset != CUSTOM_ANTENNA_PRESET_INDEX and antenna_bw == 360.0
         else antenna_bw
     )
 

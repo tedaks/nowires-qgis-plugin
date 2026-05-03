@@ -33,6 +33,17 @@ from qgis.core import (
     QgsProcessingParameterPoint,
     QgsCoordinateReferenceSystem,
 )
+from .defaults import (
+    DEFAULT_ANTENNA_AZIMUTH,
+    DEFAULT_ANTENNA_BEAMWIDTH,
+    DEFAULT_DOWNTILT_DEG,
+    DEFAULT_FREQ_MHZ,
+    DEFAULT_FRONT_BACK_DB,
+    DEFAULT_RADIUS_KM,
+    DEFAULT_RX_HEIGHT_M,
+    DEFAULT_TIME_PCT,
+    DEFAULT_TX_HEIGHT_M,
+)
 from .radio import (
     ITM_MAX_FREQUENCY_MHZ,
     ITM_MAX_TERMINAL_HEIGHT_M,
@@ -40,11 +51,8 @@ from .radio import (
     ITM_MIN_TERMINAL_HEIGHT_M,
     validate_itm_input_ranges,
 )
-from .antenna import ANTENNA_PRESET_OPTIONS
-from .clutter import (
-    LandCoverGrid,
-    clutter_override_value,
-)
+from .antenna import ANTENNA_PRESET_OPTIONS, CUSTOM_ANTENNA_PRESET_INDEX
+from .clutter import LandCoverGrid, clutter_override_value
 from .constants import (
     CLIMATE_OPTIONS,
     GRID_SIZE_PRESETS,
@@ -77,17 +85,17 @@ def _add_basic_params(alg):
     alg.addParameter(QgsProcessingParameterPoint(
         alg.TX_POINT, "Transmitter (TX) point"))
     alg.addParameter(QgsProcessingParameterNumber(
-        alg.TX_HEIGHT, "TX antenna height (m)", type=_DBL, defaultValue=30.0,
+        alg.TX_HEIGHT, "TX antenna height (m)", type=_DBL, defaultValue=DEFAULT_TX_HEIGHT_M,
         minValue=ITM_MIN_TERMINAL_HEIGHT_M, maxValue=ITM_MAX_TERMINAL_HEIGHT_M))
     alg.addParameter(QgsProcessingParameterNumber(
-        alg.RX_HEIGHT, "RX antenna height (m)", type=_DBL, defaultValue=10.0,
+        alg.RX_HEIGHT, "RX antenna height (m)", type=_DBL, defaultValue=DEFAULT_RX_HEIGHT_M,
         minValue=ITM_MIN_TERMINAL_HEIGHT_M, maxValue=ITM_MAX_TERMINAL_HEIGHT_M))
     alg.addParameter(QgsProcessingParameterNumber(
-        alg.FREQ_MHZ, "Frequency (MHz)", type=_DBL, defaultValue=300.0,
+        alg.FREQ_MHZ, "Frequency (MHz)", type=_DBL, defaultValue=DEFAULT_FREQ_MHZ,
         minValue=ITM_MIN_FREQUENCY_MHZ, maxValue=ITM_MAX_FREQUENCY_MHZ))
     alg.addParameter(QgsProcessingParameterNumber(
         alg.RADIUS_KM, "Max analysis distance (km)", type=_DBL,
-        defaultValue=50.0, minValue=1.0, maxValue=500.0))
+        defaultValue=DEFAULT_RADIUS_KM, minValue=1.0, maxValue=500.0))
     alg.addParameter(QgsProcessingParameterEnum(
         alg.GRID_SIZE, "Grid size resolution",
         options=GRID_SIZE_OPTIONS, defaultValue=2))
@@ -106,25 +114,25 @@ def _add_pct_params(alg):
         (alg.SITUATION_PCT, "Situation percentage"),
     ):
         alg.addParameter(QgsProcessingParameterNumber(
-            attr, label, type=_DBL, defaultValue=50.0, minValue=0.01, maxValue=99.99))
+            attr, label, type=_DBL, defaultValue=DEFAULT_TIME_PCT, minValue=0.01, maxValue=99.99))
 
 
 def _add_antenna_params(alg):
     alg.addParameter(QgsProcessingParameterNumber(
         alg.ANTENNA_AZ, "Antenna azimuth (deg, blank=omni)", type=_DBL,
-        defaultValue=0.0, minValue=0.0, maxValue=360.0, optional=True))
+        defaultValue=DEFAULT_ANTENNA_AZIMUTH, minValue=0.0, maxValue=360.0, optional=True))
     alg.addParameter(QgsProcessingParameterNumber(
         alg.ANTENNA_BW, "Antenna beamwidth (deg)", type=_DBL,
-        defaultValue=360.0, minValue=1.0, maxValue=360.0))
+        defaultValue=DEFAULT_ANTENNA_BEAMWIDTH, minValue=1.0, maxValue=360.0))
     alg.addParameter(QgsProcessingParameterEnum(
         alg.ANTENNA_PRESET, "TX antenna preset",
         options=ANTENNA_PRESET_OPTIONS, defaultValue=0))
     alg.addParameter(QgsProcessingParameterNumber(
         alg.FRONT_BACK_DB, "TX front-to-back ratio (dB)", type=_DBL,
-        defaultValue=25.0, minValue=0.0))
+        defaultValue=DEFAULT_FRONT_BACK_DB, minValue=0.0))
     alg.addParameter(QgsProcessingParameterNumber(
         alg.DOWNTILT_DEG, "TX downtilt (deg)", type=_DBL,
-        defaultValue=0.0, minValue=-45.0, maxValue=45.0))
+        defaultValue=DEFAULT_DOWNTILT_DEG, minValue=-45.0, maxValue=45.0))
     alg.addParameter(QgsProcessingParameterFile(
         alg.H_PATTERN, "TX horizontal pattern CSV", extension="csv", optional=True))
     alg.addParameter(QgsProcessingParameterFile(
@@ -202,7 +210,7 @@ def extract_coverage_params(alg, parameters, context):
         _enum(parameters, alg.RX_CLUTTER_OVERRIDE, context)
     )
     p["antenna_bw_override"] = (
-        None if p["antenna_preset"] != 4 and p["antenna_bw"] == 360.0
+        None if p["antenna_preset"] != CUSTOM_ANTENNA_PRESET_INDEX and p["antenna_bw"] == 360.0
         else p["antenna_bw"]
     )
     validate_itm_input_ranges(

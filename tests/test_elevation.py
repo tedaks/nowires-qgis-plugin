@@ -6,6 +6,7 @@
 import math
 
 import numpy as np
+import pytest
 
 from elevation import (
     ElevationGrid,
@@ -172,9 +173,6 @@ class TestElevationGridSampleOutOfExtent:
                     lat, lon, value
                 )
             )
-
-
-import pytest
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

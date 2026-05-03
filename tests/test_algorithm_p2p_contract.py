@@ -41,7 +41,7 @@ def test_p2p_algorithm_exposes_itm_variability_parameters():
     assert '"Time percentage"' in source
     assert '"Location percentage"' in source
     assert '"Situation percentage"' in source
-    assert "defaultValue=50.0" in source
+    assert "defaultValue=DEFAULT_TIME_PCT" in source
     assert "minValue=0.01" in source
     assert "maxValue=99.99" in source
 
@@ -187,9 +187,9 @@ def test_p2p_algorithm_uses_processing_context_for_layer_loading():
 
 def test_p2p_algorithm_removes_existing_profile_and_fresnel_outputs():
     source = _p2p_source()
-    assert "_remove_existing_ogr_dataset(driver, path)" in source
-    assert "_remove_existing_ogr_dataset(poly_driver, poly_path)" in source
-    assert "_remove_existing_ogr_dataset(lines_driver, lines_path)" in source
+    assert "remove_existing_ogr_dataset(driver, path)" in source
+    assert "remove_existing_ogr_dataset(poly_driver, poly_path)" in source
+    assert "remove_existing_ogr_dataset(lines_driver, lines_path)" in source
 
 
 def test_p2p_vector_writers_close_ogr_datasources_in_finally_blocks():

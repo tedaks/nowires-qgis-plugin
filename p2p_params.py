@@ -30,6 +30,15 @@ from qgis.core import (
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
 )
+from .defaults import (
+    DEFAULT_ANTENNA_AZIMUTH,
+    DEFAULT_DOWNTILT_DEG,
+    DEFAULT_FREQ_MHZ,
+    DEFAULT_FRONT_BACK_DB,
+    DEFAULT_RX_HEIGHT_M,
+    DEFAULT_TIME_PCT,
+    DEFAULT_TX_HEIGHT_M,
+)
 from .radio import (
     ITM_MAX_FREQUENCY_MHZ,
     ITM_MAX_TERMINAL_HEIGHT_M,
@@ -78,14 +87,14 @@ def _add_basic_link_params(algorithm):
         QgsProcessingParameterPoint(algorithm.RX_POINT, "Receiver (RX) point"))
     algorithm.addParameter(QgsProcessingParameterNumber(
         algorithm.TX_HEIGHT, "TX antenna height (m)", type=_DBL,
-        defaultValue=30.0, minValue=ITM_MIN_TERMINAL_HEIGHT_M,
+        defaultValue=DEFAULT_TX_HEIGHT_M, minValue=ITM_MIN_TERMINAL_HEIGHT_M,
         maxValue=ITM_MAX_TERMINAL_HEIGHT_M))
     algorithm.addParameter(QgsProcessingParameterNumber(
         algorithm.RX_HEIGHT, "RX antenna height (m)", type=_DBL,
-        defaultValue=10.0, minValue=ITM_MIN_TERMINAL_HEIGHT_M,
+        defaultValue=DEFAULT_RX_HEIGHT_M, minValue=ITM_MIN_TERMINAL_HEIGHT_M,
         maxValue=ITM_MAX_TERMINAL_HEIGHT_M))
     algorithm.addParameter(QgsProcessingParameterNumber(
-        algorithm.FREQ_MHZ, "Frequency (MHz)", type=_DBL, defaultValue=300.0,
+        algorithm.FREQ_MHZ, "Frequency (MHz)", type=_DBL, defaultValue=DEFAULT_FREQ_MHZ,
         minValue=ITM_MIN_FREQUENCY_MHZ, maxValue=ITM_MAX_FREQUENCY_MHZ))
     algorithm.addParameter(QgsProcessingParameterEnum(
         algorithm.POLARIZATION, "Polarization",
@@ -95,13 +104,13 @@ def _add_basic_link_params(algorithm):
         options=CLIMATE_OPTIONS, defaultValue=1))
     algorithm.addParameter(QgsProcessingParameterNumber(
         algorithm.TIME_PCT, "Time percentage", type=_DBL,
-        defaultValue=50.0, minValue=0.01, maxValue=99.99))
+        defaultValue=DEFAULT_TIME_PCT, minValue=0.01, maxValue=99.99))
     algorithm.addParameter(QgsProcessingParameterNumber(
         algorithm.LOCATION_PCT, "Location percentage", type=_DBL,
-        defaultValue=50.0, minValue=0.01, maxValue=99.99))
+        defaultValue=DEFAULT_TIME_PCT, minValue=0.01, maxValue=99.99))
     algorithm.addParameter(QgsProcessingParameterNumber(
         algorithm.SITUATION_PCT, "Situation percentage", type=_DBL,
-        defaultValue=50.0, minValue=0.01, maxValue=99.99))
+        defaultValue=DEFAULT_TIME_PCT, minValue=0.01, maxValue=99.99))
 
 
 def _add_antenna_params(algorithm, prefix):
@@ -111,14 +120,14 @@ def _add_antenna_params(algorithm, prefix):
         options=ANTENNA_PRESET_OPTIONS, defaultValue=0))
     algorithm.addParameter(QgsProcessingParameterNumber(
         getattr(algorithm, prefix + "ANTENNA_AZ"), "{} antenna azimuth (deg)".format(label),
-        type=_DBL, defaultValue=0.0, minValue=0.0, maxValue=360.0, optional=True))
+        type=_DBL, defaultValue=DEFAULT_ANTENNA_AZIMUTH, minValue=0.0, maxValue=360.0, optional=True))
     algorithm.addParameter(QgsProcessingParameterNumber(
         getattr(algorithm, prefix + "FRONT_BACK_DB"),
         "{} front-to-back ratio (dB)".format(label),
-        type=_DBL, defaultValue=25.0, minValue=0.0))
+        type=_DBL, defaultValue=DEFAULT_FRONT_BACK_DB, minValue=0.0))
     algorithm.addParameter(QgsProcessingParameterNumber(
         getattr(algorithm, prefix + "DOWNTILT_DEG"), "{} downtilt (deg)".format(label),
-        type=_DBL, defaultValue=0.0, minValue=-45.0, maxValue=45.0))
+        type=_DBL, defaultValue=DEFAULT_DOWNTILT_DEG, minValue=-45.0, maxValue=45.0))
     algorithm.addParameter(QgsProcessingParameterFile(
         getattr(algorithm, prefix + "H_PATTERN"), "{} horizontal pattern CSV".format(label),
         extension="csv", optional=True))

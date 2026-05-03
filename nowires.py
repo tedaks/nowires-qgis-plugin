@@ -21,6 +21,8 @@
 """
 
 import os
+import re
+import tempfile
 
 from qgis.PyQt.QtCore import QTimer
 from qgis.PyQt.QtGui import QAction, QIcon
@@ -35,6 +37,22 @@ from .provider import NoWiresProvider
 from .three_d import SCENE_MODE_GLOBE, SCENE_MODE_LOCAL, open_nowires_3d_view
 
 cmd_folder = os.path.dirname(__file__)
+
+
+def _stale_temp_dir_count():
+    import getpass
+    username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
+    temp_base = tempfile.gettempdir()
+    prefixes = ("nowires_p2p_", "nowires_coverage_", "nowires_dem_",
+                "nowires_worldcover_", "nowires_comp_", "nowires_batch_")
+    try:
+        entries = [
+            e for e in os.listdir(temp_base)
+            if any(e.startswith(p) for p in prefixes)
+        ]
+        return len(entries)
+    except OSError:
+        return 0
 
 
 class NoWiresPlugin:
@@ -112,6 +130,15 @@ class NoWiresPlugin:
         self.iface.addToolBarIcon(self.batch_action)
 
         self._opacity_dialog = None
+
+        stale = _stale_temp_dir_count()
+        if stale > 0:
+            from qgis.core import QgsMessageLog
+            QgsMessageLog.logMessage(
+                "NoWires: {} stale temporary director(y/ies) in {}. "
+                "These are left for QGIS layer loading and can be "
+                "safely deleted when QGIS is closed.".format(stale, tempfile.gettempdir()),
+                "NoWires")
 
     def unload(self):
         """Remove plugin elements."""

@@ -27,10 +27,9 @@ Extracted from algorithm_coverage.py for modularity.
 
 import numpy as np
 
-from .coverage_params import POLARIZATION_NAMES
 from .clutter import CLUTTER_MODEL_OPTIONS
 from .antenna import ANTENNA_PRESET_OPTIONS
-from .constants import CLIMATE_NAMES
+from .constants import CLIMATE_NAMES, POLARIZATION_NAMES
 from .coverage_summary import summarize_coverage_grid
 from .report_payloads import (
     build_coverage_report_payload,
@@ -48,6 +47,7 @@ def build_coverage_report_payload_for_grid(
     max_lat,
     min_lon,
     max_lon,
+    *,
     tx_lat,
     tx_lon,
     tx_h,

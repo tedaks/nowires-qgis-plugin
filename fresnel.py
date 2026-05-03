@@ -29,8 +29,10 @@ import math
 
 import numpy as np
 
+from .constants import EARTH_RADIUS_M
+from .defaults import FRESNEL_60PCT_FACTOR
+
 C_LIGHT = 299792458.0
-EARTH_RADIUS_M = 6371000.0
 
 
 def fresnel_radius(d1_m, d2_m, f_mhz):
@@ -91,6 +93,6 @@ def fresnel_profile_analysis(
 
     obstructs_los = terrain_bulge > los_h
     violates_f1 = terrain_bulge > (los_h - fr)
-    violates_f60 = terrain_bulge > (los_h - 0.6 * fr)
+    violates_f60 = terrain_bulge > (los_h - FRESNEL_60PCT_FACTOR * fr)
 
     return terrain_bulge, los_h, fr, obstructs_los, violates_f1, violates_f60

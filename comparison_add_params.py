@@ -40,6 +40,25 @@ from .comparison_params import (
     OUTPUT_CONSTANTS,
 )
 from .constants import CLIMATE_OPTIONS, GRID_SIZE_OPTIONS
+from .defaults import (
+    DEFAULT_ANTENNA_AZIMUTH,
+    DEFAULT_ANTENNA_BEAMWIDTH,
+    DEFAULT_CABLE_LOSS_DB,
+    DEFAULT_DOWNTILT_DEG,
+    DEFAULT_EPSILON,
+    DEFAULT_FREQ_MHZ,
+    DEFAULT_FRONT_BACK_DB,
+    DEFAULT_N0,
+    DEFAULT_RADIUS_KM,
+    DEFAULT_RX_GAIN_DBI,
+    DEFAULT_RX_HEIGHT_M,
+    DEFAULT_RX_SENSITIVITY_DBM,
+    DEFAULT_SIGMA,
+    DEFAULT_TIME_PCT,
+    DEFAULT_TX_GAIN_DBI,
+    DEFAULT_TX_HEIGHT_M,
+    DEFAULT_TX_POWER_DBM,
+)
 from .shared_params import add_clutter_params
 
 __all__ = ["add_panel_params", "add_comparison_params"]
@@ -52,22 +71,22 @@ def add_panel_params(algorithm, prefix, config):
     )
     algorithm.addParameter(
         config["height_param"](
-            f"{prefix}_TX_HEIGHT", f"Panel {panel_label} TX antenna height (m)", defaultValue=30.0,
+            f"{prefix}_TX_HEIGHT", f"Panel {panel_label} TX antenna height (m)", defaultValue=DEFAULT_TX_HEIGHT_M,
         )
     )
     algorithm.addParameter(
         config["height_param"](
-            f"{prefix}_RX_HEIGHT", f"Panel {panel_label} RX antenna height (m)", defaultValue=10.0,
+            f"{prefix}_RX_HEIGHT", f"Panel {panel_label} RX antenna height (m)", defaultValue=DEFAULT_RX_HEIGHT_M,
         )
     )
     algorithm.addParameter(
         config["freq_param"](
-            f"{prefix}_FREQ_MHZ", f"Panel {panel_label} Frequency (MHz)", defaultValue=300.0,
+            f"{prefix}_FREQ_MHZ", f"Panel {panel_label} Frequency (MHz)", defaultValue=DEFAULT_FREQ_MHZ,
         )
     )
     algorithm.addParameter(
         config["radius_param"](
-            f"{prefix}_RADIUS_KM", f"Panel {panel_label} Max analysis distance (km)", defaultValue=50.0,
+            f"{prefix}_RADIUS_KM", f"Panel {panel_label} Max analysis distance (km)", defaultValue=DEFAULT_RADIUS_KM,
         )
     )
     algorithm.addParameter(
@@ -92,53 +111,53 @@ def add_panel_params(algorithm, prefix, config):
     )
     algorithm.addParameter(
         config["pct_param"](
-            f"{prefix}_TIME_PCT", f"Panel {panel_label} Time percentage", defaultValue=50.0,
+            f"{prefix}_TIME_PCT", f"Panel {panel_label} Time percentage", defaultValue=DEFAULT_TIME_PCT,
         )
     )
     algorithm.addParameter(
         config["pct_param"](
-            f"{prefix}_LOCATION_PCT", f"Panel {panel_label} Location percentage", defaultValue=50.0,
+            f"{prefix}_LOCATION_PCT", f"Panel {panel_label} Location percentage", defaultValue=DEFAULT_TIME_PCT,
         )
     )
     algorithm.addParameter(
         config["pct_param"](
-            f"{prefix}_SITUATION_PCT", f"Panel {panel_label} Situation percentage", defaultValue=50.0,
+            f"{prefix}_SITUATION_PCT", f"Panel {panel_label} Situation percentage", defaultValue=DEFAULT_TIME_PCT,
         )
     )
     algorithm.addParameter(
         config["dbm_param"](
-            f"{prefix}_TX_POWER", f"Panel {panel_label} TX power (dBm)", defaultValue=43.0,
+            f"{prefix}_TX_POWER", f"Panel {panel_label} TX power (dBm)", defaultValue=DEFAULT_TX_POWER_DBM,
         )
     )
     algorithm.addParameter(
         config["gain_param"](
-            f"{prefix}_TX_GAIN", f"Panel {panel_label} TX antenna gain (dBi)", defaultValue=8.0,
+            f"{prefix}_TX_GAIN", f"Panel {panel_label} TX antenna gain (dBi)", defaultValue=DEFAULT_TX_GAIN_DBI,
         )
     )
     algorithm.addParameter(
         config["gain_param"](
-            f"{prefix}_RX_GAIN", f"Panel {panel_label} RX antenna gain (dBi)", defaultValue=2.0,
+            f"{prefix}_RX_GAIN", f"Panel {panel_label} RX antenna gain (dBi)", defaultValue=DEFAULT_RX_GAIN_DBI,
         )
     )
     algorithm.addParameter(
         config["loss_param"](
-            f"{prefix}_CABLE_LOSS", f"Panel {panel_label} Cable loss (dB)", defaultValue=2.0,
+            f"{prefix}_CABLE_LOSS", f"Panel {panel_label} Cable loss (dB)", defaultValue=DEFAULT_CABLE_LOSS_DB,
         )
     )
     algorithm.addParameter(
         config["dbm_param"](
-            f"{prefix}_RX_SENSITIVITY", f"Panel {panel_label} RX sensitivity (dBm)", defaultValue=-100.0,
+            f"{prefix}_RX_SENSITIVITY", f"Panel {panel_label} RX sensitivity (dBm)", defaultValue=DEFAULT_RX_SENSITIVITY_DBM,
         )
     )
     algorithm.addParameter(
         config["az_param"](
             f"{prefix}_ANTENNA_AZ", f"Panel {panel_label} Antenna azimuth (deg, blank=omni)",
-            defaultValue=0.0, optional=True,
+            defaultValue=DEFAULT_ANTENNA_AZIMUTH, optional=True,
         )
     )
     algorithm.addParameter(
         config["bw_param"](
-            f"{prefix}_ANTENNA_BW", f"Panel {panel_label} Antenna beamwidth (deg)", defaultValue=360.0,
+            f"{prefix}_ANTENNA_BW", f"Panel {panel_label} Antenna beamwidth (deg)", defaultValue=DEFAULT_ANTENNA_BEAMWIDTH,
         )
     )
     algorithm.addParameter(
@@ -149,12 +168,12 @@ def add_panel_params(algorithm, prefix, config):
     )
     algorithm.addParameter(
         config["db_param"](
-            f"{prefix}_FRONT_BACK_DB", f"Panel {panel_label} TX front-to-back ratio (dB)", defaultValue=25.0,
+            f"{prefix}_FRONT_BACK_DB", f"Panel {panel_label} TX front-to-back ratio (dB)", defaultValue=DEFAULT_FRONT_BACK_DB,
         )
     )
     algorithm.addParameter(
         config["downtilt_param"](
-            f"{prefix}_DOWNTILT_DEG", f"Panel {panel_label} TX downtilt (deg)", defaultValue=0.0,
+            f"{prefix}_DOWNTILT_DEG", f"Panel {panel_label} TX downtilt (deg)", defaultValue=DEFAULT_DOWNTILT_DEG,
         )
     )
     algorithm.addParameter(
@@ -171,19 +190,19 @@ def add_panel_params(algorithm, prefix, config):
     )
     add_clutter_params(algorithm, attr_getter=lambda name: getattr(algorithm, f"{prefix}_{name}"))
     n0_param = config["n0_param"](
-        f"{prefix}_N0", f"Panel {panel_label} Surface refractivity N0 (N-units)", defaultValue=301.0,
+        f"{prefix}_N0", f"Panel {panel_label} Surface refractivity N0 (N-units)", defaultValue=DEFAULT_N0,
     )
     n0_param.setFlags(n0_param.flags() | QgsProcessingParameterNumber.FlagAdvanced)
     algorithm.addParameter(n0_param)
 
     epsilon_param = config["epsilon_param"](
-        f"{prefix}_EPSILON", f"Panel {panel_label} Earth permittivity (epsilon)", defaultValue=15.0,
+        f"{prefix}_EPSILON", f"Panel {panel_label} Earth permittivity (epsilon)", defaultValue=DEFAULT_EPSILON,
     )
     epsilon_param.setFlags(epsilon_param.flags() | QgsProcessingParameterNumber.FlagAdvanced)
     algorithm.addParameter(epsilon_param)
 
     sigma_param = config["sigma_param"](
-        f"{prefix}_SIGMA", f"Panel {panel_label} Earth conductivity (sigma, S/m)", defaultValue=0.005,
+        f"{prefix}_SIGMA", f"Panel {panel_label} Earth conductivity (sigma, S/m)", defaultValue=DEFAULT_SIGMA,
     )
     sigma_param.setFlags(sigma_param.flags() | QgsProcessingParameterNumber.FlagAdvanced)
     algorithm.addParameter(sigma_param)

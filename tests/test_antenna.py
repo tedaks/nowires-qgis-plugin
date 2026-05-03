@@ -4,6 +4,8 @@
 """Unit tests for antenna.py — antenna radiation pattern model."""
 
 
+import pytest
+
 from antenna import antenna_gain_factor
 
 
@@ -57,9 +59,6 @@ class TestAntennaGainFactor:
         result = antenna_gain_factor(30.0, az, bw)
         expected = -3.0 * (30.0 / 60.0) ** 2  # = -0.75
         assert result == pytest.approx(expected, abs=0.001)
-
-
-import pytest
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
