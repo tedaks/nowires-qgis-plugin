@@ -45,7 +45,8 @@ from .fresnel import C_LIGHT
 from .geo_bounds import shortest_longitude_bounds
 from .p2p_analysis_params import P2PAnalysisParams
 from .radio import (PROP_MODE_NAMES, build_pfl,
-    fresnel_profile_analysis, itm_p2p_loss)
+    itm_p2p_loss)
+from .fresnel import fresnel_profile_analysis
 from .report_export import write_report_csv, write_report_html, write_report_json
 from .report_payloads import build_p2p_report_payload
 from .report_markers import write_p2p_marker_layer
