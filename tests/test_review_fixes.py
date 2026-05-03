@@ -233,6 +233,12 @@ def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypa
         def isValid(self):
             return False
 
+        def error(self):
+            class _Err:
+                def summary(self):
+                    return "mock error"
+            return _Err()
+
     class Algorithm(module.CoverageAlgorithm):
         def parameterAsFileOutput(self, parameters, name, context):
             return parameters.get(name, "")
