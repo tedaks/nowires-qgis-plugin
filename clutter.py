@@ -2,12 +2,12 @@
 """
 /***************************************************************************
  NoWires
-                     A QGIS plugin
+                      A QGIS plugin
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                             -------------------
-        begin                : 2026-04-22
-        copyright            : (C) 2026 Bortre Tenamo
-        email                : tedaks@gmail.com
+                              -------------------
+         begin                : 2026-04-22
+         copyright            : (C) 2026 Bortre Tenamo
+         email                : tedaks@gmail.com
  ***************************************************************************/
 
 /***************************************************************************
@@ -33,7 +33,6 @@ from .worldcover_downloader import ensure_worldcover_for_area
 
 logger = logging.getLogger(__name__)
 
-
 CLUTTER_CATEGORIES = ("open", "rural", "vegetation", "suburban", "urban")
 CLUTTER_LOSS_DB = {
     "open": 0.0,
@@ -45,15 +44,29 @@ CLUTTER_LOSS_DB = {
 CLUTTER_MODEL_OPTIONS = ["Off", "Simple clutter correction"]
 CLUTTER_OVERRIDE_OPTIONS = ["Auto", "open", "rural", "vegetation", "suburban", "urban"]
 
+_CATEGORY_IDX = {k: i for i, k in enumerate(CLUTTER_CATEGORIES)}
+_CLUTTER_LOSS_ARRAY = np.array([
+    CLUTTER_LOSS_DB["open"],
+    CLUTTER_LOSS_DB["rural"],
+    CLUTTER_LOSS_DB["vegetation"],
+    CLUTTER_LOSS_DB["suburban"],
+    CLUTTER_LOSS_DB["urban"],
+], dtype=np.float64)
 
-@dataclass(frozen=True)
-class TerminalClutterLosses:
-    tx_category: str
-    rx_category: str
-    tx_loss_db: float
-    rx_loss_db: float
-    total_loss_db: float
-    source: str
+# Lookup table: ESA WorldCover class ID (0-255) -> clutter category index (0-4)
+# Unknown classes default to 0 (open)
+_WORLDCOVER_TO_CATEGORY = np.zeros(256, dtype=np.int32)
+_WORLDCOVER_TO_CATEGORY[10] = 2
+_WORLDCOVER_TO_CATEGORY[20] = 2
+_WORLDCOVER_TO_CATEGORY[95] = 2
+_WORLDCOVER_TO_CATEGORY[100] = 2
+_WORLDCOVER_TO_CATEGORY[30] = 1
+_WORLDCOVER_TO_CATEGORY[40] = 1
+_WORLDCOVER_TO_CATEGORY[50] = 4
+_WORLDCOVER_TO_CATEGORY[60] = 0
+_WORLDCOVER_TO_CATEGORY[70] = 0
+_WORLDCOVER_TO_CATEGORY[80] = 0
+_WORLDCOVER_TO_CATEGORY[90] = 0
 
 
 def worldcover_class_to_clutter_category(class_id) -> str:
@@ -66,16 +79,7 @@ def worldcover_class_to_clutter_category(class_id) -> str:
       - "urban": built-up
       - "open": bare, sparse, snow/ice, water, wetland
     """
-    value = int(class_id)
-    if value in (10, 20, 95, 100):
-        return "vegetation"
-    if value in (30, 40):
-        return "rural"
-    if value == 50:
-        return "urban"
-    if value in (60, 70, 80, 90):
-        return "open"
-    return "open"
+    return CLUTTER_CATEGORIES[_WORLDCOVER_TO_CATEGORY[int(class_id) % 256]]
 
 
 def clutter_loss_db(category, frequency_mhz) -> float:
@@ -121,7 +125,17 @@ def clutter_source_label(
     return "fallback_open"
 
 
-@dataclass
+@dataclass(frozen=True)
+class TerminalClutterLosses:
+    tx_category: str
+    rx_category: str
+    tx_loss_db: float
+    rx_loss_db: float
+    total_loss_db: float
+    source: str
+
+
+@dataclass(slots=True)
 class LandCoverGrid:
     data: np.ndarray
     min_lat: float
@@ -168,19 +182,15 @@ class LandCoverGrid:
         return False
 
     def sample_class(self, lat, lon) -> int | None:
-        if lat < self.min_lat or lat > self.max_lat:
-            return None
-        if lon < self.min_lon or lon > self.max_lon:
+        if not (self.min_lat <= lat <= self.max_lat and self.min_lon <= lon <= self.max_lon):
             return None
         n_rows, n_cols = self.data.shape
         d_lat = (self.max_lat - self.min_lat) / n_rows
         d_lon = (self.max_lon - self.min_lon) / n_cols
-        y = int((self.max_lat - lat) / d_lat)
-        x = int((lon - self.min_lon) / d_lon)
-        y = max(0, min(n_rows - 1, y))
-        x = max(0, min(n_cols - 1, x))
+        y = min(int((self.max_lat - lat) / d_lat), n_rows - 1)
+        x = min(int((lon - self.min_lon) / d_lon), n_cols - 1)
         value = self.data[y, x]
-        if self.nodata is not None and value == self.nodata:
+        if self.nodata is not None and float(value) == self.nodata:
             return None
         return int(value)
 
@@ -195,10 +205,10 @@ class LandCoverGrid:
 
         Returns a 2D array of clutter loss values in dB, shape (len(lats), len(lons)).
         """
+        n = len(lats)
+        m = len(lons)
         if self.data is None:
-            n = len(lats)
-            m = len(lons)
-            default = CLUTTER_LOSS_DB.get(rx_override or "open", 0.0) if rx_override else 0.0
+            default = _CLUTTER_LOSS_ARRAY[0] if rx_override else 0.0
             return np.full((n, m), default, dtype=np.float64)
         n_rows, n_cols = self.data.shape
         d_lat = (self.max_lat - self.min_lat) / n_rows
@@ -207,18 +217,19 @@ class LandCoverGrid:
         lon_arr = np.asarray(lons, dtype=np.float64)
         y_idx = np.clip(((self.max_lat - lat_arr) / d_lat).astype(np.int32), 0, n_rows - 1)
         x_idx = np.clip(((lon_arr - self.min_lon) / d_lon).astype(np.int32), 0, n_cols - 1)
-        classes = self.data[y_idx[:, np.newaxis], x_idx[np.newaxis, :]]
-        oob = (lat_arr[:, np.newaxis] < self.min_lat) | (lat_arr[:, np.newaxis] > self.max_lat) | \
-              (lon_arr[np.newaxis, :] < self.min_lon) | (lon_arr[np.newaxis, :] > self.max_lon)
+        sampled = self.data[y_idx[:, np.newaxis], x_idx[np.newaxis, :]]
+        cat_idx = _WORLDCOVER_TO_CATEGORY[sampled]
+        lat_oob = (lat_arr < self.min_lat) | (lat_arr > self.max_lat)
+        lon_oob = (lon_arr < self.min_lon) | (lon_arr > self.max_lon)
+        out_of_bounds = lat_oob[:, np.newaxis] | lon_oob[np.newaxis, :]
         if self.nodata is not None:
-            oob = oob | (classes == self.nodata)
-        vec_categorize = np.vectorize(worldcover_class_to_clutter_category)
-        categories = vec_categorize(classes)
-        categories = np.where(oob, "open", categories)
+            nodata_val = self.data.dtype.type(self.nodata) if np.issubdtype(self.data.dtype, np.integer) else self.nodata
+            out_of_bounds |= (sampled == nodata_val)
+        cat_idx = np.where(out_of_bounds, 0, cat_idx)
         if rx_override:
-            categories = np.full_like(categories, rx_override, dtype=object)
-        vec_loss = np.vectorize(lambda c: CLUTTER_LOSS_DB.get(str(c), 0.0))
-        return vec_loss(categories).astype(np.float64)
+            override_idx = _CATEGORY_IDX.get(rx_override, 0)
+            cat_idx[:] = override_idx
+        return _CLUTTER_LOSS_ARRAY[cat_idx]
 
 
 def ensure_clutter_grid_for_area(south, north, west, east, feedback=None) -> LandCoverGrid | None:
