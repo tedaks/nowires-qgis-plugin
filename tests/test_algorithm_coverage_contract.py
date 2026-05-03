@@ -219,7 +219,7 @@ def test_coverage_algorithm_uses_processing_context_for_layer_loading():
 def test_coverage_algorithm_keeps_temporary_outputs_alive_for_qgis_loading():
     source = _coverage_source()
     assert "shutil.rmtree(_coverage_tmpdir" not in source
-    assert "Temporary raster outputs are intentionally left on disk" in source
+    assert "TempDirManager" in source
 
 
 def test_coverage_algorithm_exposes_antenna_and_clutter_parameters():

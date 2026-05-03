@@ -151,7 +151,19 @@ class LandCoverGrid:
                 min_lat, max_lat = max_lat, min_lat
             return cls(data, min_lat, max_lat, min_lon, max_lon, nodata, str(path))
         finally:
+            band = None
             ds = None
+
+    def close(self):
+        """Release land-cover data to free memory."""
+        self.data = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
 
     def sample_class(self, lat, lon):
         if lat < self.min_lat or lat > self.max_lat:

@@ -11,6 +11,10 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
+# Ensure the coverage_analysis_params module can be imported
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from coverage_analysis_params import CoverageAnalysisParams
+
 
 def _install_qgis_stubs():
     qgis = types.ModuleType("qgis")
@@ -240,45 +244,52 @@ def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypa
         alg.OUTPUT_REPORT_JSON: str(tmp_path / "coverage.json"),
         alg.OUTPUT_REPORT_HTML: str(tmp_path / "coverage.html"),
     }
-    p = {
-        "tx_lat": 0.0,
-        "tx_lon": 179.5,
-        "f_mhz": 300.0,
-        "radius_km": 1.0,
-        "grid_size": 2,
-        "clutter_enabled": False,
-        "antenna_preset": 0,
-        "tx_h": 30.0,
-        "rx_h": 10.0,
-        "tx_power": 43.0,
-        "tx_gain": 8.0,
-        "rx_gain": 2.0,
-        "cable_loss": 2.0,
-        "rx_sens": -100.0,
-        "antenna_az": None,
-        "antenna_bw_override": None,
-        "polarization": 1,
-        "climate": 1,
-        "n0": 301.0,
-        "epsilon": 15.0,
-        "sigma": 0.005,
-        "time_pct": 50.0,
-        "location_pct": 50.0,
-        "situation_pct": 50.0,
-        "front_back_db": 25.0,
-        "downtilt_deg": 0.0,
-        "h_pattern": "",
-        "v_pattern": "",
-        "clutter_grid": None,
-        "clutter_raster_path": "",
-        "tx_clutter_override": None,
-        "rx_clutter_override": None,
-    }
+    p = CoverageAnalysisParams(
+        tx_lat=0.0,
+        tx_lon=179.5,
+        f_mhz=300.0,
+        radius_km=1.0,
+        grid_size=2,
+        clutter_enabled=False,
+        antenna_preset=0,
+        tx_h=30.0,
+        rx_h=10.0,
+        tx_power=43.0,
+        tx_gain=8.0,
+        rx_gain=2.0,
+        cable_loss=2.0,
+        rx_sens=-100.0,
+        antenna_az=None,
+        antenna_bw_override=None,
+        polarization=1,
+        climate=1,
+        n0=301.0,
+        epsilon=15.0,
+        sigma=0.005,
+        time_pct=50.0,
+        location_pct=50.0,
+        situation_pct=50.0,
+        front_back_db=25.0,
+        downtilt_deg=0.0,
+        h_pattern="",
+        v_pattern="",
+        clutter_grid=None,
+        clutter_raster_path="",
+        tx_clutter_override=None,
+        rx_clutter_override=None,
+    )
     writes = []
 
     monkeypatch.setattr(module, "extract_coverage_params", lambda *_args: p)
     monkeypatch.setattr(module, "ensure_dem_for_area", lambda *_args, **_kw: "dem.tif")
-    monkeypatch.setattr(module, "ElevationGrid", lambda path: object())
+    class FakeElevationGrid:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+        def close(self):
+            pass
+    monkeypatch.setattr(module, "ElevationGrid", lambda path: FakeElevationGrid())
     monkeypatch.setattr(module, "QgsRasterLayer", InvalidRasterLayer)
     monkeypatch.setattr(
         module,

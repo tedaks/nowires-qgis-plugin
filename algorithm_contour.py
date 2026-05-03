@@ -38,6 +38,7 @@ import shutil
 from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsGeometry,
+    QgsProcessingException,
     QgsProcessingParameterAuthConfig,
     QgsProcessingParameterBoolean,
     QgsProcessingParameterColor,
@@ -50,6 +51,7 @@ from qgis.core import (
 )
 
 from .base_algorithm import NoWiresAlgorithm
+from .constants import MAX_AOI_EXTENT_DEGREES, METERS_PER_FOOT
 
 from .contour_generation import generate_contour_lines, reproject_and_export
 from .contour_pipeline import (
@@ -63,10 +65,9 @@ from .contour_smoothing import _raster_calc, smooth_contour_dem
 from .contour_symbology import apply_contour_symbology
 from .dem_downloader import get_temp_dir
 from .processing_utils import queue_layer_for_loading
+from .temp_manager import TempDirManager
 from .three_d import configure_contours_for_3d
 
-
-MAX_AOI_EXTENT_DEGREES = 5.0
 
 
 class ContourLinesAlgorithm(NoWiresAlgorithm):
@@ -87,10 +88,11 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
 
     def __init__(self):
         super().__init__()
-        self.temp_dir = get_temp_dir()
+        self.temp_dir = get_temp_dir()  # persistent DEM cache dir (never cleaned)
         self.status_total = 0.0
         self.progress = 0.0
         self._raster_layer_ids = []
+        self._tmp = TempDirManager()  # per-run temp manager for clip/reproj files
 
     def initAlgorithm(self, config):
         self.addParameter(QgsProcessingParameterExtent(
@@ -129,15 +131,15 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             parameters, self.AREA_OF_INTEREST, context,
             crs=QgsCoordinateReferenceSystem("EPSG:4326"))
         if aoi.isNull() or not aoi.isFinite():
-            raise ValueError(self.tr(
+            raise QgsProcessingException(self.tr(
                 "Invalid area of interest (NaN values detected).\n\n"
                 "Please draw a rectangle directly using the extent tool."))
         geom = QgsGeometry.fromRect(aoi)
         if geom.isNull() or geom.isEmpty():
-            raise ValueError(self.tr("Could not create the area of interest geometry."))
+            raise QgsProcessingException(self.tr("Could not create the area of interest geometry."))
         w, h = aoi.width(), aoi.height()
         if w > MAX_AOI_EXTENT_DEGREES or h > MAX_AOI_EXTENT_DEGREES:
-            raise ValueError(self.tr(
+            raise QgsProcessingException(self.tr(
                 "Area of interest is too large ({}° x {}°). Maximum is {}°.".format(
                     w, h, MAX_AOI_EXTENT_DEGREES)))
         return aoi, geom
@@ -146,9 +148,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
         self._raster_layer_ids = []
         self.status_total = 0.0
         self.progress = 0.0
-        self._temp_subdirs = []
-        self._persistent_temp_subdirs = []
-        self._temp_files = []
+        self._tmp = TempDirManager()
         os.makedirs(self.temp_dir, exist_ok=True)
         feedback.pushInfo("\nTemporary folder: " + self.temp_dir)
         try:
@@ -172,7 +172,8 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
                 feedback, self.progress, self.status_total)
             if merged_path is None:
                 return {}
-            self._temp_files.extend(clip_temps)
+            for _cf in clip_temps:
+                self._tmp.add_file(_cf)
             self.progress += 2
             feedback.setProgress(int(self.progress * self.status_total))
 
@@ -180,7 +181,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             elevation_dem_path = None
             if gen_overlay or dem_output:
                 elevation_dem_path = os.path.join(self.temp_dir, "elevation_contour.tif")
-                self._temp_files.append(elevation_dem_path)
+                self._tmp.add_file(elevation_dem_path)
                 shutil.copy2(merged_path, elevation_dem_path)
 
             smooth_contour_dem(
@@ -194,16 +195,16 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             if use_feet:
                 feedback.pushInfo("\nConverting elevation values from metres to feet")
                 merged_metres = os.path.join(self.temp_dir, "merged_metres.tif")
-                self._temp_files.append(merged_metres)
+                self._tmp.add_file(merged_metres)
                 os.replace(merged_path, merged_metres)
-                _raster_calc(lambda A: A * 3.28084,
+                _raster_calc(lambda A: A * METERS_PER_FOOT,
                              output_path=merged_path, nodata=-32768,
                              overwrite=True, A=merged_metres)
 
             feedback.pushInfo("\nGenerating contour lines")
             contour_shp_path, tmp_shp_dir = generate_contour_lines(
                 merged_path, interval, self.temp_dir, gdal_callback)
-            self._temp_subdirs.append(tmp_shp_dir)
+            self._tmp.add_file(tmp_shp_dir)
             if feedback.isCanceled():
                 return {}
             self.progress += 1
@@ -213,7 +214,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             final_output_path, reproj_dir = reproject_and_export(
                 contour_shp_path, context.project().crs(), output_dest, self.temp_dir)
             if reproj_dir is not None:
-                self._temp_subdirs.append(reproj_dir)
+                self._tmp.add_file(reproj_dir)
 
             unit_label = "ft" if use_feet else "m"
             layer_name = "Contour Lines ({}{})".format(interval, unit_label)
@@ -235,21 +236,15 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
                     elevation_dem_path, self.temp_dir, context, feedback)
                 if lid:
                     self._raster_layer_ids.append(lid)
-                self._persistent_temp_subdirs.append(overlay_dir)
+                self._tmp.make_dir("overlay_persistent", persistent=True)
 
             queue_layer_for_loading(context, layer, layer_name)
             QgsProject.instance().writeEntry("NoWires", "last_contour_layer_id", layer.id())
             feedback.pushInfo("\nDone.")
             return {self.OUTPUT: final_output_path, self.OUTPUT_DEM: dem_output}
         finally:
-            for _d in self._temp_subdirs:
-                shutil.rmtree(_d, ignore_errors=True)
-            for _f in self._temp_files:
-                try:
-                    if os.path.exists(_f):
-                        os.unlink(_f)
-                except OSError:
-                    pass
+            self._tmp.cleanup()
+            self._tmp.warn_persistent(feedback)
 
     def name(self):
         return "contour_lines"

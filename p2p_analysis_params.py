@@ -56,8 +56,8 @@ class P2PAnalysisParams:
     n0: float
     epsilon: float
     sigma: float
-    tx_antenna_config: AntennaConfig = field(default=None)
-    rx_antenna_config: AntennaConfig = field(default=None)
+    tx_antenna_config: AntennaConfig | None = field(default=None)
+    rx_antenna_config: AntennaConfig | None = field(default=None)
     clutter_enabled: bool = False
     clutter_grid: LandCoverGrid | None = None
     tx_clutter_override: str = "open"

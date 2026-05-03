@@ -40,8 +40,7 @@ cmd_folder = os.path.dirname(__file__)
 
 def _stale_temp_dir_count():
     temp_base = tempfile.gettempdir()
-    prefixes = ("nowires_p2p_", "nowires_coverage_", "nowires_dem_",
-                "nowires_worldcover_", "nowires_comp_", "nowires_batch_")
+    prefixes = ("nowires_",)
     try:
         entries = [
             e for e in os.listdir(temp_base)
@@ -73,6 +72,7 @@ class NoWiresPlugin:
         self.initProcessing()
 
         icon = os.path.join(cmd_folder, "logo.png")
+        self._toolbar_actions = []
 
         # P2P Analysis action
         self.p2p_action = QAction(
@@ -80,7 +80,7 @@ class NoWiresPlugin:
         )
         self.p2p_action.triggered.connect(self.run_p2p)
         self.iface.addPluginToMenu("&NoWires", self.p2p_action)
-        self.iface.addToolBarIcon(self.p2p_action)
+        self._toolbar_actions.append(self.p2p_action)
 
         # Coverage action
         self.coverage_action = QAction(
@@ -116,7 +116,7 @@ class NoWiresPlugin:
         )
         self.comparison_action.triggered.connect(self.run_comparison)
         self.iface.addPluginToMenu("&NoWires", self.comparison_action)
-        self.iface.addToolBarIcon(self.comparison_action)
+        self._toolbar_actions.append(self.comparison_action)
 
         # Batch P2P Analysis action
         self.batch_action = QAction(
@@ -124,7 +124,10 @@ class NoWiresPlugin:
         )
         self.batch_action.triggered.connect(self.run_batch)
         self.iface.addPluginToMenu("&NoWires", self.batch_action)
-        self.iface.addToolBarIcon(self.batch_action)
+        self._toolbar_actions.append(self.batch_action)
+
+        for action in self._toolbar_actions:
+            self.iface.addToolBarIcon(action)
 
         self._opacity_dialog = None
 
@@ -153,9 +156,8 @@ class NoWiresPlugin:
         self.iface.removePluginMenu("&NoWires", self.open_3d_action)
         self.iface.removePluginMenu("&NoWires", self.comparison_action)
         self.iface.removePluginMenu("&NoWires", self.batch_action)
-        self.iface.removeToolBarIcon(self.p2p_action)
-        self.iface.removeToolBarIcon(self.comparison_action)
-        self.iface.removeToolBarIcon(self.batch_action)
+        for action in self._toolbar_actions:
+            self.iface.removeToolBarIcon(action)
 
     def run_p2p(self):
         processing.execAlgorithmDialog("nowires:p2p_analysis")

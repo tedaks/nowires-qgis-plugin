@@ -55,7 +55,6 @@ __all__ = [
     "POLARIZATION_NAMES",
     "K_FACTOR_PRESETS_OPTIONS",
     "add_p2p_params",
-    "_install_constants",
     "report_p2p_results",
 ]
 
@@ -74,10 +73,6 @@ PARAM_CONSTANTS = {k: k for k in _PARAM_NAMES}
 
 _DBL = QgsProcessingParameterNumber.Double
 
-
-def _install_constants(cls, constants_dict):
-    for key, value in constants_dict.items():
-        setattr(cls, key, value)
 
 
 def _add_basic_link_params(algorithm):

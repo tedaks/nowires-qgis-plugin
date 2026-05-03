@@ -24,7 +24,6 @@ Portions adapted from tedaks/nowires (MIT). See NOTICE.md.
 
 import logging
 import os
-import tempfile
 from qgis.core import QgsProcessingException
 from .base_algorithm import NoWiresAlgorithm, install_constants
 from .constants import DEGREE_PADDING
@@ -40,6 +39,8 @@ from .batch_outputs import (
     _feat_attr, compute_batch_links, rank_batch_results,
     write_batch_marker_layer, write_batch_csv, write_batch_json,
 )
+from .temp_manager import TempDirManager
+from .batch_analysis_params import BatchAnalysisParams
 
 logger = logging.getLogger(__name__)
 
@@ -136,14 +137,19 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
     feedback.pushInfo("Building elevation grid...")
     feedback.setProgress(15)
     elev = ElevationGrid(dem_path)
-    total = len(candidate_tx) * len(rx_points)
-    return dict(mode=mode, candidate_tx=candidate_tx, rx_points=rx_points, tx_h=tx_h, rx_h=rx_h,
+    try:
+        total = len(candidate_tx) * len(rx_points)
+        return BatchAnalysisParams(mode=mode, candidate_tx=candidate_tx, rx_points=rx_points,
+        tx_h=tx_h, rx_h=rx_h,
         f_mhz=f_mhz, polarization=polarization, climate=climate, time_pct=time_pct,
         location_pct=location_pct, situation_pct=situation_pct, tx_power=tx_power,
         tx_gain_default=tx_gain_d, rx_gain_default=rx_gain_d, cable_loss=cable_loss, rx_sens=rx_sens,
         tx_default_preset_key=tx_pk, rx_default_preset_key=rx_pk, tx_default_az=tx_az, rx_default_az=rx_az,
         tx_front_back_db=tfb, rx_front_back_db=rfb, k_factor=kf, n0=n0, epsilon=epsilon, sigma=sigma,
         clutter_enabled=ce, clutter_grid=cg, tx_clutter_override=tco, rx_clutter_override=rco, elev=elev, total=total)
+    except Exception:
+        elev.close()
+        raise
 
 
 def _report_batch_results(feedback, results, mode):
@@ -160,16 +166,15 @@ def _report_batch_results(feedback, results, mode):
     feedback.pushInfo("=" * 50)
 
 
-def _write_batch_outputs(algorithm, parameters, context, feedback, results, mode):
+def _write_batch_outputs(algorithm, parameters, context, feedback, results, mode, tmp_mgr):
     from qgis.core import QgsVectorLayer
     md = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_MARKERS, context)
     if md:
         mp = md
     else:
-        _bt = tempfile.mkdtemp(prefix="nowires_batch_")
+        _bt = tmp_mgr.make_dir("batch_markers", persistent=True)
         mp = os.path.join(_bt, "batch_markers.gpkg")
-        feedback.pushInfo(
-            "Temporary outputs are intentionally left on disk for QGIS layer loading: {}".format(_bt))
+        tmp_mgr.warn_persistent(feedback)
     write_batch_marker_layer(mp, results, feedback, mode)
     queue_layer_for_loading(context, QgsVectorLayer(mp, "Batch P2P Markers"), "Batch P2P Markers")
     csv_p = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_CSV, context)
@@ -196,24 +201,33 @@ class BatchAnalysisAlgorithm(NoWiresAlgorithm):
         add_batch_params(self)
 
     def processAlgorithm(self, parameters, context, feedback):
+        tmp_mgr = TempDirManager()
         rank_by = self.parameterAsEnum(parameters, self.RANK_BY, context)
         inp = _collect_batch_inputs(self, parameters, context, feedback)
         feedback.pushInfo("Computing batch P2P links...")
         feedback.setProgress(20)
-        results = compute_batch_links(
-            inp["candidate_tx"], inp["rx_points"], inp["elev"], inp["tx_h"], inp["rx_h"],
-            inp["f_mhz"], inp["polarization"], inp["climate"], inp["time_pct"],
-            inp["location_pct"], inp["situation_pct"], inp["n0"], inp["epsilon"],
-            inp["sigma"], inp["tx_power"], inp["tx_gain_default"], inp["rx_gain_default"],
-            inp["cable_loss"], inp["rx_sens"], inp["tx_default_preset_key"],
-            inp["rx_default_preset_key"], inp["tx_default_az"], inp["rx_default_az"],
-            inp["tx_front_back_db"], inp["rx_front_back_db"], inp["k_factor"],
-            inp["clutter_enabled"], inp["clutter_grid"], inp["tx_clutter_override"],
-            inp["rx_clutter_override"], feedback, inp["total"])
-        results = rank_batch_results(results, rank_by)
-        _report_batch_results(feedback, results, inp["mode"])
-        feedback.setProgress(85)
-        return _write_batch_outputs(self, parameters, context, feedback, results, inp["mode"])
+        try:
+            results = compute_batch_links(
+                inp.candidate_tx, inp.rx_points, inp.elev, inp.tx_h, inp.rx_h,
+                inp.f_mhz, inp.polarization, inp.climate, inp.time_pct,
+                inp.location_pct, inp.situation_pct, inp.n0, inp.epsilon,
+                inp.sigma, inp.tx_power, inp.tx_gain_default, inp.rx_gain_default,
+                inp.cable_loss, inp.rx_sens, inp.tx_default_preset_key,
+                inp.rx_default_preset_key, inp.tx_default_az, inp.rx_default_az,
+                inp.tx_front_back_db, inp.rx_front_back_db, inp.k_factor,
+                inp.clutter_enabled, inp.clutter_grid, inp.tx_clutter_override,
+                inp.rx_clutter_override, feedback, inp.total)
+            results = rank_batch_results(results, rank_by)
+            _report_batch_results(feedback, results, inp.mode)
+            feedback.setProgress(85)
+            return _write_batch_outputs(self, parameters, context, feedback, results, inp.mode, tmp_mgr)
+        finally:
+            if inp.elev is not None:
+                inp.elev.close()
+            if inp.clutter_grid is not None:
+                inp.clutter_grid.close()
+            tmp_mgr.cleanup()
+            tmp_mgr.warn_persistent(feedback)
 
     def shortHelpString(self):
         return ("Batch P2P analysis: One-to-Many (single TX→multiple RX) or "

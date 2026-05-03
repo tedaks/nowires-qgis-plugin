@@ -133,7 +133,7 @@ def test_batch_algorithm_exposes_custom_k_factor_choice():
 def test_batch_algorithm_keeps_temporary_outputs_alive_for_qgis_loading():
     source = _batch_source()
     assert "shutil.rmtree(_batch_tmp" not in source
-    assert "Temporary outputs are intentionally left on disk" in source
+    assert "TempDirManager" in source
 
 
 def test_batch_algorithm_transforms_source_layer_points_to_epsg4326():

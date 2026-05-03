@@ -79,5 +79,7 @@ def test_plugin_menu_has_batch_action():
 
 def test_plugin_toolbar_includes_batch_and_comparison():
     source = _text(PLUGIN_SOURCE)
-    assert "addToolBarIcon(self.comparison_action)" in source
-    assert "addToolBarIcon(self.batch_action)" in source
+    assert "_toolbar_actions" in source
+    assert "comparison_action" in source
+    assert "batch_action" in source
+    assert "addToolBarIcon" in source

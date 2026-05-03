@@ -29,11 +29,13 @@ class NoWiresAlgorithm(QgsProcessingAlgorithm):
 
     def postProcessAlgorithm(self, context, feedback):
         root = QgsProject.instance().layerTreeRoot()
-        for layer_id in getattr(self, "_raster_layer_ids", []):
-            node = root.findLayer(layer_id)
-            if node is not None:
-                clone = node.clone()
-                parent = node.parent()
-                parent.removeChildNode(node)
-                parent.insertChildNode(0, clone)
+        for layer_ids in (getattr(self, "_raster_layer_ids", []),
+                         getattr(self, "_vector_layer_ids", [])):
+            for layer_id in layer_ids:
+                node = root.findLayer(layer_id)
+                if node is not None:
+                    clone = node.clone()
+                    parent = node.parent()
+                    parent.removeChildNode(node)
+                    parent.insertChildNode(0, clone)
         return {}
