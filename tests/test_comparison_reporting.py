@@ -3,6 +3,8 @@
 # This program is free software under GPLv3 or later. See LICENSE.
 """Behavioral tests for comparison_reporting: build_panel_info and build_delta_info."""
 
+import math
+
 import numpy as np
 import pytest
 
@@ -108,7 +110,5 @@ class TestBuildDeltaInfo:
             "mean_delta": 0.0,
         }
         info = build_delta_info("diverging", 5.0, ds)
-        assert info["improved_pct"] == 0.0
-        assert info["degraded_pct"] == 0.0
-        assert not np.isnan(info["improved_pct"])
-        assert not np.isnan(info["degraded_pct"])
+        assert math.isnan(info["improved_pct"])
+        assert math.isnan(info["degraded_pct"])

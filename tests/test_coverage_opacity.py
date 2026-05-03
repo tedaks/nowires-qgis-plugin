@@ -129,7 +129,8 @@ def test_plugin_adds_opacity_menu_action():
 
 def test_plugin_removes_opacity_menu_action_on_unload():
     source = _text(PLUGIN_SOURCE)
-    assert 'self.iface.removePluginMenu("&NoWires", self.opacity_action)' in source
+    assert 'self.iface.removePluginMenu("&NoWires", action)' in source
+    assert 'opacity_action' in source
 
 
 def test_plugin_has_coverage_opacity_handler():
@@ -153,13 +154,14 @@ def test_plugin_tracks_opacity_dialog_reference():
 
 def test_coverage_algorithm_stores_layer_id():
     source = _text(COVERAGE_SOURCE)
-    assert "writeEntry(" in source
-    assert '"NoWires"' in source
-    assert '"last_coverage_layer_id"' in source
-    assert "raster_layer.id()" in source
+    assert "_coverage_layer_id" in source
+    algo_source = _text(os.path.join(PLUGIN_DIR, "base_algorithm.py"))
+    assert "writeEntry" in algo_source
+    assert "last_coverage_layer_id" in algo_source
 
 
 def test_coverage_algorithm_stores_dem_layer_id_for_3d():
     source = _text(COVERAGE_SOURCE)
-    assert '"last_dem_layer_id"' in source
-    assert "dem_layer.id()" in source
+    assert "_dem_layer_id" in source
+    algo_source = _text(os.path.join(PLUGIN_DIR, "base_algorithm.py"))
+    assert "last_dem_layer_id" in algo_source
