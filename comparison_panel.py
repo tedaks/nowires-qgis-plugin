@@ -186,6 +186,7 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
             clutter_grid=clutter_grid,
             tx_clutter_override=tx_clutter_override,
             rx_clutter_override=rx_clutter_override,
+            tx_clutter_loss_db=tx_clutter_for_report.tx_loss_db,
             feedback=feedback,
         )
     finally:

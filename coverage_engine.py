@@ -85,6 +85,7 @@ def compute_coverage(
     clutter_grid=None,
     tx_clutter_override=None,
     rx_clutter_override=None,
+    tx_clutter_loss_db=None,
     feedback=None,
 ):
     radius_m = radius_km * 1000.0
@@ -108,17 +109,21 @@ def compute_coverage(
         vertical_pattern_path=antenna_vertical_pattern_path,
     )
 
-    tx_clutter = compute_terminal_clutter_losses(
-        tx_lat=tx_lat,
-        tx_lon=tx_lon,
-        rx_lat=tx_lat,
-        rx_lon=tx_lon,
-        frequency_mhz=f_mhz,
-        enabled=clutter_enabled,
-        land_cover_grid=clutter_grid,
-        tx_override=tx_clutter_override,
-        rx_override=rx_clutter_override,
-    )
+    if tx_clutter_loss_db is not None:
+        tx_clutter_loss = tx_clutter_loss_db
+    else:
+        tx_clutter = compute_terminal_clutter_losses(
+            tx_lat=tx_lat,
+            tx_lon=tx_lon,
+            rx_lat=tx_lat,
+            rx_lon=tx_lon,
+            frequency_mhz=f_mhz,
+            enabled=clutter_enabled,
+            land_cover_grid=clutter_grid,
+            tx_override=tx_clutter_override,
+            rx_override=rx_clutter_override,
+        )
+        tx_clutter_loss = tx_clutter.tx_loss_db
 
     tasks = build_coverage_tasks(
         tx_lat,
@@ -143,7 +148,7 @@ def compute_coverage(
         antenna_config,
         clutter_enabled,
         clutter_grid,
-        tx_clutter.tx_loss_db,
+        tx_clutter_loss,
         rx_clutter_override,
         lats,
         lons,
