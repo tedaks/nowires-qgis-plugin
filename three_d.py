@@ -29,12 +29,12 @@ from qgis.core import Qgis, QgsProject
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QCheckBox, QMessageBox
 
+from .base_algorithm import ENTRY_KEY_LAST_COVERAGE, ENTRY_KEY_LAST_DEM
+
 
 SCENE_MODE_LOCAL = "local"
 SCENE_MODE_GLOBE = "globe"
 PROJECT_SCOPE = "NoWires"
-COVERAGE_LAYER_KEY = "last_coverage_layer_id"
-DEM_LAYER_KEY = "last_dem_layer_id"
 CONTOUR_LAYER_KEY = "last_contour_layer_id"
 VIEW_NAME_PREFIX = "NoWires 3D View"
 
@@ -71,8 +71,8 @@ def highlight_nowires_layers(iface):
     """Select and expand NoWires DEM, coverage, and contour layers in layer tree."""
     try:
         project = QgsProject.instance()
-        dem_id = project.readEntry("NoWires", "last_dem_layer_id")[0]
-        coverage_id = project.readEntry("NoWires", "last_coverage_layer_id")[0]
+        dem_id = project.readEntry(PROJECT_SCOPE, ENTRY_KEY_LAST_DEM)[0]
+        coverage_id = project.readEntry(PROJECT_SCOPE, ENTRY_KEY_LAST_COVERAGE)[0]
         contour_id = project.readEntry("NoWires", "last_contour_layer_id")[0]
 
         root = project.layerTreeRoot()
@@ -96,8 +96,8 @@ def remember_nowires_3d_layers(
 ):
     """Store the latest NoWires layers used for opening a 3D scene."""
     entries = {
-        DEM_LAYER_KEY: dem_layer.id() if dem_layer else "",
-        COVERAGE_LAYER_KEY: coverage_layer.id() if coverage_layer else "",
+        ENTRY_KEY_LAST_DEM: dem_layer.id() if dem_layer else "",
+        ENTRY_KEY_LAST_COVERAGE: coverage_layer.id() if coverage_layer else "",
         CONTOUR_LAYER_KEY: contour_layer.id() if contour_layer else "",
     }
     for key, value in entries.items():
@@ -108,12 +108,12 @@ def remember_nowires_3d_layers(
 def resolve_nowires_3d_layers(project):
     """Resolve the latest stored NoWires layer ids back to project layers."""
     layer_ids = {}
-    for key in (DEM_LAYER_KEY, COVERAGE_LAYER_KEY, CONTOUR_LAYER_KEY):
+    for key in (ENTRY_KEY_LAST_DEM, ENTRY_KEY_LAST_COVERAGE, CONTOUR_LAYER_KEY):
         layer_id, ok = project.readEntry(PROJECT_SCOPE, key, "")
         layer_ids[key] = layer_id if ok else ""
     return {
-        "dem_layer": project.mapLayer(layer_ids[DEM_LAYER_KEY]),
-        "coverage_layer": project.mapLayer(layer_ids[COVERAGE_LAYER_KEY]),
+        "dem_layer": project.mapLayer(layer_ids[ENTRY_KEY_LAST_DEM]),
+        "coverage_layer": project.mapLayer(layer_ids[ENTRY_KEY_LAST_COVERAGE]),
         "contour_layer": project.mapLayer(layer_ids[CONTOUR_LAYER_KEY]),
     }
 

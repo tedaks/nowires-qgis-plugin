@@ -297,19 +297,22 @@ def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypa
             pass
     monkeypatch.setattr(module, "ElevationGrid", lambda path: FakeElevationGrid())
     monkeypatch.setattr(module, "QgsRasterLayer", InvalidRasterLayer)
+    def _fake_coverage_result(**_kw):
+        from coverage_engine import CoverageResult
+        return CoverageResult(
+            prx_grid=np.array([[-80.0, -90.0]], dtype=np.float32),
+            loss_grid=np.array([[100.0, 110.0]], dtype=np.float32),
+            min_lat=-0.1,
+            max_lat=0.1,
+            min_lon=179.4,
+            max_lon=179.6,
+            itm_loss_grid=np.array([[100.0, 110.0]], dtype=np.float32),
+            clutter_loss_grid=np.zeros((1, 2), dtype=np.float32),
+        )
     monkeypatch.setattr(
         module,
         "compute_coverage",
-        lambda **_kw: (
-            np.array([[-80.0, -90.0]], dtype=np.float32),
-            np.array([[100.0, 110.0]], dtype=np.float32),
-            -0.1,
-            0.1,
-            179.4,
-            179.6,
-            np.array([[100.0, 110.0]], dtype=np.float32),
-            np.zeros((1, 2), dtype=np.float32),
-        ),
+        _fake_coverage_result,
     )
     monkeypatch.setattr(
         module,

@@ -1,6 +1,9 @@
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import Qgis, QgsProcessingAlgorithm, QgsProject
 
+ENTRY_KEY_LAST_DEM = "last_dem_layer_id"
+ENTRY_KEY_LAST_COVERAGE = "last_coverage_layer_id"
+
 
 def install_constants(cls, names_or_dict):
     if isinstance(names_or_dict, dict):
@@ -39,7 +42,7 @@ class NoWiresAlgorithm(QgsProcessingAlgorithm):
                         idx = parent.children().index(node)
                         parent.takeChildNode(node)
                         parent.insertChildNode(min(idx, parent.children().count()), node)
-        for attr_name, entry_key in [("_dem_layer_id", "last_dem_layer_id"), ("_coverage_layer_id", "last_coverage_layer_id")]:
+        for attr_name, entry_key in [("_dem_layer_id", ENTRY_KEY_LAST_DEM), ("_coverage_layer_id", ENTRY_KEY_LAST_COVERAGE)]:
             layer_id = getattr(self, attr_name, None)
             if layer_id is not None:
                 QgsProject.instance().writeEntry("NoWires", entry_key, layer_id)

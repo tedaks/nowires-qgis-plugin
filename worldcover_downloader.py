@@ -68,6 +68,12 @@ def get_worldcover_dir():
         tempfile.gettempdir(), "NoWires-" + username, "worldcover"
     )
     os.makedirs(worldcover_dir, mode=0o700, exist_ok=True)
+    try:
+        st = os.stat(worldcover_dir)
+        if st.st_mode & 0o777 != 0o700:
+            os.chmod(worldcover_dir, 0o700)
+    except OSError:
+        pass
     return worldcover_dir
 
 

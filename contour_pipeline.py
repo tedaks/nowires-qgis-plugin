@@ -32,6 +32,7 @@ from osgeo import gdal, ogr
 from qgis.PyQt.QtGui import QPainter
 from qgis.core import QgsApplication, QgsAuthMethodConfig, QgsProject, QgsRasterLayer
 
+from .base_algorithm import ENTRY_KEY_LAST_DEM
 from .dem_downloader import required_tiles, download_tiles
 from .processing_utils import queue_layer_for_loading
 
@@ -173,7 +174,7 @@ def load_dem_output(dem_output, elevation_dem_path, context, feedback):
         feedback.pushInfo("Warning: Could not load NoWires DEM layer")
         return None
     queue_layer_for_loading(context, layer, "NoWires DEM")
-    QgsProject.instance().writeEntry("NoWires", "last_dem_layer_id", layer.id())
+    QgsProject.instance().writeEntry("NoWires", ENTRY_KEY_LAST_DEM, layer.id())
     return layer.id()
 
 

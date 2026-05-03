@@ -50,7 +50,7 @@ def test_contour_algorithm_declares_optional_dem_output_for_3d():
 def test_contour_algorithm_stores_latest_3d_layer_ids():
     source = _source_text()
     assert '"last_contour_layer_id"' in source
-    assert '"last_dem_layer_id"' in source
+    assert "ENTRY_KEY_LAST_DEM" in source
     assert "layer.id()" in source
 
 

@@ -186,7 +186,8 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
 
             smooth_contour_dem(
                 smoothing, merged_path, self.temp_dir,
-                feedback, self.progress, self.status_total)
+                feedback, self.progress, self.status_total,
+                tmp_manager=self._tmp)
             if feedback.isCanceled():
                 return {}
             self.progress += 1

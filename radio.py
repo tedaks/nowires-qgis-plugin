@@ -34,6 +34,7 @@ attribution details.
 """
 
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -245,7 +246,7 @@ def itm_p2p_loss(
     if inter is not None:
         mode_val = inter.mode
         if mode_val is not None and not (
-            isinstance(mode_val, float) and mode_val != mode_val
+            isinstance(mode_val, float) and math.isnan(mode_val)
         ):
             mode = int(mode_val)
 

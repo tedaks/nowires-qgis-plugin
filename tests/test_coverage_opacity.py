@@ -42,7 +42,7 @@ def test_opacity_dialog_uses_qt6_slider_enums_directly():
 
 def test_opacity_module_uses_stored_layer_id_first():
     source = _text(OPACITY_SOURCE)
-    assert 'project.readEntry("NoWires", "last_coverage_layer_id"' in source
+    assert 'project.readEntry("NoWires", ENTRY_KEY_LAST_COVERAGE' in source
     assert "project.mapLayer(layer_id)" in source
 
 
