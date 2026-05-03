@@ -188,6 +188,9 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
         feedback=feedback,
     )
 
+    if clutter_grid is not None:
+        clutter_grid.close()
+
     return {
         "result": result,
         "clutter_source": clutter_source,

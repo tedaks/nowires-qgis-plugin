@@ -132,7 +132,7 @@ def test_p2p_algorithm_wires_resolve_k_factor_helper():
 def test_p2p_algorithm_keeps_temporary_outputs_alive_for_qgis_loading():
     source = _p2p_source()
     assert "shutil.rmtree(temp_dir" not in source
-    assert "Temporary outputs are intentionally left on disk" in source
+    assert "TempDirManager" in source
 
 
 def test_p2p_algorithm_exposes_marker_output():

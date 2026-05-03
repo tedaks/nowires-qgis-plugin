@@ -10,14 +10,14 @@
         email                : tedaks@gmail.com
  ***************************************************************************/
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 3 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+ /***************************************************************************
+  *                                                                         *
+  *   This program is free software; you can redistribute it and/or modify  *
+  *   it under the terms of the GNU General Public License as published by  *
+  *   the Free Software Foundation; either version 3 of the License, or     *
+  *   (at your option) any later version.                                   *
+  *                                                                         *
+  ***************************************************************************/
 
 
 Coverage Analysis Algorithm — heatmap prediction via ITM.
@@ -26,11 +26,10 @@ Coverage Analysis Algorithm — heatmap prediction via ITM.
 import logging
 import math
 import os
-import tempfile
 
 logger = logging.getLogger(__name__)
 
-from qgis.core import Qgis, QgsProject, QgsRasterLayer
+from qgis.core import Qgis, QgsProcessingException, QgsProject, QgsRasterLayer
 
 from .base_algorithm import NoWiresAlgorithm, install_constants
 from .dem_downloader import ensure_dem_for_area
@@ -53,6 +52,7 @@ from .coverage_reporting import (
     write_coverage_geotiff,
 )
 from .processing_utils import queue_layer_for_loading
+from .temp_manager import TempDirManager
 
 
 class CoverageAlgorithm(NoWiresAlgorithm):
@@ -67,159 +67,164 @@ class CoverageAlgorithm(NoWiresAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         self._raster_layer_ids = []
+        self._tmp = TempDirManager()
         p = extract_coverage_params(self, parameters, context)
 
         feedback.pushInfo(
             "TX: ({:.5f}, {:.5f}), F={:.1f} MHz, R={:.1f} km, Grid={}x{}".format(
-                p["tx_lat"], p["tx_lon"], p["f_mhz"],
-                p["radius_km"], p["grid_size"], p["grid_size"]))
+                p.tx_lat, p.tx_lon, p.f_mhz,
+                p.radius_km, p.grid_size, p.grid_size))
         feedback.pushInfo("Clutter correction: {}".format(
-            CLUTTER_MODEL_OPTIONS[1] if p["clutter_enabled"]
+            CLUTTER_MODEL_OPTIONS[1] if p.clutter_enabled
             else CLUTTER_MODEL_OPTIONS[0]))
         feedback.pushInfo("TX antenna preset: {}".format(
-            ANTENNA_PRESET_OPTIONS[p["antenna_preset"]]))
+            ANTENNA_PRESET_OPTIONS[p.antenna_preset]))
 
-        pad_deg = max(DEGREE_PADDING, p["radius_km"] / (METERS_PER_DEGREE_LAT / 1000.0) * 0.1)
-        rdeg_lat = p["radius_km"] / (METERS_PER_DEGREE_LAT / 1000.0)
-        rdeg_lon = p["radius_km"] / (
+        pad_deg = max(DEGREE_PADDING, p.radius_km / (METERS_PER_DEGREE_LAT / 1000.0) * 0.1)
+        rdeg_lat = p.radius_km / (METERS_PER_DEGREE_LAT / 1000.0)
+        rdeg_lon = p.radius_km / (
             METERS_PER_DEGREE_LAT / 1000.0
-            * max(math.cos(math.radians(p["tx_lat"])), 0.01))
-        south = p["tx_lat"] - rdeg_lat - pad_deg
-        north = p["tx_lat"] + rdeg_lat + pad_deg
-        west = p["tx_lon"] - rdeg_lon - pad_deg
-        east = p["tx_lon"] + rdeg_lon + pad_deg
+            * max(math.cos(math.radians(p.tx_lat)), 0.01))
+        south = p.tx_lat - rdeg_lat - pad_deg
+        north = p.tx_lat + rdeg_lat + pad_deg
+        west = p.tx_lon - rdeg_lon - pad_deg
+        east = p.tx_lon + rdeg_lon + pad_deg
 
         feedback.pushInfo("Downloading DEM data...")
         feedback.setProgress(5)
         dem_path = ensure_dem_for_area(south, north, west, east, feedback=feedback)
         if dem_path is None:
-            raise RuntimeError("Failed to obtain DEM data for the coverage area.")
+            raise QgsProcessingException("Failed to obtain DEM data for the coverage area.")
 
         feedback.pushInfo("Building elevation grid...")
         feedback.setProgress(15)
-        elev = ElevationGrid(dem_path)
+        try:
+            with ElevationGrid(dem_path) as elev:
+                clutter_grid = p.clutter_grid
+                if clutter_grid is None and p.clutter_enabled:
+                    clutter_grid = ensure_clutter_grid_for_area(
+                        south=south, north=north, west=west, east=east, feedback=feedback)
+                clutter_source = clutter_source_label(
+                    enabled=p.clutter_enabled, land_cover_grid=clutter_grid,
+                    raster_path=p.clutter_raster_path,
+                    tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override)
+                tx_clutter_for_report = compute_terminal_clutter_losses(
+                    tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.tx_lat,
+                    rx_lon=p.tx_lon, frequency_mhz=p.f_mhz,
+                    enabled=p.clutter_enabled, land_cover_grid=clutter_grid,
+                    tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override)
 
-        clutter_grid = p["clutter_grid"]
-        if clutter_grid is None and p["clutter_enabled"]:
-            clutter_grid = ensure_clutter_grid_for_area(
-                south=south, north=north, west=west, east=east, feedback=feedback)
-        clutter_source = clutter_source_label(
-            enabled=p["clutter_enabled"], land_cover_grid=clutter_grid,
-            raster_path=p["clutter_raster_path"],
-            tx_override=p["tx_clutter_override"], rx_override=p["rx_clutter_override"])
-        tx_clutter_for_report = compute_terminal_clutter_losses(
-            tx_lat=p["tx_lat"], tx_lon=p["tx_lon"], rx_lat=p["tx_lat"],
-            rx_lon=p["tx_lon"], frequency_mhz=p["f_mhz"],
-            enabled=p["clutter_enabled"], land_cover_grid=clutter_grid,
-            tx_override=p["tx_clutter_override"], rx_override=p["rx_clutter_override"])
+                feedback.pushInfo("Computing coverage...")
+                feedback.setProgress(20)
 
-        feedback.pushInfo("Computing coverage...")
-        feedback.setProgress(20)
+                result = compute_coverage(
+                    elev_grid=elev, tx_lat=p.tx_lat, tx_lon=p.tx_lon,
+                    tx_h_m=p.tx_h, rx_h_m=p.rx_h, f_mhz=p.f_mhz,
+                    grid_size=p.grid_size, radius_km=p.radius_km,
+                    profile_step_m=coverage_profile_step_m(p.f_mhz),
+                    max_profile_pts=DEFAULT_MAX_PROFILE_PTS, tx_power_dbm=p.tx_power,
+                    tx_gain_dbi=p.tx_gain, rx_gain_dbi=p.rx_gain,
+                    cable_loss_db=p.cable_loss, rx_sensitivity_dbm=p.rx_sens,
+                    antenna_az_deg=p.antenna_az,
+                    antenna_beamwidth_deg=p.antenna_bw_override,
+                    polarization=p.polarization, climate=p.climate,
+                    N0=p.n0, epsilon=p.epsilon, sigma=p.sigma,
+                    time_pct=p.time_pct, location_pct=p.location_pct,
+                    situation_pct=p.situation_pct, antenna_preset=p.antenna_preset,
+                    antenna_front_back_db=p.front_back_db,
+                    antenna_downtilt_deg=p.downtilt_deg,
+                    antenna_horizontal_pattern_path=p.h_pattern,
+                    antenna_vertical_pattern_path=p.v_pattern,
+                    clutter_enabled=p.clutter_enabled, clutter_grid=clutter_grid,
+                    tx_clutter_override=p.tx_clutter_override,
+                    rx_clutter_override=p.rx_clutter_override, feedback=feedback)
 
-        result = compute_coverage(
-            elev_grid=elev, tx_lat=p["tx_lat"], tx_lon=p["tx_lon"],
-            tx_h_m=p["tx_h"], rx_h_m=p["rx_h"], f_mhz=p["f_mhz"],
-            grid_size=p["grid_size"], radius_km=p["radius_km"],
-            profile_step_m=coverage_profile_step_m(p["f_mhz"]),
-            max_profile_pts=DEFAULT_MAX_PROFILE_PTS, tx_power_dbm=p["tx_power"],
-            tx_gain_dbi=p["tx_gain"], rx_gain_dbi=p["rx_gain"],
-            cable_loss_db=p["cable_loss"], rx_sensitivity_dbm=p["rx_sens"],
-            antenna_az_deg=p["antenna_az"],
-            antenna_beamwidth_deg=p["antenna_bw_override"],
-            polarization=p["polarization"], climate=p["climate"],
-            N0=p["n0"], epsilon=p["epsilon"], sigma=p["sigma"],
-            time_pct=p["time_pct"], location_pct=p["location_pct"],
-            situation_pct=p["situation_pct"], antenna_preset=p["antenna_preset"],
-            antenna_front_back_db=p["front_back_db"],
-            antenna_downtilt_deg=p["downtilt_deg"],
-            antenna_horizontal_pattern_path=p["h_pattern"],
-            antenna_vertical_pattern_path=p["v_pattern"],
-            clutter_enabled=p["clutter_enabled"], clutter_grid=clutter_grid,
-            tx_clutter_override=p["tx_clutter_override"],
-            rx_clutter_override=p["rx_clutter_override"], feedback=feedback)
+                (prx_grid, loss_grid, min_lat, max_lat, min_lon, max_lon,
+                 itm_loss_grid, clutter_loss_grid) = result
 
-        (prx_grid, loss_grid, min_lat, max_lat, min_lon, max_lon,
-         itm_loss_grid, clutter_loss_grid) = result
+                if prx_grid is None:
+                    raise QgsProcessingException("Coverage computation was cancelled.")
 
-        if prx_grid is None:
-            raise RuntimeError("Coverage computation was cancelled.")
+                report_payload, raster_grid, valid, summary = (
+                    build_coverage_report_payload_for_grid(
+                        prx_grid=prx_grid, loss_grid=loss_grid,
+                        itm_loss_grid=itm_loss_grid, clutter_loss_grid=clutter_loss_grid,
+                        min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,
+                        tx_lat=p.tx_lat, tx_lon=p.tx_lon, tx_h=p.tx_h, rx_h=p.rx_h,
+                        f_mhz=p.f_mhz, radius_km=p.radius_km, grid_size=p.grid_size,
+                        polarization=p.polarization, climate=p.climate,
+                        time_pct=p.time_pct, location_pct=p.location_pct,
+                        situation_pct=p.situation_pct, tx_power=p.tx_power,
+                        tx_gain=p.tx_gain, rx_gain=p.rx_gain, cable_loss=p.cable_loss,
+                        rx_sens=p.rx_sens, clutter_enabled=p.clutter_enabled,
+                        antenna_preset=p.antenna_preset,
+                        clutter_source=clutter_source,
+                        tx_clutter_for_report=tx_clutter_for_report))
 
-        report_payload, raster_grid, valid, summary = (
-            build_coverage_report_payload_for_grid(
-                prx_grid=prx_grid, loss_grid=loss_grid,
-                itm_loss_grid=itm_loss_grid, clutter_loss_grid=clutter_loss_grid,
-                min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,
-                **{k: p[k] for k in (
-                    "tx_lat", "tx_lon", "tx_h", "rx_h", "f_mhz", "radius_km",
-                    "grid_size", "polarization", "climate", "time_pct",
-                    "location_pct", "situation_pct", "tx_power", "tx_gain",
-                    "rx_gain", "cable_loss", "rx_sens", "clutter_enabled",
-                    "antenna_preset")},
-                clutter_source=clutter_source,
-                tx_clutter_for_report=tx_clutter_for_report))
+                feedback.pushInfo("Writing coverage raster...")
+                feedback.setProgress(85)
 
-        feedback.pushInfo("Writing coverage raster...")
-        feedback.setProgress(85)
+                tif_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_RASTER, context)
+                tif_path = tif_dest
+                if not tif_path:
+                    _coverage_tmpdir = self._tmp.make_dir("coverage_prx", persistent=True)
+                    tif_path = os.path.join(_coverage_tmpdir, "coverage_prx.tif")
+                    self._tmp.warn_persistent(feedback)
+                report_csv_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_CSV, context)
+                report_json_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_JSON, context)
+                report_html_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_HTML, context)
 
-        tif_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_RASTER, context)
-        _coverage_tmpdir = None
-        tif_path = tif_dest
-        if not tif_path:
-            _coverage_tmpdir = tempfile.mkdtemp(prefix="nowires_coverage_")
-            tif_path = os.path.join(_coverage_tmpdir, "coverage_prx.tif")
-            feedback.pushInfo(
-                "Temporary raster outputs are intentionally left on disk"
-                " for QGIS layer loading: {}".format(_coverage_tmpdir))
-        report_csv_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_CSV, context)
-        report_json_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_JSON, context)
-        report_html_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_HTML, context)
+                write_coverage_geotiff(prx_grid, min_lat, max_lat, min_lon, max_lon, tif_path)
 
-        write_coverage_geotiff(prx_grid, min_lat, max_lat, min_lon, max_lon, tif_path)
+                layer_name = "Coverage ({:.0f} MHz, {:.0f} km, {}x{})".format(
+                    p.f_mhz, p.radius_km, p.grid_size, p.grid_size)
+                raster_layer = QgsRasterLayer(tif_path, layer_name)
 
-        layer_name = "Coverage ({:.0f} MHz, {:.0f} km, {}x{})".format(
-            p["f_mhz"], p["radius_km"], p["grid_size"], p["grid_size"])
-        raster_layer = QgsRasterLayer(tif_path, layer_name)
+                if raster_layer.isValid():
+                    self._apply_coverage_style(raster_layer)
+                    raster_layer.setOpacity(1.0)
 
-        if raster_layer.isValid():
-            self._apply_coverage_style(raster_layer)
-            raster_layer.setOpacity(1.0)
+                    dem_layer = QgsRasterLayer(dem_path, "NoWires DEM (GLO-30)")
+                    if dem_layer.isValid():
+                        elev_props = dem_layer.elevationProperties()
+                        elev_props.setEnabled(True)
+                        elev_props.setMode(Qgis.RasterElevationMode.RepresentsElevationSurface)
+                        elev_props.setBandNumber(1)
+                        queue_layer_for_loading(context, dem_layer, "NoWires DEM (GLO-30)")
+                        self._raster_layer_ids.append(dem_layer.id())
+                        QgsProject.instance().writeEntry("NoWires", "last_dem_layer_id", dem_layer.id())
 
-            dem_layer = QgsRasterLayer(dem_path, "NoWires DEM (GLO-30)")
-            if dem_layer.isValid():
-                elev_props = dem_layer.elevationProperties()
-                elev_props.setEnabled(True)
-                elev_props.setMode(Qgis.RasterElevationMode.RepresentsElevationSurface)
-                elev_props.setBandNumber(1)
-                queue_layer_for_loading(context, dem_layer, "NoWires DEM (GLO-30)")
-                self._raster_layer_ids.append(dem_layer.id())
-                QgsProject.instance().writeEntry("NoWires", "last_dem_layer_id", dem_layer.id())
+                    queue_layer_for_loading(context, raster_layer, layer_name)
+                    QgsProject.instance().writeEntry(
+                        "NoWires", "last_coverage_layer_id", raster_layer.id())
+                    show_coverage_legend(rx_sensitivity_dbm=p.rx_sens)
+                else:
+                    feedback.pushInfo("Warning: Could not load coverage raster layer.")
 
-            queue_layer_for_loading(context, raster_layer, layer_name)
-            QgsProject.instance().writeEntry(
-                "NoWires", "last_coverage_layer_id", raster_layer.id())
-            show_coverage_legend(rx_sensitivity_dbm=p["rx_sens"])
-        else:
-            feedback.pushInfo("Warning: Could not load coverage raster layer.")
+                report_coverage_results(
+                    feedback, report_payload, raster_grid, valid, p.rx_sens,
+                    summary=summary)
+                if report_csv_path:
+                    write_report_csv(report_csv_path, report_payload)
+                if report_json_path:
+                    write_report_json(report_json_path, report_payload)
+                if report_html_path:
+                    write_report_html(
+                        report_html_path, report_payload,
+                        title="NoWires Coverage Report")
 
-        report_coverage_results(
-            feedback, report_payload, raster_grid, valid, p["rx_sens"],
-            summary=summary)
-        if report_csv_path:
-            write_report_csv(report_csv_path, report_payload)
-        if report_json_path:
-            write_report_json(report_json_path, report_payload)
-        if report_html_path:
-            write_report_html(
-                report_html_path, report_payload,
-                title="NoWires Coverage Report")
-
-        feedback.setProgress(100)
-        return {
-            self.OUTPUT_RASTER: tif_path,
-            self.OUTPUT_REPORT_CSV: report_csv_path,
-            self.OUTPUT_REPORT_JSON: report_json_path,
-            self.OUTPUT_REPORT_HTML: report_html_path,
-        }
+                feedback.setProgress(100)
+                return {
+                    self.OUTPUT_RASTER: tif_path,
+                    self.OUTPUT_REPORT_CSV: report_csv_path,
+                    self.OUTPUT_REPORT_JSON: report_json_path,
+                    self.OUTPUT_REPORT_HTML: report_html_path,
+                }
+        finally:
+            if clutter_grid is not None:
+                clutter_grid.close()
+            self._tmp.cleanup()
+            self._tmp.warn_persistent(feedback)
 
     def _apply_coverage_style(self, layer):
         """Apply a color ramp renderer based on signal level thresholds."""

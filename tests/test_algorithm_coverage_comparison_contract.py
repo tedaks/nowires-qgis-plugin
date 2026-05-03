@@ -94,9 +94,8 @@ def test_comparison_algorithm_report_error_handling():
 def test_comparison_algorithm_uses_shared_tempdir():
     source = _comp_source()
     assert "_comp_tmp" in source
-    assert "nowires_comp_" in source
+    assert "TempDirManager" in source
     assert "shutil.rmtree(_comp_tmpdir" not in source
-    assert "Temporary raster outputs are intentionally left on disk" in source
 
 
 def test_comparison_algorithm_uses_output_dir_for_each_missing_output():

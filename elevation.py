@@ -35,7 +35,7 @@ import numpy as np
 
 from osgeo import gdal
 
-from .constants import EARTH_RADIUS_M
+from .constants import BYTES_PER_MEBIBYTE, EARTH_RADIUS_M
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,14 @@ def _interpolate_longitudes_shortest(lon1, lon2, ts):
 
 
 class ElevationGrid:
-    """Dense elevation grid with bilinear sampling."""
+    """Dense elevation grid with bilinear sampling.
+
+    Supports the context manager protocol so callers can ensure the
+    underlying GDAL dataset is released promptly::
+
+        with ElevationGrid(path) as eg:
+            val = eg.sample(lat, lon)
+    """
 
     def __init__(self, dem_path):
         ds = gdal.Open(dem_path)
@@ -123,6 +130,7 @@ class ElevationGrid:
             self.d_lat = (self.max_lat - self.min_lat) / max(self.n_rows - 1, 1)
             self.d_lon = (self.max_lon - self.min_lon) / max(self.n_cols - 1, 1)
         finally:
+            band = None
             ds = None
 
         logger.info(
@@ -133,7 +141,7 @@ class ElevationGrid:
             self.min_lon,
             self.max_lat,
             self.max_lon,
-            self.data.nbytes / 1048576.0,
+            self.data.nbytes / BYTES_PER_MEBIBYTE,
         )
 
     def sample(self, lat, lon):
@@ -206,6 +214,17 @@ class ElevationGrid:
             "n_lat": self.n_rows,
             "n_lon": self.n_cols,
         }
+
+    def close(self):
+        """Release the DEM data array to free memory."""
+        self.data = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
 
 
 def sample_line_from_grid(gd, gm, lat1, lon1, lat2, lon2, n_pts):

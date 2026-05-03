@@ -38,6 +38,7 @@ from .coverage_pool import (
     _release_shared_memory,
     should_use_multiprocessing,
 )
+from .constants import BYTES_PER_MEBIBYTE
 from .coverage_tasks import (
     METERS_PER_DEGREE_LAT,
     _coverage_axis_centers,
@@ -45,9 +46,6 @@ from .coverage_tasks import (
 )
 
 logger = logging.getLogger(__name__)
-
-ITM_LOSS_UPPER_BOUND = 400.0
-RADIUS_CONSECUTIVE_MISS_LIMIT = 3
 
 
 def compute_coverage(
@@ -176,7 +174,7 @@ def compute_coverage(
     grid_data = elev_grid.data
     logger.info(
         "Coverage grid: %dx%d, %d tasks, DEM shape=%s (%.1f MB)",
-        grid_size, grid_size, len(tasks), grid_data.shape, grid_data.nbytes / 1048576.0,
+        grid_size, grid_size, len(tasks), grid_data.shape, grid_data.nbytes / BYTES_PER_MEBIBYTE,
     )
 
     shm = None
@@ -275,7 +273,7 @@ def compute_coverage(
             coverage_pool._cov_grid_meta = {}
 
     if cancelled:
-        return None, None, 0, 0, 0, 0, None, None
+        return None, None, 0.0, 0.0, 0.0, 0.0, None, None
 
     total = len(tasks)
     if feedback:

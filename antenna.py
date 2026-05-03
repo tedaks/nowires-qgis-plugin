@@ -74,6 +74,7 @@ CUSTOM_ANTENNA_PRESET_INDEX = ANTENNA_PRESET_KEYS.index("custom")
 
 
 def _angle_diff_deg(angle_deg, reference_deg):
+    """Compute the shortest angular difference in degrees, result in [-180, 180]."""
     return (angle_deg - reference_deg + 540.0) % 360.0 - 180.0
 
 

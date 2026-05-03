@@ -45,7 +45,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-_MAX_WORKERS = os.cpu_count() or 1
+_MAX_WORKERS = min(os.cpu_count() or 1, 16)
 _MIN_CHUNK_SIZE = 64
 _MAX_CHUNK_SIZE = 2048
 
@@ -64,7 +64,6 @@ _CoverageTask = namedtuple(
 _cov_shm: Optional[multiprocessing.shared_memory.SharedMemory] = None
 _cov_grid_data: Optional[np.ndarray] = None
 _cov_grid_meta: dict = {}
-_itm_imports = None
 
 
 def should_use_multiprocessing(os_name=None):

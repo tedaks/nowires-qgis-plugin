@@ -33,7 +33,6 @@ attribution details.
 import logging
 import math
 import os
-import tempfile
 from qgis.core import QgsProcessingException, QgsRasterLayer
 from .base_algorithm import NoWiresAlgorithm, install_constants
 from .constants import DEGREE_PADDING
@@ -49,6 +48,7 @@ from .comparison_outputs import (
     write_comparison_html_report, compute_delta_summary)
 from .comparison_panel import run_panel_coverage
 from .comparison_reporting import build_panel_info, build_delta_info, report_comparison_results
+from .temp_manager import TempDirManager
 
 
 logger = logging.getLogger(__name__)
@@ -56,19 +56,19 @@ logger = logging.getLogger(__name__)
 
 def _validate_panels(tx_point_a, tx_point_b, radius_km_a, radius_km_b):
     if tx_point_a is None:
-        raise ValueError("Panel A TX point is required.")
+        raise QgsProcessingException("Panel A TX point is required.")
     if tx_point_b is None:
-        raise ValueError("Panel B TX point is required.")
+        raise QgsProcessingException("Panel B TX point is required.")
     tx_lat_a, tx_lon_a = tx_point_a.y(), tx_point_a.x()
     tx_lat_b, tx_lon_b = tx_point_b.y(), tx_point_b.x()
-    if abs(tx_lat_a - tx_lat_b) > 1e-9 or abs(tx_lon_a - tx_lon_b) > 1e-9:
+    if abs(tx_lat_a - tx_lat_b) > 1e-5 or abs(tx_lon_a - tx_lon_b) > 1e-5:
         raise QgsProcessingException("Panel A and B TX positions differ. Delta comparison requires co-located transmitters.")
     if abs(radius_km_a - radius_km_b) > 1e-9:
         raise QgsProcessingException("Panel A and B radii differ. Delta comparison requires identical analysis radii.")
     return tx_lat_a, tx_lon_a, tx_lat_b, tx_lon_b
 
 
-def _resolve_output_paths(output_dir, out_a, out_b, out_delta, out_report, prefix):
+def _resolve_output_paths(output_dir, out_a, out_b, out_delta, out_report, tmp_mgr):
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
         out_a = out_a or os.path.join(output_dir, "coverage_a.tif")
@@ -77,7 +77,7 @@ def _resolve_output_paths(output_dir, out_a, out_b, out_delta, out_report, prefi
         out_report = out_report or os.path.join(output_dir, "comparison_report.html")
     tmpdir = None
     if not out_a or not out_b or not out_delta:
-        tmpdir = tempfile.mkdtemp(prefix=prefix)
+        tmpdir = tmp_mgr.make_dir("comp", persistent=True)
     if not out_a:
         out_a = os.path.join(tmpdir, "coverage_a.tif")
     if not out_b:
@@ -114,6 +114,7 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
     def __init__(self):
         super().__init__()
         self._raster_layer_ids = []
+        self._tmp = TempDirManager()
 
     def initAlgorithm(self, config):
         panel_config = make_panel_config()
@@ -125,6 +126,7 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
         from qgis.core import QgsCoordinateReferenceSystem
 
         self._raster_layer_ids = []
+        self._tmp = TempDirManager()
         crs4326 = QgsCoordinateReferenceSystem("EPSG:4326")
         delta_style = DELTA_STYLE_OPTIONS[self.parameterAsEnum(parameters, self.DELTA_STYLE, context)]
         threshold_db = self.parameterAsDouble(parameters, self.DELTA_THRESHOLD_DB, context)
@@ -155,95 +157,97 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
         feedback.setProgress(2)
         dem_path = ensure_dem_for_area(south, north, west, east, feedback=feedback)
         if dem_path is None:
-            raise RuntimeError("Failed to obtain DEM data for the coverage area.")
+            raise QgsProcessingException("Failed to obtain DEM data for the coverage area.")
 
         feedback.pushInfo("Building elevation grid...")
         feedback.setProgress(5)
-        elev = ElevationGrid(dem_path)
+        try:
+            with ElevationGrid(dem_path) as elev:
 
-        feedback.pushInfo("=" * 50)
-        feedback.pushInfo("Running Panel A coverage...")
-        feedback.pushInfo("=" * 50)
-        feedback.setProgress(10)
-        panel_a = run_panel_coverage(
-            self, "PANEL_A", parameters, context, feedback, elev, south, north, west, east)
+                feedback.pushInfo("=" * 50)
+                feedback.pushInfo("Running Panel A coverage...")
+                feedback.pushInfo("=" * 50)
+                feedback.setProgress(10)
+                panel_a = run_panel_coverage(
+                    self, "PANEL_A", parameters, context, feedback, elev, south, north, west, east)
 
-        (prx_grid_a, loss_grid_a, min_lat_a, max_lat_a, min_lon_a, max_lon_a,
-         itm_loss_grid_a, clutter_loss_grid_a) = panel_a["result"]
-        if prx_grid_a is None:
-            raise RuntimeError("Panel A coverage computation was cancelled.")
-        if feedback and feedback.isCanceled():
-            return {}
+                (prx_grid_a, loss_grid_a, min_lat_a, max_lat_a, min_lon_a, max_lon_a,
+                 itm_loss_grid_a, clutter_loss_grid_a) = panel_a["result"]
+                if prx_grid_a is None:
+                    raise QgsProcessingException("Panel A coverage computation was cancelled.")
+                if feedback and feedback.isCanceled():
+                    return {}
 
-        feedback.pushInfo("=" * 50)
-        feedback.pushInfo("Running Panel B coverage...")
-        feedback.pushInfo("=" * 50)
-        feedback.setProgress(45)
-        panel_b = run_panel_coverage(
-            self, "PANEL_B", parameters, context, feedback, elev, south, north, west, east)
+                feedback.pushInfo("=" * 50)
+                feedback.pushInfo("Running Panel B coverage...")
+                feedback.pushInfo("=" * 50)
+                feedback.setProgress(45)
+                panel_b = run_panel_coverage(
+                    self, "PANEL_B", parameters, context, feedback, elev, south, north, west, east)
 
-        (prx_grid_b, loss_grid_b, min_lat_b, max_lat_b, min_lon_b, max_lon_b,
-         itm_loss_grid_b, clutter_loss_grid_b) = panel_b["result"]
-        if prx_grid_b is None:
-            raise RuntimeError("Panel B coverage computation was cancelled.")
+                (prx_grid_b, loss_grid_b, min_lat_b, max_lat_b, min_lon_b, max_lon_b,
+                 itm_loss_grid_b, clutter_loss_grid_b) = panel_b["result"]
+                if prx_grid_b is None:
+                    raise QgsProcessingException("Panel B coverage computation was cancelled.")
 
-        feedback.pushInfo("Computing delta raster...")
-        feedback.setProgress(80)
+                feedback.pushInfo("Computing delta raster...")
+                feedback.setProgress(80)
 
-        if prx_grid_a.shape != prx_grid_b.shape:
-            gs_a = GRID_SIZE_PRESETS[self.parameterAsEnum(parameters, self.PANEL_A_GRID_SIZE, context)]
-            gs_b = GRID_SIZE_PRESETS[self.parameterAsEnum(parameters, self.PANEL_B_GRID_SIZE, context)]
-            raise ValueError(
-                "Panel A grid size ({}) and Panel B grid size ({}) must match.".format(gs_a, gs_b))
+                if prx_grid_a.shape != prx_grid_b.shape:
+                    gs_a = GRID_SIZE_PRESETS[self.parameterAsEnum(parameters, self.PANEL_A_GRID_SIZE, context)]
+                    gs_b = GRID_SIZE_PRESETS[self.parameterAsEnum(parameters, self.PANEL_B_GRID_SIZE, context)]
+                    raise QgsProcessingException(
+                        "Panel A grid size ({}) and Panel B grid size ({}) must match.".format(gs_a, gs_b))
 
-        ds = compute_delta_summary(loss_grid_a, loss_grid_b, threshold_db)
-        loss_delta_grid = ds["loss_delta_grid"]
-        valid_count = ds["valid_count"]
-        total_count = ds["total_count"]
+                ds = compute_delta_summary(loss_grid_a, loss_grid_b, threshold_db)
+                loss_delta_grid = ds["loss_delta_grid"]
+                valid_count = ds["valid_count"]
+                total_count = ds["total_count"]
 
-        output_a_path = self.parameterAsFileOutput(parameters, self.OUTPUT_A, context)
-        output_b_path = self.parameterAsFileOutput(parameters, self.OUTPUT_B, context)
-        output_delta_path = self.parameterAsFileOutput(parameters, self.OUTPUT_DELTA, context)
-        output_report_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_HTML, context)
+                output_a_path = self.parameterAsFileOutput(parameters, self.OUTPUT_A, context)
+                output_b_path = self.parameterAsFileOutput(parameters, self.OUTPUT_B, context)
+                output_delta_path = self.parameterAsFileOutput(parameters, self.OUTPUT_DELTA, context)
+                output_report_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_HTML, context)
 
-        output_a_path, output_b_path, output_delta_path, output_report_path, _comp_tmpdir = (
-            _resolve_output_paths(
-                output_dir, output_a_path, output_b_path, output_delta_path,
-                output_report_path, "nowires_comp_"))
-        if _comp_tmpdir:
-            feedback.pushInfo(
-                "Temporary raster outputs are intentionally left on disk for QGIS layer loading: {}".format(
-                    _comp_tmpdir))
+                output_a_path, output_b_path, output_delta_path, output_report_path, _comp_tmpdir = (
+                    _resolve_output_paths(
+                        output_dir, output_a_path, output_b_path, output_delta_path,
+                        output_report_path, self._tmp))
+                if _comp_tmpdir:
+                    self._tmp.warn_persistent(feedback)
 
-        write_coverage_raster(output_a_path, prx_grid_a, min_lat_a, max_lat_a, min_lon_a, max_lon_a, panel_a["rx_sens"])
-        write_coverage_raster(output_b_path, prx_grid_b, min_lat_b, max_lat_b, min_lon_b, max_lon_b, panel_b["rx_sens"])
-        write_delta_raster(output_delta_path, loss_delta_grid, min_lat_a, max_lat_a, min_lon_a, max_lon_a)
+                write_coverage_raster(output_a_path, prx_grid_a, min_lat_a, max_lat_a, min_lon_a, max_lon_a, panel_a["rx_sens"])
+                write_coverage_raster(output_b_path, prx_grid_b, min_lat_b, max_lat_b, min_lon_b, max_lon_b, panel_b["rx_sens"])
+                write_delta_raster(output_delta_path, loss_delta_grid, min_lat_a, max_lat_a, min_lon_a, max_lon_a)
 
-        self._raster_layer_ids = _load_comparison_layers(
-            context, output_a_path, output_b_path, output_delta_path, threshold_db, delta_style)
+                self._raster_layer_ids = _load_comparison_layers(
+                    context, output_a_path, output_b_path, output_delta_path, threshold_db, delta_style)
 
-        panel_a_info = build_panel_info(panel_a, prx_grid_a)
-        panel_b_info = build_panel_info(panel_b, prx_grid_b)
-        delta_info = build_delta_info(delta_style, threshold_db, ds)
+                panel_a_info = build_panel_info(panel_a, prx_grid_a)
+                panel_b_info = build_panel_info(panel_b, prx_grid_b)
+                delta_info = build_delta_info(delta_style, threshold_db, ds)
 
-        report_comparison_results(feedback, valid_count, total_count, delta_info, threshold_db)
+                report_comparison_results(feedback, valid_count, total_count, delta_info, threshold_db)
 
-        if output_report_path:
-            from pathlib import Path
-            try:
-                write_comparison_html_report(Path(output_report_path), panel_a_info, panel_b_info, delta_info)
-            except OSError as exc:
-                feedback.pushWarning("Could not write comparison report: {}".format(exc))
-            else:
-                feedback.pushInfo("Comparison report written to: {}".format(output_report_path))
+                if output_report_path:
+                    from pathlib import Path
+                    try:
+                        write_comparison_html_report(Path(output_report_path), panel_a_info, panel_b_info, delta_info)
+                    except OSError as exc:
+                        feedback.pushWarning("Could not write comparison report: {}".format(exc))
+                    else:
+                        feedback.pushInfo("Comparison report written to: {}".format(output_report_path))
 
-        feedback.setProgress(100)
-        return {
-            self.OUTPUT_A: output_a_path,
-            self.OUTPUT_B: output_b_path,
-            self.OUTPUT_DELTA: output_delta_path,
-            self.OUTPUT_REPORT_HTML: output_report_path,
-        }
+                feedback.setProgress(100)
+                return {
+                    self.OUTPUT_A: output_a_path,
+                    self.OUTPUT_B: output_b_path,
+                    self.OUTPUT_DELTA: output_delta_path,
+                    self.OUTPUT_REPORT_HTML: output_report_path,
+                }
+        finally:
+            self._tmp.cleanup()
+            self._tmp.warn_persistent(feedback)
 
     def shortHelpString(self):
         return (

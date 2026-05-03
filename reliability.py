@@ -24,10 +24,11 @@ Pure-Python helpers for NoWires reliability outputs.
 
 The availability percentage exposed here is a heuristic blend of fade
 margin, distance, and frequency. It is **not** a faithful implementation
-of ITU-R P.530 — see ``estimate_heuristic_availability_pct`` for the
-formula. The method label reflects this: ``heuristic_availability`` when
-the (rough) preconditions for an availability estimate are met,
-``fallback_margin`` otherwise.
+of ITU-R P.530 and should NOT be relied upon for link budget engineering.
+See ``estimate_heuristic_availability_pct`` for the formula and caveats.
+The method label reflects this: ``heuristic_availability`` when the
+preconditions for an availability estimate are met, ``fallback_margin``
+otherwise.
 """
 
 from __future__ import annotations
@@ -62,10 +63,11 @@ def classify_fade_margin(margin_db):
 def estimate_heuristic_availability_pct(margin_db, distance_km, frequency_mhz):
     """Return a bounded heuristic availability percentage in [0, 100].
 
-    This is a lightweight placeholder, **not** ITU-R P.530. The blend
-    favours larger fade margins, penalises long paths, and applies a small
-    penalty for higher frequencies.
-    Replace with a P.530-derived calculation if/when that is implemented.
+    **Disclaimer:** This is a rough heuristic, NOT an ITU-R P.530 calculation.
+    The value should NOT be relied upon for link budget engineering.
+    It is intentionally conservative and only shown when frequency >= 3 GHz
+    and LOS is unobstructed.  Replace with a P.530-derived calculation
+    if/when authoritative availability estimates are needed.
     """
     value = 90.0 + margin_db * 0.4 - distance_km * 0.3 - frequency_mhz / 100000.0
     return max(0.0, min(100.0, round(value, 2)))

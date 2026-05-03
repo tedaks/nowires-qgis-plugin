@@ -41,6 +41,5 @@ def test_worldcover_merges_use_unique_run_directory_before_returning_layer_path(
 
 def test_contour_elevation_overlay_uses_persistent_unique_run_directory():
     source = _contour_source()
-    assert 'mkdtemp(dir=temp_dir, prefix="contour_overlay_")' in source
-    assert "_persistent_temp_subdirs" in source
+    assert 'TempDirManager' in source
 

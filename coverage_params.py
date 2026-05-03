@@ -73,11 +73,6 @@ _PARAM_NAMES = (
 PARAM_CONSTANTS = {k: k for k in _PARAM_NAMES}
 
 
-def _install_constants(cls, constants_dict):
-    for key, value in constants_dict.items():
-        setattr(cls, key, value)
-
-
 _DBL = QgsProcessingParameterNumber.Double
 
 
@@ -164,17 +159,16 @@ def add_coverage_params(algorithm):
 
 
 def extract_coverage_params(alg, parameters, context):
+    from .coverage_analysis_params import CoverageAnalysisParams
     _dbl = alg.parameterAsDouble
     _enum = alg.parameterAsEnum
-    p = {}
     tx_point = alg.parameterAsPoint(
         parameters, alg.TX_POINT, context,
         crs=QgsCoordinateReferenceSystem("EPSG:4326"),
     )
     if tx_point is None:
         raise ValueError("TX point is required.")
-    p["tx_lat"] = tx_point.y()
-    p["tx_lon"] = tx_point.x()
+    doubles = {}
     for key, attr in (
         ("tx_h", "TX_HEIGHT"), ("rx_h", "RX_HEIGHT"), ("f_mhz", "FREQ_MHZ"),
         ("radius_km", "RADIUS_KM"), ("time_pct", "TIME_PCT"),
@@ -185,36 +179,55 @@ def extract_coverage_params(alg, parameters, context):
         ("front_back_db", "FRONT_BACK_DB"), ("downtilt_deg", "DOWNTILT_DEG"),
         ("n0", "N0"), ("epsilon", "EPSILON"), ("sigma", "SIGMA"),
     ):
-        p[key] = _dbl(parameters, getattr(alg, attr), context)
-    p["grid_size"] = GRID_SIZE_PRESETS[_enum(parameters, alg.GRID_SIZE, context)]
-    p["polarization"] = _enum(parameters, alg.POLARIZATION, context)
-    p["climate"] = _enum(parameters, alg.CLIMATE, context)
-    p["antenna_az"] = None
-    if p["antenna_bw"] < 360.0:
-        p["antenna_az"] = _dbl(parameters, alg.ANTENNA_AZ, context)
-    p["antenna_preset"] = _enum(parameters, alg.ANTENNA_PRESET, context)
-    p["h_pattern"] = alg.parameterAsFile(parameters, alg.H_PATTERN, context)
-    p["v_pattern"] = alg.parameterAsFile(parameters, alg.V_PATTERN, context)
-    p["clutter_enabled"] = _enum(parameters, alg.CLUTTER_MODEL, context) == 1
-    p["clutter_raster_path"] = alg.parameterAsFile(
+        doubles[key] = _dbl(parameters, getattr(alg, attr), context)
+    grid_size = GRID_SIZE_PRESETS[_enum(parameters, alg.GRID_SIZE, context)]
+    polarization = _enum(parameters, alg.POLARIZATION, context)
+    climate = _enum(parameters, alg.CLIMATE, context)
+    antenna_az = None
+    if doubles["antenna_bw"] < 360.0:
+        antenna_az = _dbl(parameters, alg.ANTENNA_AZ, context)
+    antenna_preset = _enum(parameters, alg.ANTENNA_PRESET, context)
+    h_pattern = alg.parameterAsFile(parameters, alg.H_PATTERN, context)
+    v_pattern = alg.parameterAsFile(parameters, alg.V_PATTERN, context)
+    clutter_enabled = _enum(parameters, alg.CLUTTER_MODEL, context) == 1
+    clutter_raster_path = alg.parameterAsFile(
         parameters, alg.CLUTTER_RASTER, context
     )
-    p["clutter_grid"] = (
-        LandCoverGrid.from_raster(p["clutter_raster_path"])
-        if p["clutter_raster_path"] else None
+    clutter_grid = (
+        LandCoverGrid.from_raster(clutter_raster_path)
+        if clutter_raster_path else None
     )
-    p["tx_clutter_override"] = clutter_override_value(
+    tx_clutter_override = clutter_override_value(
         _enum(parameters, alg.TX_CLUTTER_OVERRIDE, context)
     )
-    p["rx_clutter_override"] = clutter_override_value(
+    rx_clutter_override = clutter_override_value(
         _enum(parameters, alg.RX_CLUTTER_OVERRIDE, context)
     )
-    p["antenna_bw_override"] = (
-        None if p["antenna_preset"] != CUSTOM_ANTENNA_PRESET_INDEX and p["antenna_bw"] == 360.0
-        else p["antenna_bw"]
+    antenna_bw_override = (
+        None if antenna_preset != CUSTOM_ANTENNA_PRESET_INDEX and doubles["antenna_bw"] == 360.0
+        else doubles["antenna_bw"]
     )
     validate_itm_input_ranges(
-        tx_height_m=p["tx_h"], rx_height_m=p["rx_h"], frequency_mhz=p["f_mhz"],
-        surface_refractivity_n0=p["n0"], earth_conductivity_sigma=p["sigma"],
+        tx_height_m=doubles["tx_h"], rx_height_m=doubles["rx_h"],
+        frequency_mhz=doubles["f_mhz"],
+        surface_refractivity_n0=doubles["n0"],
+        earth_conductivity_sigma=doubles["sigma"],
     )
-    return p
+    return CoverageAnalysisParams(
+        tx_lat=tx_point.y(), tx_lon=tx_point.x(),
+        tx_h=doubles["tx_h"], rx_h=doubles["rx_h"],
+        f_mhz=doubles["f_mhz"], radius_km=doubles["radius_km"],
+        grid_size=grid_size, polarization=polarization, climate=climate,
+        time_pct=doubles["time_pct"], location_pct=doubles["location_pct"],
+        situation_pct=doubles["situation_pct"], tx_power=doubles["tx_power"],
+        tx_gain=doubles["tx_gain"], rx_gain=doubles["rx_gain"],
+        cable_loss=doubles["cable_loss"], rx_sens=doubles["rx_sens"],
+        antenna_az=antenna_az, antenna_bw_override=antenna_bw_override,
+        antenna_preset=antenna_preset, front_back_db=doubles["front_back_db"],
+        downtilt_deg=doubles["downtilt_deg"], h_pattern=h_pattern,
+        v_pattern=v_pattern, clutter_enabled=clutter_enabled,
+        clutter_raster_path=clutter_raster_path, clutter_grid=clutter_grid,
+        tx_clutter_override=tx_clutter_override,
+        rx_clutter_override=rx_clutter_override,
+        n0=doubles["n0"], epsilon=doubles["epsilon"], sigma=doubles["sigma"],
+    )

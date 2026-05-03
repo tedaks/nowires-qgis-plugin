@@ -34,6 +34,10 @@ import numpy as np
 from .radio import build_pfl, itm_p2p_loss
 from .constants import COVERAGE_NODATA
 
+ITM_LOSS_UPPER_BOUND = 400.0
+# NOTE: constants.py also defines DEFAULT_PROFILE_STEP_M = 30.0 (for P2P).
+# This module redefines it at 100.0 because coverage uses a coarser step.
+# When importing, use the value appropriate to the algorithm context.
 DEFAULT_PROFILE_STEP_M = 100.0
 DEFAULT_MAX_PROFILE_PTS = 200
 
@@ -100,7 +104,7 @@ def compute_itm_p2p(
         location_pct=location_pct,
         situation_pct=situation_pct,
     )
-    if not math.isfinite(result.loss_db) or result.loss_db > 400.0:
+    if not math.isfinite(result.loss_db) or result.loss_db > ITM_LOSS_UPPER_BOUND:
         return None
     clutter_total_db = clutter_tx_db + clutter_rx_db
     total_path_loss_db = result.loss_db + clutter_total_db

@@ -30,7 +30,7 @@ and were originally distributed under the MIT License. See NOTICE.md for
 attribution details.
 """
 
-from qgis.core import QgsCoordinateReferenceSystem
+from qgis.core import QgsCoordinateReferenceSystem, QgsProcessingException
 
 from .base_algorithm import NoWiresAlgorithm, install_constants
 from .radio import K_FACTOR_PRESETS, validate_itm_input_ranges, resolve_k_factor
@@ -64,7 +64,7 @@ class P2PAlgorithm(NoWiresAlgorithm):
         )
 
         if tx_point is None or rx_point is None:
-            raise ValueError("Both TX and RX points are required.")
+            raise QgsProcessingException("Both TX and RX points are required.")
 
         tx_lat = tx_point.y()
         tx_lon = tx_point.x()
@@ -121,10 +121,9 @@ class P2PAlgorithm(NoWiresAlgorithm):
         )
         clutter_enabled = self.parameterAsEnum(parameters, self.CLUTTER_MODEL, context) == 1
         clutter_raster_path = self.parameterAsFile(parameters, self.CLUTTER_RASTER, context)
+        clutter_grid = None
         if clutter_raster_path:
             clutter_grid = LandCoverGrid.from_raster(clutter_raster_path)
-        else:
-            clutter_grid = None
         tx_clutter_override = clutter_override_value(
             self.parameterAsEnum(parameters, self.TX_CLUTTER_OVERRIDE, context)
         )
@@ -168,7 +167,11 @@ class P2PAlgorithm(NoWiresAlgorithm):
             output_report_json=self.OUTPUT_REPORT_JSON,
             output_report_html=self.OUTPUT_REPORT_HTML,
         )
-        return run_p2p_analysis(p2p_params)
+        try:
+            return run_p2p_analysis(p2p_params)
+        finally:
+            if clutter_grid is not None:
+                clutter_grid.close()
 
     def name(self):
         return "p2p_analysis"
