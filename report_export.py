@@ -41,6 +41,24 @@ def _iter_rows(payload):
             yield "meta", section_name, section_value
 
 
+def _csv_safe(value):
+    s = str(value)
+    if s and s[0] in ('=', '+', '-', '@', '\t', '\r'):
+        return "'" + s
+    return s
+
+
+def _sanitize_json(obj):
+    import math
+    if isinstance(obj, dict):
+        return {k: _sanitize_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize_json(v) for v in obj]
+    if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+        return None
+    return obj
+
+
 def write_report_csv(path, payload):
     """Write a report payload as section/key/value CSV."""
     path = Path(path)
@@ -48,14 +66,15 @@ def write_report_csv(path, payload):
         writer = csv.writer(handle)
         writer.writerow(["section", "key", "value"])
         for row in _iter_rows(payload):
-            writer.writerow(row)
+            writer.writerow(tuple(_csv_safe(v) for v in row))
 
 
 def write_report_json(path, payload):
     """Write a report payload as indented JSON."""
     path = Path(path)
+    sanitized = _sanitize_json(payload)
     with path.open("w", encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2, sort_keys=True)
+        json.dump(sanitized, handle, indent=2, sort_keys=True, allow_nan=False)
         handle.write("\n")
 
 

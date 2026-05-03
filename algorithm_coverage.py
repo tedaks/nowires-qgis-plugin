@@ -68,6 +68,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         self._raster_layer_ids = []
         self._tmp = TempDirManager()
+        clutter_grid = None
         p = extract_coverage_params(self, parameters, context)
 
         feedback.pushInfo(
@@ -192,14 +193,13 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                         elev_props.setBandNumber(1)
                         queue_layer_for_loading(context, dem_layer, "NoWires DEM (GLO-30)")
                         self._raster_layer_ids.append(dem_layer.id())
-                        QgsProject.instance().writeEntry("NoWires", "last_dem_layer_id", dem_layer.id())
+                        self._dem_layer_id = dem_layer.id()
 
                     queue_layer_for_loading(context, raster_layer, layer_name)
-                    QgsProject.instance().writeEntry(
-                        "NoWires", "last_coverage_layer_id", raster_layer.id())
+                    self._coverage_layer_id = raster_layer.id()
                     show_coverage_legend(rx_sensitivity_dbm=p.rx_sens)
                 else:
-                    feedback.pushInfo("Warning: Could not load coverage raster layer.")
+                    feedback.pushWarning("Could not load coverage raster layer: {}".format(raster_layer.error().summary()))
 
                 report_coverage_results(
                     feedback, report_payload, raster_grid, valid, p.rx_sens,

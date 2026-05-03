@@ -112,14 +112,6 @@ def _init_cov_pool(shm_name, shape, dtype_str, grid_meta):
     _cov_grid_meta = grid_meta
 
 
-def _cleanup_cov_pool():
-    global _cov_shm, _cov_grid_data
-    if _cov_grid_data is not None:
-        _cov_grid_data = None
-    if _cov_shm is not None:
-        _cov_shm.close()
-        _cov_shm = None
-
 
 def _itm_worker(args):
     task = _CoverageTask(*args)
@@ -135,6 +127,9 @@ def _itm_worker(args):
     )
     if np.all(np.isnan(elevs)):
         return None
+    nan_count = int(np.isnan(elevs).sum())
+    if nan_count > 0:
+        logger.warning("Replacing %d NaN elevation value(s) with 0.0 (missing DEM data)", nan_count)
     elevs = np.where(np.isnan(elevs), 0.0, elevs)
 
     vertical_angle_deg = math.degrees(

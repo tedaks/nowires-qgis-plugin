@@ -48,12 +48,14 @@ from .defaults import (
     DEFAULT_EPSILON,
     DEFAULT_FREQ_MHZ,
     DEFAULT_FRONT_BACK_DB,
+    DEFAULT_LOCATION_PCT,
     DEFAULT_N0,
     DEFAULT_RADIUS_KM,
     DEFAULT_RX_GAIN_DBI,
     DEFAULT_RX_HEIGHT_M,
     DEFAULT_RX_SENSITIVITY_DBM,
     DEFAULT_SIGMA,
+    DEFAULT_SITUATION_PCT,
     DEFAULT_TIME_PCT,
     DEFAULT_TX_GAIN_DBI,
     DEFAULT_TX_HEIGHT_M,
@@ -116,12 +118,12 @@ def add_panel_params(algorithm, prefix, config):
     )
     algorithm.addParameter(
         config["pct_param"](
-            f"{prefix}_LOCATION_PCT", f"Panel {panel_label} Location percentage", defaultValue=DEFAULT_TIME_PCT,
+            f"{prefix}_LOCATION_PCT", f"Panel {panel_label} Location percentage", defaultValue=DEFAULT_LOCATION_PCT,
         )
     )
     algorithm.addParameter(
         config["pct_param"](
-            f"{prefix}_SITUATION_PCT", f"Panel {panel_label} Situation percentage", defaultValue=DEFAULT_TIME_PCT,
+            f"{prefix}_SITUATION_PCT", f"Panel {panel_label} Situation percentage", defaultValue=DEFAULT_SITUATION_PCT,
         )
     )
     algorithm.addParameter(

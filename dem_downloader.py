@@ -67,6 +67,12 @@ def get_temp_dir():
         username = "nowires"
     temp_dir = os.path.join(tempfile.gettempdir(), "NoWires-" + username)
     os.makedirs(temp_dir, mode=0o700, exist_ok=True)
+    try:
+        st = os.stat(temp_dir)
+        if st.st_mode & 0o777 != 0o700:
+            os.chmod(temp_dir, 0o700)
+    except OSError:
+        pass
     return temp_dir
 
 

@@ -212,9 +212,9 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         land_cover_grid=clutter_grid,
         tx_override=tx_clutter_override, rx_override=rx_clutter_override)
     total_path_loss_db = result.loss_db + clutter_losses.total_loss_db
-    prx_dbm = eirp_dbm + rx_gain + antenna_gain_adjustment_db_total - total_path_loss_db
+    prx_dbm = eirp_dbm + rx_gain + antenna_gain_adjustment_db_total - total_path_loss_db - cable_loss
     margin_db = prx_dbm - rx_sens
-    fspl_db = (20.0 * math.log10(dist_m / 1000.0) + 20.0 * math.log10(f_mhz) + 32.44
+    fspl_db = (20.0 * math.log10(dist_m / 1000.0) + 20.0 * math.log10(f_mhz) + 32.45
         if dist_m > 0 and f_mhz > 0 else 0.0)
     feedback.setProgress(70)
     srs = osr.SpatialReference()

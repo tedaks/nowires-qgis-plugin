@@ -25,7 +25,7 @@ Helpers for deriving coverage metrics from a computed raster grid.
 
 import numpy as np
 
-from .constants import EARTH_RADIUS_M
+from .constants import COVERAGE_NODATA, EARTH_RADIUS_M
 
 
 def summarize_coverage_grid(
@@ -39,6 +39,7 @@ def summarize_coverage_grid(
     rx_sensitivity_dbm,
 ):
     """Summarize usable-distance metrics from a received-power raster."""
+    prx_grid = np.where(np.isfinite(prx_grid) & (prx_grid != COVERAGE_NODATA), prx_grid, np.nan)
     n_rows, n_cols = prx_grid.shape
     lat_step = (max_lat - min_lat) / n_rows
     lon_step = (max_lon - min_lon) / n_cols

@@ -35,7 +35,9 @@ from .defaults import (
     DEFAULT_ANTENNA_AZIMUTH,
     DEFAULT_FREQ_MHZ,
     DEFAULT_FRONT_BACK_DB,
+    DEFAULT_LOCATION_PCT,
     DEFAULT_RX_HEIGHT_M,
+    DEFAULT_SITUATION_PCT,
     DEFAULT_TIME_PCT,
     DEFAULT_TX_HEIGHT_M,
 )
@@ -158,11 +160,11 @@ def _add_link_params(algorithm):
     algorithm.addParameter(QgsProcessingParameterNumber(
         LOCATION_PCT, "Location percentage",
         type=QgsProcessingParameterNumber.Double,
-        defaultValue=DEFAULT_TIME_PCT, minValue=0.01, maxValue=99.99))
+        defaultValue=DEFAULT_LOCATION_PCT, minValue=0.01, maxValue=99.99))
     algorithm.addParameter(QgsProcessingParameterNumber(
         SITUATION_PCT, "Situation percentage",
         type=QgsProcessingParameterNumber.Double,
-        defaultValue=DEFAULT_TIME_PCT, minValue=0.01, maxValue=99.99))
+        defaultValue=DEFAULT_SITUATION_PCT, minValue=0.01, maxValue=99.99))
 
 
 def _add_antenna_params(algorithm, prefix):

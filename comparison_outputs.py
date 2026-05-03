@@ -185,6 +185,14 @@ def write_comparison_html_report(path, panel_a_info, panel_b_info, delta_info):
 
 def compute_delta_summary(loss_grid_a, loss_grid_b, threshold_db):
     import numpy as np
+    from .constants import COVERAGE_NODATA
+
+    loss_grid_a = np.where(np.isfinite(loss_grid_a) & (loss_grid_a != COVERAGE_NODATA), loss_grid_a, np.nan)
+    loss_grid_b = np.where(np.isfinite(loss_grid_b) & (loss_grid_b != COVERAGE_NODATA), loss_grid_b, np.nan)
+
+    if loss_grid_a.shape != loss_grid_b.shape:
+        raise ValueError(
+            "Grid shapes do not match: {} vs {}".format(loss_grid_a.shape, loss_grid_b.shape))
 
     loss_delta_grid = loss_grid_a - loss_grid_b
     valid_mask = ~np.isnan(loss_grid_a) & ~np.isnan(loss_grid_b)

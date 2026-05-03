@@ -266,6 +266,8 @@ def _feat_attr(feat, name, default):
     try:
         if isinstance(default, float):
             return float(val)
+        if isinstance(default, bool):
+            return bool(val)
         if isinstance(default, int):
             coerced = int(float(val))
             if float(val) != coerced and isinstance(val, float):
