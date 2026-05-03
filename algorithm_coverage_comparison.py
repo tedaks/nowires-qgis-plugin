@@ -87,7 +87,7 @@ def _resolve_output_paths(output_dir, out_a, out_b, out_delta, out_report, tmp_m
     return out_a, out_b, out_delta, out_report, tmpdir
 
 
-def _load_comparison_layers(context, output_a, output_b, output_delta, threshold_db, delta_style):
+def _load_comparison_layers(context, output_a, output_b, output_delta, threshold_db, delta_style, feedback):
     from .coverage_palette import apply_coverage_style
     raster_layer_ids = []
     layer_delta = QgsRasterLayer(output_delta, "Coverage Delta (A - B dB)")
@@ -95,16 +95,22 @@ def _load_comparison_layers(context, output_a, output_b, output_delta, threshold
         apply_delta_style(layer_delta, threshold_db, style=delta_style)
         queue_layer_for_loading(context, layer_delta, "Coverage Delta (A - B dB)")
         raster_layer_ids.append(layer_delta.id())
+    else:
+        feedback.pushWarning("Could not load delta raster layer: {}".format(layer_delta.error().summary()))
     layer_a = QgsRasterLayer(output_a, "Coverage Panel A")
     if layer_a.isValid():
         apply_coverage_style(layer_a)
         queue_layer_for_loading(context, layer_a, "Coverage Panel A")
         raster_layer_ids.append(layer_a.id())
+    else:
+        feedback.pushWarning("Could not load Panel A raster layer: {}".format(layer_a.error().summary()))
     layer_b = QgsRasterLayer(output_b, "Coverage Panel B")
     if layer_b.isValid():
         apply_coverage_style(layer_b)
         queue_layer_for_loading(context, layer_b, "Coverage Panel B")
         raster_layer_ids.append(layer_b.id())
+    else:
+        feedback.pushWarning("Could not load Panel B raster layer: {}".format(layer_b.error().summary()))
     return raster_layer_ids
 
 
@@ -221,7 +227,7 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
                 write_delta_raster(output_delta_path, loss_delta_grid, min_lat_a, max_lat_a, min_lon_a, max_lon_a)
 
                 self._raster_layer_ids = _load_comparison_layers(
-                    context, output_a_path, output_b_path, output_delta_path, threshold_db, delta_style)
+                    context, output_a_path, output_b_path, output_delta_path, threshold_db, delta_style, feedback)
 
                 panel_a_info = build_panel_info(panel_a, prx_grid_a)
                 panel_b_info = build_panel_info(panel_b, prx_grid_b)

@@ -46,16 +46,20 @@ def build_delta_info(delta_style, threshold_db, ds):
     improved = ds["improved"]
     degraded = ds["degraded"]
     unchanged = ds["unchanged"]
+    if valid_count > 0:
+        pct_scale = 100.0 / valid_count
+    else:
+        pct_scale = float('nan')
     return {
         "style": delta_style,
         "threshold_db": threshold_db,
         "valid_pixels": valid_count,
         "improved_pixels": improved,
-        "improved_pct": improved / max(valid_count, 1) * 100,
+        "improved_pct": improved * pct_scale,
         "degraded_pixels": degraded,
-        "degraded_pct": degraded / max(valid_count, 1) * 100,
+        "degraded_pct": degraded * pct_scale,
         "unchanged_pixels": unchanged,
-        "unchanged_pct": unchanged / max(valid_count, 1) * 100,
+        "unchanged_pct": unchanged * pct_scale,
         "min_delta": ds["min_delta"],
         "max_delta": ds["max_delta"],
         "mean_delta": ds["mean_delta"],

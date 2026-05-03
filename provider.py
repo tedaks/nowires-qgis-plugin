@@ -39,7 +39,7 @@ class NoWiresProvider(QgsProcessingProvider):
         super().__init__()
 
     def unload(self):
-        pass
+        super().unload()
 
     def loadAlgorithms(self):
         from .algorithm_p2p import P2PAlgorithm

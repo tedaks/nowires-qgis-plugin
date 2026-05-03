@@ -81,8 +81,10 @@ def download_tile_with_retry(
         try:
             with opener.open(tile_url, timeout=socket_timeout) as response:
                 final_url = response.geturl()
-                if base_url is not None and not final_url.startswith(base_url):
-                    raise RuntimeError("Unexpected redirect to: " + final_url)
+                if base_url is not None:
+                    from urllib.parse import urlsplit
+                    if urlsplit(final_url).netloc != urlsplit(base_url).netloc:
+                        raise RuntimeError("Unexpected redirect to: " + final_url)
                 expected_size = int(response.headers.get("Content-Length", 0))
                 bytes_received = 0
                 with open(tmp_path, "wb") as f:
@@ -92,6 +94,8 @@ def download_tile_with_retry(
                             break
                         f.write(chunk)
                         bytes_received += len(chunk)
+                    f.flush()
+                    os.fsync(f.fileno())
 
             if expected_size > 0 and bytes_received != expected_size:
                 logger.warning(

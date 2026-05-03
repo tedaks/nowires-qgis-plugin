@@ -35,6 +35,7 @@ from .coverage_pool import (
     _itm_worker,
     _itm_worker_batch,
     _make_shared_grid,
+    _MAX_WORKERS,
     _release_shared_memory,
     should_use_multiprocessing,
 )
@@ -178,7 +179,7 @@ def compute_coverage(
     )
 
     shm = None
-    n_workers = max(1, os.cpu_count() or 1)
+    n_workers = max(1, min(os.cpu_count() or 1, _MAX_WORKERS))
     pixels_failed = 0
     pixels_done = 0
 

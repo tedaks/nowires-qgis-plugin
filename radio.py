@@ -147,6 +147,7 @@ class ITMResult:
     loss_db: float
     mode: int
     warnings: int
+    failed: bool = False
     d_hzn_tx_m: float = 0.0
     d_hzn_rx_m: float = 0.0
     theta_hzn_tx: float = 0.0
@@ -237,7 +238,7 @@ def itm_p2p_loss(
         )
     except (ValueError, RuntimeError, FloatingPointError) as exc:
         logger.warning("ITM call failed: %s", exc, exc_info=True)
-        return ITMResult(loss_db=999.0, mode=0, warnings=1)
+        return ITMResult(loss_db=float('nan'), mode=0, warnings=1, failed=True)
 
     inter = result.intermediate
     mode = 0

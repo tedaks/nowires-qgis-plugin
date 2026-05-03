@@ -61,6 +61,8 @@ class NoWiresPlugin:
     def __init__(self, iface):
         self.provider = None
         self.iface = iface
+        self._toolbar_actions = []
+        self._opacity_dialog = None
 
     def initProcessing(self):
         """Register the processing provider."""
@@ -149,13 +151,10 @@ class NoWiresPlugin:
         if self.provider is not None:
             QgsApplication.processingRegistry().removeProvider(self.provider)
             self.provider = None
-        self.iface.removePluginMenu("&NoWires", self.p2p_action)
-        self.iface.removePluginMenu("&NoWires", self.coverage_action)
-        self.iface.removePluginMenu("&NoWires", self.contour_action)
-        self.iface.removePluginMenu("&NoWires", self.opacity_action)
-        self.iface.removePluginMenu("&NoWires", self.open_3d_action)
-        self.iface.removePluginMenu("&NoWires", self.comparison_action)
-        self.iface.removePluginMenu("&NoWires", self.batch_action)
+        for attr in ('p2p_action', 'coverage_action', 'contour_action', 'opacity_action', 'open_3d_action', 'comparison_action', 'batch_action'):
+            action = getattr(self, attr, None)
+            if action is not None:
+                self.iface.removePluginMenu("&NoWires", action)
         for action in self._toolbar_actions:
             self.iface.removeToolBarIcon(action)
 

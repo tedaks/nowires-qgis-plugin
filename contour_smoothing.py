@@ -120,14 +120,13 @@ def _make_blur_vrt(vrt_path, src_path, kernel_size, sigma=None):
     if root.tag.startswith("{"):
         ns = root.tag.split("}")[0] + "}"
 
-    for source_elem in root.iter("{}Source".format(ns)):
+    for source_elem in list(root.iter()):
         if source_elem.tag not in (
             "{}SimpleSource".format(ns),
             "{}ComplexSource".format(ns),
         ):
             continue
         source_elem.tag = "{}KernelFilteredSource".format(ns)
-        source_elem.find("{}NODATA".format(ns))
         kernel_elem = ET.SubElement(source_elem, "{}Kernel".format(ns))
         kernel_elem.set("normalized", "1")
         size_elem = ET.SubElement(kernel_elem, "{}Size".format(ns))
@@ -160,7 +159,15 @@ def smooth_contour_dem(smoothing, input_dem, temp_dir, feedback, progress, statu
     ]
 
     dem_tif = os.path.join(path, "dem.tif")
-    translate_ds = gdal.Translate(dem_tif, input_dem, outputType=gdal.GDT_Float32, noData=-32768)
+    src_ds_check = gdal.Open(input_dem)
+    src_nd = src_ds_check.GetRasterBand(1).GetNoDataValue() if src_ds_check else None
+    src_ds_check = None
+    if src_nd is not None and src_nd != -32768:
+        translate_ds = gdal.Warp(
+            dem_tif, input_dem, format='GTiff', outputType=gdal.GDT_Float32,
+            dstNodata=-32768, srcNodata=src_nd, creationOptions=['COMPRESS=LZW'])
+    else:
+        translate_ds = gdal.Translate(dem_tif, input_dem, outputType=gdal.GDT_Float32, noData=-32768)
     if translate_ds is not None:
         translate_ds = None
 
