@@ -22,17 +22,18 @@ def test_run_case_reports_elapsed_and_pixels(monkeypatch):
     calls = {}
 
     def fake_compute_coverage(**kwargs):
+        from coverage_engine import CoverageResult
         calls["kwargs"] = kwargs
         grid_size = kwargs["grid_size"]
-        return (
-            np.full((grid_size, grid_size), -80.0, dtype=np.float32),
-            np.full((grid_size, grid_size), 120.0, dtype=np.float32),
-            -0.01,
-            0.01,
-            -0.01,
-            0.01,
-            np.full((grid_size, grid_size), 0.0, dtype=np.float32),
-            np.full((grid_size, grid_size), 0.0, dtype=np.float32),
+        return CoverageResult(
+            prx_grid=np.full((grid_size, grid_size), -80.0, dtype=np.float32),
+            loss_grid=np.full((grid_size, grid_size), 120.0, dtype=np.float32),
+            min_lat=-0.01,
+            max_lat=0.01,
+            min_lon=-0.01,
+            max_lon=0.01,
+            itm_loss_grid=np.full((grid_size, grid_size), 0.0, dtype=np.float32),
+            clutter_loss_grid=np.full((grid_size, grid_size), 0.0, dtype=np.float32),
         )
 
     monkeypatch.setattr(module, "compute_coverage", fake_compute_coverage)

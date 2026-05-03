@@ -75,6 +75,7 @@ class NoWiresPlugin:
 
         icon = os.path.join(cmd_folder, "logo.png")
         self._toolbar_actions = []
+        self._menu_actions = []
 
         # P2P Analysis action
         self.p2p_action = QAction(
@@ -83,6 +84,7 @@ class NoWiresPlugin:
         self.p2p_action.triggered.connect(self.run_p2p)
         self.iface.addPluginToMenu("&NoWires", self.p2p_action)
         self._toolbar_actions.append(self.p2p_action)
+        self._menu_actions.append(self.p2p_action)
 
         # Coverage action
         self.coverage_action = QAction(
@@ -90,6 +92,7 @@ class NoWiresPlugin:
         )
         self.coverage_action.triggered.connect(self.run_coverage)
         self.iface.addPluginToMenu("&NoWires", self.coverage_action)
+        self._menu_actions.append(self.coverage_action)
 
         # Contour Lines action
         self.contour_action = QAction(
@@ -97,6 +100,7 @@ class NoWiresPlugin:
         )
         self.contour_action.triggered.connect(self.run_contour)
         self.iface.addPluginToMenu("&NoWires", self.contour_action)
+        self._menu_actions.append(self.contour_action)
 
         # Coverage Opacity action
         self.opacity_action = QAction(
@@ -104,6 +108,7 @@ class NoWiresPlugin:
         )
         self.opacity_action.triggered.connect(self.run_coverage_opacity)
         self.iface.addPluginToMenu("&NoWires", self.opacity_action)
+        self._menu_actions.append(self.opacity_action)
 
         # 3D View action
         self.open_3d_action = QAction(
@@ -111,6 +116,7 @@ class NoWiresPlugin:
         )
         self.open_3d_action.triggered.connect(self.run_open_3d_view)
         self.iface.addPluginToMenu("&NoWires", self.open_3d_action)
+        self._menu_actions.append(self.open_3d_action)
 
         # Coverage Comparison action
         self.comparison_action = QAction(
@@ -119,6 +125,7 @@ class NoWiresPlugin:
         self.comparison_action.triggered.connect(self.run_comparison)
         self.iface.addPluginToMenu("&NoWires", self.comparison_action)
         self._toolbar_actions.append(self.comparison_action)
+        self._menu_actions.append(self.comparison_action)
 
         # Batch P2P Analysis action
         self.batch_action = QAction(
@@ -127,6 +134,7 @@ class NoWiresPlugin:
         self.batch_action.triggered.connect(self.run_batch)
         self.iface.addPluginToMenu("&NoWires", self.batch_action)
         self._toolbar_actions.append(self.batch_action)
+        self._menu_actions.append(self.batch_action)
 
         for action in self._toolbar_actions:
             self.iface.addToolBarIcon(action)
@@ -151,7 +159,7 @@ class NoWiresPlugin:
         if self.provider is not None:
             QgsApplication.processingRegistry().removeProvider(self.provider)
             self.provider = None
-        for attr in ('p2p_action', 'coverage_action', 'contour_action', 'opacity_action', 'open_3d_action', 'comparison_action', 'batch_action'):
+        for attr in self._menu_actions:
             action = getattr(self, attr, None)
             if action is not None:
                 self.iface.removePluginMenu("&NoWires", action)

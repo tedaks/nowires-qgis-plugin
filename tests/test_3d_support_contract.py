@@ -29,8 +29,8 @@ def test_three_d_module_exposes_scene_launcher_and_layer_helpers():
 def test_three_d_module_uses_unified_nowires_project_keys():
     source = _text(THREE_D_SOURCE)
     assert 'PROJECT_SCOPE = "NoWires"' in source
-    assert 'COVERAGE_LAYER_KEY = "last_coverage_layer_id"' in source
-    assert 'DEM_LAYER_KEY = "last_dem_layer_id"' in source
+    assert "ENTRY_KEY_LAST_COVERAGE" in source
+    assert "ENTRY_KEY_LAST_DEM" in source
     assert 'CONTOUR_LAYER_KEY = "last_contour_layer_id"' in source
 
 

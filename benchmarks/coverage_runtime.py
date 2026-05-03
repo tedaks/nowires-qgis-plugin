@@ -31,7 +31,7 @@ DEFAULT_CASES = COVERAGE_CASES
 def run_case(case: CoverageCase):
     grid = SyntheticElevationGrid(case.radius_km)
     start = perf_counter()
-    prx_grid, _, _, _, _, _, _, _ = compute_coverage(
+    result = compute_coverage(
         elev_grid=grid,
         tx_lat=0.0,
         tx_lon=0.0,
@@ -41,6 +41,7 @@ def run_case(case: CoverageCase):
         radius_km=case.radius_km,
         grid_size=case.grid_size,
     )
+    prx_grid = result.prx_grid
     elapsed_s = perf_counter() - start
     pixels = int(np.count_nonzero(~np.isnan(prx_grid)))
     pixels_per_second = pixels / elapsed_s if elapsed_s > 0 else float('inf')

@@ -24,7 +24,6 @@ Coverage Analysis Algorithm — heatmap prediction via ITM.
 """
 
 import logging
-import math
 import os
 
 logger = logging.getLogger(__name__)
@@ -46,7 +45,8 @@ from .coverage_params import (
     PARAM_CONSTANTS, add_coverage_params, extract_coverage_params,
 )
 from .antenna import ANTENNA_PRESET_OPTIONS
-from .constants import DEGREE_PADDING, METERS_PER_DEGREE_LAT
+from .constants import DEGREE_PADDING
+from .geo_bounds import coverage_bounds
 from .coverage_reporting import (
     build_coverage_report_payload_for_grid, report_coverage_results,
     write_coverage_geotiff,
@@ -81,15 +81,9 @@ class CoverageAlgorithm(NoWiresAlgorithm):
         feedback.pushInfo("TX antenna preset: {}".format(
             ANTENNA_PRESET_OPTIONS[p.antenna_preset]))
 
-        pad_deg = max(DEGREE_PADDING, p.radius_km / (METERS_PER_DEGREE_LAT / 1000.0) * 0.1)
-        rdeg_lat = p.radius_km / (METERS_PER_DEGREE_LAT / 1000.0)
-        rdeg_lon = p.radius_km / (
-            METERS_PER_DEGREE_LAT / 1000.0
-            * max(math.cos(math.radians(p.tx_lat)), 0.01))
-        south = p.tx_lat - rdeg_lat - pad_deg
-        north = p.tx_lat + rdeg_lat + pad_deg
-        west = p.tx_lon - rdeg_lon - pad_deg
-        east = p.tx_lon + rdeg_lon + pad_deg
+        pad_deg = max(DEGREE_PADDING, p.radius_km / (111320.0 / 1000.0) * 0.1)
+        south, north, west, east = coverage_bounds(
+            p.tx_lat, p.tx_lon, p.radius_km, padding_deg=pad_deg)
 
         feedback.pushInfo("Downloading DEM data...")
         feedback.setProgress(5)
@@ -140,17 +134,14 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                     tx_clutter_override=p.tx_clutter_override,
                     rx_clutter_override=p.rx_clutter_override, feedback=feedback)
 
-                (prx_grid, loss_grid, min_lat, max_lat, min_lon, max_lon,
-                 itm_loss_grid, clutter_loss_grid) = result
-
-                if prx_grid is None:
+                if result.prx_grid is None:
                     raise QgsProcessingException("Coverage computation was cancelled.")
 
                 report_payload, raster_grid, valid, summary = (
                     build_coverage_report_payload_for_grid(
-                        prx_grid=prx_grid, loss_grid=loss_grid,
-                        itm_loss_grid=itm_loss_grid, clutter_loss_grid=clutter_loss_grid,
-                        min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,
+                        prx_grid=result.prx_grid, loss_grid=result.loss_grid,
+                        itm_loss_grid=result.itm_loss_grid, clutter_loss_grid=result.clutter_loss_grid,
+                        min_lat=result.min_lat, max_lat=result.max_lat, min_lon=result.min_lon, max_lon=result.max_lon,
                         tx_lat=p.tx_lat, tx_lon=p.tx_lon, tx_h=p.tx_h, rx_h=p.rx_h,
                         f_mhz=p.f_mhz, radius_km=p.radius_km, grid_size=p.grid_size,
                         polarization=p.polarization, climate=p.climate,
@@ -175,7 +166,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                 report_json_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_JSON, context)
                 report_html_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_HTML, context)
 
-                write_coverage_geotiff(prx_grid, min_lat, max_lat, min_lon, max_lon, tif_path)
+                write_coverage_geotiff(result.prx_grid, result.min_lat, result.max_lat, result.min_lon, result.max_lon, tif_path)
 
                 layer_name = "Coverage ({:.0f} MHz, {:.0f} km, {}x{})".format(
                     p.f_mhz, p.radius_km, p.grid_size, p.grid_size)

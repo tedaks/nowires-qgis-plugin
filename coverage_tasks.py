@@ -24,7 +24,8 @@ import math
 
 import numpy as np
 
-from .constants import METERS_PER_DEGREE_LAT, EARTH_RADIUS_M
+from .clutter import CLUTTER_LOSS_DB
+from .constants import EARTH_RADIUS_M
 
 _MIN_COVERAGE_DISTANCE_M = 1.0
 
@@ -41,6 +42,18 @@ def _haversine_grid(tx_lat, tx_lon, lats, lons):
     a = np.sin(dphi / 2) ** 2 + np.cos(lat1_r) * np.cos(lat2_r) * np.sin(dlam / 2) ** 2
     a = np.clip(a, 0.0, 1.0)
     return 2 * R * np.arcsin(np.sqrt(a))
+
+
+def _bearing_grid(tx_lat, tx_lon, lats, lons):
+    """Vectorized forward azimuth (bearing) from TX to every grid cell center, in degrees."""
+    lat1_r = math.radians(tx_lat)
+    lon1_r = math.radians(tx_lon)
+    lat2_r = np.radians(lats)[:, np.newaxis]
+    lon2_r = np.radians(lons)[np.newaxis, :]
+    dlon = lon2_r - lon1_r
+    x = np.sin(dlon) * np.cos(lat2_r)
+    y = np.cos(lat1_r) * np.sin(lat2_r) - np.sin(lat1_r) * np.cos(lat2_r) * np.cos(dlon)
+    return (np.degrees(np.arctan2(x, y)) + 360.0) % 360.0
 
 
 def _coverage_axis_centers(min_value, max_value, size):
@@ -79,14 +92,21 @@ def build_coverage_tasks(
     lats,
     lons,
 ):
-    from .clutter import compute_terminal_clutter_losses
-
-    lat_per_m = 1.0 / METERS_PER_DEGREE_LAT
-    lon_per_m = 1.0 / (METERS_PER_DEGREE_LAT * max(math.cos(math.radians(tx_lat)), 0.01))
-    dlat = (lats[:, np.newaxis] - tx_lat) / lat_per_m
-    dlon = (lons[np.newaxis, :] - tx_lon) / lon_per_m
     dist_grid = _haversine_grid(tx_lat, tx_lon, lats, lons)
-    bearing_grid = (np.degrees(np.arctan2(dlon, dlat)) + 360.0) % 360.0
+    bearing_grid = _bearing_grid(tx_lat, tx_lon, lats, lons)
+
+    n_rows_lat = len(lats)
+    n_cols_lon = len(lons)
+    if clutter_enabled and clutter_grid is not None and rx_clutter_override is None:
+        rx_clutter_loss_grid = clutter_grid.sample_category_grid(lats, lons)
+    elif clutter_enabled and rx_clutter_override is not None:
+        override_loss = CLUTTER_LOSS_DB.get(rx_clutter_override, 0.0)
+        rx_clutter_loss_grid = np.full((n_rows_lat, n_cols_lon), override_loss, dtype=np.float64)
+    elif clutter_enabled and clutter_grid is None:
+        fallback_loss = CLUTTER_LOSS_DB.get(rx_clutter_override or "open", 0.0)
+        rx_clutter_loss_grid = np.full((n_rows_lat, n_cols_lon), fallback_loss, dtype=np.float64)
+    else:
+        rx_clutter_loss_grid = None
 
     tasks = []
     for i in range(grid_size):
@@ -100,17 +120,7 @@ def build_coverage_tasks(
                 3, min(int(round(modeled_d_m / profile_step_m)) + 1, max_profile_pts)
             )
             step_m = modeled_d_m / (n_pts - 1)
-            rx_clutter = compute_terminal_clutter_losses(
-                tx_lat=tx_lat,
-                tx_lon=tx_lon,
-                rx_lat=float(lats[i]),
-                rx_lon=float(lons[j]),
-                frequency_mhz=f_mhz,
-                enabled=clutter_enabled,
-                land_cover_grid=clutter_grid,
-                tx_override="open",
-                rx_override=rx_clutter_override,
-            )
+            rx_clutter_db = float(rx_clutter_loss_grid[i, j]) if rx_clutter_loss_grid is not None else 0.0
             tasks.append(
                 (
                     i,
@@ -136,7 +146,7 @@ def build_coverage_tasks(
                     antenna_config,
                     rx_gain_dbi,
                     tx_clutter_loss_db,
-                    rx_clutter.rx_loss_db,
+                    rx_clutter_db,
                 )
             )
     return tasks

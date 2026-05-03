@@ -56,10 +56,9 @@ class TestComputeCoverageEmptyTasks:
             radius_km=0.001,
             grid_size=4,
         )
-        prx, loss, min_lat, max_lat, min_lon, max_lon, itm, clutter = result
-        assert prx.shape == (4, 4)
-        assert np.all(np.isnan(prx))
-        assert np.all(np.isnan(loss))
+        assert result.prx_grid.shape == (4, 4)
+        assert np.all(np.isnan(result.prx_grid))
+        assert np.all(np.isnan(result.loss_grid))
 
     def test_empty_task_returns_correct_bounds(self, monkeypatch):
         monkeypatch.setattr(coverage_engine, "build_coverage_tasks", lambda *a, **kw: [])
@@ -71,11 +70,10 @@ class TestComputeCoverageEmptyTasks:
             radius_km=0.1,
             grid_size=8,
         )
-        _, _, min_lat, max_lat, min_lon, max_lon, _, _ = result
-        assert min_lat < 14.0
-        assert max_lat > 14.0
-        assert min_lon < 121.0
-        assert max_lon > 121.0
+        assert result.min_lat < 14.0
+        assert result.max_lat > 14.0
+        assert result.min_lon < 121.0
+        assert result.max_lon > 121.0
 
 
 class TestComputeCoverageCancellation:
@@ -98,4 +96,4 @@ class TestComputeCoverageCancellation:
             grid_size=2,
             feedback=fb,
         )
-        assert result == (None, None, 0.0, 0.0, 0.0, 0.0, None, None)
+        assert result.prx_grid is None

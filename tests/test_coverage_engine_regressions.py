@@ -59,7 +59,7 @@ def test_compute_coverage_runs_in_single_process_mode(monkeypatch):
         lambda task, **_kw: (task[0], task[1], 123.0, -77.0, 120.0, 2.0, 1.0),
     )
 
-    prx_grid, loss_grid, *_extra = coverage_engine.compute_coverage(
+    result = coverage_engine.compute_coverage(
         elev_grid=_DummyGrid(),
         tx_lat=0.0,
         tx_lon=0.0,
@@ -70,26 +70,34 @@ def test_compute_coverage_runs_in_single_process_mode(monkeypatch):
         grid_size=3,
     )
 
-    assert prx_grid.shape == (3, 3)
-    assert loss_grid.shape == (3, 3)
-    assert np.nanmax(loss_grid) == 123.0
-    assert np.nanmax(prx_grid) == -77.0
+    assert result.prx_grid.shape == (3, 3)
+    assert result.loss_grid.shape == (3, 3)
+    assert np.nanmax(result.loss_grid) == 123.0
+    assert np.nanmax(result.prx_grid) == -77.0
 
 
 def test_compute_coverage_cleans_shared_memory_when_cancelled(monkeypatch):
     coverage_engine = _import_coverage_engine()
 
-    class FakeSharedMemory:
+    class FakeSharedGrid:
         def __init__(self):
             self.name = "fake_shared_memory"
-            self.closed = False
-            self.unlinked = False
+            self._closed = False
+            self._unlinked = False
+
+        @property
+        def shm(self):
+            return self
 
         def close(self):
-            self.closed = True
+            self._closed = True
 
         def unlink(self):
-            self.unlinked = True
+            self._unlinked = True
+
+        def release(self):
+            self.close()
+            self.unlink()
 
     class FakeExecutor:
         def __init__(self, *args, **kwargs):
@@ -111,9 +119,9 @@ def test_compute_coverage_cleans_shared_memory_when_cancelled(monkeypatch):
         def isCanceled(self):
             return True
 
-    fake_shm = FakeSharedMemory()
+    fake_grid = FakeSharedGrid()
     monkeypatch.setattr(coverage_engine, "should_use_multiprocessing", lambda: True)
-    monkeypatch.setattr(coverage_engine, "_make_shared_grid", lambda grid: fake_shm)
+    monkeypatch.setattr(coverage_engine, "_make_shared_grid", lambda grid: fake_grid)
     monkeypatch.setattr(coverage_engine, "ProcessPoolExecutor", FakeExecutor)
 
     result = coverage_engine.compute_coverage(
@@ -128,9 +136,10 @@ def test_compute_coverage_cleans_shared_memory_when_cancelled(monkeypatch):
         feedback=CancelledFeedback(),
     )
 
-    assert result == (None, None, 0, 0, 0, 0, None, None)
-    assert fake_shm.closed is True
-    assert fake_shm.unlinked is True
+    assert result.prx_grid is None
+    assert result.loss_grid is None
+    assert fake_grid._closed is True
+    assert fake_grid._unlinked is True
 
 
 def test_compute_coverage_falls_back_on_pool_error_and_cleans_shared_memory(monkeypatch):
@@ -140,17 +149,25 @@ def test_compute_coverage_falls_back_on_pool_error_and_cleans_shared_memory(monk
     """
     coverage_engine = _import_coverage_engine()
 
-    class FakeSharedMemory:
+    class FakeSharedGrid:
         def __init__(self):
             self.name = "fake_shared_memory"
-            self.closed = False
-            self.unlinked = False
+            self._closed = False
+            self._unlinked = False
+
+        @property
+        def shm(self):
+            return self
 
         def close(self):
-            self.closed = True
+            self._closed = True
 
         def unlink(self):
-            self.unlinked = True
+            self._unlinked = True
+
+        def release(self):
+            self.close()
+            self.unlink()
 
     class ExplodingExecutor:
         def __init__(self, *args, **kwargs):
@@ -165,9 +182,9 @@ def test_compute_coverage_falls_back_on_pool_error_and_cleans_shared_memory(monk
         def map(self, *args, **kwargs):
             raise ValueError("unexpected worker serialization failure")
 
-    fake_shm = FakeSharedMemory()
+    fake_grid = FakeSharedGrid()
     monkeypatch.setattr(coverage_engine, "should_use_multiprocessing", lambda: True)
-    monkeypatch.setattr(coverage_engine, "_make_shared_grid", lambda grid: fake_shm)
+    monkeypatch.setattr(coverage_engine, "_make_shared_grid", lambda grid: fake_grid)
     monkeypatch.setattr(coverage_engine, "ProcessPoolExecutor", ExplodingExecutor)
     monkeypatch.setattr(
         coverage_engine,
@@ -189,11 +206,9 @@ def test_compute_coverage_falls_back_on_pool_error_and_cleans_shared_memory(monk
     )
 
     # Should have fallen back to sequential mode and produced valid grids
-    prx_grid = result[0]
-    loss_grid = result[1]
-    assert prx_grid is not None
-    assert loss_grid is not None
-    assert prx_grid.shape == (3, 3)
-    # SHM must be cleaned up even on pool failure
-    assert fake_shm.closed is True
-    assert fake_shm.unlinked is True
+    assert result.prx_grid is not None
+    assert result.loss_grid is not None
+    assert result.prx_grid.shape == (3, 3)
+    # Shared grid must be cleaned up even on pool failure
+    assert fake_grid._closed is True
+    assert fake_grid._unlinked is True

@@ -1,5 +1,26 @@
 """Geographic bounding-box helpers for longitude wraparound."""
 
+import math
+
+
+def coverage_bounds(tx_lat, tx_lon, radius_km, padding_deg=0.0):
+    """Compute the lat/lon bounding box for a coverage analysis.
+
+    Returns (south, north, west, east) in degrees.
+    """
+    meters_per_deg_lat = 111320.0
+    radius_m = radius_km * 1000.0
+    lat_per_m = 1.0 / meters_per_deg_lat
+    lon_per_m = 1.0 / (meters_per_deg_lat * max(math.cos(math.radians(tx_lat)), 0.01))
+    half_lat = radius_m * lat_per_m
+    half_lon = radius_m * lon_per_m
+    return (
+        tx_lat - half_lat - padding_deg,
+        tx_lat + half_lat + padding_deg,
+        tx_lon - half_lon - padding_deg,
+        tx_lon + half_lon + padding_deg,
+    )
+
 
 def normalize_longitude(lon):
     """Return longitude normalized to [-180, 180)."""

@@ -107,16 +107,30 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
     _pD = algorithm.parameterAsDouble
     _pE = algorithm.parameterAsEnum
     _pF = algorithm.parameterAsFile
-    tx_h, rx_h = _pD(p, algorithm.TX_HEIGHT, context), _pD(p, algorithm.RX_HEIGHT, context)
-    f_mhz, polarization, climate = _pD(p, algorithm.FREQ_MHZ, context), _pE(p, algorithm.POLARIZATION, context), _pE(p, algorithm.CLIMATE, context)
-    time_pct, location_pct, situation_pct = _pD(p, algorithm.TIME_PCT, context), _pD(p, algorithm.LOCATION_PCT, context), _pD(p, algorithm.SITUATION_PCT, context)
-    tx_power, tx_gain_d, rx_gain_d = _pD(p, algorithm.TX_POWER, context), _pD(p, algorithm.TX_GAIN, context), _pD(p, algorithm.RX_GAIN, context)
-    cable_loss, rx_sens = _pD(p, algorithm.CABLE_LOSS, context), _pD(p, algorithm.RX_SENSITIVITY, context)
-    tx_pk, rx_pk = antenna_preset_key(_pE(p, algorithm.TX_ANTENNA_PRESET, context)), antenna_preset_key(_pE(p, algorithm.RX_ANTENNA_PRESET, context))
-    tx_az, rx_az = _pD(p, algorithm.TX_ANTENNA_AZ, context), _pD(p, algorithm.RX_ANTENNA_AZ, context)
+    tx_h = _pD(p, algorithm.TX_HEIGHT, context)
+    rx_h = _pD(p, algorithm.RX_HEIGHT, context)
+    f_mhz = _pD(p, algorithm.FREQ_MHZ, context)
+    polarization = _pE(p, algorithm.POLARIZATION, context)
+    climate = _pE(p, algorithm.CLIMATE, context)
+    time_pct = _pD(p, algorithm.TIME_PCT, context)
+    location_pct = _pD(p, algorithm.LOCATION_PCT, context)
+    situation_pct = _pD(p, algorithm.SITUATION_PCT, context)
+    tx_power = _pD(p, algorithm.TX_POWER, context)
+    tx_gain_d = _pD(p, algorithm.TX_GAIN, context)
+    rx_gain_d = _pD(p, algorithm.RX_GAIN, context)
+    cable_loss = _pD(p, algorithm.CABLE_LOSS, context)
+    rx_sens = _pD(p, algorithm.RX_SENSITIVITY, context)
+    tx_pk = antenna_preset_key(_pE(p, algorithm.TX_ANTENNA_PRESET, context))
+    rx_pk = antenna_preset_key(_pE(p, algorithm.RX_ANTENNA_PRESET, context))
+    tx_az = _pD(p, algorithm.TX_ANTENNA_AZ, context)
+    rx_az = _pD(p, algorithm.RX_ANTENNA_AZ, context)
     pi = _pE(p, algorithm.K_FACTOR_PRESET, context)
-    kf = resolve_k_factor(has_preset=pi < len(K_FACTOR_PRESETS), has_custom=True, custom_value=_pD(p, algorithm.K_FACTOR, context), preset_index=pi)
-    n0, epsilon, sigma = _pD(p, algorithm.N0, context), _pD(p, algorithm.EPSILON, context), _pD(p, algorithm.SIGMA, context)
+    kf = resolve_k_factor(
+        has_preset=pi < len(K_FACTOR_PRESETS), has_custom=True,
+        custom_value=_pD(p, algorithm.K_FACTOR, context), preset_index=pi)
+    n0 = _pD(p, algorithm.N0, context)
+    epsilon = _pD(p, algorithm.EPSILON, context)
+    sigma = _pD(p, algorithm.SIGMA, context)
     validate_itm_input_ranges(tx_height_m=tx_h, rx_height_m=rx_h, frequency_mhz=f_mhz, surface_refractivity_n0=n0, earth_conductivity_sigma=sigma)
     ce = _pE(p, algorithm.CLUTTER_MODEL, context) == 1
     cg = LandCoverGrid.from_raster(_pF(p, algorithm.CLUTTER_RASTER, context)) if _pF(p, algorithm.CLUTTER_RASTER, context) else None
@@ -136,7 +150,12 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
         raise QgsProcessingException("Failed to obtain DEM data for the analysis area.")
     feedback.pushInfo("Building elevation grid...")
     feedback.setProgress(15)
-    elev = ElevationGrid(dem_path)
+    try:
+        elev = ElevationGrid(dem_path)
+    except Exception:
+        if cg is not None:
+            cg.close()
+        raise
     try:
         total = len(candidate_tx) * len(rx_points)
         return BatchAnalysisParams(mode=mode, candidate_tx=candidate_tx, rx_points=rx_points,

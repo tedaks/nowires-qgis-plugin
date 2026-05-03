@@ -31,7 +31,6 @@ attribution details.
 """
 
 import logging
-import math
 import os
 from qgis.core import QgsProcessingException, QgsRasterLayer
 from .base_algorithm import NoWiresAlgorithm, install_constants
@@ -39,8 +38,9 @@ from .constants import DEGREE_PADDING
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
 from .processing_utils import queue_layer_for_loading
+from .geo_bounds import coverage_bounds
 from .comparison_params import (
-    GRID_SIZE_PRESETS, DELTA_STYLE_OPTIONS, METERS_PER_DEGREE_LAT,
+    GRID_SIZE_PRESETS, DELTA_STYLE_OPTIONS,
     PANEL_A_CONSTANTS, PANEL_B_CONSTANTS, OUTPUT_CONSTANTS, make_panel_config)
 from .comparison_add_params import add_panel_params, add_comparison_params
 from .comparison_outputs import (
@@ -149,15 +149,9 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
         tx_lat_center = (tx_lat_a + tx_lat_b) / 2.0
         tx_lon_center = (tx_lon_a + tx_lon_b) / 2.0
 
-        pad_deg = max(DEGREE_PADDING, radius_km / (METERS_PER_DEGREE_LAT / 1000.0) * 0.1)
-        radius_deg_lat = radius_km / (METERS_PER_DEGREE_LAT / 1000.0)
-        radius_deg_lon = radius_km / (
-            METERS_PER_DEGREE_LAT / 1000.0 * max(math.cos(math.radians(tx_lat_center)), 0.01)
-        )
-        south = tx_lat_center - radius_deg_lat - pad_deg
-        north = tx_lat_center + radius_deg_lat + pad_deg
-        west = tx_lon_center - radius_deg_lon - pad_deg
-        east = tx_lon_center + radius_deg_lon + pad_deg
+        pad_deg = max(DEGREE_PADDING, radius_km / (111320.0 / 1000.0) * 0.1)
+        south, north, west, east = coverage_bounds(
+            tx_lat_center, tx_lon_center, radius_km, padding_deg=pad_deg)
 
         feedback.pushInfo("Downloading DEM data...")
         feedback.setProgress(2)
@@ -177,8 +171,12 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
                 panel_a = run_panel_coverage(
                     self, "PANEL_A", parameters, context, feedback, elev, south, north, west, east)
 
-                (prx_grid_a, loss_grid_a, min_lat_a, max_lat_a, min_lon_a, max_lon_a,
-                 itm_loss_grid_a, clutter_loss_grid_a) = panel_a["result"]
+                prx_grid_a = panel_a["result"].prx_grid
+                loss_grid_a = panel_a["result"].loss_grid
+                min_lat_a = panel_a["result"].min_lat
+                max_lat_a = panel_a["result"].max_lat
+                min_lon_a = panel_a["result"].min_lon
+                max_lon_a = panel_a["result"].max_lon
                 if prx_grid_a is None:
                     raise QgsProcessingException("Panel A coverage computation was cancelled.")
 
@@ -189,8 +187,12 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
                 panel_b = run_panel_coverage(
                     self, "PANEL_B", parameters, context, feedback, elev, south, north, west, east)
 
-                (prx_grid_b, loss_grid_b, min_lat_b, max_lat_b, min_lon_b, max_lon_b,
-                 itm_loss_grid_b, clutter_loss_grid_b) = panel_b["result"]
+                prx_grid_b = panel_b["result"].prx_grid
+                loss_grid_b = panel_b["result"].loss_grid
+                min_lat_b = panel_b["result"].min_lat
+                max_lat_b = panel_b["result"].max_lat
+                min_lon_b = panel_b["result"].min_lon
+                max_lon_b = panel_b["result"].max_lon
                 if prx_grid_b is None:
                     raise QgsProcessingException("Panel B coverage computation was cancelled.")
                 if feedback and feedback.isCanceled():

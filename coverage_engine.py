@@ -21,7 +21,6 @@
 """
 
 import logging
-import math
 import multiprocessing
 import os
 from concurrent.futures import ProcessPoolExecutor
@@ -29,7 +28,9 @@ from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 
 from .antenna import antenna_config_from_values
+from .clutter import compute_terminal_clutter_losses
 from .coverage_pool import (
+    CoverageResult,
     _dynamic_chunk_size,
     _init_cov_pool,
     _itm_worker,
@@ -41,10 +42,10 @@ from .coverage_pool import (
 )
 from .constants import BYTES_PER_MEBIBYTE
 from .coverage_tasks import (
-    METERS_PER_DEGREE_LAT,
     _coverage_axis_centers,
     build_coverage_tasks,
 )
+from .geo_bounds import coverage_bounds
 
 logger = logging.getLogger(__name__)
 
@@ -86,17 +87,8 @@ def compute_coverage(
     rx_clutter_override=None,
     feedback=None,
 ):
-    from .clutter import compute_terminal_clutter_losses
-
     radius_m = radius_km * 1000.0
-    lat_per_m = 1.0 / METERS_PER_DEGREE_LAT
-    lon_per_m = 1.0 / (METERS_PER_DEGREE_LAT * max(math.cos(math.radians(tx_lat)), 0.01))
-    half_lat = radius_m * lat_per_m
-    half_lon = radius_m * lon_per_m
-    min_lat = tx_lat - half_lat
-    max_lat = tx_lat + half_lat
-    min_lon = tx_lon - half_lon
-    max_lon = tx_lon + half_lon
+    min_lat, max_lat, min_lon, max_lon = coverage_bounds(tx_lat, tx_lon, radius_km)
 
     eirp_dbm = tx_power_dbm + tx_gain_dbi - cable_loss_db
     lats = _coverage_axis_centers(min_lat, max_lat, grid_size)
@@ -159,9 +151,11 @@ def compute_coverage(
 
     if not tasks:
         logger.warning("No coverage pixels within the specified radius.")
-        return (
-            prx_grid, loss_grid, min_lat, max_lat,
-            min_lon, max_lon, itm_loss_grid, clutter_loss_grid,
+        return CoverageResult(
+            prx_grid=prx_grid, loss_grid=loss_grid,
+            min_lat=min_lat, max_lat=max_lat,
+            min_lon=min_lon, max_lon=max_lon,
+            itm_loss_grid=itm_loss_grid, clutter_loss_grid=clutter_loss_grid,
         )
 
     grid_meta = elev_grid.grid_meta_dict()
@@ -177,7 +171,7 @@ def compute_coverage(
         grid_size, grid_size, len(tasks), grid_data.shape, grid_data.nbytes / BYTES_PER_MEBIBYTE,
     )
 
-    shm = None
+    shared_grid = None
     n_workers = max(1, min(os.cpu_count() or 1, _MAX_WORKERS))
     pixels_failed = 0
     pixels_done = 0
@@ -194,13 +188,14 @@ def compute_coverage(
             )
         try:
             try:
-                shm = _make_shared_grid(grid_data)
+                shared_grid = _make_shared_grid(grid_data)
                 cancel_event = multiprocessing.Event()
                 with ProcessPoolExecutor(
                     max_workers=n_workers,
                     initializer=_init_cov_pool,
-                    initargs=(shm.name, grid_data.shape, str(grid_data.dtype), grid_meta),
+                    initargs=(shared_grid.name, grid_data.shape, str(grid_data.dtype), grid_meta),
                 ) as pool:
+                    shared_grid.shm.close()
                     for chunk_idx, batch_results in enumerate(
                         pool.map(
                             _itm_worker_batch,
@@ -238,8 +233,8 @@ def compute_coverage(
                     )
                 use_mp = False
         finally:
-            _release_shared_memory(shm)
-            shm = None
+            if shared_grid is not None:
+                _release_shared_memory(shared_grid)
     elif feedback:
         feedback.pushInfo(
             "Using single-threaded mode on Windows (multiprocessing unsafe)..."
@@ -269,7 +264,12 @@ def compute_coverage(
             raise
 
     if cancelled:
-        return None, None, 0.0, 0.0, 0.0, 0.0, None, None
+        return CoverageResult(
+            prx_grid=None, loss_grid=None,
+            min_lat=0.0, max_lat=0.0,
+            min_lon=0.0, max_lon=0.0,
+            itm_loss_grid=None, clutter_loss_grid=None,
+        )
 
     total = len(tasks)
     if feedback:
@@ -285,7 +285,9 @@ def compute_coverage(
     elif pixels_failed > 0:
         logger.warning("Coverage: %d/%d pixels failed (%.1f%%)", pixels_failed, total, failure_pct)
 
-    return (
-        prx_grid, loss_grid, min_lat, max_lat,
-        min_lon, max_lon, itm_loss_grid, clutter_loss_grid,
+    return CoverageResult(
+        prx_grid=prx_grid, loss_grid=loss_grid,
+        min_lat=min_lat, max_lat=max_lat,
+        min_lon=min_lon, max_lon=max_lon,
+        itm_loss_grid=itm_loss_grid, clutter_loss_grid=clutter_loss_grid,
     )

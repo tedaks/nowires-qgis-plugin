@@ -226,6 +226,10 @@ class ElevationGrid:
         self.close()
         return False
 
+    def __del__(self):
+        if self.data is not None:
+            self.close()
+
 
 def sample_line_from_grid(gd, gm, lat1, lon1, lat2, lon2, n_pts):
     min_lat = gm["min_lat"]

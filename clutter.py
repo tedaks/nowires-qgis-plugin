@@ -29,6 +29,8 @@ from dataclasses import dataclass
 import numpy as np
 from osgeo import gdal
 
+from .worldcover_downloader import ensure_worldcover_for_area
+
 logger = logging.getLogger(__name__)
 
 
@@ -188,14 +190,38 @@ class LandCoverGrid:
             return None
         return worldcover_class_to_clutter_category(class_id)
 
+    def sample_category_grid(self, lats, lons, rx_override=None):
+        """Vectorized category sampling for a 2D grid of lats/lons.
+
+        Returns a 2D array of clutter loss values in dB, shape (len(lats), len(lons)).
+        """
+        if self.data is None:
+            n = len(lats)
+            m = len(lons)
+            default = CLUTTER_LOSS_DB.get(rx_override or "open", 0.0) if rx_override else 0.0
+            return np.full((n, m), default, dtype=np.float64)
+        n_rows, n_cols = self.data.shape
+        d_lat = (self.max_lat - self.min_lat) / n_rows
+        d_lon = (self.max_lon - self.min_lon) / n_cols
+        lat_arr = np.asarray(lats, dtype=np.float64)
+        lon_arr = np.asarray(lons, dtype=np.float64)
+        y_idx = np.clip(((self.max_lat - lat_arr) / d_lat).astype(np.int32), 0, n_rows - 1)
+        x_idx = np.clip(((lon_arr - self.min_lon) / d_lon).astype(np.int32), 0, n_cols - 1)
+        classes = self.data[y_idx[:, np.newaxis], x_idx[np.newaxis, :]]
+        oob = (lat_arr[:, np.newaxis] < self.min_lat) | (lat_arr[:, np.newaxis] > self.max_lat) | \
+              (lon_arr[np.newaxis, :] < self.min_lon) | (lon_arr[np.newaxis, :] > self.max_lon)
+        if self.nodata is not None:
+            oob = oob | (classes == self.nodata)
+        vec_categorize = np.vectorize(worldcover_class_to_clutter_category)
+        categories = vec_categorize(classes)
+        categories = np.where(oob, "open", categories)
+        if rx_override:
+            categories = np.full_like(categories, rx_override, dtype=object)
+        vec_loss = np.vectorize(lambda c: CLUTTER_LOSS_DB.get(str(c), 0.0))
+        return vec_loss(categories).astype(np.float64)
+
 
 def ensure_clutter_grid_for_area(south, north, west, east, feedback=None) -> LandCoverGrid | None:
-    try:
-        from .worldcover_downloader import ensure_worldcover_for_area
-    except ImportError:
-        logger.warning("Falling back to non-package import for worldcover_downloader")
-        from worldcover_downloader import ensure_worldcover_for_area
-
     raster_path = ensure_worldcover_for_area(south, north, west, east, feedback=feedback)
     if raster_path is None:
         return None

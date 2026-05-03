@@ -33,6 +33,8 @@ from qgis.PyQt.QtWidgets import (
 )
 from qgis.core import QgsProject
 
+from .base_algorithm import ENTRY_KEY_LAST_COVERAGE
+
 COVERAGE_LAYER_PREFIX = "Coverage ("
 
 
@@ -40,7 +42,7 @@ def find_latest_coverage_layer():
     """Return the most recently added coverage raster layer, or None."""
     project = QgsProject.instance()
 
-    layer_id, ok = project.readEntry("NoWires", "last_coverage_layer_id", "")
+    layer_id, ok = project.readEntry("NoWires", ENTRY_KEY_LAST_COVERAGE, "")
     if ok and layer_id:
         layer = project.mapLayer(layer_id)
         if layer is not None:

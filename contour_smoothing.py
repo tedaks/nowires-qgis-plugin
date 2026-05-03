@@ -137,11 +137,13 @@ def _make_blur_vrt(vrt_path, src_path, kernel_size, sigma=None):
     tree.write(vrt_path, xml_declaration=True, encoding="utf-8")
 
 
-def smooth_contour_dem(smoothing, input_dem, temp_dir, feedback, progress, status_total):
+def smooth_contour_dem(smoothing, input_dem, temp_dir, feedback, progress, status_total,
+                       tmp_manager=None):
     """Apply Gaussian-weighted contour line smoothing guided by TPI.
 
     Modifies the ``merged_contour.tif`` in *temp_dir* in-place.
-    Returns nothing.
+    If *tmp_manager* is provided, intermediate files are registered with it
+    for automatic cleanup. Otherwise files are removed on return.
     """
     if smoothing == "None":
         return
@@ -282,9 +284,13 @@ def smooth_contour_dem(smoothing, input_dem, temp_dir, feedback, progress, statu
 
     feedback.setProgress(int((progress + 1.0) * status_total))
 
-    for f in temp_files:
-        try:
-            if os.path.exists(f):
-                os.unlink(f)
-        except OSError:
-            pass
+    if tmp_manager is not None:
+        for f in temp_files:
+            tmp_manager.add_file(f)
+    else:
+        for f in temp_files:
+            try:
+                if os.path.exists(f):
+                    os.unlink(f)
+            except OSError:
+                pass

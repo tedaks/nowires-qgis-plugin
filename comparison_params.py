@@ -28,7 +28,6 @@ Extracted from algorithm_coverage_comparison.py for modularity.
 from qgis.core import QgsProcessingParameterNumber
 
 from .constants import (
-    METERS_PER_DEGREE_LAT,
     POLARIZATION_NAMES,
     GRID_SIZE_PRESETS,
 )
@@ -43,7 +42,6 @@ from .radio import (
 __all__ = [
     "GRID_SIZE_PRESETS",
     "POLARIZATION_NAMES",
-    "METERS_PER_DEGREE_LAT",
     "DELTA_STYLE_OPTIONS",
     "DELTA_THRESHOLD_DEFAULTS",
     "PANEL_A_CONSTANTS",

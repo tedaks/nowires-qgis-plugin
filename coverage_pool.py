@@ -25,8 +25,8 @@ import math
 import multiprocessing
 import multiprocessing.shared_memory
 import os
-import uuid
 from collections import namedtuple
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
@@ -34,6 +34,7 @@ import numpy as np
 from .antenna import antenna_gain_adjustment_db
 from .coverage_compute import compute_itm_p2p
 from .elevation import sample_line_from_grid
+from .shared_dem_grid import SharedDEMGrid
 
 try:
     from concurrent.futures import BrokenExecutor as _BrokenPool
@@ -48,6 +49,18 @@ logger = logging.getLogger(__name__)
 _MAX_WORKERS = min(os.cpu_count() or 1, 16)
 _MIN_CHUNK_SIZE = 64
 _MAX_CHUNK_SIZE = 2048
+
+
+@dataclass
+class CoverageResult:
+    prx_grid: np.ndarray
+    loss_grid: np.ndarray
+    min_lat: float
+    max_lat: float
+    min_lon: float
+    max_lon: float
+    itm_loss_grid: np.ndarray
+    clutter_loss_grid: np.ndarray
 
 _CoverageTask = namedtuple(
     "_CoverageTask",
@@ -212,32 +225,10 @@ def _dynamic_chunk_size(n_tasks):
 
 
 def _make_shared_grid(grid_data):
-    name = uuid.uuid4().hex[:20]
-    shm = multiprocessing.shared_memory.SharedMemory(
-        create=True,
-        name=name,
-        size=grid_data.nbytes,
-    )
-    try:
-        shared_arr = np.ndarray(grid_data.shape, dtype=grid_data.dtype, buffer=shm.buf)
-        shared_arr[:] = grid_data[:]
-    except Exception:
-        try:
-            shm.unlink()
-        except Exception:
-            pass
-        raise
-    return shm
+    return SharedDEMGrid(grid_data)
 
 
-def _release_shared_memory(shm):
-    if shm is None:
+def _release_shared_memory(shared_grid, unlink=True):
+    if shared_grid is None:
         return
-    try:
-        shm.close()
-    except Exception:
-        pass
-    try:
-        shm.unlink()
-    except Exception:
-        pass
+    shared_grid.release()
