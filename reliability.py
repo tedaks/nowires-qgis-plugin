@@ -34,7 +34,7 @@ preconditions for an availability estimate are met (unobstructed LOS),
 from __future__ import annotations
 
 
-def heuristic_availability_validity(frequency_mhz, distance_km, los_blocked):
+def heuristic_availability_validity(frequency_mhz, distance_km, los_blocked) -> dict:
     """Return whether a heuristic availability estimate is meaningful here.
 
     The preconditions (non-zero distance, unobstructed LOS) gate whether
@@ -50,7 +50,7 @@ def heuristic_availability_validity(frequency_mhz, distance_km, los_blocked):
     }
 
 
-def classify_fade_margin(margin_db):
+def classify_fade_margin(margin_db) -> dict:
     """Map fade margin to a user-facing class and summary."""
     if margin_db >= 15.0:
         return {"fade_margin_class": "Strong", "reliability_summary": "Reliable"}
@@ -61,7 +61,7 @@ def classify_fade_margin(margin_db):
     return {"fade_margin_class": "Weak", "reliability_summary": "Unreliable"}
 
 
-def estimate_heuristic_availability_pct(margin_db, distance_km, frequency_mhz):
+def estimate_heuristic_availability_pct(margin_db, distance_km, frequency_mhz) -> float:
     """Return a bounded heuristic availability percentage in [0, 100].
 
     **Disclaimer:** This is a rough heuristic, NOT an ITU-R P.530 calculation.
@@ -74,7 +74,7 @@ def estimate_heuristic_availability_pct(margin_db, distance_km, frequency_mhz):
     return max(0.0, min(100.0, round(value, 2)))
 
 
-def summarize_reliability(margin_db, frequency_mhz, distance_km, los_blocked):
+def summarize_reliability(margin_db, frequency_mhz, distance_km, los_blocked) -> dict:
     """Return the method, availability estimate, and fallback classes."""
     validity = heuristic_availability_validity(
         frequency_mhz=frequency_mhz,
