@@ -22,6 +22,21 @@ from unittest.mock import MagicMock
 
 sys.modules["osgeo"] = MagicMock()
 sys.modules["osgeo.gdal"] = MagicMock()
+sys.modules["osgeo.osr"] = MagicMock()
+
+_qgis = types.ModuleType("qgis")
+_qgis_core = types.ModuleType("qgis.core")
+
+class _FakeProcessingException(Exception):
+    pass
+
+_qgis_core.QgsProcessingException = _FakeProcessingException
+_qgis_core.QgsColorRampShader = MagicMock
+_qgis_core.QgsRasterShader = MagicMock
+_qgis_core.QgsSingleBandPseudoColorRenderer = MagicMock
+_qgis_core.QgsVectorLayer = MagicMock
+sys.modules.setdefault("qgis", _qgis)
+sys.modules.setdefault("qgis.core", _qgis_core)
 
 plugin_dir = os.path.join(os.path.dirname(__file__), "..")
 if plugin_dir not in sys.path:
@@ -69,6 +84,7 @@ for _pkg_sub in (
     "coverage_tasks",
     "contour_overlay",
     "contour_generation",
+    "comparison_outputs",
     "benchmarks.coverage_runtime",
     "benchmarks.p2p_runtime",
     "benchmarks.reference_cases",
