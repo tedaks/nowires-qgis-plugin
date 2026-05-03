@@ -190,7 +190,7 @@ def add_panel_params(algorithm, prefix, config):
             extension="csv", optional=True,
         )
     )
-    add_clutter_params(algorithm, attr_getter=lambda name: getattr(algorithm, f"{prefix}_{name}"))
+    add_clutter_params(algorithm, attr_getter=lambda name: f"{prefix}_{name}")
     n0_param = config["n0_param"](
         f"{prefix}_N0", f"Panel {panel_label} Surface refractivity N0 (N-units)", defaultValue=DEFAULT_N0,
     )
