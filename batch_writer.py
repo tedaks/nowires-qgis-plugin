@@ -28,13 +28,13 @@ import json
 
 from osgeo import ogr, osr
 
-from .report_markers import ogr_driver_for_path, _remove_existing_ogr_dataset
+from .report_markers import ogr_driver_for_path, remove_existing_ogr_dataset
 from .batch_params import BATCH_MODE_OPTIONS
 
 
 def write_batch_marker_layer(path, results, feedback, mode):
     driver = ogr.GetDriverByName(ogr_driver_for_path(path))
-    _remove_existing_ogr_dataset(driver, path)
+    remove_existing_ogr_dataset(driver, path)
     ds = driver.CreateDataSource(str(path))
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(4326)

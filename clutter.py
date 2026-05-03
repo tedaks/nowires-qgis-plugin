@@ -181,6 +181,7 @@ def ensure_clutter_grid_for_area(south, north, west, east, feedback=None):
     try:
         from .worldcover_downloader import ensure_worldcover_for_area
     except ImportError:
+        logger.warning("Falling back to non-package import for worldcover_downloader")
         from worldcover_downloader import ensure_worldcover_for_area
 
     raster_path = ensure_worldcover_for_area(south, north, west, east, feedback=feedback)

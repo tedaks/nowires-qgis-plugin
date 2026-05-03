@@ -1,3 +1,27 @@
+[project]
+name = "nowires-qgis-plugin"
+version = "1.3.0"
+description = "QGIS plugin for radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM"
+requires-python = ">=3.9"
+license = {text = "GPL-3.0-or-later"}
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "numpy>=1.20",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "benchmark: benchmark tests (deselect with '-m \"not benchmark\"')",
+]
+
+[tool.coverage.run]
+source = ["nowires_qgis_plugin"]
+
+[tool.coverage.report]
+show_missing = true
+
 [tool.bumpversion]
 current_version = "1.3.0"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"

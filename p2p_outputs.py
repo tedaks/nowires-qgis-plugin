@@ -25,7 +25,8 @@ OGR output writers for P2P profile line and Fresnel zone layers.
 
 from osgeo import ogr
 
-from .report_markers import ogr_driver_for_path, _remove_existing_ogr_dataset
+from .report_markers import ogr_driver_for_path, remove_existing_ogr_dataset
+from .defaults import FRESNEL_60PCT_FACTOR
 from .radio import PROP_MODE_NAMES
 
 __all__ = ["write_profile_line", "write_fresnel_zone"]
@@ -33,7 +34,7 @@ __all__ = ["write_profile_line", "write_fresnel_zone"]
 
 def write_profile_line(path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result):
     driver = ogr.GetDriverByName(ogr_driver_for_path(path))
-    _remove_existing_ogr_dataset(driver, path)
+    remove_existing_ogr_dataset(driver, path)
     ds = None
     try:
         ds = driver.CreateDataSource(path)
@@ -63,8 +64,8 @@ def write_fresnel_zone(
 ):
     poly_driver = ogr.GetDriverByName(ogr_driver_for_path(poly_path))
     lines_driver = ogr.GetDriverByName(ogr_driver_for_path(lines_path))
-    _remove_existing_ogr_dataset(poly_driver, poly_path)
-    _remove_existing_ogr_dataset(lines_driver, lines_path)
+    remove_existing_ogr_dataset(poly_driver, poly_path)
+    remove_existing_ogr_dataset(lines_driver, lines_path)
     n = len(distances)
 
     def _geo_points(heights):
@@ -104,7 +105,7 @@ def write_fresnel_zone(
         feat_f1.SetField("blocked", 0)
         layer_poly.CreateFeature(feat_f1)
 
-        upper_band = _geo_points(los_h - 0.6 * fresnel_r)
+        upper_band = _geo_points(los_h - FRESNEL_60PCT_FACTOR * fresnel_r)
         lower_band = _geo_points(los_h - fresnel_r)
 
         ring_band = ogr.Geometry(ogr.wkbLinearRing)

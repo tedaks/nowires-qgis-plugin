@@ -70,6 +70,8 @@ ANTENNA_PRESETS = {
 ANTENNA_PRESET_OPTIONS = [preset.label for preset in ANTENNA_PRESETS.values()]
 ANTENNA_PRESET_KEYS = list(ANTENNA_PRESETS.keys())
 
+CUSTOM_ANTENNA_PRESET_INDEX = ANTENNA_PRESET_KEYS.index("custom")
+
 
 def _angle_diff_deg(angle_deg, reference_deg):
     return (angle_deg - reference_deg + 540.0) % 360.0 - 180.0

@@ -24,12 +24,15 @@ Core P2P analysis execution: DEM download, ITM prediction, Fresnel analysis,
 output writing, report generation, chart display, and feedback reporting.
 """
 
+import logging
 import math
 import os
 import tempfile
 
 import numpy as np
 from osgeo import osr
+
+logger = logging.getLogger(__name__)
 
 from .constants import (
     CLIMATE_NAMES, DEFAULT_PROFILE_STEP_M, DEGREE_PADDING, METERS_PER_DEGREE_LAT,
@@ -38,6 +41,7 @@ from .constants import (
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid, bearing_deg, haversine_m
 from .fresnel import C_LIGHT
+from .geo_bounds import shortest_longitude_bounds
 from .p2p_analysis_params import P2PAnalysisParams
 from .radio import (PROP_MODE_NAMES, build_pfl,
     fresnel_profile_analysis, itm_p2p_loss)
@@ -151,8 +155,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
     pad = max(DEGREE_PADDING, dist_m / METERS_PER_DEGREE_LAT * 0.1)
     south = min(tx_lat, rx_lat) - pad
     north = max(tx_lat, rx_lat) + pad
-    west = min(tx_lon, rx_lon) - pad
-    east = max(tx_lon, rx_lon) + pad
+    west, east = shortest_longitude_bounds(tx_lon, rx_lon, padding_deg=pad)
     if clutter_grid is None and clutter_enabled:
         clutter_grid = ensure_clutter_grid_for_area(
             south=south, north=north, west=west, east=east, feedback=feedback)
@@ -170,6 +173,10 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         raise RuntimeError("Terrain profile too short.")
     distances = [p[0] for p in points]
     elevations = [p[1] for p in points]
+    nan_count = sum(1 for e in elevations if math.isnan(e))
+    if nan_count > 0:
+        logger.warning(
+            "Replacing %d NaN elevation value(s) with 0.0 (missing DEM data)", nan_count)
     elevations = [0.0 if math.isnan(e) else e for e in elevations]
     step_m_val = dist_m / max(len(distances) - 1, 1)
     pfl = build_pfl(elevations, step_m_val)
@@ -264,12 +271,8 @@ def run_p2p_analysis(params: P2PAnalysisParams):
     _load_p2p_qgis_layers(context, profile_path, fresnel_poly_path,
         fresnel_lines_path, markers_path, show_chart, chart_kwargs)
     feedback.setProgress(100)
-    report_p2p_results(feedback, dist_m, f_mhz, result, PROP_MODE_NAMES,
-        tx_power, tx_gain, cable_loss, eirp_dbm, fspl_db,
-        clutter_losses, total_path_loss_db, antenna_gain_adjustment_db_total,
-        rx_gain, prx_dbm, rx_sens, margin_db, report_payload,
-        k_factor, los_blocked, f1_violated, f60_violated,
-        float(fresnel_r.max()))
+    report_p2p_results(feedback, dist_m, f_mhz, result, report_payload,
+        k_factor, los_blocked, float(fresnel_r.max()))
     return {
         params.output_profile: profile_path,
         params.output_fresnel: fresnel_poly_path,

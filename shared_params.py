@@ -6,6 +6,17 @@ from qgis.core import (
 
 from .clutter import CLUTTER_MODEL_OPTIONS, CLUTTER_OVERRIDE_OPTIONS
 from .constants import K_FACTOR_PRESETS_OPTIONS
+from .defaults import (
+    DEFAULT_CABLE_LOSS_DB,
+    DEFAULT_EPSILON,
+    DEFAULT_K_FACTOR,
+    DEFAULT_N0,
+    DEFAULT_RX_GAIN_DBI,
+    DEFAULT_RX_SENSITIVITY_DBM,
+    DEFAULT_SIGMA,
+    DEFAULT_TX_GAIN_DBI,
+    DEFAULT_TX_POWER_DBM,
+)
 from .radio import ITM_MIN_N0, ITM_MAX_N0, ITM_MIN_SIGMA
 
 _DBL = QgsProcessingParameterNumber.Double
@@ -43,19 +54,19 @@ def add_link_budget_params(algorithm, attr_getter=None, prefix=""):
     p = f"{prefix} " if prefix else ""
     algorithm.addParameter(QgsProcessingParameterNumber(
         ag("TX_POWER"), f"{p}TX power (dBm)",
-        type=_DBL, defaultValue=43.0))
+        type=_DBL, defaultValue=DEFAULT_TX_POWER_DBM))
     algorithm.addParameter(QgsProcessingParameterNumber(
         ag("TX_GAIN"), f"{p}TX antenna gain (dBi)",
-        type=_DBL, defaultValue=8.0))
+        type=_DBL, defaultValue=DEFAULT_TX_GAIN_DBI))
     algorithm.addParameter(QgsProcessingParameterNumber(
         ag("RX_GAIN"), f"{p}RX antenna gain (dBi)",
-        type=_DBL, defaultValue=2.0))
+        type=_DBL, defaultValue=DEFAULT_RX_GAIN_DBI))
     algorithm.addParameter(QgsProcessingParameterNumber(
         ag("CABLE_LOSS"), f"{p}Cable loss (dB)",
-        type=_DBL, defaultValue=2.0, minValue=0.0))
+        type=_DBL, defaultValue=DEFAULT_CABLE_LOSS_DB, minValue=0.0))
     algorithm.addParameter(QgsProcessingParameterNumber(
         ag("RX_SENSITIVITY"), f"{p}RX sensitivity (dBm)",
-        type=_DBL, defaultValue=-100.0))
+        type=_DBL, defaultValue=DEFAULT_RX_SENSITIVITY_DBM))
 
 
 def add_advanced_itm_params(algorithm, attr_getter=None, include_k_factor=True, prefix=""):
@@ -67,12 +78,12 @@ def add_advanced_itm_params(algorithm, attr_getter=None, include_k_factor=True, 
             options=K_FACTOR_PRESETS_OPTIONS, defaultValue=2))
         add_advanced_param(algorithm, ag("K_FACTOR"),
             f"{label_prefix}Custom Earth radius factor (k)",
-            4.0 / 3.0, min_val=0.1)
+            DEFAULT_K_FACTOR, min_val=0.1)
     add_advanced_param(algorithm, ag("N0"),
-        f"{label_prefix}Surface refractivity N0 (N-units)", 301.0,
+        f"{label_prefix}Surface refractivity N0 (N-units)", DEFAULT_N0,
         min_val=ITM_MIN_N0, max_val=ITM_MAX_N0)
     add_advanced_param(algorithm, ag("EPSILON"),
-        f"{label_prefix}Earth permittivity (epsilon)", 15.0, min_val=1.0)
+        f"{label_prefix}Earth permittivity (epsilon)", DEFAULT_EPSILON, min_val=1.0)
     add_advanced_param(algorithm, ag("SIGMA"),
-        f"{label_prefix}Earth conductivity (sigma, S/m)", 0.005,
+        f"{label_prefix}Earth conductivity (sigma, S/m)", DEFAULT_SIGMA,
         min_val=ITM_MIN_SIGMA)

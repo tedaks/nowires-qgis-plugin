@@ -25,6 +25,8 @@ Helpers for deriving coverage metrics from a computed raster grid.
 
 import numpy as np
 
+from .constants import EARTH_RADIUS_M
+
 
 def summarize_coverage_grid(
     prx_grid,
@@ -46,7 +48,7 @@ def summarize_coverage_grid(
     cell_lons = min_lon + ((np.arange(n_cols) + 0.5) * lon_step)  # (n_cols,)
 
     # Vectorized haversine distance computation — broadcast to 2D grid
-    R = 6371000.0
+    R = EARTH_RADIUS_M
     lat1_r = np.radians(tx_lat)
     lon1_r = np.radians(tx_lon)
     lat2_r = np.radians(cell_lats)[:, np.newaxis]  # (n_rows, 1)

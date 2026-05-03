@@ -250,7 +250,10 @@ def _feat_attr(feat, name, default):
     Returns default on NULL attribute, missing field, or cast failure.
     Logs a warning when coercion truncates a value or fails entirely.
     """
-    val = feat.attribute(name)
+    try:
+        val = feat.attribute(name)
+    except (KeyError, IndexError):
+        return default
     if val is None or val == _QGIS_NULL:
         return default
     if default is None:
@@ -280,4 +283,3 @@ def _feat_attr(feat, name, default):
             name, val, type(default).__name__, exc, default,
         )
         return default
-

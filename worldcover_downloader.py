@@ -35,13 +35,15 @@ import math
 import os
 import re
 import ssl
+import time
 import tempfile
 import urllib.request
 import getpass
 
-from osgeo import gdal, ogr, osr
 
-from .tile_download_base import download_tile_with_retry
+
+from .geo_bounds import longitude_intervals
+from .tile_download_base import clip_and_merge_tiles, download_tile_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -54,10 +56,14 @@ _DOWNLOAD_RETRIES = 3
 _SOCKET_TIMEOUT = 120
 _MAX_TILES = 200
 _VALID_TILE_RE = re.compile(r"^[NS]\d{2}[EW]\d{3}$")
+_WALL_CLOCK_TIMEOUT = 600
 
 
 def get_worldcover_dir():
-    username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
+    try:
+        username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
+    except (OSError, KeyError):
+        username = "nowires"
     worldcover_dir = os.path.join(
         tempfile.gettempdir(), "NoWires-" + username, "worldcover"
     )
@@ -83,19 +89,20 @@ def worldcover_tile_url(tile_id):
 
 def required_worldcover_tiles(south, north, west, east, max_tiles=_MAX_TILES):
     tiles = []
-    for lat in range(
-        math.floor(south / WORLDCOVER_TILE_SIZE_DEG) * WORLDCOVER_TILE_SIZE_DEG,
-        math.ceil(north / WORLDCOVER_TILE_SIZE_DEG) * WORLDCOVER_TILE_SIZE_DEG,
-        WORLDCOVER_TILE_SIZE_DEG,
-    ):
-        for lon in range(
-            math.floor(west / WORLDCOVER_TILE_SIZE_DEG) * WORLDCOVER_TILE_SIZE_DEG,
-            math.ceil(east / WORLDCOVER_TILE_SIZE_DEG) * WORLDCOVER_TILE_SIZE_DEG,
+    for lon_west, lon_east in longitude_intervals(west, east):
+        for lat in range(
+            math.floor(south / WORLDCOVER_TILE_SIZE_DEG) * WORLDCOVER_TILE_SIZE_DEG,
+            math.ceil(north / WORLDCOVER_TILE_SIZE_DEG) * WORLDCOVER_TILE_SIZE_DEG,
             WORLDCOVER_TILE_SIZE_DEG,
         ):
-            tile_id = worldcover_tile_id(lat, lon)
-            if tile_id not in tiles:
-                tiles.append(tile_id)
+            for lon in range(
+                math.floor(lon_west / WORLDCOVER_TILE_SIZE_DEG) * WORLDCOVER_TILE_SIZE_DEG,
+                math.ceil(lon_east / WORLDCOVER_TILE_SIZE_DEG) * WORLDCOVER_TILE_SIZE_DEG,
+                WORLDCOVER_TILE_SIZE_DEG,
+            ):
+                tile_id = worldcover_tile_id(lat, lon)
+                if tile_id not in tiles:
+                    tiles.append(tile_id)
 
     if len(tiles) > max_tiles:
         raise ValueError(
@@ -114,10 +121,17 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
         urllib.request.HTTPSHandler(context=ctx)
     )
     available = []
+    deadline = time.monotonic() + _WALL_CLOCK_TIMEOUT
 
     for tile_id in tile_list:
         if feedback and feedback.isCanceled():
             return available
+        if time.monotonic() > deadline:
+            logger.warning("WorldCover download wall-clock timeout exceeded (%ds)", _WALL_CLOCK_TIMEOUT)
+            if feedback:
+                feedback.pushInfo(
+                    "Download timed out after {}s".format(_WALL_CLOCK_TIMEOUT))
+            break
 
         filename = worldcover_tile_filename(tile_id)
         local_tif = os.path.join(temp_dir, filename)
@@ -144,90 +158,10 @@ def clip_and_merge_worldcover(tile_paths, south, north, west, east, temp_dir=Non
     if temp_dir is None:
         temp_dir = get_worldcover_dir()
 
-    if not tile_paths:
-        return None
-
-    aoi_shp = os.path.join(temp_dir, "worldcover_aoi_clip.shp")
-    shp_driver = ogr.GetDriverByName("ESRI Shapefile")
-    if os.path.exists(aoi_shp):
-        shp_driver.DeleteDataSource(aoi_shp)
-
-    ds = shp_driver.CreateDataSource(aoi_shp)
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(4326)
-    srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-    layer = ds.CreateLayer("aoi", srs=srs, geom_type=ogr.wkbPolygon)
-    feat_defn = layer.GetLayerDefn()
-    feature = ogr.Feature(feat_defn)
-
-    ring = ogr.Geometry(ogr.wkbLinearRing)
-    ring.AddPoint(west, south)
-    ring.AddPoint(east, south)
-    ring.AddPoint(east, north)
-    ring.AddPoint(west, north)
-    ring.AddPoint(west, south)
-    poly = ogr.Geometry(ogr.wkbPolygon)
-    poly.AddGeometry(ring)
-    feature.SetGeometry(poly)
-    layer.CreateFeature(feature)
-    ds = None
-
-    clipped = []
-    for path in tile_paths:
-        if feedback and feedback.isCanceled():
-            return None
-        base = os.path.splitext(os.path.basename(path))[0]
-        clip_path = os.path.join(temp_dir, base + "_clip.tif")
-
-        if feedback:
-            feedback.pushInfo("Clipping: " + os.path.basename(path))
-
-        result = gdal.Warp(
-            clip_path,
-            path,
-            cutlineDSName=aoi_shp,
-            cropToCutline=True,
-            dstNodata=0,
-            srcSRS="EPSG:4326",
-            dstSRS="EPSG:4326",
-            format="GTiff",
-            creationOptions=["COMPRESS=LZW", "TILED=YES"],
-        )
-        if result is None:
-            logger.warning("Warp failed for %s", os.path.basename(path))
-            continue
-        result = None
-
-        check = gdal.Open(clip_path)
-        if check is None:
-            logger.warning("Empty clip result for %s", os.path.basename(path))
-            continue
-        check = None
-        clipped.append(clip_path)
-
-    if not clipped:
-        return None
-
-    if len(clipped) == 1:
-        return clipped[0]
-
-    merged_path = os.path.join(temp_dir, "merged_worldcover.tif")
-    if feedback:
-        feedback.pushInfo("Merging {} clipped WorldCover tiles".format(len(clipped)))
-
-    result = gdal.Warp(
-        merged_path,
-        clipped,
-        dstNodata=0,
-        format="GTiff",
-        creationOptions=["COMPRESS=LZW", "TILED=YES"],
+    return clip_and_merge_tiles(
+        tile_paths, south, north, west, east, temp_dir, feedback,
+        nodata_value=0, aoi_prefix="worldcover", merge_filename="merged_worldcover.tif",
     )
-    if result is None:
-        logger.error("WorldCover merge Warp failed")
-        return None
-    result = None
-
-    return merged_path
 
 
 def ensure_worldcover_for_area(south, north, west, east, feedback=None):

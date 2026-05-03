@@ -50,7 +50,7 @@ def ogr_driver_for_path(path):
     return _OGR_DRIVER_BY_EXT.get(ext, "GPKG")
 
 
-def _remove_existing_ogr_dataset(driver, path):
+def remove_existing_ogr_dataset(driver, path):
     """Best-effort removal of an existing OGR dataset before recreating it.
 
     Older GDAL releases let ``driver.Open`` return None for missing paths;
@@ -119,7 +119,7 @@ def write_p2p_marker_layer(
     """Write a TX/RX point layer to disk with OGR."""
     path = Path(path)
     driver = ogr.GetDriverByName(ogr_driver_for_path(path))
-    _remove_existing_ogr_dataset(driver, path)
+    remove_existing_ogr_dataset(driver, path)
 
     ds = driver.CreateDataSource(str(path))
     srs = osr.SpatialReference()

@@ -38,10 +38,7 @@ sys.modules["NoWires"] = _no_wires_pkg
 for _submodule_name in (
     "antenna",
     "coverage_palette",
-    "coverage_summary",
-    "elevation",
     "reliability",
-    "fresnel",
     "tile_download_base",
     "p2p_report_display",
     "comparison_reporting",
@@ -59,6 +56,9 @@ for _submodule_name in (
 for _pkg_sub in (
     "radio",
     "coverage_compute",
+    "coverage_summary",
+    "fresnel",
+    "elevation",
     "coverage_engine",
     "report_payloads",
     "clutter",

@@ -30,7 +30,7 @@ import os
 import time
 import urllib.error
 
-from osgeo import gdal
+from osgeo import gdal, ogr, osr
 
 logger = logging.getLogger(__name__)
 
@@ -184,3 +184,90 @@ def download_tile_with_retry(
             pass
 
     return local_tif if downloaded else None
+
+
+def clip_and_merge_tiles(
+    tile_paths, south, north, west, east, temp_dir, feedback,
+    nodata_value, aoi_prefix, merge_filename,
+):
+    if not tile_paths:
+        return None
+
+    aoi_shp = os.path.join(temp_dir, aoi_prefix + "_aoi_clip.shp")
+    shp_driver = ogr.GetDriverByName("ESRI Shapefile")
+    if os.path.exists(aoi_shp):
+        shp_driver.DeleteDataSource(aoi_shp)
+
+    ds = shp_driver.CreateDataSource(aoi_shp)
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(4326)
+    srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    layer = ds.CreateLayer("aoi", srs=srs, geom_type=ogr.wkbPolygon)
+    feat_defn = layer.GetLayerDefn()
+    feature = ogr.Feature(feat_defn)
+
+    ring = ogr.Geometry(ogr.wkbLinearRing)
+    ring.AddPoint(west, south)
+    ring.AddPoint(east, south)
+    ring.AddPoint(east, north)
+    ring.AddPoint(west, north)
+    ring.AddPoint(west, south)
+    poly = ogr.Geometry(ogr.wkbPolygon)
+    poly.AddGeometry(ring)
+    feature.SetGeometry(poly)
+    layer.CreateFeature(feature)
+    ds = None
+
+    clipped = []
+    for path in tile_paths:
+        if feedback and feedback.isCanceled():
+            return None
+        base = os.path.splitext(os.path.basename(path))[0]
+        clip_path = os.path.join(temp_dir, base + "_clip.tif")
+
+        if feedback:
+            feedback.pushInfo("Clipping: " + os.path.basename(path))
+
+        result = gdal.Warp(
+            clip_path,
+            path,
+            cutlineDSName=aoi_shp,
+            cropToCutline=True,
+            dstNodata=nodata_value,
+            srcSRS="EPSG:4326",
+            dstSRS="EPSG:4326",
+            format="GTiff",
+            creationOptions=["COMPRESS=LZW", "TILED=YES"],
+        )
+        if result is None:
+            logger.warning("Warp failed for %s", os.path.basename(path))
+            continue
+        result = None
+
+        check = gdal.Open(clip_path)
+        if check is None:
+            logger.warning("Empty clip result for %s", os.path.basename(path))
+            continue
+        check = None
+        clipped.append(clip_path)
+
+    if not clipped:
+        return None
+
+    merged_path = os.path.join(temp_dir, merge_filename)
+    if feedback:
+        feedback.pushInfo("Merging {} clipped tiles".format(len(clipped)))
+
+    result = gdal.Warp(
+        merged_path,
+        clipped,
+        dstNodata=nodata_value,
+        format="GTiff",
+        creationOptions=["COMPRESS=LZW", "TILED=YES"],
+    )
+    if result is None:
+        logger.error("Merge Warp failed")
+        return None
+    result = None
+
+    return merged_path

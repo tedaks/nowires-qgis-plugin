@@ -13,6 +13,8 @@ from worldcover_downloader import (
     WORLDCOVER_BASE_URL,
 )
 
+import tile_download_base
+
 
 def test_worldcover_tile_id_north_east():
     assert worldcover_tile_id(0, 0) == "N00E000"
@@ -103,7 +105,7 @@ def test_download_worldcover_tiles_replaces_corrupt_cache(tmp_path, monkeypatch)
             return FakeResponse()
 
     open_results = iter([None, object()])
-    monkeypatch.setattr(wd.gdal, "Open", lambda _path: next(open_results))
+    monkeypatch.setattr(tile_download_base.gdal, "Open", lambda _path: next(open_results))
     monkeypatch.setattr(wd.urllib.request, "build_opener", lambda *_args, **_kwargs: FakeOpener())
 
     paths = wd.download_worldcover_tiles([tile_id], temp_dir=str(tmp_path))
@@ -147,7 +149,7 @@ def test_download_worldcover_tiles_finalizes_download_with_os_replace(tmp_path, 
         replace_calls.append((src, dst))
         original_replace(src, dst)
 
-    monkeypatch.setattr(wd.gdal, "Open", lambda _path: object())
+    monkeypatch.setattr(tile_download_base.gdal, "Open", lambda _path: object())
     monkeypatch.setattr(wd.urllib.request, "build_opener", lambda *_args, **_kwargs: FakeOpener())
     monkeypatch.setattr(wd.os, "replace", fake_replace)
 

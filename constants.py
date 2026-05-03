@@ -31,3 +31,7 @@ K_FACTOR_PRESETS_OPTIONS = [
     "4.00 - Strong super-refractive",
     "Custom",
 ]
+
+EARTH_RADIUS_M = 6371000.0
+COVERAGE_NODATA = -9999.0
+MIN_PROFILE_STEP_M = 1.0

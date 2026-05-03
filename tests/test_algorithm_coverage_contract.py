@@ -91,7 +91,7 @@ def test_coverage_algorithm_exposes_itm_variability_parameters():
     assert '"Time percentage"' in source
     assert '"Location percentage"' in source
     assert '"Situation percentage"' in source
-    assert "defaultValue=50.0" in source
+    assert "defaultValue=DEFAULT_TIME_PCT" in source
     assert "minValue=0.01" in source
     assert "maxValue=99.99" in source
 

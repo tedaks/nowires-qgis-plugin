@@ -30,6 +30,7 @@ from .base_algorithm import NoWiresAlgorithm, install_constants
 from .constants import DEGREE_PADDING
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
+from .geo_bounds import shortest_longitude_bounds_for
 from .radio import K_FACTOR_PRESETS, resolve_k_factor, validate_itm_input_ranges
 from .antenna import antenna_preset_key
 from .clutter import LandCoverGrid, clutter_override_value, ensure_clutter_grid_for_area
@@ -122,8 +123,9 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
     tfb, rfb = _pD(p, algorithm.TX_FRONT_BACK_DB, context), _pD(p, algorithm.RX_FRONT_BACK_DB, context)
     lats = [pt["lat"] for pt in candidate_tx] + [pt["lat"] for pt in rx_points]
     lons = [pt["lon"] for pt in candidate_tx] + [pt["lon"] for pt in rx_points]
-    south, north, west, east = min(lats), max(lats), min(lons), max(lons)
+    south, north = min(lats), max(lats)
     pad = max(DEGREE_PADDING, (north - south) * 0.1)
+    west, east = shortest_longitude_bounds_for(lons, padding_deg=pad)
     if cg is None and ce:
         cg = ensure_clutter_grid_for_area(south=south - pad, north=north + pad, west=west - pad, east=east + pad, feedback=feedback)
     feedback.pushInfo("Downloading DEM data...")

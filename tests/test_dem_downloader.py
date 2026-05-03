@@ -10,7 +10,12 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 
+_dd = None
+_tile_base = None
+
+
 def _import_dem_downloader():
+    global _dd, _tile_base
     qgis = types.ModuleType("qgis")
     qgis_core = types.ModuleType("qgis.core")
     qgis_core.QgsGeometry = MagicMock()
@@ -32,9 +37,14 @@ def _import_dem_downloader():
     setattr(no_wires_pkg, "tile_download_base", _tile_base)
     if "tile_download_base" not in sys.modules:
         sys.modules["tile_download_base"] = _tile_base
-    dd = importlib.import_module("NoWires.dem_downloader")
-    setattr(no_wires_pkg, "dem_downloader", dd)
-    return dd
+    _gdal_mock = MagicMock()
+    sys.modules.setdefault("osgeo.gdal", _gdal_mock)
+    sys.modules.setdefault("osgeo", MagicMock())
+    sys.modules.setdefault("osgeo.ogr", MagicMock())
+    sys.modules.setdefault("osgeo.osr", MagicMock())
+    _dd = importlib.import_module("NoWires.dem_downloader")
+    setattr(no_wires_pkg, "dem_downloader", _dd)
+    return _dd
 
 
 def test_dem_cache_directory_is_per_user(tmp_path, monkeypatch):
@@ -84,7 +94,7 @@ def test_download_tiles_finalizes_download_with_os_replace(tmp_path, monkeypatch
         replace_calls.append((src, dst))
         original_replace(src, dst)
 
-    monkeypatch.setattr(dd.gdal, "Open", lambda _path: object())
+    monkeypatch.setattr(_tile_base.gdal, "Open", lambda _path: object())
     monkeypatch.setattr(dd.os, "replace", fake_replace)
 
     paths = dd.download_tiles(

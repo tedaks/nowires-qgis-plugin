@@ -35,11 +35,13 @@ import numpy as np
 
 from osgeo import gdal
 
+from .constants import EARTH_RADIUS_M
+
 logger = logging.getLogger(__name__)
 
 
 def haversine_m(lat1, lon1, lat2, lon2):
-    R = 6371000.0
+    R = EARTH_RADIUS_M
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlam = math.radians(lon2 - lon1)
@@ -62,7 +64,7 @@ def bearing_deg(lat1, lon1, lat2, lon2):
 
 
 def bearing_destination(lat, lon, bearing_deg_val, dist_m):
-    R = 6371000.0
+    R = EARTH_RADIUS_M
     brng = math.radians(bearing_deg_val)
     lat_r = math.radians(lat)
     lon_r = math.radians(lon)
