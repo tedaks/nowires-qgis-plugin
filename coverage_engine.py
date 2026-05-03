@@ -247,16 +247,13 @@ def compute_coverage(
         )
 
     if not use_mp:
-        coverage_pool._cov_grid_data = grid_data
-        coverage_pool._cov_grid_meta = grid_meta
-
         try:
             for task_idx, task in enumerate(tasks):
                 if feedback and feedback.isCanceled():
                     logger.info("Coverage cancelled by user")
                     cancelled = True
                     break
-                result = _itm_worker(task)
+                result = _itm_worker(task, grid_data=grid_data, grid_meta=grid_meta)
                 if result is not None:
                     i, j, loss_db, prx, itm_loss_db, c_tx, c_rx = result
                     loss_grid[i, j] = loss_db

@@ -27,8 +27,8 @@ margin, distance, and frequency. It is **not** a faithful implementation
 of ITU-R P.530 and should NOT be relied upon for link budget engineering.
 See ``estimate_heuristic_availability_pct`` for the formula and caveats.
 The method label reflects this: ``heuristic_availability`` when the
-preconditions for an availability estimate are met, ``fallback_margin``
-otherwise.
+preconditions for an availability estimate are met (unobstructed LOS),
+``fallback_margin`` otherwise.
 """
 
 from __future__ import annotations
@@ -37,12 +37,13 @@ from __future__ import annotations
 def heuristic_availability_validity(frequency_mhz, distance_km, los_blocked):
     """Return whether a heuristic availability estimate is meaningful here.
 
-    The preconditions (frequency >= 3 GHz, non-zero distance, unobstructed
-    LOS) are intentionally permissive — they only gate whether the
-    heuristic blend below produces a number, not whether the link is
-    actually reliable.
+    The preconditions (non-zero distance, unobstructed LOS) gate whether
+    the heuristic blend below produces a number, not whether the link is
+    actually reliable.  The frequency term in the formula already provides
+    a natural penalty for higher bands, so no minimum-frequency gate is
+    applied.
     """
-    valid = frequency_mhz >= 3000.0 and distance_km > 0.0 and not los_blocked
+    valid = distance_km > 0.0 and not los_blocked
     return {
         "valid": valid,
         "method": "heuristic_availability" if valid else "fallback_margin",
@@ -65,9 +66,9 @@ def estimate_heuristic_availability_pct(margin_db, distance_km, frequency_mhz):
 
     **Disclaimer:** This is a rough heuristic, NOT an ITU-R P.530 calculation.
     The value should NOT be relied upon for link budget engineering.
-    It is intentionally conservative and only shown when frequency >= 3 GHz
-    and LOS is unobstructed.  Replace with a P.530-derived calculation
-    if/when authoritative availability estimates are needed.
+    The frequency term naturally penalizes higher bands; no minimum-frequency
+    gate is applied.  Replace with a P.530-derived calculation if/when
+    authoritative availability estimates are needed.
     """
     value = 90.0 + margin_db * 0.4 - distance_km * 0.3 - frequency_mhz / 100000.0
     return max(0.0, min(100.0, round(value, 2)))

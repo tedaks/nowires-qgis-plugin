@@ -46,16 +46,21 @@ def generate_contour_lines(merged_path, interval, temp_dir, gdal_callback):
     contour_layer.CreateField(ogr.FieldDefn("ID", ogr.OFTInteger))
     contour_layer.CreateField(ogr.FieldDefn("ELEV", ogr.OFTReal))
     merged_ds = gdal.Open(merged_path)
-    merged_band = merged_ds.GetRasterBand(1)
-    nodata_val = merged_band.GetNoDataValue()
-    gdal.ContourGenerate(
-        merged_band, interval, 0, [],
-        1 if nodata_val is not None else 0,
-        nodata_val if nodata_val is not None else -32768,
-        contour_layer, 0, 1, callback=gdal_callback,
-    )
-    shp_ds = None
-    merged_ds = None
+    if merged_ds is None:
+        shp_ds = None
+        raise RuntimeError("Cannot open merged DEM for contour generation: {}".format(merged_path))
+    try:
+        merged_band = merged_ds.GetRasterBand(1)
+        nodata_val = merged_band.GetNoDataValue()
+        gdal.ContourGenerate(
+            merged_band, interval, 0, [],
+            1 if nodata_val is not None else 0,
+            nodata_val if nodata_val is not None else -32768,
+            contour_layer, 0, 1, callback=gdal_callback,
+        )
+    finally:
+        shp_ds = None
+        merged_ds = None
     return contour_shp_path, tmp_shp_dir
 
 
@@ -68,17 +73,23 @@ def reproject_and_export(contour_shp_path, project_crs, output_dest, temp_dir):
     if project_crs.isValid() and project_crs.authid().upper() != "EPSG:4326":
         reproj_dir = tempfile.mkdtemp(dir=temp_dir, prefix="contourlines_reproj_")
         reproj_shp = os.path.join(reproj_dir, "contourlines_reproj.shp")
-        gdal.VectorTranslate(
+        result = gdal.VectorTranslate(
             reproj_shp, contour_shp_path,
             options=gdal.VectorTranslateOptions(
                 dstSRS=project_crs.authid(), reproject=True
             ),
         )
+        if result is None:
+            raise RuntimeError("Failed to reproject contour lines to {}".format(project_crs.authid()))
+        result = None
         final_shp_path = reproj_shp
     else:
         final_shp_path = contour_shp_path
 
     if not output_dest:
         raise RuntimeError("No contour output destination was provided.")
-    gdal.VectorTranslate(output_dest, final_shp_path)
+    result = gdal.VectorTranslate(output_dest, final_shp_path)
+    if result is None:
+        raise RuntimeError("Failed to export contour lines to {}".format(output_dest))
+    result = None
     return output_dest, reproj_dir

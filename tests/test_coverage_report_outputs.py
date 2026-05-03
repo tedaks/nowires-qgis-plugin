@@ -50,7 +50,7 @@ def test_build_coverage_report_payload_contains_summary_values():
     assert payload["report_type"] == "coverage"
     assert payload["inputs"]["grid_size"] == 128
     assert payload["results"]["usable_cell_count"] == 375
-    assert payload["results"]["availability_method"] == "fallback_margin"
+    assert payload["results"]["availability_method"] == "heuristic_availability"
     assert payload["results"]["reliability_summary"] == "Reliable"
     assert payload["status"]["summary"] == "HAS USABLE CELLS"
     assert payload["inputs"]["clutter_model"] == "Simple clutter correction"

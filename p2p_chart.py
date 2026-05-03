@@ -29,6 +29,13 @@ import numpy as np
 
 from .defaults import FRESNEL_60PCT_FACTOR
 
+try:
+    from qgis.PyQt.QtCore import QT_VERSION_STR
+    _QT_VER = tuple(int(x) for x in QT_VERSION_STR.split("."))[:2]
+    assert _QT_VER >= (6, 0), "p2p_chart.py requires Qt 6+; got {}".format(QT_VERSION_STR)
+except ImportError:
+    pass
+
 logger = logging.getLogger(__name__)
 
 __all__ = ["show_profile_chart"]

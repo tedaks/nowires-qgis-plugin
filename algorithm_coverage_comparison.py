@@ -181,8 +181,6 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
                  itm_loss_grid_a, clutter_loss_grid_a) = panel_a["result"]
                 if prx_grid_a is None:
                     raise QgsProcessingException("Panel A coverage computation was cancelled.")
-                if feedback and feedback.isCanceled():
-                    return {}
 
                 feedback.pushInfo("=" * 50)
                 feedback.pushInfo("Running Panel B coverage...")
@@ -195,6 +193,8 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
                  itm_loss_grid_b, clutter_loss_grid_b) = panel_b["result"]
                 if prx_grid_b is None:
                     raise QgsProcessingException("Panel B coverage computation was cancelled.")
+                if feedback and feedback.isCanceled():
+                    return {}
 
                 feedback.pushInfo("Computing delta raster...")
                 feedback.setProgress(80)

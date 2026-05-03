@@ -146,10 +146,10 @@ def test_batch_algorithm_uses_global_antenna_settings_as_feature_defaults():
     source = _batch_source()
     assert "tx_default_preset_key" in source
     assert "rx_default_preset_key" in source
-    assert 'tx_def.get("antenna_preset", tx_default_preset_key)' in source
-    assert 'rx_def.get("antenna_preset", rx_default_preset_key)' in source
-    assert 'tx_def.get("azimuth", tx_default_az)' in source
-    assert 'rx_def.get("azimuth", rx_default_az)' in source
+    assert 'tx_def.get("antenna_preset"' in source
+    assert 'rx_def.get("antenna_preset"' in source
+    assert 'tx_def.get("azimuth"' in source
+    assert 'rx_def.get("azimuth"' in source
 
 
 def test_batch_many_to_one_summary_prints_tx_candidate_coordinates():

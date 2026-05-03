@@ -29,7 +29,7 @@ import os
 
 logger = logging.getLogger(__name__)
 
-from qgis.core import Qgis, QgsProcessingException, QgsProject, QgsRasterLayer
+from qgis.core import Qgis, QgsProcessingException, QgsRasterLayer
 
 from .base_algorithm import NoWiresAlgorithm, install_constants
 from .dem_downloader import ensure_dem_for_area

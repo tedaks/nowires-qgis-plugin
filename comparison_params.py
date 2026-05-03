@@ -79,74 +79,58 @@ OUTPUT_CONSTANTS = {
 }
 
 
+def _num_param(name, desc, type=QgsProcessingParameterNumber.Double, **kw):
+    return QgsProcessingParameterNumber(name, desc, type=type, **kw)
+
+
 def make_panel_config():
     return {
         "point_param": lambda name, desc: _point_param(name, desc),
-        "height_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
-            name, desc, type=QgsProcessingParameterNumber.Double,
+        "height_param": lambda name, desc, **kw: _num_param(name, desc, **kw),
+        "freq_param": lambda name, desc, **kw: _num_param(
+            name, desc, minValue=ITM_MIN_FREQUENCY_MHZ, maxValue=ITM_MAX_FREQUENCY_MHZ,
             **kw
         ),
-        "freq_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
-            name, desc, type=QgsProcessingParameterNumber.Double,
-            minValue=ITM_MIN_FREQUENCY_MHZ, maxValue=ITM_MAX_FREQUENCY_MHZ,
+        "radius_param": lambda name, desc, **kw: _num_param(
+            name, desc, minValue=1.0, maxValue=500.0,
             **kw
         ),
-        "radius_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
-            name, desc, type=QgsProcessingParameterNumber.Double,
-            minValue=1.0, maxValue=500.0,
+        "pct_param": lambda name, desc, **kw: _num_param(
+            name, desc, minValue=0.01, maxValue=99.99,
             **kw
         ),
-        "pct_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
-            name, desc, type=QgsProcessingParameterNumber.Double,
-            minValue=0.01, maxValue=99.99,
+        "dbm_param": lambda name, desc, **kw: _num_param(name, desc, **kw),
+        "gain_param": lambda name, desc, **kw: _num_param(name, desc, **kw),
+        "db_param": lambda name, desc, **kw: _num_param(
+            name, desc, minValue=0.0,
             **kw
         ),
-        "dbm_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
-            name, desc, type=QgsProcessingParameterNumber.Double,
+        "loss_param": lambda name, desc, **kw: _num_param(
+            name, desc, minValue=0.0,
             **kw
         ),
-        "gain_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
-            name, desc, type=QgsProcessingParameterNumber.Double,
+        "az_param": lambda name, desc, **kw: _num_param(
+            name, desc, minValue=0.0, maxValue=360.0,
             **kw
         ),
-        "db_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
-            name, desc, type=QgsProcessingParameterNumber.Double,
-            minValue=0.0,
+        "bw_param": lambda name, desc, **kw: _num_param(
+            name, desc, minValue=1.0, maxValue=360.0,
             **kw
         ),
-        "loss_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
-            name, desc, type=QgsProcessingParameterNumber.Double,
-            minValue=0.0,
+        "downtilt_param": lambda name, desc, **kw: _num_param(
+            name, desc, minValue=-45.0, maxValue=45.0,
             **kw
         ),
-        "az_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
-            name, desc, type=QgsProcessingParameterNumber.Double,
-            minValue=0.0, maxValue=360.0,
+        "n0_param": lambda name, desc, **kw: _num_param(
+            name, desc, minValue=ITM_MIN_N0, maxValue=ITM_MAX_N0,
             **kw
         ),
-        "bw_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
-            name, desc, type=QgsProcessingParameterNumber.Double,
-            minValue=1.0, maxValue=360.0,
+        "epsilon_param": lambda name, desc, **kw: _num_param(
+            name, desc, minValue=1.0,
             **kw
         ),
-        "downtilt_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
-            name, desc, type=QgsProcessingParameterNumber.Double,
-            minValue=-45.0, maxValue=45.0,
-            **kw
-        ),
-        "n0_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
-            name, desc, type=QgsProcessingParameterNumber.Double,
-            minValue=ITM_MIN_N0, maxValue=ITM_MAX_N0,
-            **kw
-        ),
-        "epsilon_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
-            name, desc, type=QgsProcessingParameterNumber.Double,
-            minValue=1.0,
-            **kw
-        ),
-        "sigma_param": lambda name, desc, **kw: QgsProcessingParameterNumber(
-            name, desc, type=QgsProcessingParameterNumber.Double,
-            minValue=ITM_MIN_SIGMA,
+        "sigma_param": lambda name, desc, **kw: _num_param(
+            name, desc, minValue=ITM_MIN_SIGMA,
             **kw
         ),
     }

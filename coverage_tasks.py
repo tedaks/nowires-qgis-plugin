@@ -24,9 +24,23 @@ import math
 
 import numpy as np
 
-from .constants import METERS_PER_DEGREE_LAT
+from .constants import METERS_PER_DEGREE_LAT, EARTH_RADIUS_M
 
 _MIN_COVERAGE_DISTANCE_M = 1.0
+
+
+def _haversine_grid(tx_lat, tx_lon, lats, lons):
+    """Vectorized haversine distance from TX to every grid cell center, in metres."""
+    R = EARTH_RADIUS_M
+    lat1_r = math.radians(tx_lat)
+    lon1_r = math.radians(tx_lon)
+    lat2_r = np.radians(lats)[:, np.newaxis]
+    lon2_r = np.radians(lons)[np.newaxis, :]
+    dphi = lat2_r - lat1_r
+    dlam = lon2_r - lon1_r
+    a = np.sin(dphi / 2) ** 2 + np.cos(lat1_r) * np.cos(lat2_r) * np.sin(dlam / 2) ** 2
+    a = np.clip(a, 0.0, 1.0)
+    return 2 * R * np.arcsin(np.sqrt(a))
 
 
 def _coverage_axis_centers(min_value, max_value, size):
@@ -71,7 +85,7 @@ def build_coverage_tasks(
     lon_per_m = 1.0 / (METERS_PER_DEGREE_LAT * max(math.cos(math.radians(tx_lat)), 0.01))
     dlat = (lats[:, np.newaxis] - tx_lat) / lat_per_m
     dlon = (lons[np.newaxis, :] - tx_lon) / lon_per_m
-    dist_grid = np.sqrt(dlat * dlat + dlon * dlon)
+    dist_grid = _haversine_grid(tx_lat, tx_lon, lats, lons)
     bearing_grid = (np.degrees(np.arctan2(dlon, dlat)) + 360.0) % 360.0
 
     tasks = []
