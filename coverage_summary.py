@@ -37,7 +37,7 @@ def summarize_coverage_grid(
     min_lon,
     max_lon,
     rx_sensitivity_dbm,
-):
+) -> dict:
     """Summarize usable-distance metrics from a received-power raster."""
     prx_grid = np.where(np.isfinite(prx_grid) & (prx_grid != COVERAGE_NODATA), prx_grid, np.nan)
     n_rows, n_cols = prx_grid.shape

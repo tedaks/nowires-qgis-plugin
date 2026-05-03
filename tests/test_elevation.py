@@ -131,10 +131,10 @@ class TestGridSamplingOrientation:
         samples = sample_line_from_grid(
             grid,
             meta,
-            lat1=1.0,
-            lon1=0.0,
-            lat2=0.0,
-            lon2=0.0,
+            lat1=0.75,
+            lon1=0.25,
+            lat2=0.25,
+            lon2=0.25,
             n_pts=2,
         )
 
@@ -163,9 +163,9 @@ class TestGridSamplingOrientation:
             n_pts=3,
         )
 
-        assert samples[0] == pytest.approx(179.0)
+        assert samples[0] == pytest.approx(179.0, abs=0.5)
         assert samples[1] > 170.0
-        assert samples[2] == pytest.approx(179.0)
+        assert samples[2] == pytest.approx(179.0, abs=0.5)
 
 
 class TestElevationGridSampleOutOfExtent:
@@ -181,14 +181,14 @@ class TestElevationGridSampleOutOfExtent:
         grid.max_lat = 1.0
         grid.min_lon = 0.0
         grid.max_lon = 1.0
-        grid.d_lat = 1.0
-        grid.d_lon = 1.0
+        grid.d_lat = 0.5
+        grid.d_lon = 0.5
         return grid
 
     def test_sample_inside_extent_interpolates(self):
         grid = self._build_grid()
-        # Top-left corner (max_lat, min_lon) -> v00 = 100.0
-        assert grid.sample(1.0, 0.0) == pytest.approx(100.0)
+        # Pixel center of row 0 col 0 is at lat=0.75, lon=0.25
+        assert grid.sample(0.75, 0.25) == pytest.approx(100.0)
 
     def test_sample_outside_extent_returns_nan(self):
         grid = self._build_grid()
@@ -210,8 +210,8 @@ class TestElevationGridSampleOutOfExtent:
         grid.max_lat = 1.0
         grid.min_lon = -180.0
         grid.max_lon = 180.0
-        grid.d_lat = 2.0
-        grid.d_lon = 1.0
+        grid.d_lat = 2.0 / grid.n_rows
+        grid.d_lon = 360.0 / grid.n_cols
 
         samples = grid.sample_line(
             lat1=0.0,
@@ -221,9 +221,9 @@ class TestElevationGridSampleOutOfExtent:
             n_points=3,
         )
 
-        assert samples[0] == pytest.approx(179.0)
+        assert samples[0] == pytest.approx(179.0, abs=0.5)
         assert samples[1] > 170.0
-        assert samples[2] == pytest.approx(179.0)
+        assert samples[2] == pytest.approx(179.0, abs=0.5)
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

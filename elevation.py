@@ -40,7 +40,7 @@ from .constants import BYTES_PER_MEBIBYTE, EARTH_RADIUS_M
 logger = logging.getLogger(__name__)
 
 
-def haversine_m(lat1, lon1, lat2, lon2):
+def haversine_m(lat1, lon1, lat2, lon2) -> float:
     R = EARTH_RADIUS_M
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
@@ -53,7 +53,7 @@ def haversine_m(lat1, lon1, lat2, lon2):
     return 2 * R * math.asin(math.sqrt(a))
 
 
-def bearing_deg(lat1, lon1, lat2, lon2):
+def bearing_deg(lat1, lon1, lat2, lon2) -> float:
     lat1_r, lat2_r = math.radians(lat1), math.radians(lat2)
     dlon = math.radians(lon2 - lon1)
     x = math.sin(dlon) * math.cos(lat2_r)
@@ -63,7 +63,7 @@ def bearing_deg(lat1, lon1, lat2, lon2):
     return (math.degrees(math.atan2(x, y)) + 360.0) % 360.0
 
 
-def bearing_destination(lat, lon, bearing_deg_val, dist_m):
+def bearing_destination(lat, lon, bearing_deg_val, dist_m) -> tuple[float, float]:
     R = EARTH_RADIUS_M
     brng = math.radians(bearing_deg_val)
     lat_r = math.radians(lat)
@@ -81,7 +81,7 @@ def bearing_destination(lat, lon, bearing_deg_val, dist_m):
     return math.degrees(lat2), lon_deg
 
 
-def _interpolate_longitudes_shortest(lon1, lon2, ts):
+def _interpolate_longitudes_shortest(lon1, lon2, ts) -> np.ndarray:
     delta = ((lon2 - lon1 + 540.0) % 360.0) - 180.0
     lons = lon1 + ts * delta
     return ((lons + 180.0) % 360.0) - 180.0
@@ -127,8 +127,8 @@ class ElevationGrid:
             if self.min_lat > self.max_lat:
                 self.min_lat, self.max_lat = self.max_lat, self.min_lat
 
-            self.d_lat = (self.max_lat - self.min_lat) / max(self.n_rows - 1, 1)
-            self.d_lon = (self.max_lon - self.min_lon) / max(self.n_cols - 1, 1)
+            self.d_lat = (self.max_lat - self.min_lat) / self.n_rows
+            self.d_lon = (self.max_lon - self.min_lon) / self.n_cols
         finally:
             band = None
             ds = None
@@ -144,13 +144,13 @@ class ElevationGrid:
             self.data.nbytes / BYTES_PER_MEBIBYTE,
         )
 
-    def sample(self, lat, lon):
-        fy = (self.max_lat - lat) / self.d_lat
-        fx = (lon - self.min_lon) / self.d_lon
-        if fy < 0 or fx < 0 or fy > self.n_rows - 1 or fx > self.n_cols - 1:
-            # Out of DEM extent: return NaN rather than 0.0 so callers
-            # can distinguish "missing data" from "actual sea level".
+    def sample(self, lat, lon) -> float:
+        fy = (self.max_lat - lat) / self.d_lat - 0.5
+        fx = (lon - self.min_lon) / self.d_lon - 0.5
+        if fy < -0.5 or fx < -0.5 or fy > self.n_rows - 0.5 or fx > self.n_cols - 0.5:
             return float("nan")
+        fy = max(0.0, min(self.n_rows - 1.0, fy))
+        fx = max(0.0, min(self.n_cols - 1.0, fx))
         y0 = int(fy)
         x0 = int(fx)
         y1 = min(y0 + 1, self.n_rows - 1)
@@ -172,11 +172,11 @@ class ElevationGrid:
         ts = np.linspace(0.0, 1.0, n_points)
         lats = lat1 + ts * (lat2 - lat1)
         lons = _interpolate_longitudes_shortest(lon1, lon2, ts)
-        fy_raw = (self.max_lat - lats) / self.d_lat
-        fx_raw = (lons - self.min_lon) / self.d_lon
-        oob = (fy_raw < 0) | (fx_raw < 0) | (fy_raw > self.n_rows - 1) | (fx_raw > self.n_cols - 1)
-        fy = np.clip(fy_raw, 0, self.n_rows - 1 - 1e-9)
-        fx = np.clip(fx_raw, 0, self.n_cols - 1 - 1e-9)
+        fy_raw = (self.max_lat - lats) / self.d_lat - 0.5
+        fx_raw = (lons - self.min_lon) / self.d_lon - 0.5
+        oob = (fy_raw < -0.5) | (fx_raw < -0.5) | (fy_raw > self.n_rows - 0.5) | (fx_raw > self.n_cols - 0.5)
+        fy = np.clip(fy_raw, 0.0, self.n_rows - 1.0 - 1e-9)
+        fx = np.clip(fx_raw, 0.0, self.n_cols - 1.0 - 1e-9)
         y0 = np.floor(fy).astype(np.int32)
         x0 = np.floor(fx).astype(np.int32)
         y1 = np.clip(y0 + 1, 0, self.n_rows - 1)
@@ -192,7 +192,7 @@ class ElevationGrid:
         result[oob] = np.nan
         return result
 
-    def terrain_profile(self, lat1, lon1, lat2, lon2, step_m=30.0):
+    def terrain_profile(self, lat1, lon1, lat2, lon2, step_m=30.0) -> list[tuple[float, float]]:
         dist = haversine_m(lat1, lon1, lat2, lon2)
         if dist < step_m:
             step_m = dist / 3.0 if dist > 0 else 1.0
@@ -205,7 +205,7 @@ class ElevationGrid:
             result.append((d, float(elevs[i])))
         return result
 
-    def grid_meta_dict(self):
+    def grid_meta_dict(self) -> dict:
         return {
             "min_lat": self.min_lat,
             "max_lat": self.max_lat,
@@ -215,7 +215,7 @@ class ElevationGrid:
             "n_lon": self.n_cols,
         }
 
-    def close(self):
+    def close(self) -> None:
         """Release the DEM data array to free memory."""
         self.data = None
 
@@ -234,18 +234,18 @@ def sample_line_from_grid(gd, gm, lat1, lon1, lat2, lon2, n_pts):
     max_lon = gm["max_lon"]
     n_lat = gm["n_lat"]
     n_lon = gm["n_lon"]
-    d_lat = (max_lat - min_lat) / max(n_lat - 1, 1)
-    d_lon = (max_lon - min_lon) / max(n_lon - 1, 1)
+    d_lat = (max_lat - min_lat) / n_lat
+    d_lon = (max_lon - min_lon) / n_lon
 
     ts = np.linspace(0.0, 1.0, n_pts)
     lats = lat1 + ts * (lat2 - lat1)
     lons = _interpolate_longitudes_shortest(lon1, lon2, ts)
 
-    fy_raw = (max_lat - lats) / d_lat
-    fx_raw = (lons - min_lon) / d_lon
-    oob = (fy_raw < 0) | (fx_raw < 0) | (fy_raw > n_lat - 1) | (fx_raw > n_lon - 1)
-    fy = np.clip(fy_raw, 0, n_lat - 1 - 1e-9)
-    fx = np.clip(fx_raw, 0, n_lon - 1 - 1e-9)
+    fy_raw = (max_lat - lats) / d_lat - 0.5
+    fx_raw = (lons - min_lon) / d_lon - 0.5
+    oob = (fy_raw < -0.5) | (fx_raw < -0.5) | (fy_raw > n_lat - 0.5) | (fx_raw > n_lon - 0.5)
+    fy = np.clip(fy_raw, 0.0, n_lat - 1.0 - 1e-9)
+    fx = np.clip(fx_raw, 0.0, n_lon - 1.0 - 1e-9)
 
     y0 = np.floor(fy).astype(np.int32)
     x0 = np.floor(fx).astype(np.int32)

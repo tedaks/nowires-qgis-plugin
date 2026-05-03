@@ -54,7 +54,7 @@ class TerminalClutterLosses:
     source: str
 
 
-def worldcover_class_to_clutter_category(class_id):
+def worldcover_class_to_clutter_category(class_id) -> str:
     """Map ESA WorldCover 2020 v100 class IDs to NoWires clutter categories.
 
     Convention:
@@ -76,7 +76,7 @@ def worldcover_class_to_clutter_category(class_id):
     return "open"
 
 
-def clutter_loss_db(category, frequency_mhz):
+def clutter_loss_db(category, frequency_mhz) -> float:
     """Return excess clutter loss for a given category.
 
     Currently frequency-independent. A future version may apply
@@ -86,7 +86,7 @@ def clutter_loss_db(category, frequency_mhz):
     return CLUTTER_LOSS_DB.get(category, 0.0)
 
 
-def clutter_override_value(index_or_category):
+def clutter_override_value(index_or_category) -> str | None:
     if index_or_category is None:
         return None
     if isinstance(index_or_category, str):
@@ -103,7 +103,7 @@ def clutter_source_label(
     raster_path=None,
     tx_override=None,
     rx_override=None,
-):
+) -> str:
     """Return a user-visible source label for clutter reports."""
     if not enabled:
         return "off"
@@ -165,7 +165,7 @@ class LandCoverGrid:
         self.close()
         return False
 
-    def sample_class(self, lat, lon):
+    def sample_class(self, lat, lon) -> int | None:
         if lat < self.min_lat or lat > self.max_lat:
             return None
         if lon < self.min_lon or lon > self.max_lon:
@@ -182,14 +182,14 @@ class LandCoverGrid:
             return None
         return int(value)
 
-    def sample_category(self, lat, lon):
+    def sample_category(self, lat, lon) -> str | None:
         class_id = self.sample_class(lat, lon)
         if class_id is None:
             return None
         return worldcover_class_to_clutter_category(class_id)
 
 
-def ensure_clutter_grid_for_area(south, north, west, east, feedback=None):
+def ensure_clutter_grid_for_area(south, north, west, east, feedback=None) -> LandCoverGrid | None:
     try:
         from .worldcover_downloader import ensure_worldcover_for_area
     except ImportError:
@@ -226,7 +226,7 @@ def compute_terminal_clutter_losses(
     land_cover_grid=None,
     tx_override=None,
     rx_override=None,
-):
+) -> TerminalClutterLosses:
     if not enabled:
         return TerminalClutterLosses("open", "open", 0.0, 0.0, 0.0, "off")
 

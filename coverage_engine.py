@@ -87,7 +87,6 @@ def compute_coverage(
     feedback=None,
 ):
     from .clutter import compute_terminal_clutter_losses
-    from . import coverage_pool
 
     radius_m = radius_km * 1000.0
     lat_per_m = 1.0 / METERS_PER_DEGREE_LAT
@@ -266,9 +265,8 @@ def compute_coverage(
                 if feedback and task_idx % 500 == 0:
                     pct = int(pixels_done / len(tasks) * 80)
                     feedback.setProgress(pct)
-        finally:
-            coverage_pool._cov_grid_data = None
-            coverage_pool._cov_grid_meta = {}
+        except Exception:
+            raise
 
     if cancelled:
         return None, None, 0.0, 0.0, 0.0, 0.0, None, None

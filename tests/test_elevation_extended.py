@@ -20,8 +20,8 @@ def _make_flat_grid(
     grid.max_lat = max_lat
     grid.min_lon = min_lon
     grid.max_lon = max_lon
-    grid.d_lat = (max_lat - min_lat) / max(n_rows - 1, 1)
-    grid.d_lon = (max_lon - min_lon) / max(n_cols - 1, 1)
+    grid.d_lat = (max_lat - min_lat) / n_rows
+    grid.d_lon = (max_lon - min_lon) / n_cols
     return grid
 
 
@@ -62,8 +62,8 @@ class TestElevationGridTerrainProfile:
         grid.max_lat = 1.0
         grid.min_lon = 0.0
         grid.max_lon = 1.0
-        grid.d_lat = 1.0 / 9
-        grid.d_lon = 1.0 / 9
+        grid.d_lat = 1.0 / 10
+        grid.d_lon = 1.0 / 10
 
         points = grid.terrain_profile(1.0, 0.0, 0.0, 0.0, step_m=5000.0)
         first_elev = points[0][1]
