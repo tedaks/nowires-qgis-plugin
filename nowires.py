@@ -21,7 +21,6 @@
 """
 
 import os
-import re
 import tempfile
 
 from qgis.PyQt.QtCore import QTimer
@@ -40,8 +39,6 @@ cmd_folder = os.path.dirname(__file__)
 
 
 def _stale_temp_dir_count():
-    import getpass
-    username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
     temp_base = tempfile.gettempdir()
     prefixes = ("nowires_p2p_", "nowires_coverage_", "nowires_dem_",
                 "nowires_worldcover_", "nowires_comp_", "nowires_batch_")

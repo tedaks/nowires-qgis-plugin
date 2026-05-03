@@ -33,7 +33,6 @@ from qgis.core import (
 )
 from .defaults import (
     DEFAULT_ANTENNA_AZIMUTH,
-    DEFAULT_DOWNTILT_DEG,
     DEFAULT_FREQ_MHZ,
     DEFAULT_FRONT_BACK_DB,
     DEFAULT_RX_HEIGHT_M,
