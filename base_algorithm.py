@@ -34,10 +34,11 @@ class NoWiresAlgorithm(QgsProcessingAlgorithm):
             for layer_id in layer_ids:
                 node = root.findLayer(layer_id)
                 if node is not None:
-                    clone = node.clone()
                     parent = node.parent()
-                    parent.removeChildNode(node)
-                    parent.insertChildNode(0, clone)
+                    if parent is not None:
+                        idx = parent.children().index(node)
+                        parent.takeChildNode(node)
+                        parent.insertChildNode(min(idx, parent.children().count()), node)
         for attr_name, entry_key in [("_dem_layer_id", "last_dem_layer_id"), ("_coverage_layer_id", "last_coverage_layer_id")]:
             layer_id = getattr(self, attr_name, None)
             if layer_id is not None:

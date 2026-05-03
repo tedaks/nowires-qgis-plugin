@@ -171,10 +171,10 @@ class LandCoverGrid:
         if lon < self.min_lon or lon > self.max_lon:
             return None
         n_rows, n_cols = self.data.shape
-        d_lat = (self.max_lat - self.min_lat) / max(n_rows - 1, 1)
-        d_lon = (self.max_lon - self.min_lon) / max(n_cols - 1, 1)
-        y = int(round((self.max_lat - lat) / d_lat))
-        x = int(round((lon - self.min_lon) / d_lon))
+        d_lat = (self.max_lat - self.min_lat) / n_rows
+        d_lon = (self.max_lon - self.min_lon) / n_cols
+        y = int((self.max_lat - lat) / d_lat)
+        x = int((lon - self.min_lon) / d_lon)
         y = max(0, min(n_rows - 1, y))
         x = max(0, min(n_cols - 1, x))
         value = self.data[y, x]

@@ -113,14 +113,17 @@ def _init_cov_pool(shm_name, shape, dtype_str, grid_meta):
 
 
 
-def _itm_worker(args):
+def _itm_worker(args, grid_data=None, grid_meta=None):
     task = _CoverageTask(*args)
 
+    gd = grid_data if grid_data is not None else _cov_grid_data
+    gm = grid_meta if grid_meta is not None else _cov_grid_meta
+
     elevs = sample_line_from_grid(
-        _cov_grid_data,
-        _cov_grid_meta,
-        _cov_grid_meta["tx_lat"],
-        _cov_grid_meta["tx_lon"],
+        gd,
+        gm,
+        gm["tx_lat"],
+        gm["tx_lon"],
         task.target_lat,
         task.target_lon,
         task.n_pts,

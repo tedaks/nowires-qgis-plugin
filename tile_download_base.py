@@ -50,6 +50,7 @@ def download_tile_with_retry(
     valid_tile_re=None,
     base_url=None,
     opener=None,
+    wall_clock_budget=None,
 ):
     if valid_tile_re is not None and not valid_tile_re.match(base_name_label):
         logger.error("Invalid tile name rejected: %s", base_name_label)
@@ -74,10 +75,18 @@ def download_tile_with_retry(
 
     downloaded = False
     tmp_path = local_tif + ".tmp"
+    t_start = time.monotonic()
 
     for attempt in range(max_retries):
         if feedback and feedback.isCanceled():
             return None
+        elapsed = time.monotonic() - t_start
+        if wall_clock_budget is not None and elapsed >= wall_clock_budget:
+            logger.warning("Wall-clock budget exceeded (%.1f/%.1f s) for %s",
+                           elapsed, wall_clock_budget, base_name_label)
+            if feedback:
+                feedback.pushInfo("Download budget exceeded: " + base_name_label)
+            break
         try:
             with opener.open(tile_url, timeout=socket_timeout) as response:
                 final_url = response.geturl()
@@ -210,14 +219,10 @@ def _rectangle_geometry(south, north, west, east, ogr_module=ogr):
 def _aoi_geometry_for_bounds(south, north, west, east, ogr_module=ogr):
     intervals = longitude_intervals(west, east)
     if len(intervals) == 1:
-        lon_west, lon_east = intervals[0]
-        return _rectangle_geometry(south, north, lon_west, lon_east, ogr_module)
-
+        return _rectangle_geometry(south, north, intervals[0][0], intervals[0][1], ogr_module)
     geom = ogr_module.Geometry(ogr_module.wkbMultiPolygon)
     for lon_west, lon_east in intervals:
-        geom.AddGeometry(
-            _rectangle_geometry(south, north, lon_west, lon_east, ogr_module)
-        )
+        geom.AddGeometry(_rectangle_geometry(south, north, lon_west, lon_east, ogr_module))
     return geom
 
 
@@ -232,7 +237,6 @@ def clip_and_merge_tiles(
     shp_driver = ogr.GetDriverByName("ESRI Shapefile")
     if os.path.exists(aoi_shp):
         shp_driver.DeleteDataSource(aoi_shp)
-
     ds = shp_driver.CreateDataSource(aoi_shp)
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(4326)
@@ -240,7 +244,6 @@ def clip_and_merge_tiles(
     layer = ds.CreateLayer("aoi", srs=srs, geom_type=ogr.wkbPolygon)
     feat_defn = layer.GetLayerDefn()
     feature = ogr.Feature(feat_defn)
-
     feature.SetGeometry(_aoi_geometry_for_bounds(south, north, west, east))
     layer.CreateFeature(feature)
     ds = None
@@ -284,17 +287,12 @@ def clip_and_merge_tiles(
     merged_path = os.path.join(temp_dir, merge_filename)
     if feedback:
         feedback.pushInfo("Merging {} clipped tiles".format(len(clipped)))
-
     result = gdal.Warp(
-        merged_path,
-        clipped,
-        dstNodata=nodata_value,
-        format="GTiff",
+        merged_path, clipped, dstNodata=nodata_value, format="GTiff",
         creationOptions=["COMPRESS=LZW", "TILED=YES"],
     )
     if result is None:
         logger.error("Merge Warp failed")
         return None
     result = None
-
     return merged_path

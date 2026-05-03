@@ -149,6 +149,8 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
         clutter_enabled=ce, clutter_grid=cg, tx_clutter_override=tco, rx_clutter_override=rco, elev=elev, total=total)
     except Exception:
         elev.close()
+        if cg is not None:
+            cg.close()
         raise
 
 
@@ -207,16 +209,7 @@ class BatchAnalysisAlgorithm(NoWiresAlgorithm):
         feedback.pushInfo("Computing batch P2P links...")
         feedback.setProgress(20)
         try:
-            results = compute_batch_links(
-                inp.candidate_tx, inp.rx_points, inp.elev, inp.tx_h, inp.rx_h,
-                inp.f_mhz, inp.polarization, inp.climate, inp.time_pct,
-                inp.location_pct, inp.situation_pct, inp.n0, inp.epsilon,
-                inp.sigma, inp.tx_power, inp.tx_gain_default, inp.rx_gain_default,
-                inp.cable_loss, inp.rx_sens, inp.tx_default_preset_key,
-                inp.rx_default_preset_key, inp.tx_default_az, inp.rx_default_az,
-                inp.tx_front_back_db, inp.rx_front_back_db, inp.k_factor,
-                inp.clutter_enabled, inp.clutter_grid, inp.tx_clutter_override,
-                inp.rx_clutter_override, feedback, inp.total)
+            results = compute_batch_links(inp, feedback)
             results = rank_batch_results(results, rank_by)
             _report_batch_results(feedback, results, inp.mode)
             feedback.setProgress(85)

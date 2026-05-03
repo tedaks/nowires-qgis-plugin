@@ -22,12 +22,22 @@ def test_heuristic_availability_validity_accepts_simple_los_case():
 
 def test_heuristic_availability_validity_rejects_blocked_case():
     result = heuristic_availability_validity(
-        frequency_mhz=900.0,
+        frequency_mhz=5800.0,
         distance_km=12.0,
         los_blocked=True,
     )
     assert result["valid"] is False
     assert result["method"] == "fallback_margin"
+
+
+def test_heuristic_availability_validity_accepts_sub_3ghz_unblocked():
+    result = heuristic_availability_validity(
+        frequency_mhz=900.0,
+        distance_km=12.0,
+        los_blocked=False,
+    )
+    assert result["valid"] is True
+    assert result["method"] == "heuristic_availability"
 
 
 def test_classify_fade_margin_returns_reliable_for_strong_margin():
