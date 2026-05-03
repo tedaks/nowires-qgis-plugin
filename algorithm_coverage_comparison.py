@@ -34,9 +34,9 @@ import logging
 import math
 import os
 import tempfile
-import numpy as np
-from qgis.core import Qgis, QgsProcessingException, QgsRasterLayer
+from qgis.core import QgsProcessingException, QgsRasterLayer
 from .base_algorithm import NoWiresAlgorithm, install_constants
+from .constants import DEGREE_PADDING
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
 from .processing_utils import queue_layer_for_loading
@@ -141,7 +141,7 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
         tx_lat_center = (tx_lat_a + tx_lat_b) / 2.0
         tx_lon_center = (tx_lon_a + tx_lon_b) / 2.0
 
-        pad_deg = max(0.05, radius_km / (METERS_PER_DEGREE_LAT / 1000.0) * 0.1)
+        pad_deg = max(DEGREE_PADDING, radius_km / (METERS_PER_DEGREE_LAT / 1000.0) * 0.1)
         radius_deg_lat = radius_km / (METERS_PER_DEGREE_LAT / 1000.0)
         radius_deg_lon = radius_km / (
             METERS_PER_DEGREE_LAT / 1000.0 * max(math.cos(math.radians(tx_lat_center)), 0.01)
@@ -237,17 +237,13 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
             else:
                 feedback.pushInfo("Comparison report written to: {}".format(output_report_path))
 
-        try:
-            feedback.setProgress(100)
-            return {
-                self.OUTPUT_A: output_a_path,
-                self.OUTPUT_B: output_b_path,
-                self.OUTPUT_DELTA: output_delta_path,
-                self.OUTPUT_REPORT_HTML: output_report_path,
-            }
-        finally:
-            if _comp_tmpdir and os.path.isdir(_comp_tmpdir):
-                pass
+        feedback.setProgress(100)
+        return {
+            self.OUTPUT_A: output_a_path,
+            self.OUTPUT_B: output_b_path,
+            self.OUTPUT_DELTA: output_delta_path,
+            self.OUTPUT_REPORT_HTML: output_report_path,
+        }
 
     def shortHelpString(self):
         return (

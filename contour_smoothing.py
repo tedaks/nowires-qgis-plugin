@@ -111,8 +111,7 @@ def _make_blur_vrt(vrt_path, src_path, kernel_size, sigma=None):
     Creates the VRT from the source raster, then patches it to use GDAL's
     ``KernelFilteredSource`` with the generated Gaussian coefficients.
     """
-    vrt_ds = gdal.BuildVRT(vrt_path, src_path)
-    vrt_ds = None
+    gdal.BuildVRT(vrt_path, src_path)
 
     tree = ET.parse(vrt_path)
     root = tree.getroot()

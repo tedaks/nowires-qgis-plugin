@@ -25,15 +25,16 @@ Portions adapted from tedaks/nowires (MIT). See NOTICE.md.
 import logging
 import os
 import tempfile
-from qgis.core import Qgis, QgsProcessingException
+from qgis.core import QgsProcessingException
 from .base_algorithm import NoWiresAlgorithm, install_constants
+from .constants import DEGREE_PADDING
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
 from .radio import K_FACTOR_PRESETS, resolve_k_factor, validate_itm_input_ranges
 from .antenna import antenna_preset_key
 from .clutter import LandCoverGrid, clutter_override_value, ensure_clutter_grid_for_area
 from .processing_utils import queue_layer_for_loading
-from .batch_params import BATCH_PARAM_CONSTANTS, BATCH_MODE_OPTIONS, add_batch_params
+from .batch_params import BATCH_PARAM_CONSTANTS, add_batch_params
 from .batch_outputs import (
     _feat_attr, compute_batch_links, rank_batch_results,
     write_batch_marker_layer, write_batch_csv, write_batch_json,
@@ -122,7 +123,7 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
     lats = [pt["lat"] for pt in candidate_tx] + [pt["lat"] for pt in rx_points]
     lons = [pt["lon"] for pt in candidate_tx] + [pt["lon"] for pt in rx_points]
     south, north, west, east = min(lats), max(lats), min(lons), max(lons)
-    pad = max(0.05, (north - south) * 0.1)
+    pad = max(DEGREE_PADDING, (north - south) * 0.1)
     if cg is None and ce:
         cg = ensure_clutter_grid_for_area(south=south - pad, north=north + pad, west=west - pad, east=east + pad, feedback=feedback)
     feedback.pushInfo("Downloading DEM data...")
@@ -159,36 +160,31 @@ def _report_batch_results(feedback, results, mode):
 
 def _write_batch_outputs(algorithm, parameters, context, feedback, results, mode):
     from qgis.core import QgsVectorLayer
-    _bt = None
-    try:
-        md = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_MARKERS, context)
-        if md:
-            mp = md
-        else:
-            _bt = tempfile.mkdtemp(prefix="nowires_batch_")
-            mp = os.path.join(_bt, "batch_markers.gpkg")
-            feedback.pushInfo(
-                "Temporary outputs are intentionally left on disk for QGIS layer loading: {}".format(_bt))
-        write_batch_marker_layer(mp, results, feedback, mode)
-        queue_layer_for_loading(context, QgsVectorLayer(mp, "Batch P2P Markers"), "Batch P2P Markers")
-        csv_p = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_CSV, context)
-        json_p = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_JSON, context)
-        if csv_p:
-            write_batch_csv(csv_p, results, mode)
-        if json_p:
-            write_batch_json(json_p, results, mode)
-        feedback.setProgress(100)
-        out = {}
-        if mp:
-            out[algorithm.OUTPUT_MARKERS] = mp
-        if csv_p:
-            out[algorithm.OUTPUT_CSV] = csv_p
-        if json_p:
-            out[algorithm.OUTPUT_JSON] = json_p
-        return out
-    finally:
-        if _bt is not None:
-            pass
+    md = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_MARKERS, context)
+    if md:
+        mp = md
+    else:
+        _bt = tempfile.mkdtemp(prefix="nowires_batch_")
+        mp = os.path.join(_bt, "batch_markers.gpkg")
+        feedback.pushInfo(
+            "Temporary outputs are intentionally left on disk for QGIS layer loading: {}".format(_bt))
+    write_batch_marker_layer(mp, results, feedback, mode)
+    queue_layer_for_loading(context, QgsVectorLayer(mp, "Batch P2P Markers"), "Batch P2P Markers")
+    csv_p = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_CSV, context)
+    json_p = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_JSON, context)
+    if csv_p:
+        write_batch_csv(csv_p, results, mode)
+    if json_p:
+        write_batch_json(json_p, results, mode)
+    feedback.setProgress(100)
+    out = {}
+    if mp:
+        out[algorithm.OUTPUT_MARKERS] = mp
+    if csv_p:
+        out[algorithm.OUTPUT_CSV] = csv_p
+    if json_p:
+        out[algorithm.OUTPUT_JSON] = json_p
+    return out
 
 
 class BatchAnalysisAlgorithm(NoWiresAlgorithm):

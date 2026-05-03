@@ -6,7 +6,6 @@
 import importlib
 import os
 import py_compile
-import pytest
 import sys
 import types
 from unittest.mock import MagicMock

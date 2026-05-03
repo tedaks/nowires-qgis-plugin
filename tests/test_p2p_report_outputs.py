@@ -3,10 +3,12 @@
 # This program is free software under GPLv3 or later. See LICENSE.
 """Behavior tests for P2P report payloads and marker helpers."""
 
-from report_payloads import (
+from report_markers import (
     build_p2p_marker_records,
-    build_p2p_report_payload,
     ogr_driver_for_path,
+)
+from report_payloads import (
+    build_p2p_report_payload,
 )
 
 

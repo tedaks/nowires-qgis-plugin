@@ -4,7 +4,6 @@ from qgis.core import (
     QgsProcessingParameterNumber,
 )
 
-from .antenna import ANTENNA_PRESET_OPTIONS
 from .clutter import CLUTTER_MODEL_OPTIONS, CLUTTER_OVERRIDE_OPTIONS
 from .constants import K_FACTOR_PRESETS_OPTIONS
 from .radio import ITM_MIN_N0, ITM_MAX_N0, ITM_MIN_SIGMA

@@ -76,7 +76,6 @@ def test_batch_algorithm_exposes_antenna_parameters():
 def test_batch_algorithm_exposes_clutter_parameters():
     source = _batch_source()
     assert 'CLUTTER_MODEL = "CLUTTER_MODEL"' in source
-    assert "CLUTTER_MODEL_OPTIONS" in source
     assert 'TX_CLUTTER_OVERRIDE = "TX_CLUTTER_OVERRIDE"' in source
     assert 'RX_CLUTTER_OVERRIDE = "RX_CLUTTER_OVERRIDE"' in source
 

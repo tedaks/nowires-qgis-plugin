@@ -14,6 +14,7 @@ COVERAGE_SOURCES = [
         "constants.py",
         "algorithm_coverage.py",
         "coverage_params.py",
+        "shared_params.py",
         "coverage_reporting.py",
         "coverage_pool.py",
         "coverage_tasks.py",

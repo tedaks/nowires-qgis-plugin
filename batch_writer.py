@@ -28,7 +28,7 @@ import json
 
 from osgeo import ogr, osr
 
-from .report_payloads import ogr_driver_for_path, _remove_existing_ogr_dataset
+from .report_markers import ogr_driver_for_path, _remove_existing_ogr_dataset
 from .batch_params import BATCH_MODE_OPTIONS
 
 

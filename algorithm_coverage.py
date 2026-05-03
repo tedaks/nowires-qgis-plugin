@@ -48,6 +48,7 @@ from .coverage_params import (
     add_coverage_params, extract_coverage_params,
     CLUTTER_MODEL_OPTIONS, ANTENNA_PRESET_OPTIONS,
 )
+from .constants import DEGREE_PADDING
 from .coverage_reporting import (
     build_coverage_report_payload_for_grid, report_coverage_results,
     write_coverage_geotiff,
@@ -79,7 +80,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
         feedback.pushInfo("TX antenna preset: {}".format(
             ANTENNA_PRESET_OPTIONS[p["antenna_preset"]]))
 
-        pad_deg = max(0.05, p["radius_km"] / (METERS_PER_DEGREE_LAT / 1000.0) * 0.1)
+        pad_deg = max(DEGREE_PADDING, p["radius_km"] / (METERS_PER_DEGREE_LAT / 1000.0) * 0.1)
         rdeg_lat = p["radius_km"] / (METERS_PER_DEGREE_LAT / 1000.0)
         rdeg_lon = p["radius_km"] / (
             METERS_PER_DEGREE_LAT / 1000.0
@@ -213,17 +214,13 @@ class CoverageAlgorithm(NoWiresAlgorithm):
         else:
             feedback.pushInfo("Warning: Could not load coverage raster layer.")
 
-        try:
-            feedback.setProgress(100)
-            return {
-                self.OUTPUT_RASTER: tif_path,
-                self.OUTPUT_REPORT_CSV: report_csv_path,
-                self.OUTPUT_REPORT_JSON: report_json_path,
-                self.OUTPUT_REPORT_HTML: report_html_path,
-            }
-        finally:
-            if _coverage_tmpdir and os.path.isdir(_coverage_tmpdir):
-                pass
+        feedback.setProgress(100)
+        return {
+            self.OUTPUT_RASTER: tif_path,
+            self.OUTPUT_REPORT_CSV: report_csv_path,
+            self.OUTPUT_REPORT_JSON: report_json_path,
+            self.OUTPUT_REPORT_HTML: report_html_path,
+        }
 
     def _apply_coverage_style(self, layer):
         """Apply a color ramp renderer based on signal level thresholds."""
