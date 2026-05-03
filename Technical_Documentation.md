@@ -450,7 +450,7 @@ The coverage support code is now split by responsibility:
 
 Important constants:
 
-- `_MAX_WORKERS = os.cpu_count() or 1` (auto-detected)
+- `_MAX_WORKERS = min(os.cpu_count() or 1, 16)` (capped at 16 workers)
 - Dynamic chunk size via `_dynamic_chunk_size()`
 - `_MIN_COVERAGE_DISTANCE_M = 1.0`
 - `METERS_PER_DEGREE_LAT = 111320.0`
@@ -459,6 +459,8 @@ Important constants:
 ### Raster NoData Convention
 
 Coverage rasters use `COVERAGE_NODATA = -9999.0` as the missing-data sentinel. This value is outside the range of physically meaningful dB-loss and dBm values, so it cannot be confused with valid data. Programs consuming the raster programmatically should treat this value as missing, or use GDAL's NoData mask to filter it before arithmetic operations. NaN is not used because many GIS formats and GDAL drivers do not reliably round-trip NaN NoData values for Float32 rasters.
+
+Internal functions that operate on in-memory grids (e.g., `compute_delta_summary`, `summarize_coverage_grid`) normalize `-9999.0` values to `NaN` at function entry, so that reload-then-compare paths produce correct results.
 
 ### Near-Transmitter Coverage Cells
 
@@ -651,7 +653,7 @@ Output parameters for algorithms use `QgsProcessingParameterFileDestination` rat
 
 All three algorithms use a shared `_queue_layer_for_loading()` helper that adds layers to the processing context's temporary layer store and registers them for deferred loading via `addLayerToLoadOnCompletion`. This avoids calling `QgsProject.instance().addMapLayer()` from inside `processAlgorithm`, which mutates the project from a worker thread and causes a Windows access violation crash.
 
-A `postProcessAlgorithm` override in the coverage and contour algorithms reorders raster layers to the bottom of the layer tree after QGIS finishes loading them, so DEM and hillshade overlays render beneath vector and coverage layers.
+A `postProcessAlgorithm` override in `base_algorithm.py` reorders raster layers to the bottom of the layer tree and writes project-level metadata (`last_dem_layer_id`, `last_coverage_layer_id`) via `QgsProject.instance().writeEntry`. Moving these writes out of `processAlgorithm` respects the QGIS processing design contract that `processAlgorithm` should be side-effect-free with respect to the project instance.
 
 ## Known Limitations
 
@@ -681,7 +683,7 @@ This preserves monotonicity and produces a physically reasonable high-loss resul
 - Per-task exception handling in `_itm_worker_batch` prevents one bad pixel from killing an entire chunk of coverage tasks
 - The outer `except` clause in `compute_coverage` catches all `Exception` types, not just specific ones, ensuring fallback to sequential mode for any worker failure
 - A shared `multiprocessing.Event` propagates cancellation from the QGIS feedback thread into worker processes with task-level granularity
-- `_final_cov_pool()` closes per-worker shared-memory handles on pool shutdown
+- `_final_cov_pool()` documentation for per-worker shared-memory cleanup (dead `_cleanup_cov_pool` has been removed; per-worker handles are cleaned up by the OS on process exit)
 
 ## Public Repository Files
 
