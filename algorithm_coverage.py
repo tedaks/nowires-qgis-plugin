@@ -113,13 +113,15 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                 feedback.setProgress(20)
 
                 result = compute_coverage(
-                    elev_grid=elev, tx_lat=p.tx_lat, tx_lon=p.tx_lon,
+                    elev_grid=elev,
+                    tx_lat=p.tx_lat, tx_lon=p.tx_lon,
                     tx_h_m=p.tx_h, rx_h_m=p.rx_h, f_mhz=p.f_mhz,
                     grid_size=p.grid_size, radius_km=p.radius_km,
                     profile_step_m=coverage_profile_step_m(p.f_mhz),
-                    max_profile_pts=DEFAULT_MAX_PROFILE_PTS, tx_power_dbm=p.tx_power,
-                    tx_gain_dbi=p.tx_gain, rx_gain_dbi=p.rx_gain,
-                    cable_loss_db=p.cable_loss, rx_sensitivity_dbm=p.rx_sens,
+                    max_profile_pts=DEFAULT_MAX_PROFILE_PTS,
+                    tx_power_dbm=p.tx_power, tx_gain_dbi=p.tx_gain,
+                    rx_gain_dbi=p.rx_gain, cable_loss_db=p.cable_loss,
+                    rx_sensitivity_dbm=p.rx_sens,
                     antenna_az_deg=p.antenna_az,
                     antenna_beamwidth_deg=p.antenna_bw_override,
                     polarization=p.polarization, climate=p.climate,
@@ -132,7 +134,9 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                     antenna_vertical_pattern_path=p.v_pattern,
                     clutter_enabled=p.clutter_enabled, clutter_grid=clutter_grid,
                     tx_clutter_override=p.tx_clutter_override,
-                    rx_clutter_override=p.rx_clutter_override, feedback=feedback)
+                    rx_clutter_override=p.rx_clutter_override,
+                    tx_clutter_loss_db=tx_clutter_for_report.tx_loss_db,
+                    feedback=feedback)
 
                 if result.prx_grid is None:
                     raise QgsProcessingException("Coverage computation was cancelled.")
@@ -140,8 +144,10 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                 report_payload, raster_grid, valid, summary = (
                     build_coverage_report_payload_for_grid(
                         prx_grid=result.prx_grid, loss_grid=result.loss_grid,
-                        itm_loss_grid=result.itm_loss_grid, clutter_loss_grid=result.clutter_loss_grid,
-                        min_lat=result.min_lat, max_lat=result.max_lat, min_lon=result.min_lon, max_lon=result.max_lon,
+                        itm_loss_grid=result.itm_loss_grid,
+                        clutter_loss_grid=result.clutter_loss_grid,
+                        min_lat=result.min_lat, max_lat=result.max_lat,
+                        min_lon=result.min_lon, max_lon=result.max_lon,
                         tx_lat=p.tx_lat, tx_lon=p.tx_lon, tx_h=p.tx_h, rx_h=p.rx_h,
                         f_mhz=p.f_mhz, radius_km=p.radius_km, grid_size=p.grid_size,
                         polarization=p.polarization, climate=p.climate,
@@ -159,8 +165,8 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                 tif_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_RASTER, context)
                 tif_path = tif_dest
                 if not tif_path:
-                    _coverage_tmpdir = self._tmp.make_dir("coverage_prx", persistent=True)
-                    tif_path = os.path.join(_coverage_tmpdir, "coverage_prx.tif")
+                    coverage_tmpdir = self._tmp.make_dir("coverage_prx", persistent=True)
+                    tif_path = os.path.join(coverage_tmpdir, "coverage_prx.tif")
                     self._tmp.warn_persistent(feedback)
                 report_csv_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_CSV, context)
                 report_json_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_JSON, context)
