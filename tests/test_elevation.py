@@ -141,6 +141,32 @@ class TestGridSamplingOrientation:
         assert samples[0] == pytest.approx(100.0)
         assert samples[1] == pytest.approx(200.0)
 
+    def test_sample_line_from_grid_crosses_antimeridian_by_shortest_path(self):
+        lons = np.linspace(-180.0, 180.0, 361, dtype=np.float32)
+        grid = np.tile(np.abs(lons), (2, 1)).astype(np.float32)
+        meta = {
+            "min_lat": -1.0,
+            "max_lat": 1.0,
+            "min_lon": -180.0,
+            "max_lon": 180.0,
+            "n_lat": 2,
+            "n_lon": 361,
+        }
+
+        samples = sample_line_from_grid(
+            grid,
+            meta,
+            lat1=0.0,
+            lon1=179.0,
+            lat2=0.0,
+            lon2=-179.0,
+            n_pts=3,
+        )
+
+        assert samples[0] == pytest.approx(179.0)
+        assert samples[1] > 170.0
+        assert samples[2] == pytest.approx(179.0)
+
 
 class TestElevationGridSampleOutOfExtent:
     """ElevationGrid.sample must signal missing data with NaN, not 0.0."""
@@ -173,6 +199,31 @@ class TestElevationGridSampleOutOfExtent:
                     lat, lon, value
                 )
             )
+
+    def test_sample_line_crosses_antimeridian_by_shortest_path(self):
+        grid = object.__new__(ElevationGrid)
+        lons = np.linspace(-180.0, 180.0, 361, dtype=np.float32)
+        grid.data = np.tile(np.abs(lons), (2, 1)).astype(np.float32)
+        grid.n_rows = 2
+        grid.n_cols = 361
+        grid.min_lat = -1.0
+        grid.max_lat = 1.0
+        grid.min_lon = -180.0
+        grid.max_lon = 180.0
+        grid.d_lat = 2.0
+        grid.d_lon = 1.0
+
+        samples = grid.sample_line(
+            lat1=0.0,
+            lon1=179.0,
+            lat2=0.0,
+            lon2=-179.0,
+            n_points=3,
+        )
+
+        assert samples[0] == pytest.approx(179.0)
+        assert samples[1] > 170.0
+        assert samples[2] == pytest.approx(179.0)
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

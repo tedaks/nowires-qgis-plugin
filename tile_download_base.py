@@ -32,6 +32,11 @@ import urllib.error
 
 from osgeo import gdal, ogr, osr
 
+try:
+    from .geo_bounds import longitude_intervals
+except ImportError:
+    from geo_bounds import longitude_intervals
+
 logger = logging.getLogger(__name__)
 
 
@@ -186,6 +191,32 @@ def download_tile_with_retry(
     return local_tif if downloaded else None
 
 
+def _rectangle_geometry(south, north, west, east, ogr_module=ogr):
+    ring = ogr_module.Geometry(ogr_module.wkbLinearRing)
+    ring.AddPoint(west, south)
+    ring.AddPoint(east, south)
+    ring.AddPoint(east, north)
+    ring.AddPoint(west, north)
+    ring.AddPoint(west, south)
+    poly = ogr_module.Geometry(ogr_module.wkbPolygon)
+    poly.AddGeometry(ring)
+    return poly
+
+
+def _aoi_geometry_for_bounds(south, north, west, east, ogr_module=ogr):
+    intervals = longitude_intervals(west, east)
+    if len(intervals) == 1:
+        lon_west, lon_east = intervals[0]
+        return _rectangle_geometry(south, north, lon_west, lon_east, ogr_module)
+
+    geom = ogr_module.Geometry(ogr_module.wkbMultiPolygon)
+    for lon_west, lon_east in intervals:
+        geom.AddGeometry(
+            _rectangle_geometry(south, north, lon_west, lon_east, ogr_module)
+        )
+    return geom
+
+
 def clip_and_merge_tiles(
     tile_paths, south, north, west, east, temp_dir, feedback,
     nodata_value, aoi_prefix, merge_filename,
@@ -206,15 +237,7 @@ def clip_and_merge_tiles(
     feat_defn = layer.GetLayerDefn()
     feature = ogr.Feature(feat_defn)
 
-    ring = ogr.Geometry(ogr.wkbLinearRing)
-    ring.AddPoint(west, south)
-    ring.AddPoint(east, south)
-    ring.AddPoint(east, north)
-    ring.AddPoint(west, north)
-    ring.AddPoint(west, south)
-    poly = ogr.Geometry(ogr.wkbPolygon)
-    poly.AddGeometry(ring)
-    feature.SetGeometry(poly)
+    feature.SetGeometry(_aoi_geometry_for_bounds(south, north, west, east))
     layer.CreateFeature(feature)
     ds = None
 

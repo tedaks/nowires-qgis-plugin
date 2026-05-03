@@ -157,6 +157,67 @@ def test_short_longitude_bounds_cross_antimeridian_without_global_extent():
     assert east == -179.25
 
 
+def test_tile_clip_geometry_splits_antimeridian_bounds():
+    from NoWires.tile_download_base import _aoi_geometry_for_bounds
+
+    calls = []
+
+    class Ring:
+        def __init__(self):
+            self.points = []
+
+        def AddPoint(self, lon, lat):
+            self.points.append((lon, lat))
+
+    class Polygon:
+        def __init__(self):
+            self.rings = []
+
+        def AddGeometry(self, ring):
+            self.rings.append(ring)
+
+    class MultiPolygon:
+        def __init__(self):
+            self.polygons = []
+
+        def AddGeometry(self, polygon):
+            self.polygons.append(polygon)
+
+    class Ogr:
+        wkbLinearRing = "ring"
+        wkbPolygon = "polygon"
+        wkbMultiPolygon = "multipolygon"
+
+        def Geometry(self, geom_type):
+            calls.append(geom_type)
+            if geom_type == self.wkbLinearRing:
+                return Ring()
+            if geom_type == self.wkbPolygon:
+                return Polygon()
+            if geom_type == self.wkbMultiPolygon:
+                return MultiPolygon()
+            raise AssertionError(geom_type)
+
+    geom = _aoi_geometry_for_bounds(10.0, 11.0, 179.5, -179.5, Ogr())
+
+    assert calls[0] == "multipolygon"
+    assert len(geom.polygons) == 2
+    assert geom.polygons[0].rings[0].points == [
+        (179.5, 10.0),
+        (180.0, 10.0),
+        (180.0, 11.0),
+        (179.5, 11.0),
+        (179.5, 10.0),
+    ]
+    assert geom.polygons[1].rings[0].points == [
+        (-180.0, 10.0),
+        (-179.5, 10.0),
+        (-179.5, 11.0),
+        (-180.0, 11.0),
+        (-180.0, 10.0),
+    ]
+
+
 def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypatch, tmp_path):
     import NoWires.algorithm_coverage as module
 

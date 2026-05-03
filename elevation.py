@@ -81,6 +81,12 @@ def bearing_destination(lat, lon, bearing_deg_val, dist_m):
     return math.degrees(lat2), lon_deg
 
 
+def _interpolate_longitudes_shortest(lon1, lon2, ts):
+    delta = ((lon2 - lon1 + 540.0) % 360.0) - 180.0
+    lons = lon1 + ts * delta
+    return ((lons + 180.0) % 360.0) - 180.0
+
+
 class ElevationGrid:
     """Dense elevation grid with bilinear sampling."""
 
@@ -157,7 +163,7 @@ class ElevationGrid:
     def sample_line(self, lat1, lon1, lat2, lon2, n_points):
         ts = np.linspace(0.0, 1.0, n_points)
         lats = lat1 + ts * (lat2 - lat1)
-        lons = lon1 + ts * (lon2 - lon1)
+        lons = _interpolate_longitudes_shortest(lon1, lon2, ts)
         fy_raw = (self.max_lat - lats) / self.d_lat
         fx_raw = (lons - self.min_lon) / self.d_lon
         oob = (fy_raw < 0) | (fx_raw < 0) | (fy_raw > self.n_rows - 1) | (fx_raw > self.n_cols - 1)
@@ -214,7 +220,7 @@ def sample_line_from_grid(gd, gm, lat1, lon1, lat2, lon2, n_pts):
 
     ts = np.linspace(0.0, 1.0, n_pts)
     lats = lat1 + ts * (lat2 - lat1)
-    lons = lon1 + ts * (lon2 - lon1)
+    lons = _interpolate_longitudes_shortest(lon1, lon2, ts)
 
     fy_raw = (max_lat - lats) / d_lat
     fx_raw = (lons - min_lon) / d_lon
