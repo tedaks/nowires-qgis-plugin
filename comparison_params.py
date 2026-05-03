@@ -50,7 +50,6 @@ __all__ = [
     "PANEL_B_CONSTANTS",
     "OUTPUT_CONSTANTS",
     "make_panel_config",
-    "add_comparison_params",
 ]
 
 DELTA_STYLE_OPTIONS = ["diverging", "threshold"]

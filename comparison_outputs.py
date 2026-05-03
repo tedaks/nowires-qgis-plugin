@@ -28,7 +28,6 @@ HTML comparison reports.
 
 from qgis.core import (
     QgsColorRampShader,
-    QgsProcessingException,
     QgsRasterShader,
     QgsSingleBandPseudoColorRenderer,
 )

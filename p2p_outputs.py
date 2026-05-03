@@ -23,10 +23,9 @@
 OGR output writers for P2P profile line and Fresnel zone layers.
 """
 
-import numpy as np
-from osgeo import ogr, osr
+from osgeo import ogr
 
-from .report_payloads import ogr_driver_for_path, _remove_existing_ogr_dataset
+from .report_markers import ogr_driver_for_path, _remove_existing_ogr_dataset
 from .radio import PROP_MODE_NAMES
 
 __all__ = ["write_profile_line", "write_fresnel_zone"]

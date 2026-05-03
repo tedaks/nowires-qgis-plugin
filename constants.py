@@ -1,11 +1,20 @@
 METERS_PER_DEGREE_LAT = 111320.0
+DEGREE_PADDING = 0.05
+DEFAULT_PROFILE_STEP_M = 30.0
 
 POLARIZATION_NAMES = {0: "Horizontal", 1: "Vertical"}
 
-CLIMATE_OPTIONS = [
-    "Equatorial", "Continental Subtropical", "Maritime Subtropical", "Desert",
-    "Continental Temperate", "Maritime Temperate (land)", "Maritime Temperate (sea)",
-]
+CLIMATE_NAMES = {
+    0: "Equatorial",
+    1: "Continental Subtropical",
+    2: "Maritime Subtropical",
+    3: "Desert",
+    4: "Continental Temperate",
+    5: "Maritime Temperate (land)",
+    6: "Maritime Temperate (sea)",
+}
+
+CLIMATE_OPTIONS = list(CLIMATE_NAMES.values())
 
 GRID_SIZE_PRESETS = [64, 128, 192, 256, 384, 512, 768, 1024]
 

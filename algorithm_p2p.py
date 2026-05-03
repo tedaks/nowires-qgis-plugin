@@ -43,6 +43,7 @@ from .p2p_params import (
     PARAM_CONSTANTS,
     add_p2p_params,
 )
+from .p2p_analysis_params import P2PAnalysisParams
 from .p2p_compute import run_p2p_analysis
 
 
@@ -139,7 +140,7 @@ class P2PAlgorithm(NoWiresAlgorithm):
         report_json_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_JSON, context)
         report_html_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_HTML, context)
 
-        return run_p2p_analysis(
+        p2p_params = P2PAnalysisParams(
             tx_lat=tx_lat, tx_lon=tx_lon, rx_lat=rx_lat, rx_lon=rx_lon,
             tx_h=tx_h, rx_h=rx_h, f_mhz=f_mhz,
             polarization=polarization, climate=climate,
@@ -167,6 +168,7 @@ class P2PAlgorithm(NoWiresAlgorithm):
             output_report_json=self.OUTPUT_REPORT_JSON,
             output_report_html=self.OUTPUT_REPORT_HTML,
         )
+        return run_p2p_analysis(p2p_params)
 
     def name(self):
         return "p2p_analysis"

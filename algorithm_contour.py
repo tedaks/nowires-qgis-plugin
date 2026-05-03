@@ -36,7 +36,6 @@ import os
 import shutil
 
 from qgis.core import (
-    Qgis,
     QgsCoordinateReferenceSystem,
     QgsGeometry,
     QgsProcessingParameterAuthConfig,

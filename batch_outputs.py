@@ -36,7 +36,9 @@ except ImportError:
     _QGIS_NULL = None
 
 from .batch_writer import write_batch_marker_layer, write_batch_csv, write_batch_json
+from .constants import DEFAULT_PROFILE_STEP_M
 from .elevation import bearing_deg, haversine_m
+from .fresnel import C_LIGHT, EARTH_RADIUS_M
 from .radio import (
     build_pfl,
     itm_p2p_loss,
@@ -77,7 +79,7 @@ def _compute_single_link(
     if dist_m < 1.0:
         return None
 
-    profile_points = elev.terrain_profile(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon, step_m=30.0)
+    profile_points = elev.terrain_profile(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon, step_m=DEFAULT_PROFILE_STEP_M)
     if len(profile_points) < 2:
         return None
     distances = [p[0] for p in profile_points]
@@ -165,7 +167,7 @@ def _compute_single_link(
     rx_antenna_h = elevations[-1] + rx_h_eff
     tx_antenna_h = elevations[0] + tx_h_eff_actual
     t = np.divide(dist_arr, dist_m, out=np.zeros_like(dist_arr), where=dist_m > 0)
-    a_eff = k_factor * 6371000.0
+    a_eff = k_factor * EARTH_RADIUS_M
     bulge = (dist_arr * (dist_m - dist_arr)) / (2.0 * a_eff)
     los_h = tx_antenna_h + t * (rx_antenna_h - tx_antenna_h)
     terrain_bulge = elev_arr + bulge
@@ -201,7 +203,7 @@ def compute_batch_links(
     k_factor, clutter_enabled, clutter_grid, tx_clutter_override,
     rx_clutter_override, feedback, total,
 ):
-    wavelength_m = 299792458.0 / (f_mhz * 1e6)
+    wavelength_m = C_LIGHT / (f_mhz * 1e6)
     results = []
     count = 0
 

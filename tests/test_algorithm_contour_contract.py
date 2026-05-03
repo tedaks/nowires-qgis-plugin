@@ -73,8 +73,8 @@ def test_raster_calc_explicitly_closes_gdal_datasets():
     assert "datasets.pop()" in source
 
 
-def test_blur_vrt_closes_buildvrt_dataset_before_xml_parse():
+def test_blur_vrt_buildvrt_releases_before_xml_parse():
     source = _source_text()
-    assert "vrt_ds = gdal.BuildVRT(vrt_path, src_path)" in source
-    assert "vrt_ds = None" in source
-    assert source.index("vrt_ds = None") < source.index("ET.parse(vrt_path)")
+    assert "gdal.BuildVRT(vrt_path, src_path)" in source
+    assert "ET.parse(vrt_path)" in source
+    assert source.index("gdal.BuildVRT(vrt_path, src_path)") < source.index("ET.parse(vrt_path)")

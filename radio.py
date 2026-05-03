@@ -26,8 +26,7 @@ and signal strength thresholds/colors for P2P link analysis.
 The itm package is bundled directly inside this plugin — no external
 pip install is required.
 
-Fresnel zone and earth-bulge functions live in the sibling fresnel module
-and are re-exported here for backward compatibility.
+Fresnel zone and earth-bulge functions live in the sibling fresnel module.
 
 Portions of this module are adapted from the tedaks/nowires web application
 and were originally distributed under the MIT License. See NOTICE.md for
@@ -42,13 +41,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .fresnel import (
-    C_LIGHT,
-    EARTH_RADIUS_M,
-    fresnel_radius,
-    earth_bulge,
-    fresnel_profile_analysis,
-)
 
 # --- Signal Level Definitions ---
 
@@ -63,16 +55,6 @@ PROP_MODE_NAMES = {
     1: "Line-of-Sight",
     2: "Diffraction",
     3: "Troposcatter",
-}
-
-CLIMATE_NAMES = {
-    0: "Equatorial",
-    1: "Continental Subtropical",
-    2: "Maritime Subtropical",
-    3: "Desert",
-    4: "Continental Temperate",
-    5: "Maritime Temperate (land)",
-    6: "Maritime Temperate (sea)",
 }
 
 

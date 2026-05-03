@@ -17,13 +17,9 @@ from itm.propagation import (
     free_space_loss,
     fresnel_integral,
     height_function,
-    h0_function,
     initialize_point_to_point,
-    longley_rice,
     smooth_earth_diffraction,
 )
-from itm._constants import THIRD, a_0__meter, WN_DENOM
-from itm.models import PropMode
 
 
 # ---------------------------------------------------------------------------

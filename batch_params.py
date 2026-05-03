@@ -27,7 +27,6 @@ from qgis.core import (
     Qgis,
     QgsProcessingParameterEnum,
     QgsProcessingParameterFeatureSource,
-    QgsProcessingParameterFile,
     QgsProcessingParameterFileDestination,
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
@@ -37,13 +36,9 @@ from .radio import (
     ITM_MAX_FREQUENCY_MHZ,
     ITM_MIN_TERMINAL_HEIGHT_M,
     ITM_MAX_TERMINAL_HEIGHT_M,
-    ITM_MIN_N0,
-    ITM_MAX_N0,
-    ITM_MIN_SIGMA,
 )
 from .antenna import ANTENNA_PRESET_OPTIONS
-from .clutter import CLUTTER_MODEL_OPTIONS, CLUTTER_OVERRIDE_OPTIONS
-from .constants import CLIMATE_OPTIONS, K_FACTOR_PRESETS_OPTIONS
+from .constants import CLIMATE_OPTIONS
 from .shared_params import add_link_budget_params, add_clutter_params, add_advanced_itm_params
 
 __all__ = [

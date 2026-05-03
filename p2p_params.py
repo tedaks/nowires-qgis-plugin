@@ -32,15 +32,11 @@ from qgis.core import (
 )
 from .radio import (
     ITM_MAX_FREQUENCY_MHZ,
-    ITM_MAX_N0,
     ITM_MAX_TERMINAL_HEIGHT_M,
     ITM_MIN_FREQUENCY_MHZ,
-    ITM_MIN_N0,
-    ITM_MIN_SIGMA,
     ITM_MIN_TERMINAL_HEIGHT_M,
 )
 from .antenna import ANTENNA_PRESET_OPTIONS
-from .clutter import CLUTTER_MODEL_OPTIONS, CLUTTER_OVERRIDE_OPTIONS
 from .constants import POLARIZATION_NAMES, CLIMATE_OPTIONS, K_FACTOR_PRESETS_OPTIONS
 from .shared_params import add_link_budget_params, add_clutter_params, add_advanced_itm_params
 from .p2p_report_display import report_p2p_results

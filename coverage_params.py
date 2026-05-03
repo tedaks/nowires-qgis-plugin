@@ -35,24 +35,17 @@ from qgis.core import (
 )
 from .radio import (
     ITM_MAX_FREQUENCY_MHZ,
-    ITM_MAX_N0,
     ITM_MAX_TERMINAL_HEIGHT_M,
     ITM_MIN_FREQUENCY_MHZ,
-    ITM_MIN_N0,
-    ITM_MIN_SIGMA,
     ITM_MIN_TERMINAL_HEIGHT_M,
     validate_itm_input_ranges,
 )
 from .antenna import ANTENNA_PRESET_OPTIONS
 from .clutter import (
-    CLUTTER_MODEL_OPTIONS,
-    CLUTTER_OVERRIDE_OPTIONS,
     LandCoverGrid,
     clutter_override_value,
 )
 from .constants import (
-    METERS_PER_DEGREE_LAT,
-    POLARIZATION_NAMES,
     CLIMATE_OPTIONS,
     GRID_SIZE_PRESETS,
     GRID_SIZE_OPTIONS,

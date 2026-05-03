@@ -23,6 +23,7 @@
 import logging
 import math
 import multiprocessing
+import os
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
@@ -179,7 +180,7 @@ def compute_coverage(
     )
 
     shm = None
-    n_workers = max(1, __import__("os").cpu_count() or 1)
+    n_workers = max(1, os.cpu_count() or 1)
     pixels_failed = 0
     pixels_done = 0
 
@@ -272,9 +273,6 @@ def compute_coverage(
         finally:
             coverage_pool._cov_grid_data = None
             coverage_pool._cov_grid_meta = {}
-
-    _release_shared_memory(shm)
-    shm = None
 
     if cancelled:
         return None, None, 0, 0, 0, 0, None, None

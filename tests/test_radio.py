@@ -7,10 +7,12 @@ import math
 
 import numpy as np
 import pytest
-from radio import (
+from fresnel import (
     fresnel_radius,
     earth_bulge,
     fresnel_profile_analysis,
+)
+from radio import (
     SIGNAL_LEVELS,
     THRESHOLDS,
     build_pfl,
