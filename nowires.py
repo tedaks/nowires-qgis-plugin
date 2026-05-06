@@ -158,8 +158,6 @@ class NoWiresPlugin:
         for action in self._toolbar_actions:
             self.iface.addToolBarIcon(action)
 
-        self._opacity_dialog = None
-
         stale = _stale_temp_dir_count()
         if stale > 0:
             from qgis.core import QgsMessageLog
@@ -178,10 +176,8 @@ class NoWiresPlugin:
         if self.provider is not None:
             QgsApplication.processingRegistry().removeProvider(self.provider)
             self.provider = None
-        for attr in self._menu_actions:
-            action = getattr(self, attr, None)
-            if action is not None:
-                self.iface.removePluginMenu(_MENU_NAME, action)
+        for action in self._menu_actions:
+            self.iface.removePluginMenu(_MENU_NAME, action)
         for action in self._toolbar_actions:
             self.iface.removeToolBarIcon(action)
 

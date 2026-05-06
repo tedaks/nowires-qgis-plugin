@@ -26,6 +26,7 @@ import numpy as np
 
 from .clutter import CLUTTER_LOSS_DB
 from .constants import EARTH_RADIUS_M
+from .coverage_pool import _CoverageTask
 
 _MIN_COVERAGE_DISTANCE_M = 1.0
 
@@ -122,31 +123,31 @@ def build_coverage_tasks(
             step_m = modeled_d_m / (n_pts - 1)
             rx_clutter_db = float(rx_clutter_loss_grid[i, j]) if rx_clutter_loss_grid is not None else 0.0
             tasks.append(
-                (
-                    i,
-                    j,
-                    float(lats[i]),
-                    float(lons[j]),
-                    modeled_d_m,
-                    b,
-                    step_m,
-                    n_pts,
-                    tx_h_m,
-                    rx_h_m,
-                    climate,
-                    N0,
-                    f_mhz,
-                    polarization,
-                    epsilon,
-                    sigma,
-                    time_pct,
-                    location_pct,
-                    situation_pct,
-                    eirp_dbm,
-                    antenna_config,
-                    rx_gain_dbi,
-                    tx_clutter_loss_db,
-                    rx_clutter_db,
+                _CoverageTask(
+                    i=i,
+                    j=j,
+                    target_lat=float(lats[i]),
+                    target_lon=float(lons[j]),
+                    dist_m=modeled_d_m,
+                    bearing=b,
+                    step_m=step_m,
+                    n_pts=n_pts,
+                    tx_h_m=tx_h_m,
+                    rx_h_m=rx_h_m,
+                    climate=climate,
+                    N0=N0,
+                    f_mhz=f_mhz,
+                    polarization=polarization,
+                    epsilon=epsilon,
+                    sigma=sigma,
+                    time_pct=time_pct,
+                    location_pct=location_pct,
+                    situation_pct=situation_pct,
+                    eirp_dbm=eirp_dbm,
+                    antenna_config=antenna_config,
+                    rx_gain_dbi=rx_gain_dbi,
+                    clutter_tx_db=tx_clutter_loss_db,
+                    clutter_rx_db=rx_clutter_db,
                 )
             )
     return tasks

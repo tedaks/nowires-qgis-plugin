@@ -65,6 +65,51 @@ def _features_to_points(features, source_crs, transform_fn, default_height):
     return points
 
 
+def _extract_batch_radio_params(algorithm, parameters, context):
+    p = parameters
+    _pD = algorithm.parameterAsDouble
+    _pE = algorithm.parameterAsEnum
+    _pF = algorithm.parameterAsFile
+    tx_h = _pD(p, algorithm.TX_HEIGHT, context)
+    rx_h = _pD(p, algorithm.RX_HEIGHT, context)
+    f_mhz = _pD(p, algorithm.FREQ_MHZ, context)
+    polarization = _pE(p, algorithm.POLARIZATION, context)
+    climate = _pE(p, algorithm.CLIMATE, context)
+    time_pct = _pD(p, algorithm.TIME_PCT, context)
+    location_pct = _pD(p, algorithm.LOCATION_PCT, context)
+    situation_pct = _pD(p, algorithm.SITUATION_PCT, context)
+    tx_power = _pD(p, algorithm.TX_POWER, context)
+    tx_gain_d = _pD(p, algorithm.TX_GAIN, context)
+    rx_gain_d = _pD(p, algorithm.RX_GAIN, context)
+    cable_loss = _pD(p, algorithm.CABLE_LOSS, context)
+    rx_sens = _pD(p, algorithm.RX_SENSITIVITY, context)
+    tx_pk = antenna_preset_key(_pE(p, algorithm.TX_ANTENNA_PRESET, context))
+    rx_pk = antenna_preset_key(_pE(p, algorithm.RX_ANTENNA_PRESET, context))
+    tx_az = _pD(p, algorithm.TX_ANTENNA_AZ, context)
+    rx_az = _pD(p, algorithm.RX_ANTENNA_AZ, context)
+    pi = _pE(p, algorithm.K_FACTOR_PRESET, context)
+    kf = resolve_k_factor(
+        has_preset=pi < len(K_FACTOR_PRESETS), has_custom=True,
+        custom_value=_pD(p, algorithm.K_FACTOR, context), preset_index=pi)
+    n0 = _pD(p, algorithm.N0, context)
+    epsilon = _pD(p, algorithm.EPSILON, context)
+    sigma = _pD(p, algorithm.SIGMA, context)
+    validate_itm_input_ranges(tx_height_m=tx_h, rx_height_m=rx_h, frequency_mhz=f_mhz, surface_refractivity_n0=n0, earth_conductivity_sigma=sigma)
+    ce = _pE(p, algorithm.CLUTTER_MODEL, context) == 1
+    cg = LandCoverGrid.from_raster(_pF(p, algorithm.CLUTTER_RASTER, context)) if _pF(p, algorithm.CLUTTER_RASTER, context) else None
+    tco, rco = clutter_override_value(_pE(p, algorithm.TX_CLUTTER_OVERRIDE, context)), clutter_override_value(_pE(p, algorithm.RX_CLUTTER_OVERRIDE, context))
+    tfb, rfb = _pD(p, algorithm.TX_FRONT_BACK_DB, context), _pD(p, algorithm.RX_FRONT_BACK_DB, context)
+    return dict(
+        tx_h=tx_h, rx_h=rx_h, f_mhz=f_mhz, polarization=polarization,
+        climate=climate, time_pct=time_pct, location_pct=location_pct,
+        situation_pct=situation_pct, tx_power=tx_power, tx_gain_d=tx_gain_d,
+        rx_gain_d=rx_gain_d, cable_loss=cable_loss, rx_sens=rx_sens,
+        tx_pk=tx_pk, rx_pk=rx_pk, tx_az=tx_az, rx_az=rx_az, kf=kf,
+        n0=n0, epsilon=epsilon, sigma=sigma, ce=ce, cg=cg, tco=tco, rco=rco,
+        tfb=tfb, rfb=rfb,
+    )
+
+
 def _collect_batch_inputs(algorithm, parameters, context, feedback):
     from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform
     mode = algorithm.parameterAsEnum(parameters, algorithm.MODE, context)
@@ -103,46 +148,14 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
             raise QgsProcessingException("RX point is required for Many-to-One mode.")
         rx_points = [{"id": 0, "lat": rx_pt.y(), "lon": rx_pt.x(), "height": None, "is_tx": False}]
         feedback.pushInfo("Many-to-One: {} TX sites".format(len(candidate_tx)))
-    p = parameters
-    _pD = algorithm.parameterAsDouble
-    _pE = algorithm.parameterAsEnum
-    _pF = algorithm.parameterAsFile
-    tx_h = _pD(p, algorithm.TX_HEIGHT, context)
-    rx_h = _pD(p, algorithm.RX_HEIGHT, context)
-    f_mhz = _pD(p, algorithm.FREQ_MHZ, context)
-    polarization = _pE(p, algorithm.POLARIZATION, context)
-    climate = _pE(p, algorithm.CLIMATE, context)
-    time_pct = _pD(p, algorithm.TIME_PCT, context)
-    location_pct = _pD(p, algorithm.LOCATION_PCT, context)
-    situation_pct = _pD(p, algorithm.SITUATION_PCT, context)
-    tx_power = _pD(p, algorithm.TX_POWER, context)
-    tx_gain_d = _pD(p, algorithm.TX_GAIN, context)
-    rx_gain_d = _pD(p, algorithm.RX_GAIN, context)
-    cable_loss = _pD(p, algorithm.CABLE_LOSS, context)
-    rx_sens = _pD(p, algorithm.RX_SENSITIVITY, context)
-    tx_pk = antenna_preset_key(_pE(p, algorithm.TX_ANTENNA_PRESET, context))
-    rx_pk = antenna_preset_key(_pE(p, algorithm.RX_ANTENNA_PRESET, context))
-    tx_az = _pD(p, algorithm.TX_ANTENNA_AZ, context)
-    rx_az = _pD(p, algorithm.RX_ANTENNA_AZ, context)
-    pi = _pE(p, algorithm.K_FACTOR_PRESET, context)
-    kf = resolve_k_factor(
-        has_preset=pi < len(K_FACTOR_PRESETS), has_custom=True,
-        custom_value=_pD(p, algorithm.K_FACTOR, context), preset_index=pi)
-    n0 = _pD(p, algorithm.N0, context)
-    epsilon = _pD(p, algorithm.EPSILON, context)
-    sigma = _pD(p, algorithm.SIGMA, context)
-    validate_itm_input_ranges(tx_height_m=tx_h, rx_height_m=rx_h, frequency_mhz=f_mhz, surface_refractivity_n0=n0, earth_conductivity_sigma=sigma)
-    ce = _pE(p, algorithm.CLUTTER_MODEL, context) == 1
-    cg = LandCoverGrid.from_raster(_pF(p, algorithm.CLUTTER_RASTER, context)) if _pF(p, algorithm.CLUTTER_RASTER, context) else None
-    tco, rco = clutter_override_value(_pE(p, algorithm.TX_CLUTTER_OVERRIDE, context)), clutter_override_value(_pE(p, algorithm.RX_CLUTTER_OVERRIDE, context))
-    tfb, rfb = _pD(p, algorithm.TX_FRONT_BACK_DB, context), _pD(p, algorithm.RX_FRONT_BACK_DB, context)
+    rp = _extract_batch_radio_params(algorithm, parameters, context)
     lats = [pt["lat"] for pt in candidate_tx] + [pt["lat"] for pt in rx_points]
     lons = [pt["lon"] for pt in candidate_tx] + [pt["lon"] for pt in rx_points]
     south, north = min(lats), max(lats)
     pad = max(DEGREE_PADDING, (north - south) * 0.1)
     west, east = shortest_longitude_bounds_for(lons, padding_deg=pad)
-    if cg is None and ce:
-        cg = ensure_clutter_grid_for_area(south=south - pad, north=north + pad, west=west - pad, east=east + pad, feedback=feedback)
+    if rp["cg"] is None and rp["ce"]:
+        rp["cg"] = ensure_clutter_grid_for_area(south=south - pad, north=north + pad, west=west - pad, east=east + pad, feedback=feedback)
     feedback.pushInfo("Downloading DEM data...")
     feedback.setProgress(5)
     dem_path = ensure_dem_for_area(south - pad, north + pad, west - pad, east + pad, feedback=feedback)
@@ -153,23 +166,30 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
     try:
         elev = ElevationGrid(dem_path)
     except Exception:
-        if cg is not None:
-            cg.close()
+        if rp["cg"] is not None:
+            rp["cg"].close()
         raise
     try:
         total = len(candidate_tx) * len(rx_points)
-        return BatchAnalysisParams(mode=mode, candidate_tx=candidate_tx, rx_points=rx_points,
-        tx_h=tx_h, rx_h=rx_h,
-        f_mhz=f_mhz, polarization=polarization, climate=climate, time_pct=time_pct,
-        location_pct=location_pct, situation_pct=situation_pct, tx_power=tx_power,
-        tx_gain_default=tx_gain_d, rx_gain_default=rx_gain_d, cable_loss=cable_loss, rx_sens=rx_sens,
-        tx_default_preset_key=tx_pk, rx_default_preset_key=rx_pk, tx_default_az=tx_az, rx_default_az=rx_az,
-        tx_front_back_db=tfb, rx_front_back_db=rfb, k_factor=kf, n0=n0, epsilon=epsilon, sigma=sigma,
-        clutter_enabled=ce, clutter_grid=cg, tx_clutter_override=tco, rx_clutter_override=rco, elev=elev, total=total)
+        return BatchAnalysisParams(
+            mode=mode, candidate_tx=candidate_tx, rx_points=rx_points,
+            tx_h=rp["tx_h"], rx_h=rp["rx_h"],
+            f_mhz=rp["f_mhz"], polarization=rp["polarization"], climate=rp["climate"],
+            time_pct=rp["time_pct"], location_pct=rp["location_pct"],
+            situation_pct=rp["situation_pct"], tx_power=rp["tx_power"],
+            tx_gain_default=rp["tx_gain_d"], rx_gain_default=rp["rx_gain_d"],
+            cable_loss=rp["cable_loss"], rx_sens=rp["rx_sens"],
+            tx_default_preset_key=rp["tx_pk"], rx_default_preset_key=rp["rx_pk"],
+            tx_default_az=rp["tx_az"], rx_default_az=rp["rx_az"],
+            tx_front_back_db=rp["tfb"], rx_front_back_db=rp["rfb"],
+            k_factor=rp["kf"], n0=rp["n0"], epsilon=rp["epsilon"], sigma=rp["sigma"],
+            clutter_enabled=rp["ce"], clutter_grid=rp["cg"],
+            tx_clutter_override=rp["tco"], rx_clutter_override=rp["rco"],
+            elev=elev, total=total)
     except Exception:
         elev.close()
-        if cg is not None:
-            cg.close()
+        if rp["cg"] is not None:
+            rp["cg"].close()
         raise
 
 
