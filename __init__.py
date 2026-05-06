@@ -21,11 +21,33 @@
 """
 
 
+class _NoOpPlugin:
+    """Placeholder plugin returned in multiprocessing subprocesses.
+
+    On macOS (spawn start method), child processes re-import the plugin and
+    would otherwise call ``initGui``, opening duplicate QGIS windows.
+    Returning this no-op class prevents that.
+    """
+
+    def __init__(self, iface):
+        self.iface = iface
+
+    def initGui(self):
+        pass
+
+    def unload(self):
+        pass
+
+
 def classFactory(iface):
     """Load NoWires plugin class.
 
     :param iface: A QGIS interface instance.
     :type iface: QgsInterface
     """
+    import multiprocessing
+
+    if multiprocessing.current_process().name != "MainProcess":
+        return _NoOpPlugin(iface)
     from .nowires import NoWiresPlugin
     return NoWiresPlugin(iface)

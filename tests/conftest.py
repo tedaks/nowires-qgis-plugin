@@ -48,6 +48,18 @@ _no_wires_pkg.__package__ = "NoWires"
 _no_wires_pkg.__name__ = "NoWires"
 sys.modules["NoWires"] = _no_wires_pkg
 
+import importlib.util as _ilu
+
+_init_spec = _ilu.spec_from_file_location(
+    "NoWires", os.path.join(plugin_dir, "__init__.py"),
+    submodule_search_locations=[plugin_dir],
+)
+_init_mod = _ilu.module_from_spec(_init_spec)
+_init_spec.loader.exec_module(_init_mod)
+for _attr in ("classFactory", "_NoOpPlugin"):
+    if hasattr(_init_mod, _attr):
+        setattr(_no_wires_pkg, _attr, getattr(_init_mod, _attr))
+
 # Submodules with no relative imports and no top-level qgis dependency —
 # can be loaded as top-level first, then registered under the NoWires package.
 for _submodule_name in (
