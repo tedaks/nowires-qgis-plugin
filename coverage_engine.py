@@ -31,7 +31,9 @@ from .antenna import antenna_config_from_values
 from .clutter import compute_terminal_clutter_losses
 from .coverage_pool import (
     CoverageResult,
+    _configure_macos_multiprocessing,
     _dynamic_chunk_size,
+    _ensure_spawn_start_method,
     _init_cov_pool,
     _itm_worker,
     _itm_worker_batch,
@@ -187,6 +189,8 @@ def compute_coverage(
     cancelled = False
     use_mp = should_use_multiprocessing()
     if use_mp:
+        _ensure_spawn_start_method()
+        _configure_macos_multiprocessing()
         if feedback:
             feedback.pushInfo(
                 "Computing {} pixels with {} workers...".format(len(tasks), n_workers)
