@@ -97,6 +97,11 @@ def _write_p2p_reports(report_csv_path, report_json_path, report_html_path,
 def _load_p2p_qgis_layers(context, profile_path, fresnel_poly_path,
         fresnel_lines_path, markers_path, show_chart, chart_kwargs):
     from qgis.core import QgsVectorLayer
+    from .p2p_symbology import (
+        apply_fresnel_polygon_symbology,
+        apply_fresnel_lines_symbology,
+        apply_profile_line_symbology,
+    )
     f_mhz = chart_kwargs["f_mhz"]
     dist_m = chart_kwargs["dist_m"]
     link_name = "P2P Link ({:.0f} MHz, {:.1f} km)".format(f_mhz, dist_m / 1000)
@@ -104,6 +109,12 @@ def _load_p2p_qgis_layers(context, profile_path, fresnel_poly_path,
     fresnel_poly_layer = QgsVectorLayer(fresnel_poly_path, "Fresnel Zone Analysis")
     fresnel_lines_layer = QgsVectorLayer(fresnel_lines_path, "Fresnel Zone Lines")
     marker_layer = QgsVectorLayer(markers_path, "P2P TX/RX Markers")
+    if profile_layer.isValid():
+        apply_profile_line_symbology(profile_layer)
+    if fresnel_poly_layer.isValid():
+        apply_fresnel_polygon_symbology(fresnel_poly_layer)
+    if fresnel_lines_layer.isValid():
+        apply_fresnel_lines_symbology(fresnel_lines_layer)
     queue_layer_for_loading(context, fresnel_poly_layer, "Fresnel Zone Analysis")
     queue_layer_for_loading(context, fresnel_lines_layer, "Fresnel Zone Lines")
     queue_layer_for_loading(context, profile_layer, link_name)
