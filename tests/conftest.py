@@ -65,6 +65,7 @@ for _attr in ("classFactory", "_NoOpPlugin"):
 for _submodule_name in (
     "antenna",
     "coverage_palette",
+    "macos_compat",
     "reliability",
     "tile_download_base",
     "p2p_report_display",

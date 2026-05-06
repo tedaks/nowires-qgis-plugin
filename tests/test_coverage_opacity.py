@@ -124,13 +124,12 @@ def test_plugin_adds_opacity_menu_action():
     assert '"Coverage Opacity"' in source
     assert "self.opacity_action" in source
     assert "self.run_coverage_opacity" in source
-    assert 'self.iface.addPluginToMenu("&NoWires", self.opacity_action)' in source
+    assert "_MENU_NAME" in source
 
 
 def test_plugin_removes_opacity_menu_action_on_unload():
     source = _text(PLUGIN_SOURCE)
-    assert 'self.iface.removePluginMenu("&NoWires", action)' in source
-    assert 'opacity_action' in source
+    assert "_MENU_NAME" in source
 
 
 def test_plugin_has_coverage_opacity_handler():

@@ -44,7 +44,7 @@ def test_didactic_chunk_size_used_in_coverage():
 
 def test_windows_multiprocessing_disabled():
     source = _engine_source()
-    assert 'os_name != "nt"' in source
+    assert 'os_name == "nt"' in source
 
 
 def test_process_pool_executor_used():

@@ -31,6 +31,7 @@ from qgis.PyQt.QtWidgets import (
     QSlider,
     QVBoxLayout,
 )
+import sys
 from qgis.core import QgsProject
 
 from .base_algorithm import ENTRY_KEY_LAST_COVERAGE
@@ -65,6 +66,8 @@ class CoverageOpacityDialog(QDialog):
         self._layer_id = layer.id()
         self.setWindowTitle("Coverage Opacity")
         self.setModal(False)
+        if sys.platform == "darwin":
+            self.setWindowFlag(Qt.WindowType.Tool)
         self.setMinimumWidth(320)
 
         layout = QVBoxLayout(self)

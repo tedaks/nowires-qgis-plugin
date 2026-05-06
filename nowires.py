@@ -21,10 +21,11 @@
 """
 
 import os
+import sys
 import tempfile
 
 from qgis.PyQt.QtCore import QTimer
-from qgis.PyQt.QtGui import QAction, QIcon
+from qgis.PyQt.QtGui import QAction, QIcon, QPixmap
 from qgis.PyQt.QtWidgets import QInputDialog
 
 from qgis.core import QgsApplication
@@ -37,18 +38,30 @@ from .three_d import SCENE_MODE_GLOBE, SCENE_MODE_LOCAL, open_nowires_3d_view
 
 cmd_folder = os.path.dirname(__file__)
 
+_MENU_NAME = "NoWires" if sys.platform == "darwin" else "&NoWires"
+
 
 def _stale_temp_dir_count():
     temp_base = tempfile.gettempdir()
     prefixes = ("nowires_",)
+    entries = []
+    for base in (temp_base,):
+        try:
+            entries.extend(
+                e for e in os.listdir(base)
+                if any(e.startswith(p) for p in prefixes)
+            )
+        except OSError:
+            pass
     try:
-        entries = [
-            e for e in os.listdir(temp_base)
-            if any(e.startswith(p) for p in prefixes)
-        ]
-        return len(entries)
-    except OSError:
-        return 0
+        from .dem_downloader import get_temp_dir
+        user_dir = get_temp_dir()
+        for e in os.listdir(user_dir):
+            if any(e.startswith(p) for p in prefixes) and e not in entries:
+                entries.append(e)
+    except Exception:
+        pass
+    return len(entries)
 
 
 class NoWiresPlugin:
@@ -73,7 +86,13 @@ class NoWiresPlugin:
         """Initialize GUI elements."""
         self.initProcessing()
 
-        icon = os.path.join(cmd_folder, "logo.png")
+        icon_path = os.path.join(cmd_folder, "logo.png")
+        retina_path = os.path.join(cmd_folder, "logo@2x.png")
+        if sys.platform == "darwin" and os.path.exists(retina_path):
+            icon = QIcon(QPixmap(retina_path))
+            icon.addFile(icon_path)
+        else:
+            icon = QIcon(QPixmap(icon_path)) if os.path.exists(icon_path) else QIcon(icon_path)
         self._toolbar_actions = []
         self._menu_actions = []
 
@@ -82,7 +101,7 @@ class NoWiresPlugin:
             QIcon(icon), "Point-to-Point Analysis", self.iface.mainWindow()
         )
         self.p2p_action.triggered.connect(self.run_p2p)
-        self.iface.addPluginToMenu("&NoWires", self.p2p_action)
+        self.iface.addPluginToMenu(_MENU_NAME, self.p2p_action)
         self._toolbar_actions.append(self.p2p_action)
         self._menu_actions.append(self.p2p_action)
 
@@ -91,7 +110,7 @@ class NoWiresPlugin:
             QIcon(icon), "Coverage Analysis", self.iface.mainWindow()
         )
         self.coverage_action.triggered.connect(self.run_coverage)
-        self.iface.addPluginToMenu("&NoWires", self.coverage_action)
+        self.iface.addPluginToMenu(_MENU_NAME, self.coverage_action)
         self._menu_actions.append(self.coverage_action)
 
         # Contour Lines action
@@ -99,7 +118,7 @@ class NoWiresPlugin:
             QIcon(icon), "Contour Lines", self.iface.mainWindow()
         )
         self.contour_action.triggered.connect(self.run_contour)
-        self.iface.addPluginToMenu("&NoWires", self.contour_action)
+        self.iface.addPluginToMenu(_MENU_NAME, self.contour_action)
         self._menu_actions.append(self.contour_action)
 
         # Coverage Opacity action
@@ -107,7 +126,7 @@ class NoWiresPlugin:
             QIcon(icon), "Coverage Opacity", self.iface.mainWindow()
         )
         self.opacity_action.triggered.connect(self.run_coverage_opacity)
-        self.iface.addPluginToMenu("&NoWires", self.opacity_action)
+        self.iface.addPluginToMenu(_MENU_NAME, self.opacity_action)
         self._menu_actions.append(self.opacity_action)
 
         # 3D View action
@@ -115,7 +134,7 @@ class NoWiresPlugin:
             QIcon(icon), "Open 3D View", self.iface.mainWindow()
         )
         self.open_3d_action.triggered.connect(self.run_open_3d_view)
-        self.iface.addPluginToMenu("&NoWires", self.open_3d_action)
+        self.iface.addPluginToMenu(_MENU_NAME, self.open_3d_action)
         self._menu_actions.append(self.open_3d_action)
 
         # Coverage Comparison action
@@ -123,7 +142,7 @@ class NoWiresPlugin:
             QIcon(icon), "Coverage Comparison", self.iface.mainWindow()
         )
         self.comparison_action.triggered.connect(self.run_comparison)
-        self.iface.addPluginToMenu("&NoWires", self.comparison_action)
+        self.iface.addPluginToMenu(_MENU_NAME, self.comparison_action)
         self._toolbar_actions.append(self.comparison_action)
         self._menu_actions.append(self.comparison_action)
 
@@ -132,7 +151,7 @@ class NoWiresPlugin:
             QIcon(icon), "Batch P2P Analysis", self.iface.mainWindow()
         )
         self.batch_action.triggered.connect(self.run_batch)
-        self.iface.addPluginToMenu("&NoWires", self.batch_action)
+        self.iface.addPluginToMenu(_MENU_NAME, self.batch_action)
         self._toolbar_actions.append(self.batch_action)
         self._menu_actions.append(self.batch_action)
 
@@ -162,7 +181,7 @@ class NoWiresPlugin:
         for attr in self._menu_actions:
             action = getattr(self, attr, None)
             if action is not None:
-                self.iface.removePluginMenu("&NoWires", action)
+                self.iface.removePluginMenu(_MENU_NAME, action)
         for action in self._toolbar_actions:
             self.iface.removeToolBarIcon(action)
 

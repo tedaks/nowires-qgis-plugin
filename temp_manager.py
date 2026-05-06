@@ -66,7 +66,15 @@ class TempDirManager:
         Returns:
             Absolute path to the created directory.
         """
-        path = tempfile.mkdtemp(prefix="nowires_{}-".format(prefix))
+        import sys
+        base_dir = None
+        if persistent and sys.platform == "darwin":
+            try:
+                from .dem_downloader import get_temp_dir
+                base_dir = get_temp_dir()
+            except Exception:
+                pass
+        path = tempfile.mkdtemp(prefix="nowires_{}-".format(prefix), dir=base_dir)
         if persistent:
             self._persistent_dirs.append(path)
         else:

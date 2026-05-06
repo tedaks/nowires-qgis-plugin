@@ -69,9 +69,9 @@ def setup_proxy_opener(auth_id, feedback):
 
 def write_aoi_shapefile(aoi_geometry, aoi_shp_path):
     """Write an OGR polygon shapefile from a QgsGeometry for clipping."""
+    from .report_markers import remove_existing_ogr_dataset
     shp_driver = ogr.GetDriverByName("ESRI Shapefile")
-    if os.path.exists(aoi_shp_path):
-        shp_driver.DeleteDataSource(aoi_shp_path)
+    remove_existing_ogr_dataset(shp_driver, aoi_shp_path)
     aoi_datasource = shp_driver.CreateDataSource(aoi_shp_path)
     aoi_layer = aoi_datasource.CreateLayer("layer", geom_type=ogr.wkbPolygon)
     feat_defn = aoi_layer.GetLayerDefn()
