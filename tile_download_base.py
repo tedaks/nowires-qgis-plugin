@@ -234,9 +234,9 @@ def clip_and_merge_tiles(
         return None
 
     aoi_shp = os.path.join(temp_dir, aoi_prefix + "_aoi_clip.shp")
+    from .report_markers import remove_existing_ogr_dataset
     shp_driver = ogr.GetDriverByName("ESRI Shapefile")
-    if os.path.exists(aoi_shp):
-        shp_driver.DeleteDataSource(aoi_shp)
+    remove_existing_ogr_dataset(shp_driver, aoi_shp)
     ds = shp_driver.CreateDataSource(aoi_shp)
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(4326)

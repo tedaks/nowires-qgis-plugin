@@ -8,13 +8,13 @@ import multiprocessing
 import os
 import sys
 
-import coverage_pool
-from coverage_pool import (
-    _configure_macos_multiprocessing,
-    _find_macos_python_executable,
-    _is_subprocess,
-    should_use_multiprocessing,
+import macos_compat
+from macos_compat import (
+    configure_macos_multiprocessing,
+    find_macos_python_executable,
+    is_subprocess,
 )
+from coverage_pool import should_use_multiprocessing
 
 
 def _load_init_module():
@@ -29,17 +29,17 @@ def _load_init_module():
 
 class TestIsSubprocess:
     def test_returns_false_in_main_process(self):
-        assert _is_subprocess() is False
+        assert is_subprocess() is False
 
     def test_returns_true_when_process_name_is_not_main(self, monkeypatch):
         monkeypatch.setattr(
             multiprocessing.current_process(), "name", "ForkPoolWorker-1"
         )
-        assert _is_subprocess() is True
+        assert is_subprocess() is True
 
     def test_returns_false_when_process_name_is_main(self):
         assert multiprocessing.current_process().name == "MainProcess"
-        assert _is_subprocess() is False
+        assert is_subprocess() is False
 
 
 class TestShouldUseMultiprocessing:
@@ -106,7 +106,7 @@ class TestClassFactorySubprocessGuard:
 class TestFindMacosPythonExecutable:
     def test_returns_none_on_non_darwin(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "linux")
-        assert _find_macos_python_executable() is None
+        assert find_macos_python_executable() is None
 
     def test_prefers_base_executable_when_distinct(self, monkeypatch, tmp_path):
         monkeypatch.setattr(sys, "platform", "darwin")
@@ -115,7 +115,7 @@ class TestFindMacosPythonExecutable:
         fake_python.chmod(0o755)
         monkeypatch.setattr(sys, "executable", "/Applications/QGIS.app/Contents/MacOS/QGIS")
         monkeypatch.setattr(sys, "_base_executable", str(fake_python), raising=False)
-        assert _find_macos_python_executable() == str(fake_python)
+        assert find_macos_python_executable() == str(fake_python)
 
     def test_skips_base_executable_when_same_as_executable(self, monkeypatch, tmp_path):
         monkeypatch.setattr(sys, "platform", "darwin")
@@ -131,7 +131,7 @@ class TestFindMacosPythonExecutable:
         py_bin.chmod(0o755)
         monkeypatch.setattr(sys, "executable", str(qgis_bin))
         monkeypatch.setattr(sys, "_base_executable", str(qgis_bin), raising=False)
-        assert _find_macos_python_executable() == str(py_bin)
+        assert find_macos_python_executable() == str(py_bin)
 
     def test_falls_back_to_bin_python(self, monkeypatch, tmp_path):
         monkeypatch.setattr(sys, "platform", "darwin")
@@ -145,7 +145,7 @@ class TestFindMacosPythonExecutable:
         py_bin.chmod(0o755)
         monkeypatch.setattr(sys, "executable", str(qgis_bin))
         monkeypatch.delattr(sys, "_base_executable", raising=False)
-        assert _find_macos_python_executable() == str(py_bin)
+        assert find_macos_python_executable() == str(py_bin)
 
     def test_returns_none_when_no_python_found(self, monkeypatch, tmp_path):
         monkeypatch.setattr(sys, "platform", "darwin")
@@ -153,7 +153,7 @@ class TestFindMacosPythonExecutable:
         qgis_bin.write_text("")
         monkeypatch.setattr(sys, "executable", str(qgis_bin))
         monkeypatch.delattr(sys, "_base_executable", raising=False)
-        assert _find_macos_python_executable() is None
+        assert find_macos_python_executable() is None
 
     def test_skips_non_executable_candidate(self, monkeypatch, tmp_path):
         monkeypatch.setattr(sys, "platform", "darwin")
@@ -169,7 +169,7 @@ class TestFindMacosPythonExecutable:
         py_bin.chmod(0o644)
         monkeypatch.setattr(sys, "executable", str(qgis_bin))
         monkeypatch.delattr(sys, "_base_executable", raising=False)
-        assert _find_macos_python_executable() is None
+        assert find_macos_python_executable() is None
 
 
 class TestConfigureMacosMultiprocessing:
@@ -179,29 +179,29 @@ class TestConfigureMacosMultiprocessing:
         monkeypatch.setattr(
             multiprocessing, "set_executable", lambda p: called.append(p)
         )
-        _configure_macos_multiprocessing()
+        configure_macos_multiprocessing()
         assert called == []
 
     def test_sets_executable_when_python_found(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "darwin")
         monkeypatch.setattr(
-            coverage_pool, "_find_macos_python_executable", lambda: "/fake/python3"
+            macos_compat, "find_macos_python_executable", lambda: "/fake/python3"
         )
         captured = []
         monkeypatch.setattr(
             multiprocessing, "set_executable", lambda p: captured.append(p)
         )
-        _configure_macos_multiprocessing()
+        configure_macos_multiprocessing()
         assert captured == ["/fake/python3"]
 
     def test_does_not_set_executable_when_python_not_found(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "darwin")
         monkeypatch.setattr(
-            coverage_pool, "_find_macos_python_executable", lambda: None
+            macos_compat, "find_macos_python_executable", lambda: None
         )
         called = []
         monkeypatch.setattr(
             multiprocessing, "set_executable", lambda p: called.append(p)
         )
-        _configure_macos_multiprocessing()
+        configure_macos_multiprocessing()
         assert called == []

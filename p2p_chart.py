@@ -249,6 +249,7 @@ def show_profile_chart(
     dock.setWidget(QWidget())
     dock.setFloating(True)
     dock.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+    dock.setWindowFlag(Qt.WindowType.Tool)
 
     def _on_dock_destroyed():
         import matplotlib.pyplot as plt

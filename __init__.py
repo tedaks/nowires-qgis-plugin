@@ -47,7 +47,61 @@ def classFactory(iface):
     """
     import multiprocessing
 
+    multiprocessing.freeze_support()
+
     if multiprocessing.current_process().name != "MainProcess":
         return _NoOpPlugin(iface)
+
+    _ensure_gdal_env()
     from .nowires import NoWiresPlugin
     return NoWiresPlugin(iface)
+
+
+def _ensure_gdal_env():
+    """Ensure GDAL_DATA and PROJ_LIB point to the QGIS-bundled directories.
+
+    On macOS, QGIS.app bundles GDAL and PROJ data in non-standard locations.
+    If another plugin or user shell profile overrides these env vars, GDAL
+    operations (especially osr.SpatialReference) may fail silently or raise.
+    """
+    import os
+    import sys
+
+    if sys.platform != "darwin":
+        return
+
+    try:
+        from qgis.core import QgsApplication
+    except ImportError:
+        return
+
+    app = QgsApplication.instance()
+    if app is None:
+        return
+
+    prefix = None
+    for attr in ("prefixPath", "pkgDataPath", "srsDatabaseFilePath"):
+        candidate = getattr(app, attr, None)
+        if callable(candidate):
+            candidate = candidate()
+        if candidate:
+            prefix = str(candidate)
+            break
+
+    if prefix is None:
+        return
+
+    gdal_data = os.path.join(prefix, "gdal")
+    proj_lib = os.path.join(prefix, "proj")
+    for candidate in [prefix, os.path.dirname(prefix)]:
+        gd = os.path.join(candidate, "gdal")
+        pl = os.path.join(candidate, "proj")
+        if os.path.isdir(gd):
+            gdal_data = gd
+        if os.path.isdir(pl):
+            proj_lib = pl
+
+    if os.path.isdir(gdal_data):
+        os.environ.setdefault("GDAL_DATA", gdal_data)
+    if os.path.isdir(proj_lib):
+        os.environ.setdefault("PROJ_LIB", proj_lib)

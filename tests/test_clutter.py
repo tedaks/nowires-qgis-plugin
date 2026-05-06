@@ -3,6 +3,9 @@
 # This program is free software under GPLv3 or later. See LICENSE.
 """Behavioral tests for clutter correction helpers."""
 
+import os
+import tempfile
+
 import numpy as np
 
 from clutter import (
@@ -32,6 +35,9 @@ def test_initial_loss_table_matches_todo_values():
         "urban": 10.0,
     }
     assert clutter_loss_db("urban", 900.0) == 10.0
+
+
+_TMP_WORLDCOVER = os.path.join(tempfile.gettempdir(), "worldcover.tif")
 
 
 def test_land_cover_grid_samples_nearest_class():
@@ -99,7 +105,7 @@ def test_clutter_source_label_reports_auto_downloaded_grid_source():
         min_lon=0.0,
         max_lon=1.0,
         nodata=None,
-        source="/tmp/worldcover.tif",
+        source=_TMP_WORLDCOVER,
     )
 
     assert clutter_source_label(
@@ -108,14 +114,14 @@ def test_clutter_source_label_reports_auto_downloaded_grid_source():
         raster_path=None,
         tx_override=None,
         rx_override=None,
-    ) == "/tmp/worldcover.tif"
+    ) == _TMP_WORLDCOVER
     assert clutter_source_label(
         enabled=True,
         land_cover_grid=grid,
         raster_path=None,
         tx_override="urban",
         rx_override=None,
-    ) == "override,/tmp/worldcover.tif"
+    ) == "override," + _TMP_WORLDCOVER
     assert clutter_source_label(
         enabled=True,
         land_cover_grid=None,

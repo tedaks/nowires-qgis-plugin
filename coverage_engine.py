@@ -31,9 +31,7 @@ from .antenna import antenna_config_from_values
 from .clutter import compute_terminal_clutter_losses
 from .coverage_pool import (
     CoverageResult,
-    _configure_macos_multiprocessing,
     _dynamic_chunk_size,
-    _ensure_spawn_start_method,
     _init_cov_pool,
     _itm_worker,
     _itm_worker_batch,
@@ -42,6 +40,7 @@ from .coverage_pool import (
     _release_shared_memory,
     should_use_multiprocessing,
 )
+from .macos_compat import configure_macos_multiprocessing, ensure_spawn_start_method
 from .constants import BYTES_PER_MEBIBYTE
 from .coverage_tasks import (
     _coverage_axis_centers,
@@ -189,58 +188,57 @@ def compute_coverage(
     cancelled = False
     use_mp = should_use_multiprocessing()
     if use_mp:
-        _ensure_spawn_start_method()
-        _configure_macos_multiprocessing()
+        ensure_spawn_start_method()
+        configure_macos_multiprocessing()
         if feedback:
             feedback.pushInfo(
                 "Computing {} pixels with {} workers...".format(len(tasks), n_workers)
             )
         try:
-            try:
-                shared_grid = _make_shared_grid(grid_data)
-                cancel_event = multiprocessing.Event()
-                with ProcessPoolExecutor(
+            shared_grid = _make_shared_grid(grid_data)
+            cancel_event = multiprocessing.Event()
+            with ProcessPoolExecutor(
                     max_workers=n_workers,
                     initializer=_init_cov_pool,
                     initargs=(shared_grid.name, grid_data.shape, str(grid_data.dtype), grid_meta),
                 ) as pool:
-                    shared_grid.shm.close()
-                    for chunk_idx, batch_results in enumerate(
-                        pool.map(
-                            _itm_worker_batch,
-                            [(c, cancel_event) for c in chunks],
-                            chunksize=1,
-                        )
-                    ):
-                        if feedback and feedback.isCanceled():
-                            logger.info("Coverage cancelled by user")
-                            cancelled = True
-                            cancel_event.set()
-                            break
-                        for result in batch_results:
-                            if result is not None:
-                                i, j, loss_db, prx, itm_loss_db, c_tx, c_rx = result
-                                loss_grid[i, j] = loss_db
-                                prx_grid[i, j] = prx
-                                itm_loss_grid[i, j] = itm_loss_db
-                                clutter_loss_grid[i, j] = c_tx + c_rx
-                            else:
-                                pixels_failed += 1
-                            pixels_done += 1
-                        if feedback and chunk_idx % 50 == 0:
-                            pct = int(pixels_done / len(tasks) * 80)
-                            feedback.setProgress(pct)
-            except Exception as exc:
-                logger.warning(
-                    "Multiprocessing failed (%s: %s), falling back to sequential",
-                    type(exc).__name__,
-                    exc,
-                )
-                if feedback:
-                    feedback.pushInfo(
-                        "Multiprocessing unavailable, using single-threaded mode..."
+                shared_grid.shm.close()
+                for chunk_idx, batch_results in enumerate(
+                    pool.map(
+                        _itm_worker_batch,
+                        [(c, cancel_event) for c in chunks],
+                        chunksize=1,
                     )
-                use_mp = False
+                ):
+                    if feedback and feedback.isCanceled():
+                        logger.info("Coverage cancelled by user")
+                        cancelled = True
+                        cancel_event.set()
+                        break
+                    for result in batch_results:
+                        if result is not None:
+                            i, j, loss_db, prx, itm_loss_db, c_tx, c_rx = result
+                            loss_grid[i, j] = loss_db
+                            prx_grid[i, j] = prx
+                            itm_loss_grid[i, j] = itm_loss_db
+                            clutter_loss_grid[i, j] = c_tx + c_rx
+                        else:
+                            pixels_failed += 1
+                        pixels_done += 1
+                    if feedback and chunk_idx % 50 == 0:
+                        pct = int(pixels_done / len(tasks) * 80)
+                        feedback.setProgress(pct)
+        except Exception as exc:
+            logger.warning(
+                "Multiprocessing failed (%s: %s), falling back to sequential",
+                type(exc).__name__,
+                exc,
+            )
+            if feedback:
+                feedback.pushInfo(
+                    "Multiprocessing unavailable, using single-threaded mode..."
+                )
+            use_mp = False
         finally:
             if shared_grid is not None:
                 _release_shared_memory(shared_grid)

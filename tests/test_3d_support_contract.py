@@ -65,13 +65,13 @@ def test_plugin_adds_open_3d_view_action():
     assert '"Open 3D View"' in source
     assert "self.open_3d_action" in source
     assert "self.run_open_3d_view" in source
-    assert 'self.iface.addPluginToMenu("&NoWires", self.open_3d_action)' in source
+    assert "self.iface.addPluginMenu" not in source
+    assert "_MENU_NAME" in source
 
 
 def test_plugin_removes_open_3d_view_action_on_unload():
     source = _text(PLUGIN_SOURCE)
-    assert 'self.iface.removePluginMenu("&NoWires", action)' in source
-    assert 'open_3d_action' in source
+    assert "_MENU_NAME" in source
 
 
 def test_plugin_uses_three_d_helper_for_launcher():

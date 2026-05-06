@@ -102,7 +102,7 @@ def write_report_html(path, payload, title):
     <meta charset="utf-8">
     <title>{title}</title>
     <style>
-      body {{ font-family: Arial, sans-serif; margin: 24px; color: #1f2933; }}
+      body {{ font-family: Arial, Helvetica, sans-serif; margin: 24px; color: #1f2933; }}
       h1, h2 {{ margin: 0 0 12px; }}
       section {{ margin: 0 0 20px; }}
       table {{ border-collapse: collapse; width: 100%; max-width: 960px; }}
