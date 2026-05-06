@@ -51,6 +51,29 @@ from .geo_bounds import coverage_bounds
 logger = logging.getLogger(__name__)
 
 
+def _run_sequential(tasks, grid_data, grid_meta, prx_grid, loss_grid,
+                    itm_loss_grid, clutter_loss_grid, feedback, total_tasks):
+    pixels_failed = 0
+    pixels_done = 0
+    for task_idx, task in enumerate(tasks):
+        if feedback and feedback.isCanceled():
+            return pixels_failed, pixels_done, True
+        result = _itm_worker(task, grid_data=grid_data, grid_meta=grid_meta)
+        if result is not None:
+            i, j, loss_db, prx, itm_loss_db, c_tx, c_rx = result
+            loss_grid[i, j] = loss_db
+            prx_grid[i, j] = prx
+            itm_loss_grid[i, j] = itm_loss_db
+            clutter_loss_grid[i, j] = c_tx + c_rx
+        else:
+            pixels_failed += 1
+        pixels_done += 1
+        if feedback and task_idx % 500 == 0:
+            pct = int(pixels_done / max(total_tasks, 1) * 80)
+            feedback.setProgress(pct)
+    return pixels_failed, pixels_done, False
+
+
 def compute_coverage(
     elev_grid,
     tx_lat,
@@ -248,43 +271,20 @@ def compute_coverage(
         )
 
     if not use_mp:
-        try:
-            for task_idx, task in enumerate(tasks):
-                if feedback and feedback.isCanceled():
-                    logger.info("Coverage cancelled by user")
-                    cancelled = True
-                    break
-                result = _itm_worker(task, grid_data=grid_data, grid_meta=grid_meta)
-                if result is not None:
-                    i, j, loss_db, prx, itm_loss_db, c_tx, c_rx = result
-                    loss_grid[i, j] = loss_db
-                    prx_grid[i, j] = prx
-                    itm_loss_grid[i, j] = itm_loss_db
-                    clutter_loss_grid[i, j] = c_tx + c_rx
-                else:
-                    pixels_failed += 1
-                pixels_done += 1
-                if feedback and task_idx % 500 == 0:
-                    pct = int(pixels_done / len(tasks) * 80)
-                    feedback.setProgress(pct)
-        except Exception:
-            raise
+        pixels_failed, pixels_done, cancelled = _run_sequential(
+            tasks, grid_data, grid_meta, prx_grid, loss_grid,
+            itm_loss_grid, clutter_loss_grid, feedback, len(tasks),
+        )
 
     if cancelled:
         return CoverageResult(
-            prx_grid=None, loss_grid=None,
-            min_lat=0.0, max_lat=0.0,
-            min_lon=0.0, max_lon=0.0,
-            itm_loss_grid=None, clutter_loss_grid=None,
-        )
+            prx_grid=None, loss_grid=None, min_lat=0.0, max_lat=0.0,
+            min_lon=0.0, max_lon=0.0, itm_loss_grid=None, clutter_loss_grid=None)
 
     total = len(tasks)
     if feedback:
-        feedback.pushInfo(
-            "Coverage: {}/{} pixels computed ({} failed)".format(
-                total - pixels_failed, total, pixels_failed
-            )
-        )
+        feedback.pushInfo("Coverage: {}/{} pixels computed ({} failed)".format(
+            total - pixels_failed, total, pixels_failed))
 
     failure_pct = pixels_failed / max(total, 1) * 100
     if failure_pct > 50:
@@ -294,7 +294,5 @@ def compute_coverage(
 
     return CoverageResult(
         prx_grid=prx_grid, loss_grid=loss_grid,
-        min_lat=min_lat, max_lat=max_lat,
-        min_lon=min_lon, max_lon=max_lon,
-        itm_loss_grid=itm_loss_grid, clutter_loss_grid=clutter_loss_grid,
-    )
+        min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,
+        itm_loss_grid=itm_loss_grid, clutter_loss_grid=clutter_loss_grid)

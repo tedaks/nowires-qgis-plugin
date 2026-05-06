@@ -20,6 +20,7 @@
  ***************************************************************************/
 """
 
+import atexit
 import logging
 import math
 import multiprocessing
@@ -136,6 +137,7 @@ def _init_cov_pool(shm_name, shape, dtype_str, grid_meta):
     _cov_shm = multiprocessing.shared_memory.SharedMemory(name=shm_name)
     _cov_grid_data = np.ndarray(shape, dtype=np.dtype(dtype_str), buffer=_cov_shm.buf)
     _cov_grid_meta = grid_meta
+    atexit.register(_final_cov_pool)
 
 
 
