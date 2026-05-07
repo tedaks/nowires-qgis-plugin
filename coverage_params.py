@@ -67,7 +67,7 @@ _PARAM_NAMES = (
     "RX_SENSITIVITY", "ANTENNA_BW", "ANTENNA_AZ", "ANTENNA_PRESET",
     "FRONT_BACK_DB", "DOWNTILT_DEG", "H_PATTERN", "V_PATTERN",
     "CLUTTER_MODEL", "CLUTTER_RASTER", "TX_CLUTTER_OVERRIDE",
-    "RX_CLUTTER_OVERRIDE", "N0", "EPSILON", "SIGMA", "OUTPUT_RASTER",
+    "RX_CLUTTER_OVERRIDE", "CCH_OVERRIDE", "N0", "EPSILON", "SIGMA", "OUTPUT_RASTER",
     "OUTPUT_REPORT_CSV", "OUTPUT_REPORT_JSON", "OUTPUT_REPORT_HTML",
 )
 PARAM_CONSTANTS = {k: k for k in _PARAM_NAMES}
@@ -190,7 +190,11 @@ def extract_coverage_params(alg, parameters, context):
     antenna_preset = _enum(parameters, alg.ANTENNA_PRESET, context)
     h_pattern = alg.parameterAsFile(parameters, alg.H_PATTERN, context)
     v_pattern = alg.parameterAsFile(parameters, alg.V_PATTERN, context)
-    clutter_enabled = _enum(parameters, alg.CLUTTER_MODEL, context) == 1
+    clutter_model_idx = _enum(parameters, alg.CLUTTER_MODEL, context)
+    clutter_enabled = clutter_model_idx > 0
+    clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
+    cch_raw = _dbl(parameters, alg.CCH_OVERRIDE, context) if hasattr(alg, 'CCH_OVERRIDE') else 0.0
+    cch_override_m = cch_raw if cch_raw > 0.0 else None
     clutter_raster_path = alg.parameterAsFile(
         parameters, alg.CLUTTER_RASTER, context
     )
@@ -233,5 +237,7 @@ def extract_coverage_params(alg, parameters, context):
         clutter_raster_path=clutter_raster_path, clutter_grid=clutter_grid,
         tx_clutter_override=tx_clutter_override,
         rx_clutter_override=rx_clutter_override,
+        clutter_model=clutter_model,
+        cch_override_m=cch_override_m,
         n0=doubles["n0"], epsilon=doubles["epsilon"], sigma=doubles["sigma"],
     )

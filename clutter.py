@@ -33,7 +33,8 @@ from .worldcover_downloader import ensure_worldcover_for_area
 
 logger = logging.getLogger(__name__)
 
-CLUTTER_CATEGORIES = ("open", "rural", "vegetation", "suburban", "urban")
+LEGACY_CLUTTER_CATEGORIES = ("open", "rural", "vegetation", "suburban", "urban")
+CLUTTER_CATEGORIES = LEGACY_CLUTTER_CATEGORIES
 CLUTTER_LOSS_DB = {
     "open": 0.0,
     "rural": 2.0,
@@ -41,8 +42,16 @@ CLUTTER_LOSS_DB = {
     "suburban": 8.0,
     "urban": 10.0,
 }
-CLUTTER_MODEL_OPTIONS = ["Off", "Simple clutter correction"]
-CLUTTER_OVERRIDE_OPTIONS = ["Auto", "open", "rural", "vegetation", "suburban", "urban"]
+CLUTTER_MODEL_OPTIONS = [
+    "Off",
+    "Simple clutter correction",
+    "Advanced clutter correction",
+]
+CLUTTER_OVERRIDE_OPTIONS = [
+    "Auto",
+    "open", "rural", "vegetation", "suburban", "urban",
+    "open_rural", "dense_rural",
+]
 
 _CATEGORY_IDX = {k: i for i, k in enumerate(CLUTTER_CATEGORIES)}
 _CLUTTER_LOSS_ARRAY = np.array([

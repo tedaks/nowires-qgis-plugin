@@ -62,6 +62,8 @@ class P2PAnalysisParams:
     clutter_grid: LandCoverGrid | None = None
     tx_clutter_override: str = "open"
     rx_clutter_override: str = "open"
+    clutter_model: str = "simple"
+    cch_override_m: float | None = None
     profile_dest: str = ""
     fresnel_dest: str = ""
     markers_dest: str = ""
