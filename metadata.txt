@@ -2,8 +2,8 @@
 
 [general]
 name=NoWires
-qgisMinimumVersion=3.34
-qgisMaximumVersion=3.99
+qgisMinimumVersion=4.0
+qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with unified Coverage Analysis heatmap workflow
 version=1.4.0
 author=Bortre Tenamo

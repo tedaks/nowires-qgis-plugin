@@ -60,10 +60,10 @@ def test_palette_function_uses_heatmap_stop_builder():
     assert "for value, rgba, label in build_heatmap_stops()" in source
 
 
-def test_palette_function_uses_interpolated_palette():
+def test_palette_function_uses_discrete_palette():
     source = _palette_source()
     assert (
-        "color_ramp_shader.setColorRampType(QgsColorRampShader.Interpolated)" in source
+        "color_ramp_shader.setColorRampType(QgsColorRampShader.Discrete)" in source
     )
 
 
