@@ -1,6 +1,6 @@
 import math
 
-from clutter_constants import MAX_CLUTTER_LOSS
+from .clutter_constants import MAX_CLUTTER_LOSS
 
 EARTH_RADIUS = 6378137.0
 
