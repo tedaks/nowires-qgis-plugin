@@ -68,5 +68,7 @@ class BatchAnalysisParams:
     clutter_grid: LandCoverGrid | None = None
     tx_clutter_override: str | None = None
     rx_clutter_override: str | None = None
+    clutter_model: str = "simple"
+    cch_override_m: float | None = None
     elev: ElevationGrid | None = None
     total: int = 0

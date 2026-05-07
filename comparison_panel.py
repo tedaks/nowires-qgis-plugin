@@ -92,7 +92,11 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
     downtilt_deg = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_DOWNTILT_DEG", context)
     h_pattern = algorithm_instance.parameterAsFile(parameters, f"{prefix}_H_PATTERN", context)
     v_pattern = algorithm_instance.parameterAsFile(parameters, f"{prefix}_V_PATTERN", context)
-    clutter_enabled = algorithm_instance.parameterAsEnum(parameters, f"{prefix}_CLUTTER_MODEL", context) == 1
+    clutter_model_idx = algorithm_instance.parameterAsEnum(parameters, f"{prefix}_CLUTTER_MODEL", context)
+    clutter_enabled = clutter_model_idx > 0
+    clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
+    cch_raw = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_CCH_OVERRIDE", context) if hasattr(algorithm_instance, f"{prefix}_CCH_OVERRIDE") else 0.0
+    cch_override_m = cch_raw if cch_raw > 0.0 else None
     clutter_raster_path = algorithm_instance.parameterAsFile(parameters, f"{prefix}_CLUTTER_RASTER", context)
     if shared_clutter_grid is not None:
         clutter_grid = shared_clutter_grid
@@ -150,6 +154,15 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
         tx_override=tx_clutter_override,
         rx_override=rx_clutter_override,
     )
+    clutter_context = None
+    if clutter_enabled:
+        from .clutter_context import ClutterLossContext
+        clutter_context = ClutterLossContext(
+            frequency_mhz=f_mhz, distance_m=0.0,
+            tx_height_m=tx_h, rx_height_m=rx_h,
+            rx_ground_elevation_m=0.0, polarization=polarization,
+            cch_override_m=cch_override_m, model=clutter_model,
+        )
     tx_clutter_for_report = compute_terminal_clutter_losses(
         tx_lat=tx_lat,
         tx_lon=tx_lon,
@@ -160,6 +173,7 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
         land_cover_grid=clutter_grid,
         tx_override=tx_clutter_override,
         rx_override=rx_clutter_override,
+        context=clutter_context,
     )
 
     try:
@@ -199,6 +213,8 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
             tx_clutter_override=tx_clutter_override,
             rx_clutter_override=rx_clutter_override,
             tx_clutter_loss_db=tx_clutter_for_report.tx_loss_db,
+            clutter_model=clutter_model,
+            cch_override_m=cch_override_m,
             feedback=feedback,
         )
     finally:
@@ -210,6 +226,7 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
         "clutter_source": clutter_source,
         "tx_clutter_for_report": tx_clutter_for_report,
         "clutter_enabled": clutter_enabled,
+        "clutter_model": clutter_model,
         "antenna_preset": antenna_preset,
         "tx_lat": tx_lat,
         "tx_lon": tx_lon,

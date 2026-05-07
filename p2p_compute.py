@@ -258,7 +258,8 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             clutter_source=cl.source,
             tx_antenna_preset=p.tx_antenna_config.preset,
             rx_antenna_preset=p.rx_antenna_config.preset,
-            antenna_gain_adjustment_db=ant_adj_total)
+            antenna_gain_adjustment_db=ant_adj_total,
+            tx_cch_m=cl.tx_cch_m, rx_cch_m=cl.rx_cch_m)
         _write_p2p_reports(p.report_csv_path, p.report_json_path, p.report_html_path, report_payload)
         p.feedback.setProgress(90)
         chart_kwargs = dict(distances=dist_arr, elevations=elev_arr,

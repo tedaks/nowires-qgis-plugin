@@ -103,11 +103,21 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                     enabled=p.clutter_enabled, land_cover_grid=clutter_grid,
                     raster_path=p.clutter_raster_path,
                     tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override)
+                clutter_context = None
+                if p.clutter_enabled:
+                    from .clutter_context import ClutterLossContext
+                    clutter_context = ClutterLossContext(
+                        frequency_mhz=p.f_mhz, distance_m=0.0,
+                        tx_height_m=p.tx_h, rx_height_m=p.rx_h,
+                        rx_ground_elevation_m=0.0, polarization=p.polarization,
+                        cch_override_m=p.cch_override_m, model=p.clutter_model,
+                    )
                 tx_clutter_for_report = compute_terminal_clutter_losses(
                     tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.tx_lat,
                     rx_lon=p.tx_lon, frequency_mhz=p.f_mhz,
                     enabled=p.clutter_enabled, land_cover_grid=clutter_grid,
-                    tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override)
+                    tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override,
+                    context=clutter_context)
 
                 feedback.pushInfo("Computing coverage...")
                 feedback.setProgress(20)
@@ -136,6 +146,8 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                     tx_clutter_override=p.tx_clutter_override,
                     rx_clutter_override=p.rx_clutter_override,
                     tx_clutter_loss_db=tx_clutter_for_report.tx_loss_db,
+                    clutter_model=p.clutter_model,
+                    cch_override_m=p.cch_override_m,
                     feedback=feedback)
 
                 if result.prx_grid is None:
