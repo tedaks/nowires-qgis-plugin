@@ -25,7 +25,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Fix `ModuleNotFoundError: No module named 'clutter_constants'` at QGIS runtime — `clutter_saalos.py` used absolute import instead of package-relative import
-- Fix coverage heatmap missing color near transmitter — palette had no stop above -60 dBm, so strong-signal pixels (> -60 dBm) rendered as transparent in `Discrete` shader mode. Added "Very Strong" (-30 dBm) stop and shader clip range.
+- Fix coverage heatmap missing color near transmitter — palette had no stop above -60 dBm, so strong-signal pixels (> -60 dBm) rendered as transparent in Discrete shader mode. Added "Very Strong" (-30 dBm) stop and a +100 dBm ceiling entry so values up to +100 dBm are covered by the Very Strong color interval.
 - Fix P2P owned clutter grid not closed after sampling, preventing GDAL dataset handle leak
 - Fix TOCTOU race conditions in temp directory creation
 - Fix four stale contract tests that diverged from actual implementation

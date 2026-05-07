@@ -38,6 +38,8 @@ SIGNAL_LEVELS = [
     (-120.0, (200, 40, 40, 0), "No service"),
 ]
 
+_RAMP_CEILING_DBM = 100.0
+
 
 def build_heatmap_stops():
     """Return the exact nowires palette sorted for the QGIS shader."""
@@ -58,11 +60,15 @@ def apply_coverage_style(layer):
             "{} ({:.0f} dBm)".format(label, value),
         )
         entries.append(entry)
+    very_strong_rgba = SIGNAL_LEVELS[0][1]
+    entries.append(QgsColorRampShader.ColorRampItem(
+        _RAMP_CEILING_DBM,
+        QColor(very_strong_rgba[0], very_strong_rgba[1], very_strong_rgba[2], very_strong_rgba[3]),
+        "",
+    ))
     color_ramp_shader = QgsColorRampShader()
     color_ramp_shader.setColorRampType(QgsColorRampShader.Discrete)
     color_ramp_shader.setColorRampItemList(entries)
-    color_ramp_shader.setMinimumValue(-130.0)
-    color_ramp_shader.setMaximumValue(0.0)
     shader = QgsRasterShader()
     shader.setRasterShaderFunction(color_ramp_shader)
     renderer = QgsSingleBandPseudoColorRenderer(provider, 1, shader)
