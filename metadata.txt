@@ -22,7 +22,7 @@ changelog=
     - Add per-task TX clutter override support in batch and comparison workflows
     - Add Very Strong (-30 dBm) color stop to coverage palette for near-transmitter pixels
     - Fix ModuleNotFoundError for clutter_constants at QGIS runtime (absolute vs relative import)
-    - Fix coverage heatmap missing color near transmitter (palette had no stop above -60 dBm)
+    - Fix coverage heatmap missing color near transmitter (palette had no stop above -60 dBm; added Very Strong stop and +100 dBm ceiling entry)
     - Fix P2P owned clutter grid not closed after sampling (GDAL handle leak)
     - Fix TOCTOU race conditions in temp directory creation
     - Fix macOS multiprocessing compatibility

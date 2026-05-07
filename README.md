@@ -76,7 +76,7 @@ This plugin also adapts code from [tedaks/nowires](https://github.com/tedaks/now
 - `coverage_pool.py`: coverage multiprocessing pool and shared-memory management
 - `coverage_tasks.py`: coverage per-pixel task definitions
 - `coverage_summary.py`: raster-derived usable-distance metrics
-- `coverage_palette.py`: heatmap stop definitions
+- `coverage_palette.py`: heatmap stop definitions and coverage style renderer
 - `coverage_legend.py`: coverage legend support in QGIS
 - `coverage_opacity.py`: live coverage opacity dialog
 - `coverage_reporting.py`: coverage report output helpers
