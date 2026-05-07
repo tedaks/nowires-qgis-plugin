@@ -164,6 +164,8 @@ Point-to-point reports carry reliability and clutter fields:
 - `clutter_source`
 - `clutter_tx_db`
 - `clutter_rx_db`
+- `tx_cch_m`
+- `rx_cch_m`
 - `total_path_loss_db`
 
 ### P2P Parameters
@@ -194,10 +196,11 @@ Point-to-point reports carry reliability and clutter fields:
 - `epsilon`
 - `sigma`
 - antenna preset, azimuth, beamwidth, front-to-back ratio, downtilt, and optional pattern CSV files
-- clutter model (Off / Simple clutter correction)
+- clutter model (Off / Simple clutter correction / Advanced clutter correction)
 - clutter raster path (optional; auto-downloads WorldCover when clutter is enabled and left blank)
 - TX clutter override
 - RX clutter override
+- canopy/clutter height override (CCH_OVERRIDE) for advanced mode
 
 ### Earth Radius Factor Handling
 
@@ -285,10 +288,11 @@ This is an important product distinction:
 - RX sensitivity
 - antenna azimuth and beamwidth
 - antenna preset, front-to-back ratio, downtilt, and optional pattern CSV files
-- clutter model (Off / Simple clutter correction)
+- clutter model (Off / Simple clutter correction / Advanced clutter correction)
 - clutter raster path (optional; auto-downloads WorldCover when clutter is enabled and left blank)
 - TX clutter override
 - RX clutter override
+- canopy/clutter height override (CCH_OVERRIDE) for advanced mode
 
 #### Advanced inputs
 
@@ -385,16 +389,70 @@ Horizontal pattern files wrap around 360° (the last point must close the circle
 
 `clutter.py` implements the optional terminal correction layer. It keeps ITM unchanged, samples a WorldCover-compatible raster at terminal locations, maps raw classes to propagation categories, and adds terminal losses after ITM.
 
+Three clutter modes are available:
+
+- **Off** — no terminal clutter correction.
+- **Simple clutter correction** — flat per-category losses (legacy behaviour).
+- **Advanced clutter correction** — saalos vegetation model for vegetation categories; ITU-R P.2108 site-general clutter loss for built and rural categories. Uses antenna height, distance, frequency, and polarization. If the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal.
+
 Key helpers:
 
-- `compute_terminal_clutter_losses()`: resolves TX and RX clutter categories (from override, raster sample, or `open` fallback) and returns a `TerminalClutterLosses` dataclass with `tx_loss_db`, `rx_loss_db`, `total_loss_db`, and a `source` label.
+- `compute_terminal_clutter_losses()`: resolves TX and RX clutter categories (from override, raster sample, or `open` fallback) and returns a `TerminalClutterLosses` dataclass with `tx_loss_db`, `rx_loss_db`, `total_loss_db`, `tx_cch_m`, `rx_cch_m`, and a `source` label.
 - `clutter_source_label()`: builds a user-visible source string for reports (e.g. `"override,/tmp/worldcover.vrt"` or `"fallback_open"`).
 - `clutter_override_value()`: converts a Processing parameter index or category string into a category name or `None`.
+
+### ClutterLossContext
+
+`ClutterLossContext` is a dataclass that bundles the inputs required by the advanced clutter models. Its fields are:
+
+| Field | Type | Description |
+|---|---|---|
+| `category` | `str` | Clutter category (`open`, `rural`, `vegetation`, `suburban`, `urban`) |
+| `freq_hz` | `float` | Frequency in Hz |
+| `polarization` | `int` | ITM polarization code (0 = horizontal, 1 = vertical) |
+| `htx_m` | `float` | TX antenna height above ground (m) |
+| `hrx_m` | `float` | RX antenna height above ground (m) |
+| `dist_m` | `float` | Path distance (m) |
+| `cch_m` | `float` | Canopy/clutter height override (m); `0.0` means no override |
+
+### Advanced Clutter Models
+
+The advanced mode selects between three internal models based on the clutter category:
+
+1. **None** (`open` and `suburban` categories) — returns 0.0 dB loss. These categories have no applicable clutter model in advanced mode.
+2. **Saalos** (`vegetation` category) — the saalos vegetation attenuation algorithm, ported from ITWOM 3.0 ClutterLoss by Sid Shumate (Givens & Bell, Inc.) via the MIT-licensed `clutterloss-itm` Rust crate. The model computes vegetation loss as a function of frequency, polarization, antenna height, distance, and canopy height. See Decision D9 for invocation geometry.
+3. **ITU-R P.2108** (`built` and `rural` categories) — site-general clutter loss following the ITU-R P.2108 methodology. Computed as a function of frequency, distance, and clutter category. Applied in vectorized form for coverage computations, making it essentially free in terms of runtime cost.
+
+#### Decision D9: Saalos Invocation Geometry
+
+The saalos model is invoked with the **local terminal** as `h_rx` and the **far end** placed at the **canopy top**. This means:
+
+- The terminal antenna height is passed as the receiver height argument to saalos.
+- The canopy/clutter height is used as the transmitter height argument (representing the top of the vegetation canopy as the effective far-end source).
+- If the antenna height is at or above the canopy height, the geometry is unsupported and the loss is gated to 0.0 dB.
+
+### TerminalClutterLosses
+
+`TerminalClutterLosses` is a dataclass returned by `compute_terminal_clutter_losses()`. Its fields are:
+
+| Field | Type | Description |
+|---|---|---|
+| `tx_loss_db` | `float` | TX terminal clutter loss (dB) |
+| `rx_loss_db` | `float` | RX terminal clutter loss (dB) |
+| `total_loss_db` | `float` | Sum of TX and RX clutter losses (dB) |
+| `tx_cch_m` | `float` | Effective canopy/clutter height used at TX (m) |
+| `rx_cch_m` | `float` | Effective canopy/clutter height used at RX (m) |
+| `source` | `str` | Descriptive label for the clutter data source |
+
+The `tx_cch_m` and `rx_cch_m` fields are included in P2P report payloads. For simple mode, these are always 0.0. For advanced mode, they reflect the canopy height used in the saalos or P.2108 computation.
+
+Key helpers:
+
 - `LandCoverGrid.from_raster()`: loads a land-cover GeoTIFF into a `LandCoverGrid` with geographic bounds and no-data handling.
 - `LandCoverGrid.sample_category()`: samples the grid at a given lat/lon and returns a clutter category string.
 - `ensure_clutter_grid_for_area()`: auto-downloads WorldCover tiles when clutter is enabled and no raster is supplied.
 
-Clutter categories and loss table:
+Simple mode clutter categories and loss table:
 
 | Category | Loss (dB) |
 |---|---|
@@ -420,6 +478,8 @@ Both P2P and coverage reports expose clutter loss breakdown:
 - `clutter_source`: a descriptive label produced by `clutter_source_label()` rather than a raw file path.
 - `clutter_tx_db`: TX terminal clutter loss (dB).
 - `clutter_rx_db`: RX terminal clutter loss (dB).
+- `tx_cch_m`: effective canopy/clutter height used at TX (m). Always 0.0 in simple mode.
+- `rx_cch_m`: effective canopy/clutter height used at RX (m). Always 0.0 in simple mode.
 - `total_path_loss_db`: `itm_loss_db + clutter_tx_db + clutter_rx_db`.
 
 For coverage reports, `itm_loss_db` and `total_path_loss_db` are grid-wide means over valid pixels, `clutter_tx_db` is the TX terminal loss at the transmitter location, and `clutter_rx_db` is derived as `clutter_total_mean - clutter_tx_db`.

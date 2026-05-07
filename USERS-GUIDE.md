@@ -170,9 +170,10 @@ Advanced inputs include:
 - earth permittivity (`epsilon`)
 - earth conductivity (`sigma`)
 - antenna preset, azimuth, beamwidth, front-to-back ratio, downtilt, and optional pattern CSV files
-- clutter model (Off / Simple clutter correction)
+- clutter model (Off / Simple clutter correction / Advanced clutter correction)
 - clutter raster path (optional; auto-downloads WorldCover when enabled and left blank)
 - TX and RX clutter overrides
+- canopy/clutter height override (CCH_OVERRIDE) for advanced mode
 
 ### What It Produces
 
@@ -248,9 +249,10 @@ Main inputs include:
 - RX sensitivity
 - antenna azimuth and beamwidth
 - antenna preset, front-to-back ratio, downtilt, and optional pattern CSV files
-- clutter model (Off / Simple clutter correction)
+- clutter model (Off / Simple clutter correction / Advanced clutter correction)
 - clutter raster path (optional; auto-downloads WorldCover when enabled and left blank)
 - TX and RX clutter overrides
+- canopy/clutter height override (CCH_OVERRIDE) for advanced mode
 
 ### Antenna Presets And Pattern Files
 
@@ -271,13 +273,16 @@ Horizontal pattern angles wrap around 360 degrees. Vertical pattern angles are c
 
 ### Clutter / Land-Cover Correction
 
-The simple clutter correction is optional. When enabled, NoWires samples land cover at the TX and RX terminals, maps the raw class into `open`, `rural`, `vegetation`, `suburban`, or `urban`, and adds terminal excess loss after ITM:
+NoWires offers three clutter modes:
+
+- **Off** — no terminal clutter correction.
+- **Simple clutter correction** — flat per-category losses (legacy behaviour, unchanged). When enabled, NoWires samples land cover at the TX and RX terminals, maps the raw class into `open`, `rural`, `vegetation`, `suburban`, or `urban`, and adds terminal excess loss after ITM:
 
 ```text
 total_path_loss_db = itm_loss_db + clutter_tx_db + clutter_rx_db
 ```
 
-The loss table is:
+The simple loss table is:
 
 | Category | Loss (dB) |
 |---|---|
@@ -287,9 +292,15 @@ The loss table is:
 | suburban | 8.0 |
 | urban | 10.0 |
 
-Use TX/RX overrides when the raster is unavailable or visibly wrong. This v1 model does not sample clutter along the full path.
+- **Advanced clutter correction** — saalos vegetation model for vegetation categories; ITU-R P.2108 site-general clutter loss for built and rural categories. Uses antenna height, distance, frequency, and polarization to compute a geometry-aware loss. If the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal. An optional canopy/clutter height override (CCH_OVERRIDE) parameter lets you specify the effective canopy height instead of relying on the built-in defaults.
+
+Use TX/RX overrides when the raster is unavailable or visibly wrong. Neither simple nor advanced clutter models sample clutter along the full path — they apply terminal corrections only.
 
 When clutter is enabled and the land-cover raster field is left blank, NoWires automatically downloads the required ESA WorldCover 2020 tiles from the AWS open data bucket. Tiles are cached locally in a temporary directory for reuse. If the download fails, the correction falls back to `open` (0 dB) with a warning in the log.
+
+#### Advanced Mode Runtime Cost
+
+Advanced clutter mode adds a saalos calculation per coverage pixel for vegetation cells. On a 250×250 grid with vegetation-dominated land cover this can add several seconds. Built-environment categories use vectorized P.2108 and are essentially free in comparison.
 
 ### Clutter in Reports
 
