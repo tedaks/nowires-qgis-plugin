@@ -161,3 +161,50 @@ def test_legacy_categories_unchanged():
     assert LEGACY_CLUTTER_CATEGORIES == (
         "open", "rural", "vegetation", "suburban", "urban",
     )
+
+
+from clutter import compute_terminal_clutter_loss, _category_height_m
+from clutter_context import ClutterLossContext
+
+
+def _ctx(**overrides):
+    base = dict(
+        frequency_mhz=1000.0, distance_m=1000.0,
+        tx_height_m=30.0, rx_height_m=2.0, model="advanced",
+    )
+    base.update(overrides)
+    return ClutterLossContext(**base)
+
+
+def test_advanced_helper_returns_zero_for_open():
+    assert compute_terminal_clutter_loss("open", "rx", _ctx()) == 0.0
+
+
+def test_advanced_helper_gates_when_antenna_above_clutter():
+    assert compute_terminal_clutter_loss("urban", "rx", _ctx(rx_height_m=30.0)) == 0.0
+
+
+def test_advanced_helper_uses_tx_height_for_tx_terminal():
+    assert compute_terminal_clutter_loss("vegetation", "tx", _ctx(tx_height_m=30.0)) == 0.0
+
+
+def test_advanced_helper_p2108_for_urban():
+    v = compute_terminal_clutter_loss("urban", "rx", _ctx())
+    assert v > 0.0
+
+
+def test_advanced_helper_saalos_for_vegetation():
+    v = compute_terminal_clutter_loss("vegetation", "rx", _ctx())
+    assert v > 0.0
+
+
+def test_advanced_helper_zero_distance_zero_loss():
+    assert compute_terminal_clutter_loss("urban", "rx", _ctx(distance_m=0.0)) == 0.0
+
+
+def test_cch_override_applies():
+    v_default = compute_terminal_clutter_loss("vegetation", "rx", _ctx())
+    v_override = compute_terminal_clutter_loss("vegetation", "rx", _ctx(cch_override_m=25.0))
+    assert _category_height_m("vegetation", 25.0) == 25.0
+    assert _category_height_m("vegetation", None) == 12.0
+    assert v_default > 0.0 and v_override > 0.0
