@@ -251,7 +251,9 @@ class LandCoverGrid:
             if rx_override:
                 cats[:, :] = _legacy_to_advanced_override(rx_override)
             return cats
-        cat_idx = _WORLDCOVER_TO_CATEGORY[sampled]
+        valid_class = (sampled >= 0) & (sampled < len(_WORLDCOVER_TO_CATEGORY))
+        safe_sampled = np.where(valid_class, sampled, 0).astype(np.int32, copy=False)
+        cat_idx = _WORLDCOVER_TO_CATEGORY[safe_sampled]
         cat_idx = np.where(out_of_bounds, 0, cat_idx)
         if rx_override:
             cat_idx[:] = _CATEGORY_IDX.get(rx_override, 0)

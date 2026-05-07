@@ -59,6 +59,22 @@ def test_land_cover_grid_samples_nearest_class():
     assert grid.sample_category(5.0, 5.0) is None
 
 
+def test_land_cover_grid_vectorized_sampling_falls_back_for_unknown_class():
+    grid = LandCoverGrid(
+        data=np.array([[999]], dtype=np.int16),
+        min_lat=0.0,
+        max_lat=1.0,
+        min_lon=0.0,
+        max_lon=1.0,
+        nodata=None,
+        source="memory",
+    )
+
+    losses = grid.sample_category_grid(np.array([0.5]), np.array([0.5]))
+
+    assert losses.tolist() == [[0.0]]
+
+
 def test_compute_terminal_clutter_losses_uses_overrides_before_raster():
     grid = LandCoverGrid(
         data=np.array([[50, 50], [50, 50]], dtype=np.int16),

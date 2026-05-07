@@ -185,9 +185,8 @@ def compute_coverage(
         clutter_grid,
         tx_clutter_loss,
         rx_clutter_override,
-        lats,
-        lons,
-        clutter_context=clutter_context,
+        lats, lons, clutter_context=clutter_context,
+        tx_clutter_override=tx_clutter_override,
     )
 
     if not tasks:

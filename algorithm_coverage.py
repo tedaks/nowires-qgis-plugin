@@ -76,8 +76,8 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                 p.tx_lat, p.tx_lon, p.f_mhz,
                 p.radius_km, p.grid_size, p.grid_size))
         feedback.pushInfo("Clutter correction: {}".format(
-            CLUTTER_MODEL_OPTIONS[1] if p.clutter_enabled
-            else CLUTTER_MODEL_OPTIONS[0]))
+            CLUTTER_MODEL_OPTIONS[2] if p.clutter_enabled and p.clutter_model == "advanced"
+            else CLUTTER_MODEL_OPTIONS[1] if p.clutter_enabled else CLUTTER_MODEL_OPTIONS[0]))
         feedback.pushInfo("TX antenna preset: {}".format(
             ANTENNA_PRESET_OPTIONS[p.antenna_preset]))
 
@@ -167,6 +167,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                         situation_pct=p.situation_pct, tx_power=p.tx_power,
                         tx_gain=p.tx_gain, rx_gain=p.rx_gain, cable_loss=p.cable_loss,
                         rx_sens=p.rx_sens, clutter_enabled=p.clutter_enabled,
+                        clutter_model=p.clutter_model,
                         antenna_preset=p.antenna_preset,
                         clutter_source=clutter_source,
                         tx_clutter_for_report=tx_clutter_for_report))
