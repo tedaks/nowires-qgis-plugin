@@ -144,9 +144,11 @@ def run_p2p_analysis(params: P2PAnalysisParams):
     south, north = min(p.tx_lat, p.rx_lat) - pad, max(p.tx_lat, p.rx_lat) + pad
     west, east = shortest_longitude_bounds(p.tx_lon, p.rx_lon, padding_deg=pad)
     clutter_grid = p.clutter_grid
+    owns_clutter_grid = False
     if clutter_grid is None and p.clutter_enabled:
         clutter_grid = ensure_clutter_grid_for_area(
             south=south, north=north, west=west, east=east, feedback=p.feedback)
+        owns_clutter_grid = clutter_grid is not None
     p.feedback.pushInfo("Downloading DEM data for path...")
     p.feedback.setProgress(5)
     dem_path = ensure_dem_for_area(south, north, west, east, feedback=p.feedback)
@@ -261,5 +263,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             p.output_report_html: p.report_html_path,
         }
     finally:
+        if owns_clutter_grid and clutter_grid is not None:
+            clutter_grid.close()
         tmp_mgr.cleanup()
         tmp_mgr.warn_persistent(p.feedback)
