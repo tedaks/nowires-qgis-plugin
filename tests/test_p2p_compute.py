@@ -7,11 +7,18 @@ Tests import and verify the actual plugin modules (nan_utils, itm.propagation)
 rather than reimplementing their logic inline.
 """
 
+import os
 import math
+import importlib.util
+import sys
+import types
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
+from NoWires.p2p_analysis_params import P2PAnalysisParams
+from NoWires.radio import ITMResult
 from nan_utils import interpolate_nan_elevations, interpolate_nan_array
 from itm.propagation import free_space_loss
 
@@ -88,3 +95,149 @@ class TestFSPLFromModule:
         fspl_900 = free_space_loss(d__meter=1000.0, f__mhz=900.0)
         fspl_2400 = free_space_loss(d__meter=1000.0, f__mhz=2400.0)
         assert fspl_2400 > fspl_900
+
+
+class _Feedback:
+    def pushInfo(self, _message):
+        pass
+
+    def setProgress(self, _value):
+        pass
+
+
+class _ElevationGrid:
+    def __init__(self, _path):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, _exc_type, _exc_val, _exc_tb):
+        return False
+
+    def terrain_profile(self, *_args, **_kwargs):
+        return [(0.0, 10.0), (1000.0, 12.0)]
+
+
+class _ClutterGrid:
+    source = "auto"
+
+    def __init__(self):
+        self.closed = False
+
+    def sample_category(self, _lat, _lon):
+        return "open"
+
+    def close(self):
+        self.closed = True
+
+
+def _make_p2p_params():
+    return P2PAnalysisParams(
+        tx_lat=14.0, tx_lon=121.0, rx_lat=14.001, rx_lon=121.001,
+        tx_h=30.0, rx_h=10.0, f_mhz=900.0,
+        polarization=1, climate=1,
+        time_pct=50.0, location_pct=50.0, situation_pct=50.0,
+        tx_power=30.0, tx_gain=10.0, rx_gain=8.0,
+        cable_loss=1.0, rx_sens=-90.0,
+        k_factor=4.0 / 3.0, n0=301.0, epsilon=15.0, sigma=0.005,
+        tx_antenna_config=SimpleNamespace(preset="omni"),
+        rx_antenna_config=SimpleNamespace(preset="omni"),
+        clutter_enabled=True,
+        profile_dest="/tmp/profile.gpkg",
+        fresnel_dest="/tmp/fresnel.gpkg",
+        markers_dest="/tmp/markers.gpkg",
+        show_chart=False,
+        context=object(),
+        feedback=_Feedback(),
+        output_profile="OUTPUT_PROFILE",
+        output_fresnel="OUTPUT_FRESNEL",
+        output_markers="OUTPUT_MARKERS",
+        output_report_csv="OUTPUT_REPORT_CSV",
+        output_report_json="OUTPUT_REPORT_JSON",
+        output_report_html="OUTPUT_REPORT_HTML",
+    )
+
+
+def _load_p2p_compute_with_test_stubs(monkeypatch):
+    qgis_core = sys.modules.get("qgis.core")
+    if qgis_core is None:
+        qgis_core = types.ModuleType("qgis.core")
+        monkeypatch.setitem(sys.modules, "qgis.core", qgis_core)
+    if not hasattr(qgis_core, "QgsProcessingException"):
+        qgis_core.QgsProcessingException = RuntimeError
+    dem_stub = types.ModuleType("NoWires.dem_downloader")
+    dem_stub.ensure_dem_for_area = lambda *args, **kwargs: "/tmp/dem.tif"
+    p2p_params_stub = types.ModuleType("NoWires.p2p_params")
+    p2p_params_stub.report_p2p_results = lambda *args, **kwargs: None
+    processing_utils_stub = types.ModuleType("NoWires.processing_utils")
+    processing_utils_stub.queue_layer_for_loading = lambda *args, **kwargs: None
+    monkeypatch.setitem(sys.modules, "NoWires.dem_downloader", dem_stub)
+    monkeypatch.setitem(sys.modules, "NoWires.p2p_params", p2p_params_stub)
+    monkeypatch.setitem(sys.modules, "NoWires.processing_utils", processing_utils_stub)
+    module_name = "NoWires._test_p2p_compute"
+    module_path = os.path.join(os.path.dirname(__file__), "..", "p2p_compute.py")
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    p2p_compute = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, module_name, p2p_compute)
+    spec.loader.exec_module(p2p_compute)
+    return p2p_compute
+
+
+def test_run_p2p_analysis_closes_auto_clutter_grid(monkeypatch):
+    p2p_compute = _load_p2p_compute_with_test_stubs(monkeypatch)
+
+    auto_grid = _ClutterGrid()
+    monkeypatch.setattr(p2p_compute, "ElevationGrid", _ElevationGrid)
+    monkeypatch.setattr(
+        p2p_compute,
+        "ensure_clutter_grid_for_area",
+        lambda *args, **kwargs: auto_grid,
+    )
+    monkeypatch.setattr(
+        p2p_compute,
+        "itm_p2p_loss",
+        lambda **_kwargs: ITMResult(loss_db=110.0, mode=1, warnings=0),
+    )
+    monkeypatch.setattr(p2p_compute, "antenna_gain_adjustment_db", lambda *args, **kwargs: 0.0)
+    monkeypatch.setattr(
+        p2p_compute,
+        "_write_p2p_output_layers",
+        lambda *args, **kwargs: ("/tmp/profile.gpkg", "/tmp/fresnel.gpkg", "/tmp/markers.gpkg"),
+    )
+    monkeypatch.setattr(p2p_compute, "_load_p2p_qgis_layers", lambda *args, **kwargs: None)
+
+    result = p2p_compute.run_p2p_analysis(_make_p2p_params())
+
+    assert result["OUTPUT_PROFILE"] == "/tmp/profile.gpkg"
+    assert auto_grid.closed
+
+
+def test_run_p2p_analysis_leaves_supplied_clutter_grid_open(monkeypatch):
+    p2p_compute = _load_p2p_compute_with_test_stubs(monkeypatch)
+
+    supplied_grid = _ClutterGrid()
+    params = _make_p2p_params()
+    params.clutter_grid = supplied_grid
+    monkeypatch.setattr(p2p_compute, "ElevationGrid", _ElevationGrid)
+    monkeypatch.setattr(
+        p2p_compute,
+        "ensure_clutter_grid_for_area",
+        lambda *args, **kwargs: pytest.fail("should not auto-load clutter"),
+    )
+    monkeypatch.setattr(
+        p2p_compute,
+        "itm_p2p_loss",
+        lambda **_kwargs: ITMResult(loss_db=110.0, mode=1, warnings=0),
+    )
+    monkeypatch.setattr(p2p_compute, "antenna_gain_adjustment_db", lambda *args, **kwargs: 0.0)
+    monkeypatch.setattr(
+        p2p_compute,
+        "_write_p2p_output_layers",
+        lambda *args, **kwargs: ("/tmp/profile.gpkg", "/tmp/fresnel.gpkg", "/tmp/markers.gpkg"),
+    )
+    monkeypatch.setattr(p2p_compute, "_load_p2p_qgis_layers", lambda *args, **kwargs: None)
+
+    p2p_compute.run_p2p_analysis(params)
+
+    assert not supplied_grid.closed
