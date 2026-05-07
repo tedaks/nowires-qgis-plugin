@@ -8,6 +8,7 @@ import pytest
 
 from NoWires.coverage_tasks import _coverage_axis_centers, build_coverage_tasks
 from antenna import AntennaConfig
+from clutter_context import ClutterLossContext
 
 
 _OMNI = AntennaConfig(preset="omni")
@@ -132,3 +133,32 @@ class TestBuildCoverageTasks:
         )
         assert len(tasks) == 1
         assert tasks[0][23] == 0.0
+
+    def test_advanced_mode_uses_overrides_without_raster(self):
+        lats = np.array([14.0])
+        lons = np.array([121.01])
+        ctx = ClutterLossContext(
+            frequency_mhz=1800.0,
+            distance_m=0.0,
+            tx_height_m=2.0,
+            rx_height_m=2.0,
+            polarization=1,
+            model="advanced",
+        )
+
+        tasks = build_coverage_tasks(
+            tx_lat=14.0, tx_lon=121.0, radius_m=100000.0,
+            grid_size=1, profile_step_m=10.0, max_profile_pts=75,
+            tx_h_m=2.0, rx_h_m=2.0, climate=1, N0=301.0,
+            f_mhz=1800.0, polarization=1, epsilon=15.0, sigma=0.005,
+            time_pct=50.0, location_pct=50.0, situation_pct=50.0,
+            eirp_dbm=49.0, rx_gain_dbi=2.0, antenna_config=_OMNI,
+            clutter_enabled=True, clutter_grid=None,
+            tx_clutter_loss_db=0.0, rx_clutter_override="urban",
+            lats=lats, lons=lons, clutter_context=ctx,
+            tx_clutter_override="urban",
+        )
+
+        assert len(tasks) == 1
+        assert tasks[0].clutter_tx_db > 0.0
+        assert tasks[0].clutter_rx_db > 0.0

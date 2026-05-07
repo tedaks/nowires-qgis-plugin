@@ -25,7 +25,11 @@ import math
 import numpy as np
 
 from .clutter import CLUTTER_LOSS_DB
-from .clutter_advanced import compute_terminal_clutter_loss
+from .clutter_advanced import (
+    _legacy_to_advanced_override,
+    _resolve_category_advanced,
+    compute_terminal_clutter_loss,
+)
 from .clutter_context import ClutterLossContext
 from .constants import EARTH_RADIUS_M
 from .coverage_pool import _CoverageTask
@@ -95,6 +99,7 @@ def build_coverage_tasks(
     lats,
     lons,
     clutter_context=None,
+    tx_clutter_override=None,
 ):
     dist_grid = _haversine_grid(tx_lat, tx_lon, lats, lons)
     bearing_grid = _bearing_grid(tx_lat, tx_lon, lats, lons)
@@ -104,10 +109,16 @@ def build_coverage_tasks(
     advanced = clutter_context is not None and clutter_context.model == "advanced"
 
     if advanced and clutter_enabled:
+        tx_category, _tx_source = _resolve_category_advanced(
+            tx_lat, tx_lon, tx_clutter_override, clutter_grid)
         rx_category_grid = (
             clutter_grid.sample_category_grid(
                 lats, lons, rx_override=rx_clutter_override, context=clutter_context)
-            if clutter_grid is not None else None
+            if clutter_grid is not None else np.full(
+                (n_rows_lat, n_cols_lon),
+                _legacy_to_advanced_override(rx_clutter_override or "open"),
+                dtype=object,
+            )
         )
         rx_clutter_loss_grid = None
     elif clutter_enabled and clutter_grid is not None and rx_clutter_override is None:
@@ -148,11 +159,15 @@ def build_coverage_tasks(
                     cch_override_m=clutter_context.cch_override_m,
                     model="advanced",
                 )
+                tx_clutter_db = compute_terminal_clutter_loss(
+                    tx_category, "tx", pixel_ctx)
                 rx_clutter_db = compute_terminal_clutter_loss(
                     rx_category_grid[i, j], "rx", pixel_ctx)
             elif rx_clutter_loss_grid is not None:
+                tx_clutter_db = tx_clutter_loss_db
                 rx_clutter_db = float(rx_clutter_loss_grid[i, j])
             else:
+                tx_clutter_db = tx_clutter_loss_db
                 rx_clutter_db = 0.0
             tasks.append(
                 _CoverageTask(
@@ -178,7 +193,7 @@ def build_coverage_tasks(
                     eirp_dbm=eirp_dbm,
                     antenna_config=antenna_config,
                     rx_gain_dbi=rx_gain_dbi,
-                    clutter_tx_db=tx_clutter_loss_db,
+                    clutter_tx_db=tx_clutter_db,
                     clutter_rx_db=rx_clutter_db,
                 )
             )
