@@ -11,8 +11,68 @@ All notable changes to this project will be documented in this file.
 - Added ITU-R P.2108-style site-general clutter loss for built and rural categories
 - Added canopy/clutter height override (CCH_OVERRIDE) parameter for advanced mode
 - Added `tx_cch_m` and `rx_cch_m` to P2P report payload
+- Added `ClutterLossContext` dataclass for bundling advanced clutter model inputs
+- Added per-category model assignment for advanced clutter (`clutter_categories.py`, `clutter_advanced.py`)
+- Added per-pixel TX clutter computation and caching in coverage pipeline for advanced mode
+- Added per-task TX clutter override support in batch and comparison workflows
+
+### Changed
+
+- P2P analysis now passes `ClutterLossContext` to the advanced clutter dispatch, including antenna height, distance, frequency, and polarization for saalos and P.2108
+- Coverage engine caches the TX terminal clutter loss and reuses it across all coverage pixels when using advanced mode
+- Batch and comparison workflows now propagate advanced clutter context and canopy height overrides through their parameter pipelines
+
+### Fixed
+
+- Fix P2P owned clutter grid not closed after sampling, preventing GDAL dataset handle leak
+- Fix TOCTOU race conditions in temp directory creation
+- Fix four stale contract tests that diverged from actual implementation
+- Remove four unused imports flagged by ruff
+- Fix GDAL handle leak in coverage shared clutter grid cleanup
+- Fix NaN dedup logic in coverage summary
+- Add safety net `__del__` handlers in `temp_manager.py` and `nan_utils.py` for resource cleanup
+- Fix macOS multiprocessing compatibility: prevent duplicate QGIS windows and fix Python executable path
+- Fix P2P Fresnel zone, line, and profile layers now use rule-based symbology
+- Fix coverage pool falling back to sequential mode on worker errors instead of propagating exceptions
+- Fix duplicate `compute_terminal_clutter_losses` call in coverage pipeline
+- Fix ElevationGrid edge-registered pixel offset and dead globals cleanup
+- Fix import of `fresnel_profile_analysis` from `fresnel` module instead of `radio`
+- Fix string constant names in comparison `add_clutter_params` instead of `getattr`
+- Fix 14 code review issues: resource leaks, metric consistency, API correctness
+- Comprehensive macOS compatibility fixes for multiprocessing and GUI
 
 ## [1.4.0] - 2026-05-03
+
+### Added
+
+- Batch P2P Analysis algorithm: one-to-many and many-to-one link computation, results ranked by link margin, with combined output layer and optional CSV export
+- Coverage Comparison algorithm: dual-panel coverage analysis producing a delta raster (Panel A – Panel B in dB) with statistics and optional report
+- Interactive P2P profile chart with hover callouts, Fresnel zone toggle, and chart export
+- P2P report and marker outputs (vector layers for TX/RX markers)
+- Coverage report outputs (CSV/JSON/HTML)
+- Reliability outputs: fade-margin classes, formal-or-fallback availability guidance in P2P and coverage reports
+- Live coverage opacity slider dialog (plugin menu action)
+- 3D scene tracking and opening for coverage and contour outputs (disabled on Windows)
+- P2P rule-based symbology for Fresnel zone, line, and profile layer outputs
+- Shared parameter registration (`shared_params.py`), shared DEM grid management (`shared_dem_grid.py`)
+- Shared GeoTIFF writer (`raster_io.py`)
+- macOS multiprocessing compatibility (`macos_compat.py`)
+- NaN-safe array utilities (`nan_utils.py`)
+- Temp directory manager with cleanup safety net (`temp_manager.py`)
+
+### Changed
+
+- Architecture refactor: algorithm files split from monoliths over 1000 lines into focused helper modules (coverage, contour, batch, p2p)
+- Coverage helper code split by responsibility: `coverage_compute.py`, `coverage_palette.py`, `coverage_legend.py`, `coverage_summary.py`, `coverage_reporting.py`, `coverage_analysis_params.py`
+- Contour code split: `contour_generation.py`, `contour_overlay.py`, `contour_pipeline.py`, `contour_smoothing.py`, `contour_symbology.py`
+- P2P code split: `p2p_analysis_params.py`, `p2p_params.py`, `p2p_compute.py`, `p2p_outputs.py`, `p2p_chart.py`, `p2p_chart_format.py`, `p2p_symbology.py`, `p2p_report_display.py`
+- Comparison code split: `comparison_add_params.py`, `comparison_params.py`, `comparison_panel.py`, `comparison_outputs.py`, `comparison_reporting.py`
+- Batch code split: `batch_analysis_params.py`, `batch_params.py`, `batch_outputs.py`, `batch_writer.py`
+- Clutter code split: `clutter.py`, `clutter_advanced.py`, `clutter_categories.py`, `clutter_constants.py`, `clutter_context.py`, `clutter_p2108.py`, `clutter_saalos.py`
+- Constants extracted into `constants.py` and `defaults.py`
+- Base algorithm class extracted into `base_algorithm.py`
+- P2P batch constant registration collapsed into dict comprehension
+- Comparison panel constants auto-generated in `comparison_params.py`
 
 ### Fixed
 
@@ -79,7 +139,6 @@ All notable changes to this project will be documented in this file.
 ## [1.2.0]
 
 - Remove `gdal_calc.py` (dead code with `eval()` usage and deprecated `optparse`).
-- Remove `algorithm_coverage_radius.py` (dead code — was never registered in the provider).
 - Fix critical import bug in `report_payloads.py` — bare `from reliability import` would crash at QGIS runtime.
 - Vectorize `coverage_summary.py` distance computation for significant speedup on large grids.
 - Replace fragile VRT string manipulation in `algorithm_contour.py` with proper XML parsing.

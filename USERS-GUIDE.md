@@ -125,6 +125,8 @@ You should then see:
   - `Point-to-Point Analysis`
   - `Coverage Analysis`
   - `Contour Lines`
+  - `Coverage Comparison`
+  - `Batch P2P Analysis`
   - `Coverage Opacity`
   - `Open 3D View`
 
@@ -182,9 +184,10 @@ Advanced inputs include:
 - Fresnel zone analysis
 - vector outputs for the path, Fresnel geometry, and TX/RX markers
 - clutter loss breakdown (`clutter_tx_db`, `clutter_rx_db`, `total_path_loss_db`) when clutter correction is enabled
+- canopy heights (`tx_cch_m`, `rx_cch_m`) when advanced clutter correction is enabled
 - antenna gain adjustment in the link budget when a directional antenna preset is used
 - optional `CSV`, `JSON`, and `HTML` reports
-- optional profile chart
+- optional profile chart with hover callouts, Fresnel toggle, and export
 
 ### Basic Steps
 
@@ -221,6 +224,17 @@ Interpretation:
 
 - `formal_p530` means the plugin judged the case suitable for the formal availability path
 - `fallback_margin` means the plugin used the margin-based fallback summary instead
+
+### Profile Chart
+
+Point-to-point analysis can produce an interactive profile chart showing:
+
+- terrain profile with earth curvature
+- Fresnel zone outline (first Fresnel zone)
+- LOS line between TX and RX
+- hover callouts for terrain elevation and Fresnel clearance
+- toggle buttons for Fresnel zone, LOS, and profile line visibility
+- chart export to PNG/SVG
 
 ### Good Defaults for New Users
 
@@ -392,6 +406,55 @@ Transparent or faint areas usually indicate very weak or no service, depending o
 
 The heatmap should track the same north-up orientation as the basemap and NoWires DEM. If a raster appears offset or upside down, make sure you are using a current plugin build and remove any older copy of the plugin before reinstalling.
 
+## Basic Workflow: Coverage Comparison
+
+Use this tool to compare two coverage configurations side-by-side and see where one provides stronger or weaker signal than the other.
+
+### What It Produces
+
+- A delta raster showing the difference in path loss between Panel A and Panel B (positive values mean Panel A has higher loss)
+- Dual-panel statistics with min, max, mean, and standard deviation
+- Optional CSV, JSON, and HTML reports
+
+### Basic Steps
+
+1. Open `Coverage Comparison` from the Processing Toolbox or the NoWires menu.
+2. Configure Panel A parameters (TX point, frequency, power, heights, etc.).
+3. Configure Panel B parameters (same TX point, potentially different radio settings).
+4. Run the tool.
+5. Review the delta raster and summary statistics.
+
+### Interpreting the Delta Raster
+
+- **Red/warm colours**: Panel A has higher path loss (Panel B is better in that area)
+- **Blue/cool colours**: Panel A has lower path loss (Panel A is better in that area)
+- **Near-zero values**: Both panels produce similar results
+
+## Basic Workflow: Batch P2P Analysis
+
+Use this tool to compute multiple point-to-point links in one run.
+
+### Modes
+
+- **One-to-Many**: A single TX point is paired with each RX point from a vector layer.
+- **Many-to-One**: Each TX point from a vector layer is paired with a single RX point.
+
+### What It Produces
+
+- A combined vector layer with all link results ranked by link margin
+- Link margin and path loss for each computed link
+- Optional CSV and JSON reports
+
+### Basic Steps
+
+1. Open `Batch P2P Analysis` from the Processing Toolbox or the NoWires menu.
+2. Select the mode (one-to-many or many-to-one).
+3. Specify the fixed endpoint and the vector layer of opposite-end points.
+4. Enter radio parameters (frequency, heights, power, gains, etc.).
+5. Optionally configure antenna and clutter settings.
+6. Run the tool.
+7. Review the ranked results layer and optional report.
+
 ## Basic Workflow: Contour Lines
 
 Use this tool to generate contours and an optional hillshade/elevation overlay from downloaded Copernicus GLO-30 DEM.
@@ -504,7 +567,7 @@ When reporting a problem, include:
 - operating system
 - QGIS version
 - plugin version
-- which tool you ran
+- which tool you ran (P2P, Coverage, Coverage Comparison, Batch P2P, Contour Lines, etc.)
 - the parameters you used
 - the exact error message from the Processing log
 

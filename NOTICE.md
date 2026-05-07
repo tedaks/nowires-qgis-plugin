@@ -15,13 +15,15 @@ The following files are derived from or inspired by the nowires project (adapted
 
 | Plugin file | Original source |
 |---|---|
-| `algorithm_p2p.py` | `apps/api/app/p2p.py` |
 | `algorithm_coverage.py` | `apps/api/app/coverage.py`, `apps/api/app/coverage_render.py` |
 | `algorithm_coverage_comparison.py` | `apps/api/app/coverage.py`, `apps/api/app/coverage_render.py` |
+| `algorithm_p2p.py` | `apps/api/app/p2p.py` |
 
 | `coverage_engine.py` | `apps/api/app/coverage_workers.py`, `apps/api/app/coverage_render.py` |
 | `radio.py` (ITM bridge, Fresnel, signal levels) | `apps/api/app/itm_bridge.py`, `apps/api/app/math_kernels.py`, `apps/api/app/signal_levels.py` |
 | `antenna.py` | `apps/api/app/antenna.py` |
+| `clutter.py`, `clutter_advanced.py`, `clutter_categories.py`, `clutter_constants.py`, `clutter_context.py`, `clutter_p2108.py` | `apps/api/app/clutter.py` |
+| `clutter_saalos.py` | clutterloss-itm Rust crate (see THIRD_PARTY_NOTICES.md) |
 | `elevation.py` (terrain utilities, ElevationGrid) | `apps/api/app/elevation_grid.py`, `apps/api/app/terrain.py` |
 | `coverage_palette.py` (signal level palette) | `apps/api/app/signal_levels.py`, `apps/api/app/coverage_render.py` |
 
@@ -110,7 +112,18 @@ The Irregular Terrain Model was originally developed by:
 
 ---
 
-## 6. Local Modifications
+## 6. saalos / clutterloss-itm — Vegetation Clutter Loss
+
+**Source:** <https://github.com/tedaks/clutterloss-itm> (Rust crate v0.1.0)  
+**Original source:** ITWOM 3.0 ClutterLoss by Sid Shumate (Givens & Bell, Inc.)  
+**License:** MIT License  
+**Copyright:** © 2026 Bortre Tenamo (Python port), © 2026 Bortre Tenamo (Rust crate)
+
+`clutter_saalos.py` is a Python port of the saalos vegetation clutter loss algorithm from the MIT-licensed `clutterloss-itm` Rust crate. ITWOM is a derivative of the public-domain Longley-Rice ITM model. See `THIRD_PARTY_NOTICES.md` for the full MIT license text.
+
+---
+
+## 7. Local Modifications
 
 - Files adapted from `nowires` retain the original MIT attribution in this notice and are redistributed as part of this GPLv3-or-later plugin.
 - Files adapted from `ContourLines` carry preserved upstream attribution where practical and are redistributed as part of this GPLv3-or-later plugin.
