@@ -43,12 +43,20 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
 
 - [radio.py](radio.py)
   ITM bridge, Fresnel analysis, signal-level definitions
+- [fresnel.py](fresnel.py)
+  Fresnel zone and LOS analysis
 - [coverage_engine.py](coverage_engine.py)
   Coverage raster computation
 - [coverage_compute.py](coverage_compute.py)
   Shared coverage propagation helpers
-- [coverage_colors.py](coverage_colors.py)
-  Coverage color-application helpers
+- [coverage_analysis_params.py](coverage_analysis_params.py)
+  Coverage algorithm parameter registration
+- [coverage_params.py](coverage_params.py)
+  Coverage parameter definitions and defaults
+- [coverage_pool.py](coverage_pool.py)
+  Coverage multiprocessing pool and shared-memory management
+- [coverage_tasks.py](coverage_tasks.py)
+  Per-pixel coverage task definitions
 - [coverage_summary.py](coverage_summary.py)
   Raster-derived usable-distance metrics
 - [coverage_palette.py](coverage_palette.py)
@@ -57,12 +65,16 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   Coverage legend support in QGIS
 - [coverage_opacity.py](coverage_opacity.py)
   Live opacity adjustment dialog for the latest coverage layer
+- [coverage_reporting.py](coverage_reporting.py)
+  Coverage report output helpers
 - [reliability.py](reliability.py)
   Formal-or-fallback availability and reliability helpers
 - [report_export.py](report_export.py)
   Shared CSV, JSON, and HTML report writers
 - [report_payloads.py](report_payloads.py)
   Pure-Python payload builders and P2P marker helpers
+- [report_markers.py](report_markers.py)
+  TX/RX marker output helpers
 - [elevation.py](elevation.py)
   DEM sampling, terrain profiles, geographic helpers
 - [dem_downloader.py](dem_downloader.py)
@@ -70,13 +82,93 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
 - [antenna.py](antenna.py)
   Directional antenna gain adjustment, presets, pattern files, and vertical downtilt
 - [clutter.py](clutter.py)
-  Terminal clutter correction helpers
+  Terminal clutter correction dispatch and helpers
+- [clutter_advanced.py](clutter_advanced.py)
+  Advanced clutter mode dispatcher (saalos + P.2108)
+- [clutter_categories.py](clutter_categories.py)
+  Clutter category definitions and WorldCover class mapping
+- [clutter_constants.py](clutter_constants.py)
+  Shared clutter constants (simple loss table, limits)
+- [clutter_context.py](clutter_context.py)
+  ClutterLossContext dataclass
+- [clutter_p2108.py](clutter_p2108.py)
+  ITU-R P.2108 site-general clutter loss (scalar + vector)
+- [clutter_saalos.py](clutter_saalos.py)
+  Saalos vegetation clutter loss (Python port from Rust)
 - [worldcover_downloader.py](worldcover_downloader.py)
   ESA WorldCover 2020 v100 tile download, caching, and clip/merge
 - [overlay_raster.py](overlay_raster.py)
   Overlay raster sizing helpers
 - [three_d.py](three_d.py)
   3D layer tracking and scene-opening helpers
+- [base_algorithm.py](base_algorithm.py)
+  Shared base class for NoWires Processing algorithms
+- [constants.py](constants.py)
+  Shared numerical constants
+- [defaults.py](defaults.py)
+  Default parameter values
+- [shared_params.py](shared_params.py)
+  Shared parameter registration helpers
+- [shared_dem_grid.py](shared_dem_grid.py)
+  Shared DEM grid download and cache management
+- [raster_io.py](raster_io.py)
+  Shared GeoTIFF writer
+- [processing_utils.py](processing_utils.py)
+  QGIS Processing utility helpers
+- [geo_bounds.py](geo_bounds.py)
+  Geographic bounds and padding helpers
+- [nan_utils.py](nan_utils.py)
+  NaN-safe array utilities
+- [temp_manager.py](temp_manager.py)
+  Temporary directory management with cleanup
+- [macos_compat.py](macos_compat.py)
+  macOS multiprocessing compatibility guards
+- [tile_download_base.py](tile_download_base.py)
+  Shared tile-downloader base class with retry and fsync
+- [p2p_compute.py](p2p_compute.py)
+  P2P ITM and link-budget computation
+- [p2p_params.py](p2p_params.py)
+  P2P parameter definitions and defaults
+- [p2p_analysis_params.py](p2p_analysis_params.py)
+  P2P algorithm parameter registration
+- [p2p_outputs.py](p2p_outputs.py)
+  P2P vector output helpers
+- [p2p_chart.py](p2p_chart.py)
+  Interactive profile chart with hover, callouts, and export
+- [p2p_chart_format.py](p2p_chart_format.py)
+  Chart axis and label formatting
+- [p2p_symbology.py](p2p_symbology.py)
+  P2P vector layer symbology
+- [p2p_report_display.py](p2p_report_display.py)
+  P2P report display in QGIS
+- [batch_analysis_params.py](batch_analysis_params.py)
+  Batch algorithm parameter registration
+- [batch_params.py](batch_params.py)
+  Batch parameter definitions and defaults
+- [batch_outputs.py](batch_outputs.py)
+  Batch output helpers
+- [batch_writer.py](batch_writer.py)
+  Batch CSV/layer writer
+- [comparison_add_params.py](comparison_add_params.py)
+  Comparison algorithm parameter registration
+- [comparison_params.py](comparison_params.py)
+  Comparison parameter definitions and defaults
+- [comparison_panel.py](comparison_panel.py)
+  Single-panel comparison computation
+- [comparison_outputs.py](comparison_outputs.py)
+  Comparison output helpers (vector + raster)
+- [comparison_reporting.py](comparison_reporting.py)
+  Comparison report output helpers
+- [contour_generation.py](contour_generation.py)
+  Contour line generation core
+- [contour_overlay.py](contour_overlay.py)
+  Hillshade/elevation overlay helpers
+- [contour_pipeline.py](contour_pipeline.py)
+  Contour processing pipeline
+- [contour_smoothing.py](contour_smoothing.py)
+  VRT Gaussian smoothing for contour DEM
+- [contour_symbology.py](contour_symbology.py)
+  Rule-based contour symbology
 
 ### Bundled Third-Party Engine
 
@@ -98,9 +190,9 @@ The NoWires provider currently exposes:
 
 - `p2p_analysis`
 - `coverage_analysis`
+- `coverage_comparison`
 - `contour_lines`
-
-The older `coverage radius sweep` workflow remains on disk in `algorithm_coverage_radius.py` but is no longer registered for normal plugin use.
+- `batch_p2p_analysis`
 
 ## Data Sources
 
@@ -121,12 +213,22 @@ NoWires uses Copernicus GLO-30 DEM tiles hosted on AWS Open Data.
 
 ## Menu Actions Outside Processing
 
-In addition to Processing algorithms, the plugin exposes two post-run helper actions from the `NoWires` menu:
+In addition to Processing algorithms, the plugin exposes post-run helper actions from the `NoWires` menu:
 
+- `Point-to-Point Analysis`
+  Launches the P2P algorithm dialog
+- `Coverage Analysis`
+  Launches the coverage algorithm dialog
+- `Contour Lines`
+  Launches the contour algorithm dialog
 - `Coverage Opacity`
   Opens a non-modal slider dialog for the latest tracked coverage layer
 - `Open 3D View`
   Opens a QGIS 3D scene from the latest tracked NoWires DEM, coverage, and contour layers when supported by the runtime platform
+- `Coverage Comparison`
+  Launches the coverage comparison algorithm dialog
+- `Batch P2P Analysis`
+  Launches the batch P2P algorithm dialog
 
 ## Point-to-Point Analysis
 
@@ -153,6 +255,7 @@ Point-to-point analysis now produces:
 - profile line output
 - Fresnel zone output
 - TX/RX marker output
+- optional interactive profile chart (hover callouts, Fresnel toggle, export)
 - optional `CSV`, `JSON`, and `HTML` reports
 
 Point-to-point reports carry reliability and clutter fields:
@@ -499,14 +602,30 @@ Raster positioning details:
 
 ### Coverage Helper Split
 
-The coverage support code is now split by responsibility:
+The coverage support code is split by responsibility:
 
 - `coverage_compute.py`
   Hosts the shared propagation-side helper used by coverage calculations
-- `coverage_colors.py`
-  Hosts coverage color-application helpers
+- `coverage_palette.py`
+  Heatmap stop definitions
 - `coverage_engine.py`
   Owns the grid walk, raster assembly, multiprocessing decisions, and integration logic
+- `coverage_analysis_params.py`
+  Coverage algorithm parameter registration
+- `coverage_params.py`
+  Coverage parameter definitions and defaults
+- `coverage_pool.py`
+  Coverage multiprocessing pool and shared-memory management
+- `coverage_tasks.py`
+  Per-pixel coverage task definitions
+- `coverage_summary.py`
+  Raster-derived usable-distance metrics
+- `coverage_legend.py`
+  Coverage legend support in QGIS
+- `coverage_opacity.py`
+  Live opacity adjustment dialog
+- `coverage_reporting.py`
+  Coverage report output helpers
 
 Important constants:
 
@@ -570,6 +689,62 @@ This benchmark is intended for local performance comparison and regression spott
 - average usable distance
 
 These metrics are based on raster cells at or above `RX sensitivity`.
+
+## Coverage Comparison
+
+### Purpose
+
+`algorithm_coverage_comparison.py` runs two coverage configurations side-by-side and produces a delta raster showing the path-loss difference (Panel A minus Panel B) in dB.
+
+### Comparison Flow
+
+1. Read shared DEM and TX point from Panel A.
+2. Run Panel A coverage with Panel A parameters.
+3. Run Panel B coverage with Panel B parameters (same DEM, potentially different frequency, power, heights, etc.).
+4. Compute a pixel-wise delta raster: `delta = loss_A - loss_B` (positive values mean Panel A has higher loss).
+5. Apply diverging red–blue symbology to the delta raster.
+6. Add layers and write optional reports.
+
+### Comparison Parameters
+
+All coverage parameters are available for each panel, plus:
+- Panel A and Panel B have independent radio and antenna settings.
+- A shared TX point and DEM are used for both panels.
+
+### Comparison Outputs
+
+- Delta raster (Panel A – Panel B path loss in dB)
+- Dual-panel statistics report (CSV/JSON/HTML)
+- Individual panel rasters are not loaded; only the delta and summary are shown
+
+## Batch P2P Analysis
+
+### Purpose
+
+`algorithm_batch.py` computes multiple P2P links in one run, supporting one-to-many (single TX, multiple RX) and many-to-one (single RX, multiple TX) modes.
+
+### Batch Flow
+
+1. Read the fixed endpoint (TX or RX) and the set of opposite endpoints.
+2. Download or reuse DEM covering all link paths.
+3. Compute ITM path loss and link budget for each link.
+4. Rank results by link margin (descending).
+5. Write a combined results vector layer and optional CSV/JSON report.
+
+### Batch Parameters
+
+- Mode: one-to-many or many-to-one
+- Fixed endpoint point
+- Set of opposite-end points (vector layer)
+- Standard P2P radio parameters (frequency, heights, climate, variability, power, gains, etc.)
+- Optional antenna and clutter settings
+- Output format selection
+
+### Batch Outputs
+
+- Combined vector layer with all link results
+- Ranked link table (by margin)
+- Optional CSV and JSON reports
 
 ## Contour Lines
 
@@ -720,7 +895,8 @@ A `postProcessAlgorithm` override in `base_algorithm.py` reorders raster layers 
 - Coverage performance degrades as grid size and analysis distance grow.
 - Coverage multiprocessing is intentionally disabled on Windows.
 - Plugin-launched 3D canvas creation is disabled on Windows because it caused native QGIS crashes in this workflow.
-- The coverage radius-sweep implementation has been removed.
+- Batch P2P analysis currently uses the same DEM for all links within a run; very spread-out point sets may require padding the DEM extent.
+- Coverage comparison requires both panels to share the same DEM and grid extent.
 - DEM access depends on external network availability.
 - The repository test suite does not substitute for in-QGIS manual validation.
 
