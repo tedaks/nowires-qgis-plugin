@@ -28,6 +28,7 @@ attribution details.
 """
 
 SIGNAL_LEVELS = [
+    (-30.0, (0, 70, 20, 220), "Very Strong"),
     (-60.0, (0, 110, 40, 210), "Excellent"),
     (-75.0, (0, 180, 80, 200), "Good"),
     (-85.0, (180, 220, 40, 195), "Fair"),
@@ -60,6 +61,8 @@ def apply_coverage_style(layer):
     color_ramp_shader = QgsColorRampShader()
     color_ramp_shader.setColorRampType(QgsColorRampShader.Discrete)
     color_ramp_shader.setColorRampItemList(entries)
+    color_ramp_shader.setMinimumValue(-130.0)
+    color_ramp_shader.setMaximumValue(0.0)
     shader = QgsRasterShader()
     shader.setRasterShaderFunction(color_ramp_shader)
     renderer = QgsSingleBandPseudoColorRenderer(provider, 1, shader)
