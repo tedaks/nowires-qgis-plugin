@@ -402,7 +402,7 @@ The tool reports:
 - percent of pixels above sensitivity
 - min, max, and mean received signal
 
-Transparent or faint areas usually indicate very weak or no service, depending on the rendered signal level and raster NoData behavior.
+Transparent or faint areas usually indicate very weak or no service, depending on the rendered signal level and raster NoData behavior. Areas near the transmitter with the strongest signals appear as the darkest green (Very Strong, > -30 dBm).
 
 The heatmap should track the same north-up orientation as the basemap and NoWires DEM. If a raster appears offset or upside down, make sure you are using a current plugin build and remove any older copy of the plugin before reinstalling.
 

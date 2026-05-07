@@ -662,10 +662,29 @@ Implementation detail:
 
 The coverage raster uses:
 
-- an interpolated `QgsColorRampShader`
+- a `QgsColorRampShader` with `Discrete` color ramp type
 - palette stops from `coverage_palette.py`
+- a ceiling entry at `+100 dBm` (same color as Very Strong) so the `Discrete` shader covers all values up to +100 dBm
 - layer opacity driven by a custom Processing slider wrapper
 - a live plugin menu action for post-run coverage opacity adjustment
+
+Signal level stops (Discrete mode — each entry is the upper boundary of its range):
+
+| Range (dBm) | Label | Color | Alpha |
+|---|---|---|---|
+| > +100 | outside ramp | — | 0 (transparent) |
+| -30 to +100 | Very Strong | dark green | 220 |
+| -60 to -30 | Excellent | green | 210 |
+| -75 to -60 | Good | light green | 200 |
+| -85 to -75 | Fair | yellow-green | 195 |
+| -95 to -85 | Marginal | yellow-orange | 190 |
+| -105 to -95 | Weak | orange | 185 |
+| -120 to -105 | No service (visible band) | dark red | 0 |
+| ≤ -120 | No service (transparent) | dark red | 0 |
+
+The "No service" stops at and below -120 dBm have alpha=0 by design so that cells with no usable signal reveal the base map.
+
+The +100 dBm ceiling entry ensures that values above -30 dBm (including strong near-TX signals) are rendered with the Very Strong color instead of appearing transparent. In `QgsColorRampShader.Discrete` mode, values above the highest user-visible stop have no assigned color unless a ceiling entry extends the range.
 
 The visual layer opacity is controlled independently from the per-stop alpha values in the heatmap palette.
 
