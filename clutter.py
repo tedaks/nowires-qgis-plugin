@@ -29,7 +29,7 @@ import numpy as np
 from osgeo import gdal
 
 from .worldcover_downloader import ensure_worldcover_for_area
-from .clutter_advanced import (
+from .clutter_advanced import (  # noqa: F401
     compute_terminal_clutter_loss, _category_height_m,
     _resolve_category_advanced, _legacy_to_advanced_override,
     compute_terminal_clutter_losses, _resolve_category,

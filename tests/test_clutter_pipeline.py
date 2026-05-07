@@ -6,7 +6,6 @@
 import time
 
 import numpy as np
-import pytest
 
 from clutter import (
     LandCoverGrid,
