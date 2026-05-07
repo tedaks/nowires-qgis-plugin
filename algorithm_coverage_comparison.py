@@ -46,7 +46,7 @@ from .comparison_add_params import add_panel_params, add_comparison_params
 from .comparison_outputs import (
     write_coverage_raster, write_delta_raster, apply_delta_style,
     write_comparison_html_report, compute_delta_summary)
-from .clutter import LandCoverGrid, ensure_clutter_grid_for_area
+from .clutter import ensure_clutter_grid_for_area
 from .comparison_panel import run_panel_coverage
 from .comparison_reporting import build_panel_info, build_delta_info, report_comparison_results
 from .temp_manager import TempDirManager

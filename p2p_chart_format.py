@@ -27,7 +27,6 @@ Extracted from p2p_chart.py for modularity.
 
 import numpy as np
 
-from .defaults import FRESNEL_60PCT_FACTOR
 
 __all__ = ["build_obstruction_data", "build_chart_status_text"]
 
