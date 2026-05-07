@@ -23,6 +23,7 @@
 import logging
 import multiprocessing
 import os
+import warnings
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
@@ -137,7 +138,6 @@ def compute_coverage(
         horizontal_pattern_path=antenna_horizontal_pattern_path,
         vertical_pattern_path=antenna_vertical_pattern_path,
     )
-
     clutter_context = None
     if clutter_enabled:
         clutter_context = ClutterLossContext(
@@ -159,7 +159,6 @@ def compute_coverage(
             context=clutter_context,
         )
         tx_clutter_loss = tx_clutter.tx_loss_db
-
     tasks = build_coverage_tasks(
         tx_lat,
         tx_lon,
@@ -188,7 +187,6 @@ def compute_coverage(
         lats, lons, clutter_context=clutter_context,
         tx_clutter_override=tx_clutter_override,
     )
-
     if not tasks:
         logger.warning("No coverage pixels within the specified radius.")
         return CoverageResult(
@@ -197,7 +195,6 @@ def compute_coverage(
             min_lon=min_lon, max_lon=max_lon,
             itm_loss_grid=itm_loss_grid, clutter_loss_grid=clutter_loss_grid,
         )
-
     grid_meta = elev_grid.grid_meta_dict()
     grid_meta["tx_lat"] = tx_lat
     grid_meta["tx_lon"] = tx_lon
@@ -230,27 +227,30 @@ def compute_coverage(
             shared_grid = _make_shared_grid(grid_data)
             cancel_event = multiprocessing.Event()
             n_workers = max(1, min(os.cpu_count() or 1, _MAX_WORKERS))
-            with ProcessPoolExecutor(max_workers=n_workers,
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="resource_tracker", category=UserWarning)
+                with ProcessPoolExecutor(
+                    max_workers=n_workers,
                     initializer=_init_cov_pool,
                     initargs=(shared_grid.name, grid_data.shape, str(grid_data.dtype), grid_meta),
-            ) as pool:
-                shared_grid.shm.close()
-                for chunk_idx, batch_results in enumerate(
-                    pool.map(
-                        _itm_worker_batch,
-                        [(c, cancel_event) for c in chunks],
-                        chunksize=1,
-                    )
-                ):
-                    if feedback and feedback.isCanceled():
-                        cancelled = True
-                        cancel_event.set()
-                        break
-                    pixels_failed += _apply_batch_results(
-                        batch_results, loss_grid, prx_grid, itm_loss_grid, clutter_loss_grid)
-                    pixels_done += len(batch_results)
-                    if feedback and chunk_idx % 50 == 0:
-                        feedback.setProgress(int(pixels_done / len(tasks) * 80))
+                ) as pool:
+                    shared_grid.shm.close()
+                    for chunk_idx, batch_results in enumerate(
+                        pool.map(
+                            _itm_worker_batch,
+                            [(c, cancel_event) for c in chunks],
+                            chunksize=1,
+                        )
+                    ):
+                        if feedback and feedback.isCanceled():
+                            cancelled = True
+                            cancel_event.set()
+                            break
+                        pixels_failed += _apply_batch_results(
+                            batch_results, loss_grid, prx_grid, itm_loss_grid, clutter_loss_grid)
+                        pixels_done += len(batch_results)
+                        if feedback and chunk_idx % 50 == 0:
+                            feedback.setProgress(int(pixels_done / len(tasks) * 80))
         except Exception as exc:
             logger.warning(
                 "Multiprocessing failed (%s: %s), falling back to sequential",
