@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-05-07
+
+### Added
+
+- Added "Advanced clutter correction" mode: saalos vegetation model, ITU-R P.2108 for built/rural categories
+- Added saalos vegetation clutter model (Python port of ITWOM 3.0 ClutterLoss by Sid Shumate, via the MIT-licensed clutterloss-itm Rust crate). See THIRD_PARTY_NOTICES.md.
+- Added ITU-R P.2108-style site-general clutter loss for built and rural categories
+- Added canopy/clutter height override (CCH_OVERRIDE) parameter for advanced mode
+- Added `tx_cch_m` and `rx_cch_m` to P2P report payload
+
 ## [1.4.0] - 2026-05-03
 
 ### Fixed
