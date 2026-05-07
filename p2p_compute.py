@@ -65,14 +65,11 @@ def _interpolate_nan_elevations(elevations):
     """Replace NaN values with linearly interpolated neighbours.
 
     Falls back to nearest valid value at edges. Returns unchanged if all NaN.
+
+    Delegates to the shared nan_utils module to avoid code duplication.
     """
-    arr = np.asarray(elevations, dtype=np.float64)
-    nan_mask = np.isnan(arr)
-    if not nan_mask.any() or not (~nan_mask).any():
-        return [float(x) for x in arr]
-    valid_idx = np.where(~nan_mask)[0]
-    arr[nan_mask] = np.interp(np.where(nan_mask)[0], valid_idx, arr[valid_idx])
-    return [float(x) for x in arr]
+    from .nan_utils import interpolate_nan_elevations
+    return interpolate_nan_elevations(elevations)
 
 
 def _write_p2p_output_layers(srs, paths, tx_lat, tx_lon, rx_lat, rx_lon,

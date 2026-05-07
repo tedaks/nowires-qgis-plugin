@@ -165,6 +165,10 @@ class NoWiresPlugin:
         for action in self._toolbar_actions:
             self.iface.addToolBarIcon(action)
 
+        QTimer.singleShot(5000, self._warn_stale_temp_dirs)
+
+    def _warn_stale_temp_dirs(self):
+        """Log a warning about stale temporary directories (deferred from initGui)."""
         stale = _stale_temp_dir_count()
         if stale > 0:
             from qgis.core import QgsMessageLog

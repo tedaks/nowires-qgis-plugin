@@ -46,8 +46,13 @@ from .comparison_params import GRID_SIZE_PRESETS
 __all__ = ["run_panel_coverage"]
 
 
-def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback, elev, south, north, west, east):
-    """Run compute_coverage for one panel and return the result tuple."""
+def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback, elev, south, north, west, east, shared_clutter_grid=None):
+    """Run compute_coverage for one panel and return the result tuple.
+
+    If *shared_clutter_grid* is provided, it is used instead of downloading
+    a new clutter grid for this panel. This ensures both panels in a
+    comparison use identical clutter data.
+    """
     tx_point = algorithm_instance.parameterAsPoint(
         parameters,
         f"{prefix}_POINT",
@@ -89,7 +94,9 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
     v_pattern = algorithm_instance.parameterAsFile(parameters, f"{prefix}_V_PATTERN", context)
     clutter_enabled = algorithm_instance.parameterAsEnum(parameters, f"{prefix}_CLUTTER_MODEL", context) == 1
     clutter_raster_path = algorithm_instance.parameterAsFile(parameters, f"{prefix}_CLUTTER_RASTER", context)
-    if clutter_raster_path:
+    if shared_clutter_grid is not None:
+        clutter_grid = shared_clutter_grid
+    elif clutter_raster_path:
         clutter_grid = LandCoverGrid.from_raster(clutter_raster_path)
     else:
         clutter_grid = None
@@ -129,6 +136,11 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
             west=west,
             east=east,
             feedback=feedback,
+        )
+    if clutter_grid is None and clutter_enabled:
+        raise ValueError(
+            "{}: Failed to load clutter grid. Coverage comparison requires "
+            "identical clutter data for both panels.".format(prefix)
         )
 
     clutter_source = clutter_source_label(
@@ -190,7 +202,7 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
             feedback=feedback,
         )
     finally:
-        if clutter_grid is not None:
+        if clutter_grid is not None and shared_clutter_grid is None:
             clutter_grid.close()
 
     return {
