@@ -1,10 +1,7 @@
 from .clutter_categories import (
-    ADVANCED_CLUTTER_CATEGORIES,
     CLUTTER_CATEGORY_PARAMS,
     worldcover_class_to_advanced_category,
 )
-from .clutter_constants import MAX_CLUTTER_LOSS
-from .clutter_context import ClutterLossContext
 from .clutter_p2108 import clutter_loss_p2108
 from .clutter_saalos import clutter_loss_saalos
 
