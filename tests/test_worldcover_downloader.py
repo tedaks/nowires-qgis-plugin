@@ -72,6 +72,194 @@ def test_worldcover_cache_directory_is_per_user(tmp_path, monkeypatch):
     assert get_worldcover_dir() == str(tmp_path / "NoWires-alice" / "worldcover")
 
 
+def test_worldcover_cache_directory_sanitizes_username(tmp_path, monkeypatch):
+    import worldcover_downloader as wd
+
+    monkeypatch.setattr(wd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        wd,
+        "getpass",
+        SimpleNamespace(getuser=lambda: "ali ce:bad/name"),
+        raising=False,
+    )
+
+    assert get_worldcover_dir() == str(
+        tmp_path / "NoWires-ali_ce_bad_name" / "worldcover"
+    )
+
+
+def test_worldcover_cache_directory_uses_default_username_when_lookup_fails(
+    tmp_path, monkeypatch
+):
+    import worldcover_downloader as wd
+
+    def getuser_raises():
+        raise KeyError("no user")
+
+    monkeypatch.setattr(wd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        wd,
+        "getpass",
+        SimpleNamespace(getuser=getuser_raises),
+        raising=False,
+    )
+
+    assert get_worldcover_dir() == str(tmp_path / "NoWires-nowires" / "worldcover")
+
+
+def test_worldcover_cache_directory_replaces_existing_child_file(tmp_path, monkeypatch):
+    import worldcover_downloader as wd
+
+    target = tmp_path / "NoWires-alice" / "worldcover"
+    target.parent.mkdir()
+    target.write_text("not a directory", encoding="utf-8")
+
+    monkeypatch.setattr(wd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        wd,
+        "getpass",
+        SimpleNamespace(getuser=lambda: "alice"),
+        raising=False,
+    )
+
+    assert get_worldcover_dir() == str(target)
+    assert target.is_dir()
+
+
+def test_worldcover_cache_directory_validates_existing_dirs_with_nofollow_flags(
+    tmp_path, monkeypatch
+):
+    import worldcover_downloader as wd
+
+    parent = tmp_path / "NoWires-alice"
+    target = parent / "worldcover"
+    target.mkdir(parents=True)
+    calls = []
+
+    monkeypatch.setattr(wd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        wd,
+        "getpass",
+        SimpleNamespace(getuser=lambda: "alice"),
+        raising=False,
+    )
+    monkeypatch.setattr(wd.os, "O_DIRECTORY", 0x10000, raising=False)
+    monkeypatch.setattr(wd.os, "O_NOFOLLOW", 0x20000, raising=False)
+    monkeypatch.setattr(wd.os, "open", lambda path, flags: calls.append((path, flags)) or 42)
+    monkeypatch.setattr(wd.os, "close", lambda fd: calls.append(("close", fd)))
+
+    assert get_worldcover_dir() == str(target)
+    expected_flags = wd.os.O_RDONLY | wd.os.O_DIRECTORY | wd.os.O_NOFOLLOW
+    assert calls == [
+        (str(parent), expected_flags),
+        ("close", 42),
+        (str(target), expected_flags),
+        ("close", 42),
+    ]
+
+
+def test_worldcover_cache_directory_handles_platforms_without_nofollow_flags(tmp_path, monkeypatch):
+    import worldcover_downloader as wd
+
+    target = tmp_path / "NoWires-alice" / "worldcover"
+    target.mkdir(parents=True)
+
+    monkeypatch.setattr(wd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        wd,
+        "getpass",
+        SimpleNamespace(getuser=lambda: "alice"),
+        raising=False,
+    )
+    monkeypatch.delattr(wd.os, "O_DIRECTORY", raising=False)
+    monkeypatch.delattr(wd.os, "O_NOFOLLOW", raising=False)
+
+    assert get_worldcover_dir() == str(target)
+
+
+def test_worldcover_cache_directory_uses_fallback_parent_when_parent_rename_fails(
+    tmp_path, monkeypatch
+):
+    import worldcover_downloader as wd
+
+    original_parent = tmp_path / "NoWires-alice"
+    original_rename = wd.os.rename
+
+    monkeypatch.setattr(wd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        wd,
+        "getpass",
+        SimpleNamespace(getuser=lambda: "alice"),
+        raising=False,
+    )
+
+    def rename_fails_for_original_parent(src, dst):
+        if dst == str(original_parent):
+            raise OSError("simulated cross-platform rename failure")
+        original_rename(src, dst)
+
+    monkeypatch.setattr(wd.os, "rename", rename_fails_for_original_parent)
+
+    result = get_worldcover_dir()
+
+    assert result != str(original_parent / "worldcover")
+    assert result.endswith("worldcover")
+    assert wd.os.path.isdir(result)
+
+
+def test_worldcover_cache_directory_uses_fallback_child_when_child_rename_fails(
+    tmp_path, monkeypatch
+):
+    import worldcover_downloader as wd
+
+    parent = tmp_path / "NoWires-alice"
+    target = parent / "worldcover"
+    original_rename = wd.os.rename
+
+    monkeypatch.setattr(wd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        wd,
+        "getpass",
+        SimpleNamespace(getuser=lambda: "alice"),
+        raising=False,
+    )
+
+    def rename_fails_for_worldcover(src, dst):
+        if dst == str(target):
+            raise OSError("simulated child rename failure")
+        original_rename(src, dst)
+
+    monkeypatch.setattr(wd.os, "rename", rename_fails_for_worldcover)
+
+    result = get_worldcover_dir()
+
+    assert result != str(target)
+    assert result.startswith(str(parent))
+    assert wd.os.path.isdir(result)
+
+
+def test_worldcover_cache_directory_does_not_crash_when_existing_dir_open_fails(
+    tmp_path, monkeypatch
+):
+    import worldcover_downloader as wd
+
+    target = tmp_path / "NoWires-alice" / "worldcover"
+    target.mkdir(parents=True)
+
+    monkeypatch.setattr(wd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        wd,
+        "getpass",
+        SimpleNamespace(getuser=lambda: "alice"),
+        raising=False,
+    )
+    monkeypatch.setattr(wd.os, "open", lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        OSError("simulated directory open failure")
+    ))
+
+    assert get_worldcover_dir() == str(target)
+
+
 def test_download_worldcover_tiles_replaces_corrupt_cache(tmp_path, monkeypatch):
     import worldcover_downloader as wd
 

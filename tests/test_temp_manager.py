@@ -58,6 +58,19 @@ class TestAddFile:
         os.rmdir(persistent)
 
 
+class TestAddDir:
+    def test_add_dir_removes_existing_directory_on_cleanup(self, tmp_path):
+        mgr = TempDirManager()
+        temp_dir = tmp_path / "contourlines"
+        temp_dir.mkdir()
+        (temp_dir / "contourlines.shp").write_text("shape", encoding="utf-8")
+
+        mgr.add_dir(str(temp_dir))
+        mgr.cleanup()
+
+        assert not temp_dir.exists()
+
+
 class TestCleanup:
     def test_cleanup_removes_non_persistent_dirs(self):
         mgr = TempDirManager()

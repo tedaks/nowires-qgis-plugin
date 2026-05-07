@@ -61,6 +61,148 @@ def test_dem_cache_directory_is_per_user(tmp_path, monkeypatch):
     assert dd.get_temp_dir() == str(tmp_path / "NoWires-alice")
 
 
+def test_dem_cache_directory_sanitizes_username(tmp_path, monkeypatch):
+    dd = _import_dem_downloader()
+
+    monkeypatch.setattr(dd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        dd,
+        "getpass",
+        SimpleNamespace(getuser=lambda: "ali ce:bad/name"),
+        raising=False,
+    )
+
+    assert dd.get_temp_dir() == str(tmp_path / "NoWires-ali_ce_bad_name")
+
+
+def test_dem_cache_directory_uses_default_username_when_lookup_fails(
+    tmp_path, monkeypatch
+):
+    dd = _import_dem_downloader()
+
+    def getuser_raises():
+        raise OSError("no user")
+
+    monkeypatch.setattr(dd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        dd,
+        "getpass",
+        SimpleNamespace(getuser=getuser_raises),
+        raising=False,
+    )
+
+    assert dd.get_temp_dir() == str(tmp_path / "NoWires-nowires")
+
+
+def test_dem_cache_directory_replaces_existing_file(tmp_path, monkeypatch):
+    dd = _import_dem_downloader()
+    target = tmp_path / "NoWires-alice"
+    target.write_text("not a directory", encoding="utf-8")
+
+    monkeypatch.setattr(dd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        dd,
+        "getpass",
+        SimpleNamespace(getuser=lambda: "alice"),
+        raising=False,
+    )
+
+    assert dd.get_temp_dir() == str(target)
+    assert target.is_dir()
+
+
+def test_dem_cache_directory_validates_existing_dir_with_nofollow_flags(
+    tmp_path, monkeypatch
+):
+    dd = _import_dem_downloader()
+    target = tmp_path / "NoWires-alice"
+    target.mkdir()
+    calls = []
+
+    monkeypatch.setattr(dd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        dd,
+        "getpass",
+        SimpleNamespace(getuser=lambda: "alice"),
+        raising=False,
+    )
+    monkeypatch.setattr(dd.os, "O_DIRECTORY", 0x10000, raising=False)
+    monkeypatch.setattr(dd.os, "O_NOFOLLOW", 0x20000, raising=False)
+    monkeypatch.setattr(dd.os, "open", lambda path, flags: calls.append((path, flags)) or 42)
+    monkeypatch.setattr(dd.os, "close", lambda fd: calls.append(("close", fd)))
+
+    assert dd.get_temp_dir() == str(target)
+    assert calls == [
+        (str(target), dd.os.O_RDONLY | dd.os.O_DIRECTORY | dd.os.O_NOFOLLOW),
+        ("close", 42),
+    ]
+
+
+def test_dem_cache_directory_handles_platforms_without_nofollow_flags(tmp_path, monkeypatch):
+    dd = _import_dem_downloader()
+    target = tmp_path / "NoWires-alice"
+    target.mkdir()
+
+    monkeypatch.setattr(dd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        dd,
+        "getpass",
+        SimpleNamespace(getuser=lambda: "alice"),
+        raising=False,
+    )
+    monkeypatch.delattr(dd.os, "O_DIRECTORY", raising=False)
+    monkeypatch.delattr(dd.os, "O_NOFOLLOW", raising=False)
+
+    assert dd.get_temp_dir() == str(target)
+
+
+def test_dem_cache_directory_uses_fallback_path_when_rename_fails(
+    tmp_path, monkeypatch
+):
+    dd = _import_dem_downloader()
+    target = tmp_path / "NoWires-alice"
+
+    monkeypatch.setattr(dd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        dd,
+        "getpass",
+        SimpleNamespace(getuser=lambda: "alice"),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        dd.os,
+        "rename",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("rename failed")),
+    )
+
+    result = dd.get_temp_dir()
+
+    assert result != str(target)
+    assert result.startswith(str(tmp_path / "NoWires-"))
+    assert dd.os.path.isdir(result)
+
+
+def test_dem_cache_directory_does_not_crash_when_existing_dir_open_fails(
+    tmp_path, monkeypatch
+):
+    dd = _import_dem_downloader()
+    target = tmp_path / "NoWires-alice"
+    target.mkdir()
+
+    monkeypatch.setattr(dd.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(
+        dd,
+        "getpass",
+        SimpleNamespace(getuser=lambda: "alice"),
+        raising=False,
+    )
+    monkeypatch.setattr(dd.os, "open", lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        OSError("simulated directory open failure")
+    ))
+
+    assert dd.get_temp_dir() == str(target)
+
+
 def test_download_tiles_finalizes_download_with_os_replace(tmp_path, monkeypatch):
     dd = _import_dem_downloader()
     tile_name = "Copernicus_DSM_COG_10_N00_00_E000_00_DEM"
