@@ -32,7 +32,9 @@ from .worldcover_downloader import ensure_worldcover_for_area
 from .clutter_advanced import (
     compute_terminal_clutter_loss, _category_height_m,
     _resolve_category_advanced, _legacy_to_advanced_override,
+    compute_terminal_clutter_losses, _resolve_category,
 )
+from .clutter_categories import worldcover_class_to_advanced_category
 
 logger = logging.getLogger(__name__)
 
@@ -89,11 +91,6 @@ def worldcover_class_to_clutter_category(class_id) -> str:
 
 
 def clutter_loss_db(category, frequency_mhz) -> float:
-    """Return excess clutter loss for a given category.
-
-    Currently frequency-independent. A future version may apply
-    frequency-dependent corrections per ITU-R P.1812.
-    """
     del frequency_mhz
     return CLUTTER_LOSS_DB.get(category, 0.0)
 
@@ -139,6 +136,8 @@ class TerminalClutterLosses:
     rx_loss_db: float
     total_loss_db: float
     source: str
+    tx_cch_m: float = 0.0
+    rx_cch_m: float = 0.0
 
 
 @dataclass(slots=True)
@@ -212,14 +211,16 @@ class LandCoverGrid:
             return None
         return worldcover_class_to_clutter_category(class_id)
 
-    def sample_category_grid(self, lats, lons, rx_override=None):
-        """Vectorized category sampling for a 2D grid of lats/lons.
-
-        Returns a 2D array of clutter loss values in dB, shape (len(lats), len(lons)).
-        """
+    def sample_category_grid(self, lats, lons, rx_override=None, context=None):
+        advanced = context is not None and context.model == "advanced"
         n = len(lats)
         m = len(lons)
         if self.data is None:
+            if advanced:
+                default_cat = "open"
+                if rx_override:
+                    default_cat = _legacy_to_advanced_override(rx_override)
+                return np.full((n, m), default_cat, dtype=object)
             default = _CLUTTER_LOSS_ARRAY[0] if rx_override else 0.0
             return np.full((n, m), default, dtype=np.float64)
         n_rows, n_cols = self.data.shape
@@ -230,7 +231,6 @@ class LandCoverGrid:
         y_idx = np.clip(((self.max_lat - lat_arr) / d_lat).astype(np.int32), 0, n_rows - 1)
         x_idx = np.clip(((lon_arr - self.min_lon) / d_lon).astype(np.int32), 0, n_cols - 1)
         sampled = self.data[y_idx[:, np.newaxis], x_idx[np.newaxis, :]]
-        cat_idx = _WORLDCOVER_TO_CATEGORY[sampled]
         lat_oob = (lat_arr < self.min_lat) | (lat_arr > self.max_lat)
         lon_oob = (lon_arr < self.min_lon) | (lon_arr > self.max_lon)
         out_of_bounds = lat_oob[:, np.newaxis] | lon_oob[np.newaxis, :]
@@ -240,10 +240,21 @@ class LandCoverGrid:
                 out_of_bounds |= np.isnan(sampled.astype(np.float64))
             else:
                 out_of_bounds |= (sampled == nodata_val)
+        if advanced:
+            cats = np.empty(sampled.shape, dtype=object)
+            for i in range(sampled.shape[0]):
+                for j in range(sampled.shape[1]):
+                    if out_of_bounds[i, j]:
+                        cats[i, j] = "open"
+                    else:
+                        cats[i, j] = worldcover_class_to_advanced_category(int(sampled[i, j]))
+            if rx_override:
+                cats[:, :] = _legacy_to_advanced_override(rx_override)
+            return cats
+        cat_idx = _WORLDCOVER_TO_CATEGORY[sampled]
         cat_idx = np.where(out_of_bounds, 0, cat_idx)
         if rx_override:
-            override_idx = _CATEGORY_IDX.get(rx_override, 0)
-            cat_idx[:] = override_idx
+            cat_idx[:] = _CATEGORY_IDX.get(rx_override, 0)
         return _CLUTTER_LOSS_ARRAY[cat_idx]
 
 
@@ -256,46 +267,3 @@ def ensure_clutter_grid_for_area(south, north, west, east, feedback=None) -> Lan
     except RuntimeError:
         logger.warning("Failed to load downloaded WorldCover raster")
         return None
-
-
-def _resolve_category(lat, lon, override, land_cover_grid):
-    if override:
-        return override, "override"
-    if land_cover_grid is not None:
-        category = land_cover_grid.sample_category(lat, lon)
-        if category is not None:
-            return category, land_cover_grid.source
-    return "open", "fallback_open"
-
-
-def compute_terminal_clutter_losses(
-    tx_lat,
-    tx_lon,
-    rx_lat,
-    rx_lon,
-    frequency_mhz,
-    enabled=False,
-    land_cover_grid=None,
-    tx_override=None,
-    rx_override=None,
-) -> TerminalClutterLosses:
-    if not enabled:
-        return TerminalClutterLosses("open", "open", 0.0, 0.0, 0.0, "off")
-
-    tx_category, tx_source = _resolve_category(
-        tx_lat, tx_lon, tx_override, land_cover_grid
-    )
-    rx_category, rx_source = _resolve_category(
-        rx_lat, rx_lon, rx_override, land_cover_grid
-    )
-    tx_loss = clutter_loss_db(tx_category, frequency_mhz)
-    rx_loss = clutter_loss_db(rx_category, frequency_mhz)
-    source = tx_source if tx_source == rx_source else "{},{}".format(tx_source, rx_source)
-    return TerminalClutterLosses(
-        tx_category=tx_category,
-        rx_category=rx_category,
-        tx_loss_db=tx_loss,
-        rx_loss_db=rx_loss,
-        total_loss_db=tx_loss + rx_loss,
-        source=source,
-    )

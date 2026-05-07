@@ -208,3 +208,81 @@ def test_cch_override_applies():
     assert _category_height_m("vegetation", 25.0) == 25.0
     assert _category_height_m("vegetation", None) == 12.0
     assert v_default > 0.0 and v_override > 0.0
+
+
+from clutter import TerminalClutterLosses
+
+
+def test_simple_mode_unchanged_when_context_none():
+    grid = LandCoverGrid(
+        data=np.array([[50, 50], [50, 50]], dtype=np.int16),
+        min_lat=0.0, max_lat=1.0, min_lon=0.0, max_lon=1.0,
+        nodata=None, source="memory",
+    )
+    result = compute_terminal_clutter_losses(
+        tx_lat=0.5, tx_lon=0.5, rx_lat=0.5, rx_lon=0.5,
+        frequency_mhz=1000.0, enabled=True, land_cover_grid=grid,
+    )
+    assert result.tx_category == "urban"
+    assert result.tx_loss_db == 10.0
+    assert result.rx_loss_db == 10.0
+
+
+def test_advanced_mode_uses_dispatcher():
+    grid = LandCoverGrid(
+        data=np.array([[50, 50], [50, 50]], dtype=np.int16),
+        min_lat=0.0, max_lat=1.0, min_lon=0.0, max_lon=1.0,
+        nodata=None, source="memory",
+    )
+    ctx = ClutterLossContext(
+        frequency_mhz=1000.0, distance_m=1000.0,
+        tx_height_m=30.0, rx_height_m=2.0, model="advanced",
+    )
+    result = compute_terminal_clutter_losses(
+        tx_lat=0.5, tx_lon=0.5, rx_lat=0.5, rx_lon=0.5,
+        frequency_mhz=1000.0, enabled=True, land_cover_grid=grid,
+        context=ctx,
+    )
+    assert result.rx_category == "urban"
+    assert 0.0 < result.rx_loss_db < 10.0
+    assert result.rx_cch_m == 15.0
+
+
+def test_advanced_disabled_returns_zero():
+    ctx = ClutterLossContext(
+        frequency_mhz=1000.0, distance_m=1000.0,
+        tx_height_m=30.0, rx_height_m=2.0, model="advanced",
+    )
+    result = compute_terminal_clutter_losses(
+        tx_lat=0.0, tx_lon=0.0, rx_lat=0.0, rx_lon=0.0,
+        frequency_mhz=1000.0, enabled=False, context=ctx,
+    )
+    assert result.total_loss_db == 0.0
+    assert result.tx_cch_m == 0.0
+    assert result.rx_cch_m == 0.0
+
+
+def test_overrides_take_precedence_in_advanced():
+    grid = LandCoverGrid(
+        data=np.array([[50, 50], [50, 50]], dtype=np.int16),
+        min_lat=0.0, max_lat=1.0, min_lon=0.0, max_lon=1.0,
+        nodata=None, source="memory",
+    )
+    ctx = ClutterLossContext(
+        frequency_mhz=1000.0, distance_m=1000.0,
+        tx_height_m=30.0, rx_height_m=2.0, model="advanced",
+    )
+    result = compute_terminal_clutter_losses(
+        tx_lat=0.5, tx_lon=0.5, rx_lat=0.5, rx_lon=0.5,
+        frequency_mhz=1000.0, enabled=True, land_cover_grid=grid,
+        tx_override="open", rx_override=None, context=ctx,
+    )
+    assert result.tx_category == "open"
+    assert result.tx_loss_db == 0.0
+    assert result.rx_category == "urban"
+    assert result.rx_loss_db > 0.0
+
+
+def test_terminal_clutter_losses_dataclass_extension_is_additive():
+    legacy = TerminalClutterLosses("open", "open", 0.0, 0.0, 0.0, "off")
+    assert legacy.tx_cch_m == 0.0 and legacy.rx_cch_m == 0.0
