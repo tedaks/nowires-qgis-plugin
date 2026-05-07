@@ -36,7 +36,7 @@ def build_p2p_report_payload(
     fresnel_1_violated, fresnel_60_violated, max_fresnel_radius_m,
     total_path_loss_db=None, clutter_tx_db=0.0, clutter_rx_db=0.0,
     clutter_source="off", tx_antenna_preset="omni", rx_antenna_preset="omni",
-    antenna_gain_adjustment_db=0.0,
+    antenna_gain_adjustment_db=0.0, tx_cch_m=0.0, rx_cch_m=0.0,
 ):
     """Build the structured P2P report payload."""
     reliability = summarize_reliability(
@@ -80,6 +80,7 @@ def build_p2p_report_payload(
             "fresnel_1_violated": bool(fresnel_1_violated),
             "fresnel_60_violated": bool(fresnel_60_violated),
             "max_fresnel_radius_m": max_fresnel_radius_m,
+            "tx_cch_m": tx_cch_m, "rx_cch_m": rx_cch_m,
         },
         "status": {
             "summary": "VIABLE" if margin_db >= 0 else "NOT VIABLE",

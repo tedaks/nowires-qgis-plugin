@@ -168,10 +168,12 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
 
                 # Load clutter grid once and share between panels to ensure consistency.
                 shared_clutter_grid = None
-                panel_a_clutter_enabled = self.parameterAsEnum(
-                    parameters, self.PANEL_A_CLUTTER_MODEL, context) == 1
-                panel_b_clutter_enabled = self.parameterAsEnum(
-                    parameters, self.PANEL_B_CLUTTER_MODEL, context) == 1
+                panel_a_clutter_model_idx = self.parameterAsEnum(
+                    parameters, self.PANEL_A_CLUTTER_MODEL, context)
+                panel_b_clutter_model_idx = self.parameterAsEnum(
+                    parameters, self.PANEL_B_CLUTTER_MODEL, context)
+                panel_a_clutter_enabled = panel_a_clutter_model_idx > 0
+                panel_b_clutter_enabled = panel_b_clutter_model_idx > 0
                 if panel_a_clutter_enabled or panel_b_clutter_enabled:
                     shared_clutter_grid = ensure_clutter_grid_for_area(
                         south=south, north=north, west=west, east=east, feedback=feedback)
