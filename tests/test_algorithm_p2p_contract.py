@@ -154,10 +154,10 @@ def test_p2p_algorithm_exposes_report_outputs():
 
 def test_p2p_algorithm_returns_marker_and_report_outputs():
     source = _p2p_source()
-    assert "output_markers: markers_path" in source
-    assert "output_report_csv: report_csv_path" in source
-    assert "output_report_json: report_json_path" in source
-    assert "output_report_html: report_html_path" in source
+    assert "p.output_markers: markers_path" in source
+    assert "p.output_report_csv: p.report_csv_path" in source
+    assert "p.output_report_json: p.report_json_path" in source
+    assert "p.output_report_html: p.report_html_path" in source
 
 
 def test_p2p_algorithm_reports_reliability_fields():
@@ -230,6 +230,6 @@ def test_p2p_algorithm_reports_total_path_loss_components():
 
 def test_p2p_algorithm_loads_auto_clutter_after_path_bounds_exist():
     source = _p2p_source()
-    bounds_idx = source.index("south = min(tx_lat, rx_lat) - pad")
+    bounds_idx = source.index("south, north = min(p.tx_lat, p.rx_lat) - pad")
     auto_clutter_idx = source.index("clutter_grid = ensure_clutter_grid_for_area(")
     assert bounds_idx < auto_clutter_idx
