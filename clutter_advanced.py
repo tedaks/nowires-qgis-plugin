@@ -69,3 +69,44 @@ def _resolve_category_advanced(lat, lon, override, land_cover_grid):
         if class_id is not None:
             return worldcover_class_to_advanced_category(class_id), land_cover_grid.source
     return "open", "fallback_open"
+
+
+def _resolve_category(lat, lon, override, land_cover_grid):
+    if override:
+        return override, "override"
+    if land_cover_grid is not None:
+        category = land_cover_grid.sample_category(lat, lon)
+        if category is not None:
+            return category, land_cover_grid.source
+    return "open", "fallback_open"
+
+
+def compute_terminal_clutter_losses(
+    tx_lat, tx_lon, rx_lat, rx_lon, frequency_mhz,
+    enabled=False, land_cover_grid=None, tx_override=None, rx_override=None,
+    context=None,
+):
+    from .clutter import clutter_loss_db, TerminalClutterLosses
+    if not enabled:
+        return TerminalClutterLosses("open", "open", 0.0, 0.0, 0.0, "off")
+    advanced = context is not None and context.model == "advanced"
+    if not advanced:
+        tx_cat, tx_src = _resolve_category(tx_lat, tx_lon, tx_override, land_cover_grid)
+        rx_cat, rx_src = _resolve_category(rx_lat, rx_lon, rx_override, land_cover_grid)
+        tx_loss = clutter_loss_db(tx_cat, frequency_mhz)
+        rx_loss = clutter_loss_db(rx_cat, frequency_mhz)
+        source = tx_src if tx_src == rx_src else "{},{}".format(tx_src, rx_src)
+        return TerminalClutterLosses(tx_cat, rx_cat, tx_loss, rx_loss, tx_loss + rx_loss, source)
+    tx_cat, tx_src = _resolve_category_advanced(tx_lat, tx_lon, tx_override, land_cover_grid)
+    rx_cat, rx_src = _resolve_category_advanced(rx_lat, rx_lon, rx_override, land_cover_grid)
+    tx_loss = compute_terminal_clutter_loss(tx_cat, "tx", context)
+    rx_loss = compute_terminal_clutter_loss(rx_cat, "rx", context)
+    tx_cch = _category_height_m(tx_cat, context.cch_override_m)
+    rx_cch = _category_height_m(rx_cat, context.cch_override_m)
+    source = tx_src if tx_src == rx_src else "{},{}".format(tx_src, rx_src)
+    return TerminalClutterLosses(
+        tx_category=tx_cat, rx_category=rx_cat,
+        tx_loss_db=tx_loss, rx_loss_db=rx_loss,
+        total_loss_db=tx_loss + rx_loss, source=source,
+        tx_cch_m=tx_cch, rx_cch_m=rx_cch,
+    )
