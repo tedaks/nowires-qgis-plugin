@@ -102,7 +102,8 @@ def apply_delta_style(layer, threshold_db, style="diverging"):
         ]
 
     color_ramp_shader = QgsColorRampShader()
-    color_ramp_shader.setColorRampType(QgsColorRampShader.Interpolated)
+    if style != "threshold":
+        color_ramp_shader.setColorRampType(QgsColorRampShader.Interpolated)
     color_ramp_shader.setColorRampItemList(entries)
 
     shader = QgsRasterShader()
@@ -180,7 +181,8 @@ def write_comparison_html_report(path, panel_a_info, panel_b_info, delta_info):
   </body>
 </html>
 """
-    path.write_text(document, encoding="utf-8")
+    from pathlib import Path
+    Path(path).write_text(document, encoding="utf-8")
 
 
 def compute_delta_summary(loss_grid_a, loss_grid_b, threshold_db):

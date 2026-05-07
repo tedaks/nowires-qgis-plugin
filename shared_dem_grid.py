@@ -40,6 +40,7 @@ class SharedDEMGrid:
     def __init__(self, grid_data):
         self._shm = None
         self._name = None
+        self._unlinked = False
         self._create(grid_data)
 
     def _create(self, grid_data):
@@ -74,23 +75,26 @@ class SharedDEMGrid:
     def release(self):
         """Close and unlink the shared-memory segment."""
         atexit.unregister(self._atexit_cleanup)
-        if self._shm is not None:
+        if self._shm is not None and not self._unlinked:
             try:
                 self._shm.close()
             except Exception:
                 pass
             try:
-                self._shm.unlink()
+                if not self._unlinked:
+                    self._shm.unlink()
+                    self._unlinked = True
             except Exception:
                 pass
             self._shm = None
             self._name = None
 
     def _atexit_cleanup(self):
-        if self._shm is not None:
+        if self._shm is not None and not self._unlinked:
             try:
                 self._shm.close()
                 self._shm.unlink()
+                self._unlinked = True
             except Exception:
                 pass
             self._shm = None

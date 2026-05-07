@@ -57,14 +57,23 @@ def download_tile_with_retry(
         return None
 
     if os.path.exists(local_tif):
-        if gdal.Open(local_tif) is not None:
-            logger.debug("Cache hit: %s", base_name_label)
-            if feedback:
-                feedback.pushInfo("Cache hit: " + base_name_label)
-            return local_tif
-        logger.warning(
-            "Cached tile %s failed validation; re-downloading", base_name_label
-        )
+        test_ds = gdal.Open(local_tif)
+        if test_ds is not None:
+            try:
+                stats = test_ds.GetRasterBand(1).ComputeStatistics(False)
+                if stats and len(stats) >= 2 and stats[0] != stats[1]:
+                    logger.debug("Cache hit: %s", base_name_label)
+                    if feedback:
+                        feedback.pushInfo("Cache hit: " + base_name_label)
+                    test_ds = None
+                    return local_tif
+                logger.warning("Cached tile %s has degenerate stats; re-downloading", base_name_label)
+            except RuntimeError:
+                logger.warning("Cached tile %s failed stats read; re-downloading", base_name_label)
+            finally:
+                test_ds = None
+        else:
+            logger.warning("Cached tile %s failed validation; re-downloading", base_name_label)
         try:
             os.unlink(local_tif)
         except OSError:
@@ -72,11 +81,9 @@ def download_tile_with_retry(
 
     if feedback:
         feedback.pushInfo("Downloading: " + tile_url)
-
     downloaded = False
     tmp_path = local_tif + ".tmp"
     t_start = time.monotonic()
-
     for attempt in range(max_retries):
         if feedback and feedback.isCanceled():
             return None
@@ -92,7 +99,7 @@ def download_tile_with_retry(
                 final_url = response.geturl()
                 if base_url is not None:
                     from urllib.parse import urlsplit
-                    if urlsplit(final_url).netloc != urlsplit(base_url).netloc:
+                    if urlsplit(final_url).netloc.lower() != urlsplit(base_url).netloc.lower():
                         raise RuntimeError("Unexpected redirect to: " + final_url)
                 expected_size = int(response.headers.get("Content-Length", 0))
                 bytes_received = 0
@@ -138,60 +145,40 @@ def download_tile_with_retry(
                     continue
                 break
             test_ds = None
-
             os.replace(tmp_path, local_tif)
             downloaded = True
             break
 
         except urllib.error.HTTPError as e:
+            retryable_codes = {408, 425, 429}
             if e.code == 404:
                 logger.info("Tile not available (404): %s", base_name_label)
                 if feedback:
-                    feedback.pushInfo(
-                        "Tile not available (HTTP 404): " + base_name_label
-                    )
+                    feedback.pushInfo("Tile not available (HTTP 404): " + base_name_label)
                 break
-            else:
+            elif e.code in retryable_codes or e.code >= 500:
                 retry_after = e.headers.get("Retry-After")
                 if retry_after:
                     try:
                         wait_secs = max(int(retry_after), 1)
                     except ValueError:
                         wait_secs = 2 ** attempt
-                    logger.info(
-                        "HTTP %d downloading %s — Retry-After: %ds (attempt %d/%d)",
-                        e.code,
-                        base_name_label,
-                        wait_secs,
-                        attempt + 1,
-                        max_retries,
-                    )
                 else:
                     wait_secs = 2 ** attempt
                 logger.warning(
                     "HTTP %d downloading %s (attempt %d/%d): %s",
-                    e.code,
-                    base_name_label,
-                    attempt + 1,
-                    max_retries,
-                    e,
-                )
+                    e.code, base_name_label, attempt + 1, max_retries, e)
                 if attempt < max_retries - 1:
                     time.sleep(wait_secs)
+            else:
+                logger.error("HTTP %d downloading %s (non-retryable): %s", e.code, base_name_label, e)
+                break
         except Exception as e:
-            logger.warning(
-                "Error downloading %s (attempt %d/%d): %s",
-                base_name_label,
-                attempt + 1,
-                max_retries,
-                e,
-            )
+            logger.warning("Error downloading %s (attempt %d/%d): %s",
+                base_name_label, attempt + 1, max_retries, e)
             if feedback:
-                feedback.pushInfo(
-                    "Error downloading {} (attempt {}): {}".format(
-                        base_name_label, attempt + 1, str(e)
-                    )
-                )
+                feedback.pushInfo("Error downloading {} (attempt {}): {}".format(
+                    base_name_label, attempt + 1, str(e)))
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
 
@@ -200,7 +187,6 @@ def download_tile_with_retry(
             os.unlink(tmp_path)
         except OSError:
             pass
-
     return local_tif if downloaded else None
 
 

@@ -27,7 +27,6 @@ output writing, report generation, chart display, and feedback reporting.
 import logging
 import math
 import os
-from .temp_manager import TempDirManager
 
 import numpy as np
 from osgeo import osr
@@ -39,6 +38,7 @@ from .constants import (
     CLIMATE_NAMES, DEFAULT_PROFILE_STEP_M, DEGREE_PADDING, METERS_PER_DEGREE_LAT,
     POLARIZATION_NAMES,
 )
+from .temp_manager import TempDirManager
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid, bearing_deg, haversine_m
 from .fresnel import C_LIGHT
@@ -59,6 +59,20 @@ from .p2p_outputs import write_profile_line, write_fresnel_zone
 from .p2p_chart import show_profile_chart
 
 __all__ = ["run_p2p_analysis"]
+
+
+def _interpolate_nan_elevations(elevations):
+    """Replace NaN values with linearly interpolated neighbours.
+
+    Falls back to nearest valid value at edges. Returns unchanged if all NaN.
+    """
+    arr = np.asarray(elevations, dtype=np.float64)
+    nan_mask = np.isnan(arr)
+    if not nan_mask.any() or not (~nan_mask).any():
+        return [float(x) for x in arr]
+    valid_idx = np.where(~nan_mask)[0]
+    arr[nan_mask] = np.interp(np.where(nan_mask)[0], valid_idx, arr[valid_idx])
+    return [float(x) for x in arr]
 
 
 def _write_p2p_output_layers(srs, paths, tx_lat, tx_lon, rx_lat, rx_lon,
@@ -124,175 +138,131 @@ def _load_p2p_qgis_layers(context, profile_path, fresnel_poly_path,
 
 
 def run_p2p_analysis(params: P2PAnalysisParams):
-    tx_lat = params.tx_lat
-    tx_lon = params.tx_lon
-    rx_lat = params.rx_lat
-    rx_lon = params.rx_lon
-    tx_h = params.tx_h
-    rx_h = params.rx_h
-    f_mhz = params.f_mhz
-    polarization = params.polarization
-    climate = params.climate
-    time_pct = params.time_pct
-    location_pct = params.location_pct
-    situation_pct = params.situation_pct
-    tx_power = params.tx_power
-    tx_gain = params.tx_gain
-    rx_gain = params.rx_gain
-    cable_loss = params.cable_loss
-    rx_sens = params.rx_sens
-    k_factor = params.k_factor
-    n0 = params.n0
-    epsilon = params.epsilon
-    sigma = params.sigma
-    tx_antenna_config = params.tx_antenna_config
-    rx_antenna_config = params.rx_antenna_config
-    clutter_enabled = params.clutter_enabled
-    clutter_grid = params.clutter_grid
-    tx_clutter_override = params.tx_clutter_override
-    rx_clutter_override = params.rx_clutter_override
-    profile_dest = params.profile_dest
-    fresnel_dest = params.fresnel_dest
-    markers_dest = params.markers_dest
-    report_csv_path = params.report_csv_path
-    report_json_path = params.report_json_path
-    report_html_path = params.report_html_path
-    show_chart = params.show_chart
-    context = params.context
-    feedback = params.feedback
-    dist_m = haversine_m(tx_lat, tx_lon, rx_lat, rx_lon)
-    feedback.pushInfo("TX: ({:.5f}, {:.5f}), RX: ({:.5f}, {:.5f})".format(
-        tx_lat, tx_lon, rx_lat, rx_lon))
-    feedback.pushInfo("Path distance: {:.1f} m ({:.2f} km)".format(
-        dist_m, dist_m / 1000.0))
+    p = params
+    dist_m = haversine_m(p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon)
+    p.feedback.pushInfo("TX: ({:.5f}, {:.5f}), RX: ({:.5f}, {:.5f})".format(
+        p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon))
+    p.feedback.pushInfo("Path distance: {:.1f} m ({:.2f} km)".format(dist_m, dist_m / 1000.0))
     pad = max(DEGREE_PADDING, dist_m / METERS_PER_DEGREE_LAT * 0.1)
-    south = min(tx_lat, rx_lat) - pad
-    north = max(tx_lat, rx_lat) + pad
-    west, east = shortest_longitude_bounds(tx_lon, rx_lon, padding_deg=pad)
-    if clutter_grid is None and clutter_enabled:
+    south, north = min(p.tx_lat, p.rx_lat) - pad, max(p.tx_lat, p.rx_lat) + pad
+    west, east = shortest_longitude_bounds(p.tx_lon, p.rx_lon, padding_deg=pad)
+    clutter_grid = p.clutter_grid
+    if clutter_grid is None and p.clutter_enabled:
         clutter_grid = ensure_clutter_grid_for_area(
-            south=south, north=north, west=west, east=east, feedback=feedback)
-    feedback.pushInfo("Downloading DEM data for path...")
-    feedback.setProgress(5)
-    dem_path = ensure_dem_for_area(south, north, west, east, feedback=feedback)
+            south=south, north=north, west=west, east=east, feedback=p.feedback)
+    p.feedback.pushInfo("Downloading DEM data for path...")
+    p.feedback.setProgress(5)
+    dem_path = ensure_dem_for_area(south, north, west, east, feedback=p.feedback)
     if dem_path is None:
         raise QgsProcessingException("Failed to obtain DEM data for the path area.")
-    feedback.setProgress(30)
-    feedback.pushInfo("Building elevation grid...")
+    p.feedback.setProgress(30)
+    p.feedback.pushInfo("Building elevation grid...")
     with ElevationGrid(dem_path) as elev:
-        points = elev.terrain_profile(tx_lat, tx_lon, rx_lat, rx_lon, step_m=DEFAULT_PROFILE_STEP_M)
+        points = elev.terrain_profile(p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon, step_m=DEFAULT_PROFILE_STEP_M)
     if len(points) < 2:
         raise QgsProcessingException("Terrain profile too short.")
-    distances = [p[0] for p in points]
-    elevations = [p[1] for p in points]
+    distances = [pt[0] for pt in points]
+    elevations = [pt[1] for pt in points]
     nan_count = sum(1 for e in elevations if math.isnan(e))
     if nan_count > 0:
+        if nan_count == len(elevations):
+            raise QgsProcessingException(
+                "All {} elevation samples are NaN — DEM data is missing for this path.".format(nan_count))
         logger.warning(
-            "Replacing %d NaN elevation value(s) with 0.0 (missing DEM data)", nan_count)
-    elevations = [0.0 if math.isnan(e) else e for e in elevations]
+            "Interpolating %d NaN elevation value(s) from nearest valid samples (missing DEM data)", nan_count)
+        elevations = _interpolate_nan_elevations(elevations)
     step_m_val = dist_m / max(len(distances) - 1, 1)
     pfl = build_pfl(elevations, step_m_val)
-    feedback.pushInfo("Running ITM prediction...")
-    feedback.setProgress(50)
-    result = itm_p2p_loss(h_tx__meter=tx_h, h_rx__meter=rx_h, profile=pfl,
-        climate=climate, N0=n0, f__mhz=f_mhz, polarization=polarization,
-        epsilon=epsilon, sigma=sigma, time_pct=time_pct,
-        location_pct=location_pct, situation_pct=situation_pct)
-    tx_elev = elevations[0]
-    rx_elev = elevations[-1]
-    tx_antenna_h = tx_elev + tx_h
-    rx_antenna_h = rx_elev + rx_h
-    wavelength_m = C_LIGHT / (f_mhz * 1e6)
+    p.feedback.pushInfo("Running ITM prediction...")
+    p.feedback.setProgress(50)
+    result = itm_p2p_loss(h_tx__meter=p.tx_h, h_rx__meter=p.rx_h, profile=pfl,
+        climate=p.climate, N0=p.n0, f__mhz=p.f_mhz, polarization=p.polarization,
+        epsilon=p.epsilon, sigma=p.sigma, time_pct=p.time_pct,
+        location_pct=p.location_pct, situation_pct=p.situation_pct)
+    tx_elev, rx_elev = elevations[0], elevations[-1]
+    tx_ant_h, rx_ant_h = tx_elev + p.tx_h, rx_elev + p.rx_h
+    wavelength_m = C_LIGHT / (p.f_mhz * 1e6)
     dist_arr = np.asarray(distances, dtype=np.float64)
     elev_arr = np.asarray(elevations, dtype=np.float64)
     terrain_bulge, los_h, fresnel_r, obstructs, vf1, vf60 = (
-        fresnel_profile_analysis(dist_arr, elev_arr, tx_antenna_h, rx_antenna_h,
-            dist_m, wavelength_m, k_factor))
-    los_blocked = bool(obstructs.any())
-    f1_violated = bool(vf1.any())
-    f60_violated = bool(vf60.any())
-    eirp_dbm = tx_power + tx_gain - cable_loss
-    tx_bearing = bearing_deg(tx_lat, tx_lon, rx_lat, rx_lon)
-    rx_bearing = bearing_deg(rx_lat, rx_lon, tx_lat, tx_lon)
-    vertical_angle = math.degrees(
-        math.atan2((rx_elev + rx_h) - (tx_elev + tx_h), max(dist_m, 1.0)))
-    tx_ant_adj = antenna_gain_adjustment_db(tx_bearing, vertical_angle, tx_antenna_config)
-    rx_ant_adj = antenna_gain_adjustment_db(rx_bearing, -vertical_angle, rx_antenna_config)
-    antenna_gain_adjustment_db_total = tx_ant_adj + rx_ant_adj
-    clutter_losses = compute_terminal_clutter_losses(tx_lat=tx_lat, tx_lon=tx_lon,
-        rx_lat=rx_lat, rx_lon=rx_lon, frequency_mhz=f_mhz, enabled=clutter_enabled,
-        land_cover_grid=clutter_grid,
-        tx_override=tx_clutter_override, rx_override=rx_clutter_override)
-    total_path_loss_db = result.loss_db + clutter_losses.total_loss_db
-    prx_dbm = eirp_dbm + rx_gain + antenna_gain_adjustment_db_total - total_path_loss_db
-    margin_db = prx_dbm - rx_sens
-    fspl_db = (20.0 * math.log10(dist_m / 1000.0) + 20.0 * math.log10(f_mhz) + 32.45
-        if dist_m > 0 and f_mhz > 0 else 0.0)
-    feedback.setProgress(70)
+        fresnel_profile_analysis(dist_arr, elev_arr, tx_ant_h, rx_ant_h, dist_m, wavelength_m, p.k_factor))
+    los_blocked, f1_violated, f60_violated = bool(obstructs.any()), bool(vf1.any()), bool(vf60.any())
+    eirp_dbm = p.tx_power + p.tx_gain - p.cable_loss
+    tx_bearing = bearing_deg(p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon)
+    rx_bearing = bearing_deg(p.rx_lat, p.rx_lon, p.tx_lat, p.tx_lon)
+    vert_angle = math.degrees(math.atan2((rx_elev + p.rx_h) - (tx_elev + p.tx_h), max(dist_m, 1.0)))
+    ant_adj_total = (antenna_gain_adjustment_db(tx_bearing, vert_angle, p.tx_antenna_config)
+                     + antenna_gain_adjustment_db(rx_bearing, -vert_angle, p.rx_antenna_config))
+    cl = compute_terminal_clutter_losses(tx_lat=p.tx_lat, tx_lon=p.tx_lon,
+        rx_lat=p.rx_lat, rx_lon=p.rx_lon, frequency_mhz=p.f_mhz, enabled=p.clutter_enabled,
+        land_cover_grid=clutter_grid, tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override)
+    total_path_loss_db = result.loss_db + cl.total_loss_db
+    prx_dbm = eirp_dbm + p.rx_gain + ant_adj_total - total_path_loss_db
+    margin_db = prx_dbm - p.rx_sens
+    fspl_db = (20.0 * math.log10(dist_m / 1000.0) + 20.0 * math.log10(p.f_mhz) + 32.45
+               if dist_m > 0 and p.f_mhz > 0 else 0.0)
+    p.feedback.setProgress(70)
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(4326)
     srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-    needs_temp_dir = not (profile_dest and fresnel_dest and markers_dest)
+    needs_temp_dir = not (p.profile_dest and p.fresnel_dest and p.markers_dest)
     tmp_mgr = TempDirManager()
     try:
         if needs_temp_dir:
             temp_dir = tmp_mgr.make_dir("p2p", persistent=True)
-            tmp_mgr.warn_persistent(feedback)
+            tmp_mgr.warn_persistent(p.feedback)
         else:
             temp_dir = None
         profile_path, fresnel_poly_path, markers_path = _write_p2p_output_layers(
-                srs, dict(profile_dest=profile_dest, fresnel_dest=fresnel_dest,
-                    markers_dest=markers_dest, temp_dir=temp_dir),
-                tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result,
+                srs, dict(profile_dest=p.profile_dest, fresnel_dest=p.fresnel_dest,
+                    markers_dest=p.markers_dest, temp_dir=temp_dir),
+                p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon, dist_m, result,
                 dist_arr, terrain_bulge, los_h, fresnel_r,
-                tx_h, rx_h, tx_gain, rx_gain, tx_power, rx_sens)
+                p.tx_h, p.rx_h, p.tx_gain, p.rx_gain, p.tx_power, p.rx_sens)
         _poly_root, _poly_ext = os.path.splitext(fresnel_poly_path)
         fresnel_lines_path = "{}_lines{}".format(_poly_root, _poly_ext)
         report_payload = build_p2p_report_payload(
-            tx_lat=tx_lat, tx_lon=tx_lon, rx_lat=rx_lat, rx_lon=rx_lon,
-            tx_h=tx_h, rx_h=rx_h, f_mhz=f_mhz,
-            polarization_name=POLARIZATION_NAMES.get(polarization, str(polarization)),
-            climate_name=CLIMATE_NAMES.get(climate, str(climate)),
-            k_factor=k_factor, dist_m=dist_m,
-            propagation_mode=result.mode,
+            tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.rx_lat, rx_lon=p.rx_lon,
+            tx_h=p.tx_h, rx_h=p.rx_h, f_mhz=p.f_mhz,
+            polarization_name=POLARIZATION_NAMES.get(p.polarization, str(p.polarization)),
+            climate_name=CLIMATE_NAMES.get(p.climate, str(p.climate)),
+            k_factor=p.k_factor, dist_m=dist_m, propagation_mode=result.mode,
             propagation_mode_name=PROP_MODE_NAMES.get(result.mode, "Unknown"),
             fspl_db=fspl_db, itm_loss_db=result.loss_db,
-            tx_power=tx_power, tx_gain=tx_gain, rx_gain=rx_gain,
-            cable_loss=cable_loss, eirp_dbm=eirp_dbm,
-            prx_dbm=prx_dbm, rx_sensitivity_dbm=rx_sens,
+            tx_power=p.tx_power, tx_gain=p.tx_gain, rx_gain=p.rx_gain,
+            cable_loss=p.cable_loss, eirp_dbm=eirp_dbm,
+            prx_dbm=prx_dbm, rx_sensitivity_dbm=p.rx_sens,
             margin_db=margin_db, los_blocked=los_blocked,
             fresnel_1_violated=f1_violated, fresnel_60_violated=f60_violated,
             max_fresnel_radius_m=float(fresnel_r.max()),
             total_path_loss_db=total_path_loss_db,
-            clutter_tx_db=clutter_losses.tx_loss_db,
-            clutter_rx_db=clutter_losses.rx_loss_db,
-            clutter_source=clutter_losses.source,
-            tx_antenna_preset=tx_antenna_config.preset,
-            rx_antenna_preset=rx_antenna_config.preset,
-            antenna_gain_adjustment_db=antenna_gain_adjustment_db_total)
-        _write_p2p_reports(report_csv_path, report_json_path, report_html_path,
-            report_payload)
-        feedback.setProgress(90)
+            clutter_tx_db=cl.tx_loss_db, clutter_rx_db=cl.rx_loss_db,
+            clutter_source=cl.source,
+            tx_antenna_preset=p.tx_antenna_config.preset,
+            rx_antenna_preset=p.rx_antenna_config.preset,
+            antenna_gain_adjustment_db=ant_adj_total)
+        _write_p2p_reports(p.report_csv_path, p.report_json_path, p.report_html_path, report_payload)
+        p.feedback.setProgress(90)
         chart_kwargs = dict(distances=dist_arr, elevations=elev_arr,
             terrain_bulge=terrain_bulge, los_h=los_h, fresnel_r=fresnel_r,
-            dist_m=dist_m, tx_h=tx_h, rx_h=rx_h, f_mhz=f_mhz,
-            result=result, k_factor=k_factor,
-            tx_power=tx_power, tx_gain=tx_gain, rx_gain=rx_gain,
-            cable_loss=cable_loss, rx_sens=rx_sens,
+            dist_m=dist_m, tx_h=p.tx_h, rx_h=p.rx_h, f_mhz=p.f_mhz,
+            result=result, k_factor=p.k_factor,
+            tx_power=p.tx_power, tx_gain=p.tx_gain, rx_gain=p.rx_gain,
+            cable_loss=p.cable_loss, rx_sens=p.rx_sens,
             prx_dbm=prx_dbm, margin_db=margin_db)
-        _load_p2p_qgis_layers(context, profile_path, fresnel_poly_path,
-            fresnel_lines_path, markers_path, show_chart, chart_kwargs)
-        feedback.setProgress(100)
-        report_p2p_results(feedback, dist_m, f_mhz, result, report_payload,
-            k_factor, los_blocked, float(fresnel_r.max()))
+        _load_p2p_qgis_layers(p.context, profile_path, fresnel_poly_path,
+            fresnel_lines_path, markers_path, p.show_chart, chart_kwargs)
+        p.feedback.setProgress(100)
+        report_p2p_results(p.feedback, dist_m, p.f_mhz, result, report_payload, p.k_factor,
+            los_blocked, float(fresnel_r.max()))
         return {
-            params.output_profile: profile_path,
-            params.output_fresnel: fresnel_poly_path,
-            params.output_markers: markers_path,
-            params.output_report_csv: report_csv_path,
-            params.output_report_json: report_json_path,
-            params.output_report_html: report_html_path,
+            p.output_profile: profile_path,
+            p.output_fresnel: fresnel_poly_path,
+            p.output_markers: markers_path,
+            p.output_report_csv: p.report_csv_path,
+            p.output_report_json: p.report_json_path,
+            p.output_report_html: p.report_html_path,
         }
     finally:
         tmp_mgr.cleanup()
-        tmp_mgr.warn_persistent(feedback)
+        tmp_mgr.warn_persistent(p.feedback)

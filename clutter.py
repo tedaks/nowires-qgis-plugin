@@ -70,16 +70,10 @@ _WORLDCOVER_TO_CATEGORY[90] = 0
 
 
 def worldcover_class_to_clutter_category(class_id) -> str:
-    """Map ESA WorldCover 2020 v100 class IDs to NoWires clutter categories.
-
-    Convention:
-      - "vegetation": classes with significant woody/shrubby plant cover
-        (tree cover, shrubland, mangroves, moss/lichen)
-      - "rural": classes with herbaceous or cultivated cover (grassland, cropland)
-      - "urban": built-up
-      - "open": bare, sparse, snow/ice, water, wetland
-    """
-    return CLUTTER_CATEGORIES[_WORLDCOVER_TO_CATEGORY[int(class_id) % 256]]
+    raw = int(class_id)
+    if raw < 0 or raw > 255:
+        logger.warning("Unexpected WorldCover class ID %d (outside 0-255 range)", raw)
+    return CLUTTER_CATEGORIES[_WORLDCOVER_TO_CATEGORY[raw % 256]]
 
 
 def clutter_loss_db(category, frequency_mhz) -> float:
@@ -224,7 +218,10 @@ class LandCoverGrid:
         out_of_bounds = lat_oob[:, np.newaxis] | lon_oob[np.newaxis, :]
         if self.nodata is not None:
             nodata_val = self.data.dtype.type(self.nodata) if np.issubdtype(self.data.dtype, np.integer) else self.nodata
-            out_of_bounds |= (sampled == nodata_val)
+            if np.isnan(nodata_val):
+                out_of_bounds |= np.isnan(sampled.astype(np.float64))
+            else:
+                out_of_bounds |= (sampled == nodata_val)
         cat_idx = np.where(out_of_bounds, 0, cat_idx)
         if rx_override:
             override_idx = _CATEGORY_IDX.get(rx_override, 0)

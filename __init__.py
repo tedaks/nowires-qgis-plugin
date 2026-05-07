@@ -31,12 +31,19 @@ class _NoOpPlugin:
 
     def __init__(self, iface):
         self.iface = iface
+        self.provider = None
+        self._menu_actions = []
+        self._toolbar_actions = []
+        self._opacity_dialog = None
 
     def initGui(self):
         pass
 
     def unload(self):
         pass
+
+    def __getattr__(self, name):
+        return None
 
 
 def classFactory(iface):
@@ -46,8 +53,10 @@ def classFactory(iface):
     :type iface: QgsInterface
     """
     import multiprocessing
+    import sys
 
-    multiprocessing.freeze_support()
+    if sys.platform == "win32":
+        multiprocessing.freeze_support()
 
     if multiprocessing.current_process().name != "MainProcess":
         return _NoOpPlugin(iface)

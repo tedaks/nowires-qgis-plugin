@@ -124,8 +124,17 @@ class ElevationGrid:
             self.max_lon = self.min_lon + self.transform[1] * self.n_cols
             self.min_lat = self.transform[3] + self.transform[5] * self.n_rows
             self.max_lat = self.transform[3]
+            self._origin_is_north_up = self.min_lat < self.max_lat
             if self.min_lat > self.max_lat:
                 self.min_lat, self.max_lat = self.max_lat, self.min_lat
+
+            if not self._origin_is_north_up:
+                logger.warning(
+                    "DEM %s appears to be south-up; row ordering may be inverted. "
+                    "All Copernicus GLO-30 and ESA WorldCover rasters are north-up. "
+                    "If using a custom DEM, verify that latitude indexing is correct.",
+                    dem_path,
+                )
 
             self.d_lat = (self.max_lat - self.min_lat) / self.n_rows
             self.d_lon = (self.max_lon - self.min_lon) / self.n_cols
@@ -145,6 +154,8 @@ class ElevationGrid:
         )
 
     def sample(self, lat, lon) -> float:
+        # max_lat is the top-edge latitude (geotransform origin), not cell center.
+        # The -0.5 shift maps from cell edge to cell center for bilinear lookup.
         fy = (self.max_lat - lat) / self.d_lat - 0.5
         fx = (lon - self.min_lon) / self.d_lon - 0.5
         if fy < -0.5 or fx < -0.5 or fy > self.n_rows - 0.5 or fx > self.n_cols - 0.5:

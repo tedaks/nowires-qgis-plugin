@@ -51,13 +51,14 @@ def apply_coverage_style(layer):
     provider = layer.dataProvider()
     entries = []
     for value, rgba, label in build_heatmap_stops():
-        entry = QgsColorRampShader.ColorRampItem()
-        entry.value = value
-        entry.color = QColor(rgba[0], rgba[1], rgba[2], rgba[3])
-        entry.label = "{} ({:.0f} dBm)".format(label, value)
+        entry = QgsColorRampShader.ColorRampItem(
+            value,
+            QColor(rgba[0], rgba[1], rgba[2], rgba[3]),
+            "{} ({:.0f} dBm)".format(label, value),
+        )
         entries.append(entry)
     color_ramp_shader = QgsColorRampShader()
-    color_ramp_shader.setColorRampType(QgsColorRampShader.Interpolated)
+    color_ramp_shader.setColorRampType(QgsColorRampShader.Discrete)
     color_ramp_shader.setColorRampItemList(entries)
     shader = QgsRasterShader()
     shader.setRasterShaderFunction(color_ramp_shader)
