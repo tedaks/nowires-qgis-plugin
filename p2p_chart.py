@@ -43,30 +43,14 @@ __all__ = ["show_profile_chart"]
 
 
 def _add_obstruction_annotations(ax, d_km, terrain_bulge, los_h, fresnel_r):
-    obstruction_indices = np.where(terrain_bulge > los_h - fresnel_r)[0]
-    index_set = set(obstruction_indices)
-    peaks = []
-    for idx in obstruction_indices:
-        is_peak = True
-        for offset in [-1, 1]:
-            neighbor = idx + offset
-            if 0 <= neighbor < len(terrain_bulge) and neighbor in index_set:
-                if terrain_bulge[neighbor] > terrain_bulge[idx]:
-                    is_peak = False
-                    break
-                if terrain_bulge[neighbor] == terrain_bulge[idx] and neighbor < idx:
-                    is_peak = False
-                    break
-        if is_peak:
-            peaks.append(idx)
-    peaks.sort(key=lambda i: terrain_bulge[i], reverse=True)
+    from .p2p_chart_format import build_obstruction_data
     annotations = []
-    for idx in peaks[:5]:
-        ob_x, ob_y = d_km[idx], terrain_bulge[idx]
-        deficit = ob_y - (los_h[idx] - fresnel_r[idx])
+    for idx, ob_x, ob_y, _los, _fr, deficit in build_obstruction_data(
+        d_km, terrain_bulge, los_h, fresnel_r
+    ):
         ann = ax.annotate(
             "OBSTRUCTION\nDist: {:.1f} km\nHeight: {:.1f} m\nDeficit: {:.1f} m".format(
-                ob_x, ob_y, max(0, deficit)
+                ob_x, ob_y, deficit
             ),
             xy=(ob_x, ob_y), xytext=(0, 20),
             arrowprops=dict(arrowstyle="->", color="red", lw=1.2),
@@ -213,13 +197,8 @@ def show_profile_chart(
     ax.legend(loc="upper right", fontsize=8)
     ax.grid(True, alpha=0.3)
 
-    if margin_db is not None:
-        status = "VIABLE" if margin_db >= 0 else "NOT VIABLE"
-        status_text = "Loss: {:.1f} dB\nPrx: {:.1f} dBm\nMargin: {:.1f} dB\nStatus: {}".format(
-            result.loss_db, prx_dbm, margin_db, status)
-    else:
-        status_text = "Loss: {:.1f} dB\nPrx: {:.1f} dBm".format(
-            result.loss_db, prx_dbm)
+    from .p2p_chart_format import build_chart_status_text
+    status_text = build_chart_status_text(result, prx_dbm, margin_db)
     ax.text(
         0.02, 0.98, status_text,
         transform=ax.transAxes, fontsize=9, verticalalignment="top",

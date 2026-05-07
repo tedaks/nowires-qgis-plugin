@@ -46,6 +46,7 @@ from .comparison_add_params import add_panel_params, add_comparison_params
 from .comparison_outputs import (
     write_coverage_raster, write_delta_raster, apply_delta_style,
     write_comparison_html_report, compute_delta_summary)
+from .clutter import LandCoverGrid, ensure_clutter_grid_for_area
 from .comparison_panel import run_panel_coverage
 from .comparison_reporting import build_panel_info, build_delta_info, report_comparison_results
 from .temp_manager import TempDirManager
@@ -161,15 +162,27 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
 
         feedback.pushInfo("Building elevation grid...")
         feedback.setProgress(5)
+        shared_clutter_grid = None
         try:
             with ElevationGrid(dem_path) as elev:
+
+                # Load clutter grid once and share between panels to ensure consistency.
+                shared_clutter_grid = None
+                panel_a_clutter_enabled = self.parameterAsEnum(
+                    parameters, self.PANEL_A_CLUTTER_MODEL, context) == 1
+                panel_b_clutter_enabled = self.parameterAsEnum(
+                    parameters, self.PANEL_B_CLUTTER_MODEL, context) == 1
+                if panel_a_clutter_enabled or panel_b_clutter_enabled:
+                    shared_clutter_grid = ensure_clutter_grid_for_area(
+                        south=south, north=north, west=west, east=east, feedback=feedback)
 
                 feedback.pushInfo("=" * 50)
                 feedback.pushInfo("Running Panel A coverage...")
                 feedback.pushInfo("=" * 50)
                 feedback.setProgress(10)
                 panel_a = run_panel_coverage(
-                    self, "PANEL_A", parameters, context, feedback, elev, south, north, west, east)
+                    self, "PANEL_A", parameters, context, feedback, elev,
+                    south, north, west, east, shared_clutter_grid=shared_clutter_grid)
 
                 prx_grid_a = panel_a["result"].prx_grid
                 loss_grid_a = panel_a["result"].loss_grid
@@ -185,7 +198,8 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
                 feedback.pushInfo("=" * 50)
                 feedback.setProgress(45)
                 panel_b = run_panel_coverage(
-                    self, "PANEL_B", parameters, context, feedback, elev, south, north, west, east)
+                    self, "PANEL_B", parameters, context, feedback, elev,
+                    south, north, west, east, shared_clutter_grid=shared_clutter_grid)
 
                 prx_grid_b = panel_b["result"].prx_grid
                 loss_grid_b = panel_b["result"].loss_grid
@@ -254,6 +268,8 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
                     self.OUTPUT_REPORT_HTML: output_report_path,
                 }
         finally:
+            if shared_clutter_grid is not None:
+                shared_clutter_grid.close()
             self._tmp.cleanup()
             self._tmp.warn_persistent(feedback)
 

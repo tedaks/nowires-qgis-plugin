@@ -158,6 +158,12 @@ class LandCoverGrid:
             min_lat = transform[3] + transform[5] * n_rows
             max_lat = transform[3]
             if min_lat > max_lat:
+                logger.warning(
+                    "Land-cover raster %s appears to be south-up; row ordering may be "
+                    "inverted. All ESA WorldCover rasters are north-up. If using a custom "
+                    "land-cover raster, verify that latitude indexing is correct.",
+                    path,
+                )
                 min_lat, max_lat = max_lat, min_lat
             return cls(data, min_lat, max_lat, min_lon, max_lon, nodata, str(path))
         finally:

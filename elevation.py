@@ -98,19 +98,19 @@ class ElevationGrid:
     """
 
     def __init__(self, dem_path):
-        ds = gdal.Open(dem_path)
-        if ds is None:
+        self._ds = gdal.Open(dem_path)
+        if self._ds is None:
             raise RuntimeError("Cannot open DEM: {}".format(dem_path))
 
         try:
-            self.transform = ds.GetGeoTransform()
-            self.projection = ds.GetProjection()
-            band = ds.GetRasterBand(1)
+            self.transform = self._ds.GetGeoTransform()
+            self.projection = self._ds.GetProjection()
+            band = self._ds.GetRasterBand(1)
             self.nodata = band.GetNoDataValue()
 
             data = band.ReadAsArray(
-                buf_xsize=ds.RasterXSize,
-                buf_ysize=ds.RasterYSize,
+                buf_xsize=self._ds.RasterXSize,
+                buf_ysize=self._ds.RasterYSize,
                 buf_type=gdal.GDT_Float32,
             )
             if data is None:
@@ -140,7 +140,10 @@ class ElevationGrid:
             self.d_lon = (self.max_lon - self.min_lon) / self.n_cols
         finally:
             band = None
-            ds = None
+            # Release the GDAL dataset handle promptly after reading data.
+            # The numpy array (self.data) is an independent copy, so
+            # closing the dataset does not affect subsequent sampling.
+            self._ds = None
 
         logger.info(
             "ElevationGrid: %s shape=%s bounds=(%.4f,%.4f)-(%.4f,%.4f) %.1f MB",
@@ -227,8 +230,9 @@ class ElevationGrid:
         }
 
     def close(self) -> None:
-        """Release the DEM data array to free memory."""
+        """Release the DEM data array and GDAL dataset handle to free memory."""
         self.data = None
+        self._ds = None
 
     def __enter__(self):
         return self
@@ -238,7 +242,7 @@ class ElevationGrid:
         return False
 
     def __del__(self):
-        if self.data is not None:
+        if self.data is not None or getattr(self, "_ds", None) is not None:
             self.close()
 
 

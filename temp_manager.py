@@ -109,3 +109,13 @@ class TempDirManager:
             logger.info(msg)
             if feedback is not None:
                 feedback.pushInfo(msg)
+
+    def __del__(self):
+        """Safety net: clean up non-persistent dirs if cleanup() was not called."""
+        if self._dirs or self._files:
+            logger.warning(
+                "TempDirManager.__del__ called with uncleaned resources; "
+                "calling cleanup() as safety net. Call cleanup() explicitly "
+                "to avoid this warning."
+            )
+            self.cleanup()

@@ -58,18 +58,11 @@ def _interpolate_nan_elevations(elevs):
 
     Falls back to the nearest valid value at the edges. Returns the array
     unchanged if all values are NaN (caller checks np.all(isnan) separately).
+
+    Delegates to the shared nan_utils module to avoid code duplication.
     """
-    nan_mask = np.isnan(elevs)
-    if not nan_mask.any():
-        return elevs
-    valid_mask = ~nan_mask
-    if not valid_mask.any():
-        return elevs
-    valid_indices = np.where(valid_mask)[0]
-    result = elevs.copy()
-    nan_indices = np.where(nan_mask)[0]
-    result[nan_indices] = np.interp(nan_indices, valid_indices, elevs[valid_indices])
-    return result
+    from .nan_utils import interpolate_nan_array
+    return interpolate_nan_array(elevs)
 
 
 @dataclass
@@ -153,6 +146,15 @@ def _final_cov_pool():
 def _init_cov_pool(shm_name, shape, dtype_str, grid_meta):
     _ensure_path()
     global _cov_shm, _cov_grid_data, _cov_grid_meta
+    # Reset stale state from a previous pool run before re-binding.
+    if _cov_grid_data is not None:
+        _cov_grid_data = None
+    if _cov_shm is not None:
+        try:
+            _cov_shm.close()
+        except Exception:
+            pass
+        _cov_shm = None
     _cov_shm = multiprocessing.shared_memory.SharedMemory(name=shm_name)
     _cov_grid_data = np.ndarray(shape, dtype=np.dtype(dtype_str), buffer=_cov_shm.buf)
     _cov_grid_meta = grid_meta

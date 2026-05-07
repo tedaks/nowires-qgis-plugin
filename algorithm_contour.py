@@ -205,6 +205,9 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             feedback.pushInfo("\nGenerating contour lines")
             contour_shp_path, tmp_shp_dir = generate_contour_lines(
                 merged_path, interval, self.temp_dir, gdal_callback)
+            if contour_shp_path is None:
+                feedback.pushInfo("\nContour generation produced no output.")
+                return {}
             self._tmp.add_file(tmp_shp_dir)
             if feedback.isCanceled():
                 return {}
