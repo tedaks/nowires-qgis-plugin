@@ -61,13 +61,19 @@ def download_tile_with_retry(
         if test_ds is not None:
             try:
                 stats = test_ds.GetRasterBand(1).ComputeStatistics(False)
-                if stats and len(stats) >= 2 and stats[0] != stats[1]:
-                    logger.debug("Cache hit: %s", base_name_label)
-                    if feedback:
-                        feedback.pushInfo("Cache hit: " + base_name_label)
-                    test_ds = None
-                    return local_tif
-                logger.warning("Cached tile %s has degenerate stats; re-downloading", base_name_label)
+                if stats is None:
+                    logger.warning("Cached tile %s failed stats read; re-downloading", base_name_label)
+                else:
+                    band_count = test_ds.RasterCount
+                    xsize = test_ds.RasterXSize
+                    ysize = test_ds.RasterYSize
+                    if xsize > 0 and ysize > 0 and band_count >= 1:
+                        logger.debug("Cache hit: %s (%dx%d)", base_name_label, xsize, ysize)
+                        if feedback:
+                            feedback.pushInfo("Cache hit: " + base_name_label)
+                        test_ds = None
+                        return local_tif
+                    logger.warning("Cached tile %s has degenerate dimensions; re-downloading", base_name_label)
             except RuntimeError:
                 logger.warning("Cached tile %s failed stats read; re-downloading", base_name_label)
             finally:
@@ -101,7 +107,12 @@ def download_tile_with_retry(
                     from urllib.parse import urlsplit
                     if urlsplit(final_url).netloc.lower() != urlsplit(base_url).netloc.lower():
                         raise RuntimeError("Unexpected redirect to: " + final_url)
-                expected_size = int(response.headers.get("Content-Length", 0))
+                content_length_hdr = response.headers.get("Content-Length")
+                if content_length_hdr is None:
+                    logger.debug("No Content-Length header for %s", base_name_label)
+                    expected_size = 0
+                else:
+                    expected_size = int(content_length_hdr)
                 bytes_received = 0
                 with open(tmp_path, "wb") as f:
                     while True:

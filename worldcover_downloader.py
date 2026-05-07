@@ -60,37 +60,45 @@ _VALID_TILE_RE = re.compile(r"^[NS]\d{2}[EW]\d{3}$")
 _WALL_CLOCK_TIMEOUT = 600
 
 
-def get_worldcover_dir():
-    try:
-        username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
-    except (OSError, KeyError):
-        username = "nowires"
-    base = tempfile.gettempdir()
-    nowires_dir = os.path.join(base, "NoWires-" + username)
-    target = os.path.join(nowires_dir, "worldcover")
-    try:
-        st_nowires = os.lstat(nowires_dir)
-        if not os.path.isdir(nowires_dir) or stat.S_ISLNK(st_nowires.st_mode):
-            logger.warning("Removing non-directory/symlink at %s", nowires_dir)
-            os.unlink(nowires_dir)
-    except OSError:
-        pass
-    try:
-        os.makedirs(nowires_dir, mode=0o700, exist_ok=True)
-    except OSError:
-        pass
-    existing_dir = None
+def _safe_create_dir(target):
+    """Create or validate a directory safely, avoiding symlink TOCTOU races.
+
+    Uses tempfile.mkdtemp() for atomic creation when the directory does not
+    yet exist. On platforms that support O_DIRECTORY | O_NOFOLLOW, also uses
+    os.open to verify an existing directory is not a symlink.
+    """
     try:
         st = os.lstat(target)
-        if not os.path.isdir(target) or stat.S_ISLNK(st.st_mode):
-            logger.warning("Removing non-directory/symlink at %s", target)
+        if stat.S_ISLNK(st.st_mode):
+            logger.warning("Removing symlink at %s", target)
+            os.unlink(target)
+        elif not os.path.isdir(target):
+            logger.warning("Removing non-directory at %s", target)
             os.unlink(target)
         else:
-            existing_dir = target
+            dir_flag = getattr(os, "O_DIRECTORY", None)
+            nofollow_flag = getattr(os, "O_NOFOLLOW", None)
+            if dir_flag is not None and nofollow_flag is not None:
+                try:
+                    fd = os.open(target, os.O_RDONLY | dir_flag | nofollow_flag)
+                    os.close(fd)
+                except OSError:
+                    logger.warning("Removing unsafe directory at %s", target)
+                    os.unlink(target)
     except OSError:
         pass
-    if existing_dir is None:
-        os.makedirs(target, mode=0o700, exist_ok=False)
+    if not os.path.isdir(target):
+        parent = os.path.dirname(target)
+        tmp = tempfile.mkdtemp(dir=parent)
+        try:
+            os.chmod(tmp, 0o700)
+        except OSError:
+            pass
+        try:
+            os.rename(tmp, target)
+        except OSError:
+            logger.debug("Could not rename %s to %s; using temp path", tmp, target)
+            return tmp
     try:
         st = os.stat(target)
         if st.st_mode & 0o777 != 0o700:
@@ -98,6 +106,18 @@ def get_worldcover_dir():
     except OSError:
         pass
     return target
+
+
+def get_worldcover_dir():
+    try:
+        username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
+    except (OSError, KeyError):
+        username = "nowires"
+    base = tempfile.gettempdir()
+    nowires_dir = os.path.join(base, "NoWires-" + username)
+    nowires_dir = _safe_create_dir(nowires_dir)
+    target = os.path.join(nowires_dir, "worldcover")
+    return _safe_create_dir(target)
 
 
 def worldcover_tile_id(lat, lon):

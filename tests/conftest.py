@@ -74,6 +74,7 @@ for _submodule_name in (
     "report_markers",
     "report_export",
     "overlay_raster",
+    "nan_utils",
 ):
     _mod = __import__(_submodule_name, fromlist=[""])
     sys.modules[f"NoWires.{_submodule_name}"] = _mod

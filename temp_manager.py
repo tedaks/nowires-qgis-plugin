@@ -85,6 +85,10 @@ class TempDirManager:
         """Register a single file for deletion on cleanup()."""
         self._files.append(path)
 
+    def add_dir(self, path):
+        """Register an existing temporary directory for deletion on cleanup()."""
+        self._dirs.append(path)
+
     def cleanup(self):
         """Remove all non-persistent temporary directories and registered files."""
         for d in self._dirs:

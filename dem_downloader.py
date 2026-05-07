@@ -68,18 +68,37 @@ def get_temp_dir():
         username = "nowires"
     base = tempfile.gettempdir()
     target = os.path.join(base, "NoWires-" + username)
-    existing_dir = None
     try:
         st = os.lstat(target)
-        if not os.path.isdir(target) or stat.S_ISLNK(st.st_mode):
-            logger.warning("Removing non-directory/symlink at %s", target)
+        if stat.S_ISLNK(st.st_mode):
+            logger.warning("Removing symlink at %s", target)
+            os.unlink(target)
+        elif not os.path.isdir(target):
+            logger.warning("Removing non-directory at %s", target)
             os.unlink(target)
         else:
-            existing_dir = target
+            dir_flag = getattr(os, "O_DIRECTORY", None)
+            nofollow_flag = getattr(os, "O_NOFOLLOW", None)
+            if dir_flag is not None and nofollow_flag is not None:
+                try:
+                    fd = os.open(target, os.O_RDONLY | dir_flag | nofollow_flag)
+                    os.close(fd)
+                except OSError:
+                    logger.warning("Removing unsafe directory at %s", target)
+                    os.unlink(target)
     except OSError:
         pass
-    if existing_dir is None:
-        os.makedirs(target, mode=0o700, exist_ok=False)
+    if not os.path.isdir(target):
+        tmp = tempfile.mkdtemp(prefix="NoWires-", dir=base)
+        try:
+            os.chmod(tmp, 0o700)
+        except OSError:
+            pass
+        try:
+            os.rename(tmp, target)
+        except OSError:
+            logger.debug("Could not rename %s to %s; using temp path", tmp, target)
+            target = tmp
     try:
         st = os.stat(target)
         if st.st_mode & 0o777 != 0o700:

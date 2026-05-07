@@ -208,7 +208,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             if contour_shp_path is None:
                 feedback.pushInfo("\nContour generation produced no output.")
                 return {}
-            self._tmp.add_file(tmp_shp_dir)
+            self._tmp.add_dir(tmp_shp_dir)
             if feedback.isCanceled():
                 return {}
             self.progress += 1
@@ -218,7 +218,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             final_output_path, reproj_dir = reproject_and_export(
                 contour_shp_path, context.project().crs(), output_dest, self.temp_dir)
             if reproj_dir is not None:
-                self._tmp.add_file(reproj_dir)
+                self._tmp.add_dir(reproj_dir)
 
             unit_label = "ft" if use_feet else "m"
             layer_name = "Contour Lines ({}{})".format(interval, unit_label)
