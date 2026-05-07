@@ -2,19 +2,19 @@
 
 [general]
 name=NoWires
-qgisMinimumVersion=4.0
-qgisMaximumVersion=4.99
+qgisMinimumVersion=3.34
+qgisMaximumVersion=3.99
 description=Radio propagation analysis and terrain tools with unified Coverage Analysis heatmap workflow
-version=1.3.0
+version=1.4.0
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
-about=NoWires is a QGIS 4 plugin for radio propagation analysis powered by NTIA's Irregular Terrain Model (ITM), using the Qt 6 / PyQt 6 runtime bundled with QGIS 4. It provides point-to-point path loss analysis with Fresnel zone visualization, unified Coverage Analysis heatmap prediction with raster-derived range metrics, and contour line generation. DEM data is automatically downloaded from the Copernicus GLO-30 dataset hosted on AWS Open Data. The plugin bundles the ITM library from https://github.com/tedaks/pyitm and adapts code from https://github.com/tedaks/nowires and https://github.com/tedaks/ContourLines. See NOTICE.md for attribution and third-party licensing details.
+about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's Irregular Terrain Model (ITM), using the Qt 6 / PyQt 6 runtime bundled with QGIS 4. It provides point-to-point path loss analysis with Fresnel zone visualization, unified Coverage Analysis heatmap prediction with raster-derived range metrics, and contour line generation. DEM data is automatically downloaded from the Copernicus GLO-30 dataset hosted on AWS Open Data. The plugin bundles the ITM library from https://github.com/tedaks/pyitm and adapts code from https://github.com/tedaks/nowires and https://github.com/tedaks/ContourLines. See NOTICE.md for attribution and third-party licensing details.
 
 hasProcessingProvider=yes
 
 changelog=
-    Version 1.3.0
+    Version 1.4.0
     - Fix Windows access violation crash from unsafe project layer mutation in processAlgorithm
     - Fix “layer not correctly generated” error from double-loading conflict with styled output layers
     - Fix DEM raster layers loading on top of coverage and contour outputs

@@ -159,6 +159,7 @@ def add_coverage_params(algorithm):
 
 
 def extract_coverage_params(alg, parameters, context):
+    from qgis.core import QgsProcessingException
     from .coverage_analysis_params import CoverageAnalysisParams
     _dbl = alg.parameterAsDouble
     _enum = alg.parameterAsEnum
@@ -167,7 +168,7 @@ def extract_coverage_params(alg, parameters, context):
         crs=QgsCoordinateReferenceSystem("EPSG:4326"),
     )
     if tx_point is None:
-        raise ValueError("TX point is required.")
+        raise QgsProcessingException("TX point is required.")
     doubles = {}
     for key, attr in (
         ("tx_h", "TX_HEIGHT"), ("rx_h", "RX_HEIGHT"), ("f_mhz", "FREQ_MHZ"),
@@ -207,12 +208,15 @@ def extract_coverage_params(alg, parameters, context):
         None if antenna_preset != CUSTOM_ANTENNA_PRESET_INDEX and doubles["antenna_bw"] == 360.0
         else doubles["antenna_bw"]
     )
-    validate_itm_input_ranges(
-        tx_height_m=doubles["tx_h"], rx_height_m=doubles["rx_h"],
-        frequency_mhz=doubles["f_mhz"],
-        surface_refractivity_n0=doubles["n0"],
-        earth_conductivity_sigma=doubles["sigma"],
-    )
+    try:
+        validate_itm_input_ranges(
+            tx_height_m=doubles["tx_h"], rx_height_m=doubles["rx_h"],
+            frequency_mhz=doubles["f_mhz"],
+            surface_refractivity_n0=doubles["n0"],
+            earth_conductivity_sigma=doubles["sigma"],
+        )
+    except ValueError as exc:
+        raise QgsProcessingException(str(exc))
     return CoverageAnalysisParams(
         tx_lat=tx_point.y(), tx_lon=tx_point.x(),
         tx_h=doubles["tx_h"], rx_h=doubles["rx_h"],

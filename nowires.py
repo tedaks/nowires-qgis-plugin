@@ -75,12 +75,19 @@ class NoWiresPlugin:
         self.provider = None
         self.iface = iface
         self._toolbar_actions = []
+        self._menu_actions = []
         self._opacity_dialog = None
 
     def initProcessing(self):
         """Register the processing provider."""
+        registry = QgsApplication.processingRegistry()
+        if self.provider is not None:
+            try:
+                registry.removeProvider(self.provider)
+            except Exception:
+                pass
         self.provider = NoWiresProvider()
-        QgsApplication.processingRegistry().addProvider(self.provider)
+        registry.addProvider(self.provider)
 
     def initGui(self):
         """Initialize GUI elements."""
@@ -176,9 +183,9 @@ class NoWiresPlugin:
         if self.provider is not None:
             QgsApplication.processingRegistry().removeProvider(self.provider)
             self.provider = None
-        for action in self._menu_actions:
+        for action in getattr(self, "_menu_actions", []):
             self.iface.removePluginMenu(_MENU_NAME, action)
-        for action in self._toolbar_actions:
+        for action in getattr(self, "_toolbar_actions", []):
             self.iface.removeToolBarIcon(action)
 
     def run_p2p(self):

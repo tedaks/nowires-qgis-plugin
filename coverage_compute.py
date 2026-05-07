@@ -27,12 +27,15 @@ the coverage engine. The underlying propagation model remains in the
 bundled pure-Python itm package for reliability and maintainability.
 """
 
+import logging
 import math
 
 import numpy as np
 
 from .radio import build_pfl, itm_p2p_loss
 from .constants import COVERAGE_NODATA
+
+logger = logging.getLogger(__name__)
 
 ITM_LOSS_UPPER_BOUND = 400.0
 COVERAGE_PROFILE_STEP_M = 100.0
@@ -101,8 +104,21 @@ def compute_itm_p2p(
         location_pct=location_pct,
         situation_pct=situation_pct,
     )
-    if not math.isfinite(result.loss_db) or result.loss_db > ITM_LOSS_UPPER_BOUND:
+    if not math.isfinite(result.loss_db):
         return None
+    if result.loss_db > ITM_LOSS_UPPER_BOUND:
+        logger.debug("ITM loss %.1f dB exceeds cap (%.1f); returning capped result", result.loss_db, ITM_LOSS_UPPER_BOUND)
+        clutter_total_db = clutter_tx_db + clutter_rx_db
+        total_path_loss_db = result.loss_db + clutter_total_db
+        prx = eirp_dbm + ant_gain_adj + rx_gain_dbi - total_path_loss_db
+        return {
+            "itm_loss_db": result.loss_db,
+            "clutter_tx_db": clutter_tx_db,
+            "clutter_rx_db": clutter_rx_db,
+            "total_path_loss_db": total_path_loss_db,
+            "antenna_gain_adjustment_db": ant_gain_adj,
+            "received_power_dbm": prx,
+        }
     clutter_total_db = clutter_tx_db + clutter_rx_db
     total_path_loss_db = result.loss_db + clutter_total_db
     prx = eirp_dbm + ant_gain_adj + rx_gain_dbi - total_path_loss_db

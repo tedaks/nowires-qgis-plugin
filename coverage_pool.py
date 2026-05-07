@@ -53,6 +53,25 @@ _MIN_CHUNK_SIZE = 64
 _MAX_CHUNK_SIZE = 2048
 
 
+def _interpolate_nan_elevations(elevs):
+    """Replace NaN elevation values with linearly interpolated neighbours.
+
+    Falls back to the nearest valid value at the edges. Returns the array
+    unchanged if all values are NaN (caller checks np.all(isnan) separately).
+    """
+    nan_mask = np.isnan(elevs)
+    if not nan_mask.any():
+        return elevs
+    valid_mask = ~nan_mask
+    if not valid_mask.any():
+        return elevs
+    valid_indices = np.where(valid_mask)[0]
+    result = elevs.copy()
+    nan_indices = np.where(nan_mask)[0]
+    result[nan_indices] = np.interp(nan_indices, valid_indices, elevs[valid_indices])
+    return result
+
+
 @dataclass
 class CoverageResult:
     prx_grid: np.ndarray
@@ -160,8 +179,11 @@ def _itm_worker(args, grid_data=None, grid_meta=None):
         return None
     nan_count = int(np.isnan(elevs).sum())
     if nan_count > 0:
-        logger.warning("Replacing %d NaN elevation value(s) with 0.0 (missing DEM data)", nan_count)
-    elevs = np.where(np.isnan(elevs), 0.0, elevs)
+        logger.warning(
+            "Interpolating %d NaN elevation value(s) from nearest valid samples (missing DEM data)",
+            nan_count,
+        )
+    elevs = _interpolate_nan_elevations(elevs)
 
     vertical_angle_deg = math.degrees(
         math.atan2(

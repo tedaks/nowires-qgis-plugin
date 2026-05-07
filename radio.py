@@ -171,7 +171,7 @@ def _get_itm():
 
 def build_pfl(elevations, step_m):
     """Build a PFL (profile format list) from elevations and step distance."""
-    n = len(elevations) - 1
+    n = max(len(elevations) - 1, 1)
     if isinstance(elevations, np.ndarray):
         return [float(n), float(step_m)] + elevations.tolist()
     return [float(n), float(step_m)] + [float(x) for x in elevations]

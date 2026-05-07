@@ -162,7 +162,9 @@ def smooth_contour_dem(smoothing, input_dem, temp_dir, feedback, progress, statu
 
     dem_tif = os.path.join(path, "dem.tif")
     src_ds_check = gdal.Open(input_dem)
-    src_nd = src_ds_check.GetRasterBand(1).GetNoDataValue() if src_ds_check else None
+    if src_ds_check is None:
+        raise RuntimeError("Cannot open input DEM for smoothing: " + input_dem)
+    src_nd = src_ds_check.GetRasterBand(1).GetNoDataValue()
     src_ds_check = None
     if src_nd is not None and src_nd != -32768:
         translate_ds = gdal.Warp(

@@ -34,6 +34,7 @@ import logging
 import math
 import os
 import re
+import stat
 import ssl
 import time
 import tempfile
@@ -64,17 +65,39 @@ def get_worldcover_dir():
         username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
     except (OSError, KeyError):
         username = "nowires"
-    worldcover_dir = os.path.join(
-        tempfile.gettempdir(), "NoWires-" + username, "worldcover"
-    )
-    os.makedirs(worldcover_dir, mode=0o700, exist_ok=True)
+    base = tempfile.gettempdir()
+    nowires_dir = os.path.join(base, "NoWires-" + username)
+    target = os.path.join(nowires_dir, "worldcover")
     try:
-        st = os.stat(worldcover_dir)
-        if st.st_mode & 0o777 != 0o700:
-            os.chmod(worldcover_dir, 0o700)
+        st_nowires = os.lstat(nowires_dir)
+        if not os.path.isdir(nowires_dir) or stat.S_ISLNK(st_nowires.st_mode):
+            logger.warning("Removing non-directory/symlink at %s", nowires_dir)
+            os.unlink(nowires_dir)
     except OSError:
         pass
-    return worldcover_dir
+    try:
+        os.makedirs(nowires_dir, mode=0o700, exist_ok=True)
+    except OSError:
+        pass
+    existing_dir = None
+    try:
+        st = os.lstat(target)
+        if not os.path.isdir(target) or stat.S_ISLNK(st.st_mode):
+            logger.warning("Removing non-directory/symlink at %s", target)
+            os.unlink(target)
+        else:
+            existing_dir = target
+    except OSError:
+        pass
+    if existing_dir is None:
+        os.makedirs(target, mode=0o700, exist_ok=False)
+    try:
+        st = os.stat(target)
+        if st.st_mode & 0o777 != 0o700:
+            os.chmod(target, 0o700)
+    except OSError:
+        pass
+    return target
 
 
 def worldcover_tile_id(lat, lon):

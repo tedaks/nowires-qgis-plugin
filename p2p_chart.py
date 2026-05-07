@@ -29,14 +29,15 @@ import numpy as np
 
 from .defaults import FRESNEL_60PCT_FACTOR
 
+logger = logging.getLogger(__name__)
+
 try:
     from qgis.PyQt.QtCore import QT_VERSION_STR
     _QT_VER = tuple(int(x) for x in QT_VERSION_STR.split("."))[:2]
-    assert _QT_VER >= (6, 0), "p2p_chart.py requires Qt 6+; got {}".format(QT_VERSION_STR)
+    if _QT_VER < (6, 0):
+        logger.warning("p2p_chart.py requires Qt 6+; got %s", QT_VERSION_STR)
 except ImportError:
     pass
-
-logger = logging.getLogger(__name__)
 
 __all__ = ["show_profile_chart"]
 
@@ -116,12 +117,12 @@ def _setup_tooltip(ax, fig, d_km, distances, terrain_bulge, los_h, fresnel_r):
         tooltip.set_position((tooltip_x, max(elev_val, los_val) + 3))
         fig.canvas.draw_idle()
 
-    fig.canvas.mpl_connect("motion_notify_event", on_motion)
+    cid = fig.canvas.mpl_connect("motion_notify_event", on_motion)
+    return cid
 
 
 def _make_save_png(fig, f_mhz, dist_m, dock):
     from qgis.PyQt.QtWidgets import QFileDialog, QMessageBox
-
     def save_png():
         try:
             default_name = "p2p_profile_{:.0f}MHz_{:.1f}km.png".format(f_mhz, dist_m / 1000)
@@ -139,9 +140,7 @@ def _make_save_png(fig, f_mhz, dist_m, dock):
 
 def _make_export_csv(distances, terrain_bulge, los_h, fresnel_r, f_mhz, dist_m, dock):
     from qgis.PyQt.QtWidgets import QFileDialog, QMessageBox
-
     clearances = los_h - fresnel_r - terrain_bulge
-
     def export_csv():
         try:
             default_name = "p2p_profile_{:.0f}MHz_{:.1f}km.csv".format(f_mhz, dist_m / 1000)
@@ -150,7 +149,7 @@ def _make_export_csv(distances, terrain_bulge, los_h, fresnel_r, f_mhz, dist_m, 
                 if not path.lower().endswith(".csv"):
                     path += ".csv"
                 obstructs_los = terrain_bulge > los_h
-                with open(path, "w") as f:
+                with open(path, "w", newline="") as f:
                     f.write("distance_m,terrain_elevation_m,los_m,fresnel_radius_m,clearance_m,obstructs_los\n")
                     for i in range(len(distances)):
                         f.write("{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.0f}\n".format(
@@ -172,7 +171,7 @@ def show_profile_chart(
     try:
         import matplotlib
         matplotlib.use("QtAgg")
-        import matplotlib.pyplot as plt
+        from matplotlib.figure import Figure
         from qgis.PyQt.QtWidgets import (
             QDockWidget, QWidget, QVBoxLayout, QToolBar, QCheckBox, QPushButton,
         )
@@ -184,7 +183,8 @@ def show_profile_chart(
 
     d_km = np.asarray(distances, dtype=np.float64) / 1000.0
 
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig = Figure(figsize=(10, 5))
+    ax = fig.add_subplot(111)
     terrain_fill = ax.fill_between(
         d_km, np.min(terrain_bulge) - 10, terrain_bulge,
         color="#8B6914", alpha=0.5, label="Terrain",
@@ -201,8 +201,9 @@ def show_profile_chart(
         d_km, los_h - fresnel_r, los_h - FRESNEL_60PCT_FACTOR * fresnel_r,
         color="blue", alpha=0.12, label="Fresnel Violation Band (>40%)",
     )
-    tx_marker, = ax.plot(0, los_h[0], "r^", markersize=12, label="TX", zorder=5)
-    rx_marker, = ax.plot(d_km[-1], los_h[-1], "rv", markersize=12, label="RX", zorder=5)
+    if len(los_h) > 0:
+        tx_marker, = ax.plot(0, los_h[0], "r^", markersize=12, label="TX", zorder=5)
+        rx_marker, = ax.plot(d_km[-1], los_h[-1], "rv", markersize=12, label="RX", zorder=5)
     ax.set_xlim(d_km[0], d_km[-1])
     ax.set_ylim(np.min(terrain_bulge) - 10, max(np.max(los_h + fresnel_r), np.max(terrain_bulge) + 10))
     ax.set_xlabel("Distance (km)")
@@ -212,19 +213,21 @@ def show_profile_chart(
     ax.legend(loc="upper right", fontsize=8)
     ax.grid(True, alpha=0.3)
 
-    status = "VIABLE" if margin_db >= 0 else "NOT VIABLE"
+    if margin_db is not None:
+        status = "VIABLE" if margin_db >= 0 else "NOT VIABLE"
+        status_text = "Loss: {:.1f} dB\nPrx: {:.1f} dBm\nMargin: {:.1f} dB\nStatus: {}".format(
+            result.loss_db, prx_dbm, margin_db, status)
+    else:
+        status_text = "Loss: {:.1f} dB\nPrx: {:.1f} dBm".format(
+            result.loss_db, prx_dbm)
     ax.text(
-        0.02, 0.98,
-        "Loss: {:.1f} dB\nPrx: {:.1f} dBm\nMargin: {:.1f} dB\nStatus: {}".format(
-            result.loss_db, prx_dbm, margin_db, status),
+        0.02, 0.98, status_text,
         transform=ax.transAxes, fontsize=9, verticalalignment="top",
         bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
     )
 
     obstruction_annotations = _add_obstruction_annotations(ax, d_km, terrain_bulge, los_h, fresnel_r)
     fig.tight_layout()
-
-    canvas = FigureCanvasQTAgg(fig)
     toggle_state = {
         "terrain": True, "los": True, "fresnel": True,
         "violation_band": True, "antennas": True, "obstructions": True,
@@ -246,22 +249,14 @@ def show_profile_chart(
 
     from qgis.utils import iface as qgis_iface
     dock = QDockWidget("P2P Profile Chart", qgis_iface.mainWindow())
-    dock.setWidget(QWidget())
     dock.setFloating(True)
     dock.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
     dock.setWindowFlag(Qt.WindowType.Tool)
-
-    def _on_dock_destroyed():
-        import matplotlib.pyplot as plt
-        plt.close(fig)
-    dock.destroyed.connect(_on_dock_destroyed)
-
     toolbar = QToolBar("Chart Controls")
     btn_png = QPushButton("Save PNG", toolbar)
     btn_csv = QPushButton("Export CSV", toolbar)
     btn_png.clicked.connect(_make_save_png(fig, f_mhz, dist_m, dock))
     btn_csv.clicked.connect(_make_export_csv(distances, terrain_bulge, los_h, fresnel_r, f_mhz, dist_m, dock))
-
     def _make_toggle(key):
         def _toggle(state):
             toggle_state[key] = int(state) == int(Qt.CheckState.Checked)
@@ -280,8 +275,23 @@ def show_profile_chart(
         cb.checkStateChanged.connect(_make_toggle(key))
         toolbar.addWidget(cb)
 
-    _setup_tooltip(ax, fig, d_km, distances, terrain_bulge, los_h, fresnel_r)
+    _tooltip_cid = [None]
+    def _on_close_event(event):
+        if _tooltip_cid[0] is not None:
+            try:
+                fig.canvas.mpl_disconnect(_tooltip_cid[0])
+            except Exception:
+                pass
+            _tooltip_cid[0] = None
 
+    class _ChartCanvas(FigureCanvasQTAgg):
+        def closeEvent(self, event):
+            _on_close_event(event)
+            super().closeEvent(event)
+
+    canvas = _ChartCanvas(fig)
+    tooltip_cid = _setup_tooltip(ax, fig, d_km, distances, terrain_bulge, los_h, fresnel_r)
+    _tooltip_cid[0] = tooltip_cid
     container = QWidget()
     layout = QVBoxLayout(container)
     layout.setContentsMargins(0, 0, 0, 0)

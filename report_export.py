@@ -43,8 +43,13 @@ def _iter_rows(payload):
 
 def _csv_safe(value):
     s = str(value)
-    if s and s[0] in ('=', '+', '-', '@', '\t', '\r'):
+    if s and s[0] in ('=', '+', '@', '\t', '\r'):
         return "'" + s
+    if s.startswith('-') and len(s) > 1:
+        try:
+            float(s)
+        except ValueError:
+            return "'" + s
     return s
 
 
