@@ -172,8 +172,8 @@ class TestSignalLevels:
             assert THRESHOLDS[i] > THRESHOLDS[i + 1]
 
     def test_signal_levels_count(self):
-        """Should have 6 signal levels."""
-        assert len(SIGNAL_LEVELS) == 6
+        """Should have 7 signal levels."""
+        assert len(SIGNAL_LEVELS) == 7
 
     def test_signal_levels_structure(self):
         """Each entry should be (threshold, (r, g, b, a), label)."""
