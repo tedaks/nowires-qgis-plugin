@@ -47,6 +47,14 @@ def add_clutter_params(algorithm, attr_getter=None):
     algorithm.addParameter(QgsProcessingParameterEnum(
         ag("RX_CLUTTER_OVERRIDE"), "RX clutter override",
         options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0))
+    algorithm.addParameter(QgsProcessingParameterNumber(
+        ag("CCH_OVERRIDE"),
+        "Canopy/clutter height override (m, 0 = auto)",
+        type=QgsProcessingParameterNumber.Double,
+        defaultValue=0.0,
+        minValue=0.0,
+        optional=True,
+    ))
 
 
 def add_link_budget_params(algorithm, attr_getter=None, prefix=""):

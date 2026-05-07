@@ -119,7 +119,11 @@ class P2PAlgorithm(NoWiresAlgorithm):
             horizontal_pattern_path=self.parameterAsFile(parameters, self.RX_H_PATTERN, context),
             vertical_pattern_path=self.parameterAsFile(parameters, self.RX_V_PATTERN, context),
         )
-        clutter_enabled = self.parameterAsEnum(parameters, self.CLUTTER_MODEL, context) == 1
+        clutter_model_idx = self.parameterAsEnum(parameters, self.CLUTTER_MODEL, context)
+        clutter_enabled = clutter_model_idx > 0
+        clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
+        cch_raw = self.parameterAsDouble(parameters, self.CCH_OVERRIDE, context) if hasattr(self, 'CCH_OVERRIDE') else 0.0
+        cch_override_m = cch_raw if cch_raw > 0.0 else None
         clutter_raster_path = self.parameterAsFile(parameters, self.CLUTTER_RASTER, context)
         clutter_grid = None
         if clutter_raster_path:
@@ -153,6 +157,8 @@ class P2PAlgorithm(NoWiresAlgorithm):
             clutter_enabled=clutter_enabled, clutter_grid=clutter_grid,
             tx_clutter_override=tx_clutter_override,
             rx_clutter_override=rx_clutter_override,
+            clutter_model=clutter_model,
+            cch_override_m=cch_override_m,
             profile_dest=profile_dest, fresnel_dest=fresnel_dest,
             markers_dest=markers_dest,
             report_csv_path=report_csv_path,

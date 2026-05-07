@@ -10,6 +10,9 @@ import numpy as np
 
 from clutter import (
     CLUTTER_LOSS_DB,
+    CLUTTER_MODEL_OPTIONS,
+    CLUTTER_OVERRIDE_OPTIONS,
+    LEGACY_CLUTTER_CATEGORIES,
     LandCoverGrid,
     clutter_loss_db,
     clutter_source_label,
@@ -136,3 +139,25 @@ def test_clutter_source_label_reports_auto_downloaded_grid_source():
         tx_override=None,
         rx_override=None,
     ) == "fallback_open"
+
+
+def test_clutter_model_options_order_is_stable():
+    assert CLUTTER_MODEL_OPTIONS == [
+        "Off",
+        "Simple clutter correction",
+        "Advanced clutter correction",
+    ]
+
+
+def test_clutter_override_options_legacy_indices_preserved():
+    assert CLUTTER_OVERRIDE_OPTIONS[:6] == [
+        "Auto", "open", "rural", "vegetation", "suburban", "urban",
+    ]
+    assert "open_rural" in CLUTTER_OVERRIDE_OPTIONS[6:]
+    assert "dense_rural" in CLUTTER_OVERRIDE_OPTIONS[6:]
+
+
+def test_legacy_categories_unchanged():
+    assert LEGACY_CLUTTER_CATEGORIES == (
+        "open", "rural", "vegetation", "suburban", "urban",
+    )
