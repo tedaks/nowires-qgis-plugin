@@ -1,7 +1,6 @@
 """Tests for nan_utils — shared NaN interpolation helpers."""
 import math
 import numpy as np
-import pytest
 
 
 def test_interpolate_nan_elevations_no_nan():

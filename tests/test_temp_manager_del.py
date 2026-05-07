@@ -3,7 +3,6 @@ import logging
 import os
 import unittest.mock
 
-import pytest
 
 
 def test_temp_manager_cleanup_removes_non_persistent_dirs():
