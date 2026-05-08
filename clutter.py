@@ -2,9 +2,9 @@
 """
 /***************************************************************************
  NoWires
-                      A QGIS plugin
+                       A QGIS plugin
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                              -------------------
+                               -------------------
          begin                : 2026-04-22
          copyright            : (C) 2026 Bortre Tenamo
          email                : tedaks@gmail.com
@@ -101,7 +101,7 @@ def clutter_override_value(index_or_category) -> str | None:
     if isinstance(index_or_category, str):
         return None if index_or_category == "Auto" else index_or_category
     idx = int(index_or_category)
-    if idx <= 0 or idx >= len(CLUTTER_OVERRIDE_OPTIONS):
+    if idx < 0 or idx >= len(CLUTTER_OVERRIDE_OPTIONS):
         return None
     return CLUTTER_OVERRIDE_OPTIONS[idx]
 

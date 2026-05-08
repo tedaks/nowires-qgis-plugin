@@ -524,7 +524,7 @@ The advanced mode selects between three internal models based on the clutter cat
 
 1. **None** (`open` and `suburban` categories) — returns 0.0 dB loss. These categories have no applicable clutter model in advanced mode.
 2. **Saalos** (`vegetation` category) — the saalos vegetation attenuation algorithm, ported from ITWOM 3.0 ClutterLoss by Sid Shumate (Givens & Bell, Inc.) via the MIT-licensed `clutterloss-itm` Rust crate. The model computes vegetation loss as a function of frequency, polarization, antenna height, distance, and canopy height. See Decision D9 for invocation geometry.
-3. **ITU-R P.2108** (`built` and `rural` categories) — site-general clutter loss following the ITU-R P.2108 methodology. Computed as a function of frequency, distance, and clutter category. Applied in vectorized form for coverage computations, making it essentially free in terms of runtime cost.
+3. **ITU-R P.2108** (`built` and `rural` categories) — site-general clutter loss following the ITU-R P.2108-1 methodology. For all categories (rural and built-up), clutter loss increases with frequency, consistent with P.2108-1 §3.1 Eq. (2f) and §3.2. Building entry loss (ITU-R P.2109) is not included in this module. Applied in vectorized form for coverage computations, making it essentially free in terms of runtime cost.
 
 #### Decision D9: Saalos Invocation Geometry
 

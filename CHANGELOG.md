@@ -34,7 +34,7 @@ All notable changes to this project will be documented in this file.
 - Fix NaN dedup logic in coverage summary
 - Add safety net `__del__` handlers in `temp_manager.py` and `nan_utils.py` for resource cleanup
 - Fix macOS multiprocessing compatibility: prevent duplicate QGIS windows and fix Python executable path
-- Fix P2P Fresnel zone, line, and profile layers now use rule-based symbology
+- Fix P.2108 frequency factor: unify all categories to use the same diffraction-based scaling where clutter loss increases with frequency, consistent with P.2108-1 §3.1 Eq. (2f) and §3.2
 - Fix coverage pool falling back to sequential mode on worker errors instead of propagating exceptions
 - Fix duplicate `compute_terminal_clutter_losses` call in coverage pipeline
 - Fix ElevationGrid edge-registered pixel offset and dead globals cleanup

@@ -150,7 +150,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                     cch_override_m=p.cch_override_m,
                     feedback=feedback)
 
-                if result.prx_grid is None:
+                if result is None or result.prx_grid is None:
                     raise QgsProcessingException("Coverage computation was cancelled.")
 
                 report_payload, raster_grid, valid, summary = (

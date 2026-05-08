@@ -2,12 +2,12 @@
 """
 /***************************************************************************
  NoWires
-                     A QGIS plugin
+                      A QGIS plugin
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                             -------------------
-        begin                : 2026-04-22
-        copyright            : (C) 2026 Bortre Tenamo
-        email                : tedaks@gmail.com
+                              -------------------
+         begin                : 2026-04-22
+         copyright            : (C) 2026 Bortre Tenamo
+         email                : tedaks@gmail.com
  ***************************************************************************/
 
 /***************************************************************************
@@ -32,10 +32,7 @@ import urllib.error
 
 from osgeo import gdal, ogr, osr
 
-try:
-    from .geo_bounds import longitude_intervals
-except ImportError:
-    from geo_bounds import longitude_intervals
+from .geo_bounds import longitude_intervals
 
 logger = logging.getLogger(__name__)
 

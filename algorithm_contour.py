@@ -2,13 +2,13 @@
 """
 /***************************************************************************
  NoWires
-                     A QGIS plugin
+                      A QGIS plugin
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                             -------------------
-        begin                : 2026-04-22
-        copyright            : (C) 2026 Daniel Hulshof Saint Martin
-                                Adaptations (C) 2026 Bortre Tenamo
-        email                : tedaks@gmail.com
+                              -------------------
+         begin                : 2026-04-22
+         copyright            : (C) 2026 Daniel Hulshof Saint Martin
+                                 Adaptations (C) 2026 Bortre Tenamo
+         email                : tedaks@gmail.com
  ***************************************************************************/
 
 /***************************************************************************
@@ -32,6 +32,7 @@ and were originally distributed under the GPL. See NOTICE.md for
 attribution details.
 """
 
+import errno
 import os
 import shutil
 
@@ -93,6 +94,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
         self.progress = 0.0
         self._raster_layer_ids = []
         self._tmp = TempDirManager()  # per-run temp manager for clip/reproj files
+        self._contour_layer_id = None
 
     def initAlgorithm(self, config):
         self.addParameter(QgsProcessingParameterExtent(
@@ -146,6 +148,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         self._raster_layer_ids = []
+        self._contour_layer_id = None
         self.status_total = 0.0
         self.progress = 0.0
         self._tmp = TempDirManager()
@@ -171,6 +174,8 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
                 self.temp_dir, aoi_shp_path, proxy_opener,
                 feedback, self.progress, self.status_total)
             if merged_path is None:
+                feedback.reportError(
+                    "DEM download/merge failed for the selected area.")
                 return {}
             for _cf in clip_temps:
                 self._tmp.add_file(_cf)
@@ -206,7 +211,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             contour_shp_path, tmp_shp_dir = generate_contour_lines(
                 merged_path, interval, self.temp_dir, gdal_callback)
             if contour_shp_path is None:
-                feedback.pushInfo("\nContour generation produced no output.")
+                feedback.reportError("Contour generation produced no output.")
                 return {}
             self._tmp.add_dir(tmp_shp_dir)
             if feedback.isCanceled():
@@ -215,8 +220,18 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             feedback.setProgress(int(self.progress * self.status_total))
 
             output_dest = self.parameterAsFileOutput(parameters, self.OUTPUT, context)
-            final_output_path, reproj_dir = reproject_and_export(
-                contour_shp_path, context.project().crs(), output_dest, self.temp_dir)
+            try:
+                final_output_path, reproj_dir = reproject_and_export(
+                    contour_shp_path, context.project().crs(), output_dest,
+                    self.temp_dir)
+            except OSError as exc:
+                if exc.errno == errno.ENOSPC:
+                    feedback.reportError(
+                        "Disk full while writing contour output: {}".format(exc))
+                else:
+                    feedback.pushWarning(
+                        "Could not write contour output: {}".format(exc))
+                return {}
             if reproj_dir is not None:
                 self._tmp.add_dir(reproj_dir)
 
@@ -243,12 +258,19 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
                 self._tmp.make_dir("overlay_persistent", persistent=True)
 
             queue_layer_for_loading(context, layer, layer_name)
-            QgsProject.instance().writeEntry("NoWires", "last_contour_layer_id", layer.id())
+            self._contour_layer_id = layer.id()
             feedback.pushInfo("\nDone.")
             return {self.OUTPUT: final_output_path, self.OUTPUT_DEM: dem_output}
         finally:
             self._tmp.cleanup()
             self._tmp.warn_persistent(feedback)
+
+    def postProcessAlgorithm(self, context, feedback):
+        """Persist layer tracking state after successful algorithm execution."""
+        if self._contour_layer_id is not None:
+            QgsProject.instance().writeEntry(
+                "NoWires", "last_contour_layer_id", self._contour_layer_id)
+        return super().postProcessAlgorithm(context, feedback)
 
     def name(self):
         return "contour_lines"

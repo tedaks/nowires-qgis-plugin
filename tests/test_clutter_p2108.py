@@ -24,7 +24,7 @@ def test_unknown_category_returns_zero():
 
 def test_urban_at_reference_distance_in_band():
     v = clutter_loss_p2108(500.0, "urban", 3000.0)
-    assert 5.0 < v < 12.0
+    assert 1.0 < v < 8.0
 
 
 def test_loss_increases_with_distance():
@@ -39,10 +39,11 @@ def test_loss_saturates_at_long_distance():
     assert abs(a - b) < 1.0
 
 
-def test_frequency_factor_monotone():
-    vhf = clutter_loss_p2108(1000.0, "urban", 150.0)
-    uhf = clutter_loss_p2108(1000.0, "urban", 3000.0)
-    assert uhf > vhf
+def test_frequency_factor_increases_with_frequency():
+    for cat in ["open_rural", "dense_rural", "suburban", "urban"]:
+        vhf = clutter_loss_p2108(1000.0, cat, 150.0)
+        uhf = clutter_loss_p2108(1000.0, cat, 3000.0)
+        assert uhf > vhf, f"{cat}: UHF loss {uhf} not > VHF loss {vhf}"
 
 
 def test_category_ordering_at_fixed_inputs():
@@ -59,7 +60,8 @@ def test_loss_capped_below_base_loss():
 
 @pytest.mark.parametrize("category,d,f,expected", [
     ("urban", 200.0, 3000.0, 10.0 * (1 - math.exp(-1.0)) * min(1.0, math.log10(3000.0 / 2000.0) + 0.5)),
-    ("suburban", 500.0, 1000.0, 8.0 * (1 - math.exp(-1.0)) * 0.5 * math.log10(10.0)),
+    ("suburban", 500.0, 1000.0, 8.0 * (1 - math.exp(-1.0)) * 0.5 * math.log10(1000.0 / 100.0)),
+    ("open_rural", 1000.0, 3000.0, 2.0 * (1 - 1 / math.e) * min(1.0, math.log10(3000.0 / 2000.0) + 0.5)),
 ])
 def test_pinned_numeric_anchors(category, d, f, expected):
     assert clutter_loss_p2108(d, category, f) == pytest.approx(expected, abs=1e-9)

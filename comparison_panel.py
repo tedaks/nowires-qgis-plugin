@@ -95,7 +95,7 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
     clutter_model_idx = algorithm_instance.parameterAsEnum(parameters, f"{prefix}_CLUTTER_MODEL", context)
     clutter_enabled = clutter_model_idx > 0
     clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
-    cch_raw = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_CCH_OVERRIDE", context) if hasattr(algorithm_instance, f"{prefix}_CCH_OVERRIDE") else 0.0
+    cch_raw = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_CCH_OVERRIDE", context)
     cch_override_m = cch_raw if cch_raw > 0.0 else None
     clutter_raster_path = algorithm_instance.parameterAsFile(parameters, f"{prefix}_CLUTTER_RASTER", context)
     if shared_clutter_grid is not None:

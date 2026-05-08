@@ -2,12 +2,12 @@
 """
 /***************************************************************************
  NoWires
-                     A QGIS plugin
+                      A QGIS plugin
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                             -------------------
-        begin                : 2026-04-22
-        copyright            : (C) 2026 Bortre Tenamo
-        email                : tedaks@gmail.com
+                              -------------------
+         begin                : 2026-04-22
+         copyright            : (C) 2026 Bortre Tenamo
+         email                : tedaks@gmail.com
  ***************************************************************************/
 
 /***************************************************************************
@@ -120,6 +120,8 @@ class CoverageOpacityDialog(QDialog):
             from qgis.utils import iface
 
             if iface is not None:
-                iface.mapCanvas().refresh()
-        except ImportError:
+                canvas = iface.mapCanvas()
+                if canvas is not None:
+                    canvas.refresh()
+        except (ImportError, AttributeError):
             pass
