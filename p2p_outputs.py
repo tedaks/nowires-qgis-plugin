@@ -2,12 +2,12 @@
 """
 /***************************************************************************
  NoWires
-                     A QGIS plugin
+                      A QGIS plugin
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                             -------------------
-        begin                : 2026-04-22
-        copyright            : (C) 2026 Bortre Tenamo
-        email                : tedaks@gmail.com
+                              -------------------
+         begin                : 2026-04-22
+         copyright            : (C) 2026 Bortre Tenamo
+         email                : tedaks@gmail.com
  ***************************************************************************/
 
  /***************************************************************************
@@ -32,8 +32,16 @@ from .radio import PROP_MODE_NAMES
 __all__ = ["write_profile_line", "write_fresnel_zone"]
 
 
-def write_profile_line(path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result):
+def _require_ogr_driver(path):
+    """Return the OGR driver for *path*, raising on failure."""
     driver = ogr.GetDriverByName(ogr_driver_for_path(path))
+    if driver is None:
+        raise RuntimeError("No OGR driver found for output path: {}".format(path))
+    return driver
+
+
+def write_profile_line(path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result):
+    driver = _require_ogr_driver(path)
     remove_existing_ogr_dataset(driver, path)
     ds = None
     try:
@@ -62,8 +70,8 @@ def write_fresnel_zone(
     poly_path, lines_path, srs, tx_lat, tx_lon, rx_lat, rx_lon,
     distances, terrain_bulge, los_h, fresnel_r, dist_m,
 ):
-    poly_driver = ogr.GetDriverByName(ogr_driver_for_path(poly_path))
-    lines_driver = ogr.GetDriverByName(ogr_driver_for_path(lines_path))
+    poly_driver = _require_ogr_driver(poly_path)
+    lines_driver = _require_ogr_driver(lines_path)
     remove_existing_ogr_dataset(poly_driver, poly_path)
     remove_existing_ogr_dataset(lines_driver, lines_path)
     n = len(distances)

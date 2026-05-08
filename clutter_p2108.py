@@ -2,6 +2,19 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # This program is free software under GPLv3 or later. See LICENSE.
 
+"""ITU-R P.2108-1 (09/2021) clutter loss — simplified distance-frequency model.
+
+Category base losses and reference distances follow P.2108-1 Annex 1 §3.1
+Table 1 (clutter heights) and §3.2 (statistical model base values).
+
+Frequency dependence uses a log10(f) scaling consistent with P.2108-1 §3.1
+Eq. (2f) where clutter loss increases with frequency for all categories,
+including urban and suburban. Building entry loss (which behaves differently)
+is covered by ITU-R P.2109, not this module.
+
+Reference: Recommendation ITU-R P.2108-1 (09/2021), "Prediction of clutter loss"
+"""
+
 import math
 
 import numpy as np
@@ -45,5 +58,6 @@ def clutter_loss_p2108_vec(distances_m: np.ndarray, category: str, f_mhz: float)
     d = np.asarray(distances_m, dtype=np.float64)
     safe = d > 0.0
     out = np.zeros_like(d)
-    out[safe] = base * (1.0 - np.exp(-d[safe] / d_ref)) * _frequency_factor(f_mhz)
+    ff = _frequency_factor(f_mhz)
+    out[safe] = base * (1.0 - np.exp(-d[safe] / d_ref)) * ff
     return out

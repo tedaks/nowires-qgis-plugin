@@ -98,7 +98,7 @@ def _extract_batch_radio_params(algorithm, parameters, context):
     clutter_model_idx = _pE(p, algorithm.CLUTTER_MODEL, context)
     ce = clutter_model_idx > 0
     clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
-    cch_raw = _pD(p, algorithm.CCH_OVERRIDE, context) if hasattr(algorithm, 'CCH_OVERRIDE') else 0.0
+    cch_raw = _pD(p, algorithm.CCH_OVERRIDE, context)
     cch_override_m = cch_raw if cch_raw > 0.0 else None
     cg = LandCoverGrid.from_raster(_pF(p, algorithm.CLUTTER_RASTER, context)) if _pF(p, algorithm.CLUTTER_RASTER, context) else None
     tco, rco = clutter_override_value(_pE(p, algorithm.TX_CLUTTER_OVERRIDE, context)), clutter_override_value(_pE(p, algorithm.RX_CLUTTER_OVERRIDE, context))

@@ -2,12 +2,12 @@
 """
 /***************************************************************************
  NoWires
-                     A QGIS plugin
+                      A QGIS plugin
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                             -------------------
-        begin                : 2026-04-22
-        copyright            : (C) 2026 Bortre Tenamo
-        email                : tedaks@gmail.com
+                              -------------------
+         begin                : 2026-04-22
+         copyright            : (C) 2026 Bortre Tenamo
+         email                : tedaks@gmail.com
  ***************************************************************************/
 
 /***************************************************************************
@@ -188,13 +188,8 @@ def compute_coverage(
         tx_clutter_override=tx_clutter_override,
     )
     if not tasks:
-        logger.warning("No coverage pixels within the specified radius.")
-        return CoverageResult(
-            prx_grid=prx_grid, loss_grid=loss_grid,
-            min_lat=min_lat, max_lat=max_lat,
-            min_lon=min_lon, max_lon=max_lon,
-            itm_loss_grid=itm_loss_grid, clutter_loss_grid=clutter_loss_grid,
-        )
+        logger.error("No coverage pixels within the specified radius.")
+        return None
     grid_meta = elev_grid.grid_meta_dict()
     grid_meta["tx_lat"] = tx_lat
     grid_meta["tx_lon"] = tx_lon
@@ -234,7 +229,6 @@ def compute_coverage(
                     initializer=_init_cov_pool,
                     initargs=(shared_grid.name, grid_data.shape, str(grid_data.dtype), grid_meta),
                 ) as pool:
-                    shared_grid.shm.close()
                     for chunk_idx, batch_results in enumerate(
                         pool.map(
                             _itm_worker_batch,

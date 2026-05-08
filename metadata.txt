@@ -26,7 +26,7 @@ changelog=
     - Fix P2P owned clutter grid not closed after sampling (GDAL handle leak)
     - Fix TOCTOU race conditions in temp directory creation
     - Fix macOS multiprocessing compatibility
-    - Fix P2P Fresnel zone, line, and profile layers rule-based symbology
+    - Fix P.2108 frequency factor: all categories now use diffraction-based scaling where clutter loss increases with frequency, consistent with P.2108-1
     - Fix coverage pool fallback to sequential mode on worker errors
     - Fix duplicate compute_terminal_clutter_losses call in coverage pipeline
     Version 1.4.0
@@ -44,6 +44,7 @@ changelog=
     - Fix "layer not correctly generated" error from double-loading conflict with styled output layers
     - Fix DEM raster layers loading on top of coverage and contour outputs
     - Fix missing ANTENNA_AZ class constant that caused AttributeError
+    - Fix P2P Fresnel zone, line, and profile layers rule-based symbology
     - Version 1.1.0
     - Replace separate area coverage and radius sweep tools with Coverage Analysis
     - Add raster-derived coverage range statistics

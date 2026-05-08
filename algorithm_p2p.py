@@ -122,7 +122,7 @@ class P2PAlgorithm(NoWiresAlgorithm):
         clutter_model_idx = self.parameterAsEnum(parameters, self.CLUTTER_MODEL, context)
         clutter_enabled = clutter_model_idx > 0
         clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
-        cch_raw = self.parameterAsDouble(parameters, self.CCH_OVERRIDE, context) if hasattr(self, 'CCH_OVERRIDE') else 0.0
+        cch_raw = self.parameterAsDouble(parameters, self.CCH_OVERRIDE, context)
         cch_override_m = cch_raw if cch_raw > 0.0 else None
         clutter_raster_path = self.parameterAsFile(parameters, self.CLUTTER_RASTER, context)
         clutter_grid = None

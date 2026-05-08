@@ -41,6 +41,8 @@ def run_case(case: CoverageCase):
         radius_km=case.radius_km,
         grid_size=case.grid_size,
     )
+    if result is None:
+        return {"label": case.label, "elapsed_s": 0, "pixels": 0, "pixels_per_second": 0}
     prx_grid = result.prx_grid
     elapsed_s = perf_counter() - start
     pixels = int(np.count_nonzero(~np.isnan(prx_grid)))

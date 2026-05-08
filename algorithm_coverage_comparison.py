@@ -19,7 +19,6 @@
   *                                                                         *
   ***************************************************************************/
 
-
 Coverage Comparison Algorithm.
 
 Runs two coverage analyses side-by-side and produces a delta raster
@@ -51,9 +50,7 @@ from .comparison_panel import run_panel_coverage
 from .comparison_reporting import build_panel_info, build_delta_info, report_comparison_results
 from .temp_manager import TempDirManager
 
-
 logger = logging.getLogger(__name__)
-
 
 def _validate_panels(tx_point_a, tx_point_b, radius_km_a, radius_km_b):
     if tx_point_a is None:
@@ -67,7 +64,6 @@ def _validate_panels(tx_point_a, tx_point_b, radius_km_a, radius_km_b):
     if abs(radius_km_a - radius_km_b) > 1e-9:
         raise QgsProcessingException("Panel A and B radii differ. Delta comparison requires identical analysis radii.")
     return tx_lat_a, tx_lon_a, tx_lat_b, tx_lon_b
-
 
 def _resolve_output_paths(output_dir, out_a, out_b, out_delta, out_report, tmp_mgr):
     if output_dir:
@@ -186,12 +182,15 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
                     self, "PANEL_A", parameters, context, feedback, elev,
                     south, north, west, east, shared_clutter_grid=shared_clutter_grid)
 
-                prx_grid_a = panel_a["result"].prx_grid
-                loss_grid_a = panel_a["result"].loss_grid
-                min_lat_a = panel_a["result"].min_lat
-                max_lat_a = panel_a["result"].max_lat
-                min_lon_a = panel_a["result"].min_lon
-                max_lon_a = panel_a["result"].max_lon
+                panel_result_a = panel_a["result"]
+                if panel_result_a is None:
+                    raise QgsProcessingException("Panel A coverage produced no valid pixels.")
+                prx_grid_a = panel_result_a.prx_grid
+                loss_grid_a = panel_result_a.loss_grid
+                min_lat_a = panel_result_a.min_lat
+                max_lat_a = panel_result_a.max_lat
+                min_lon_a = panel_result_a.min_lon
+                max_lon_a = panel_result_a.max_lon
                 if prx_grid_a is None:
                     raise QgsProcessingException("Panel A coverage computation was cancelled.")
 
@@ -203,12 +202,15 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
                     self, "PANEL_B", parameters, context, feedback, elev,
                     south, north, west, east, shared_clutter_grid=shared_clutter_grid)
 
-                prx_grid_b = panel_b["result"].prx_grid
-                loss_grid_b = panel_b["result"].loss_grid
-                min_lat_b = panel_b["result"].min_lat
-                max_lat_b = panel_b["result"].max_lat
-                min_lon_b = panel_b["result"].min_lon
-                max_lon_b = panel_b["result"].max_lon
+                panel_result_b = panel_b["result"]
+                if panel_result_b is None:
+                    raise QgsProcessingException("Panel B coverage produced no valid pixels.")
+                prx_grid_b = panel_result_b.prx_grid
+                loss_grid_b = panel_result_b.loss_grid
+                min_lat_b = panel_result_b.min_lat
+                max_lat_b = panel_result_b.max_lat
+                min_lon_b = panel_result_b.min_lon
+                max_lon_b = panel_result_b.max_lon
                 if prx_grid_b is None:
                     raise QgsProcessingException("Panel B coverage computation was cancelled.")
                 if feedback and feedback.isCanceled():

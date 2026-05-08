@@ -306,7 +306,7 @@ The simple loss table is:
 | suburban | 8.0 |
 | urban | 10.0 |
 
-- **Advanced clutter correction** — saalos vegetation model for vegetation categories; ITU-R P.2108 site-general clutter loss for built and rural categories. Uses antenna height, distance, frequency, and polarization to compute a geometry-aware loss. If the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal. An optional canopy/clutter height override (CCH_OVERRIDE) parameter lets you specify the effective canopy height instead of relying on the built-in defaults.
+- **Advanced clutter correction** — saalos vegetation model for vegetation categories; ITU-R P.2108 site-general clutter loss for built and rural categories. Clutter loss increases with frequency for all categories, consistent with P.2108-1 §3.1. Uses antenna height, distance, frequency, and polarization to compute a geometry-aware loss. If the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal. An optional canopy/clutter height override (CCH_OVERRIDE) parameter lets you specify the effective canopy height instead of relying on the built-in defaults.
 
 Use TX/RX overrides when the raster is unavailable or visibly wrong. Neither simple nor advanced clutter models sample clutter along the full path — they apply terminal corrections only.
 
