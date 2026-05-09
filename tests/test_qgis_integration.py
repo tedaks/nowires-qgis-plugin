@@ -20,7 +20,6 @@ import numpy as np
 # Gate: skip entire module if QGIS is not available
 try:
     from qgis.core import QgsApplication, QgsProcessingContext, QgsProcessingFeedback
-    from qgis.PyQt.QtCore import QCoreApplication
     _HAS_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
 except ImportError:
     _HAS_QGIS = False
@@ -37,7 +36,6 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def qgis_app():
     """Bootstrap a QgsApplication for the test module."""
-    QCoreApplication()
     qgis = QgsApplication([], True)
     qgis.initQgis()
     yield qgis
