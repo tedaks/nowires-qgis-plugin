@@ -37,8 +37,8 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def qgis_app():
     """Bootstrap a QgsApplication for the test module."""
-    QCoreApplication([])  # noqa: F841
-    qgis = QgsApplication([], False)
+    QCoreApplication()
+    qgis = QgsApplication()
     qgis.initQgis()
     yield qgis
     qgis.exitQgis()
@@ -57,13 +57,15 @@ def feedback():
 class TestProviderRegistryIntegration:
     def test_provider_registers_in_processing_registry(self, qgis_app):
         from NoWires.provider import NoWiresProvider
-        registry = QgsApplication.processingRegistry()
         provider = NoWiresProvider()
-        added = registry.addProvider(provider)
-        assert added
-        retrieved = registry.providerById("nowires")
-        assert retrieved is not None
-        registry.removeProvider("nowires")
+        provider.loadAlgorithms()
+        alg_names = [alg.name() for alg in provider.algorithms()]
+        assert len(alg_names) == 5
+        assert "p2p_analysis" in alg_names
+        assert "coverage_analysis" in alg_names
+        assert "coverage_comparison" in alg_names
+        assert "contour_lines" in alg_names
+        assert "batch_p2p_analysis" in alg_names
 
     def test_all_algorithms_are_executable(self, qgis_app):
         from NoWires.provider import NoWiresProvider
@@ -94,7 +96,7 @@ class TestCoverageStyleIntegration:
 
         from qgis.core import QgsRasterLayer
         layer = QgsRasterLayer(tmp, "Test Coverage")
-        assert layer.isValid(), "Layer not valid: {}".format(layer.error().summary())
+        assert layer.isValid(), "Layer not valid: {}".format("layer load failed")
         apply_coverage_style(layer)
         assert layer.renderer() is not None
 

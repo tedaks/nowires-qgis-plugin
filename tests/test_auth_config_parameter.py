@@ -24,8 +24,8 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def qgis_app():
     from qgis.PyQt.QtCore import QCoreApplication
-    QCoreApplication([])
-    qgis = QgsApplication([], False)
+    QCoreApplication()
+    qgis = QgsApplication()
     qgis.initQgis()
     yield qgis
     qgis.exitQgis()

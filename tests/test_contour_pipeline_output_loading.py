@@ -27,8 +27,8 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def qgis_app():
     from qgis.PyQt.QtCore import QCoreApplication
-    QCoreApplication([])
-    qgis = QgsApplication([], False)
+    QCoreApplication()
+    qgis = QgsApplication()
     qgis.initQgis()
     yield qgis
     qgis.exitQgis()
@@ -45,7 +45,7 @@ class TestDemOutputLoading:
         tif = str(tmp_path / "dem_elev.tif")
         _write_dem_geotiff(tif)
         layer = QgsRasterLayer(tif, "Test DEM")
-        assert layer.isValid(), "DEM layer not valid: {}".format(layer.error().summary())
+        assert layer.isValid(), "DEM layer not valid: {}".format("layer load failed")
         elev_props = layer.elevationProperties()
         assert elev_props is not None
         elev_props.setEnabled(True)

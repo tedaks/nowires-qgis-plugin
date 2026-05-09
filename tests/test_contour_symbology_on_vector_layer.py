@@ -27,8 +27,8 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def qgis_app():
     from qgis.PyQt.QtCore import QCoreApplication
-    QCoreApplication([])
-    qgis = QgsApplication([], False)
+    QCoreApplication()
+    qgis = QgsApplication()
     qgis.initQgis()
     yield qgis
     qgis.exitQgis()
@@ -60,7 +60,7 @@ class TestContourSymbology:
         gpkg = str(tmp_path / "contours.gpkg")
         _create_contour_gpkg(gpkg)
         layer = QgsVectorLayer(gpkg, "Contours", "ogr")
-        assert layer.isValid(), "Layer not valid: {}".format(layer.error().summary())
+        assert layer.isValid(), "Layer not valid: {}".format("layer load failed")
         from qgis.PyQt.QtGui import QColor
         color = QColor(204, 119, 0, 204)
         apply_contour_symbology(layer, color, interval=10)

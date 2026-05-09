@@ -28,8 +28,8 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def qgis_app():
     from qgis.PyQt.QtCore import QCoreApplication
-    QCoreApplication([])
-    qgis = QgsApplication([], False)
+    QCoreApplication()
+    qgis = QgsApplication()
     qgis.initQgis()
     yield qgis
     qgis.exitQgis()
@@ -47,7 +47,7 @@ class TestCoverageStyleRoundtrip:
         grid = np.full((20, 20), -70.0, dtype=np.float32)
         _make_geotiff(tif, grid, 47.0, 47.1, 8.0, 8.1)
         layer = QgsRasterLayer(tif, "Coverage Test")
-        assert layer.isValid(), "Layer not valid: {}".format(layer.error().summary())
+        assert layer.isValid(), "Layer not valid: {}".format("layer load failed")
         apply_coverage_style(layer)
         renderer = layer.renderer()
         assert renderer is not None
