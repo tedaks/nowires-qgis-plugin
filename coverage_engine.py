@@ -33,11 +33,13 @@ from .antenna import antenna_config_from_values
 from .clutter import compute_terminal_clutter_losses
 from .clutter_context import ClutterLossContext
 from .coverage_pool import (
+    apply_batch_results,
     CoverageResult,
     _dynamic_chunk_size,
     _init_cov_pool,
     _itm_worker,
     _itm_worker_batch,
+    log_coverage_failures,
     _make_shared_grid,
     _MAX_WORKERS,
     _release_shared_memory,
@@ -53,30 +55,6 @@ from .geo_bounds import coverage_bounds
 
 logger = logging.getLogger(__name__)
 
-
-def _apply_batch_results(batch_results, loss_grid, prx_grid, itm_loss_grid,
-                         clutter_loss_grid):
-    pixels_failed = 0
-    for result in batch_results:
-        if result is not None:
-            i, j, loss_db, prx, itm_loss_db, c_tx, c_rx = result
-            loss_grid[i, j] = loss_db
-            prx_grid[i, j] = prx
-            itm_loss_grid[i, j] = itm_loss_db
-            clutter_loss_grid[i, j] = c_tx + c_rx
-        else:
-            pixels_failed += 1
-    return pixels_failed
-
-
-def _log_failures(pixels_failed, total):
-    if total == 0:
-        return
-    failure_pct = pixels_failed / max(total, 1) * 100
-    if failure_pct > 50:
-        logger.error("High failure rate: %.1f%% of coverage pixels failed", failure_pct)
-    elif pixels_failed > 0:
-        logger.warning("Coverage: %d/%d pixels failed (%.1f%%)", pixels_failed, total, failure_pct)
 
 
 def compute_coverage(
@@ -266,7 +244,7 @@ def compute_coverage(
                             cancelled = True
                             cancel_event.set()
                             break
-                        pixels_failed += _apply_batch_results(
+                        pixels_failed += apply_batch_results(
                             batch_results, loss_grid, prx_grid, itm_loss_grid, clutter_loss_grid)
                         pixels_done += len(batch_results)
                         if feedback and chunk_idx % 50 == 0:
@@ -312,7 +290,7 @@ def compute_coverage(
         feedback.pushInfo("Coverage: {}/{} pixels computed ({} failed)".format(
             total - pixels_failed, total, pixels_failed))
 
-    _log_failures(pixels_failed, total)
+    log_coverage_failures(pixels_failed, total)
 
     return CoverageResult(
         prx_grid=prx_grid, loss_grid=loss_grid,
