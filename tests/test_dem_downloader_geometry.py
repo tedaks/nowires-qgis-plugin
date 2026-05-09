@@ -7,7 +7,7 @@ import os
 import pytest
 
 try:
-    from qgis.core import QgsApplication, QgsGeometry, QgsPointXY, QgsRectangle
+    from qgis.core import QgsGeometry, QgsPointXY, QgsRectangle
     _HAS_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
 except ImportError:
     _HAS_QGIS = False
@@ -19,14 +19,6 @@ pytestmark = [
     ),
     pytest.mark.qgis_integration,
 ]
-
-
-@pytest.fixture(scope="module")
-def qgis_app():
-    qgis = QgsApplication([], True)
-    qgis.initQgis()
-    yield qgis
-    qgis.exitQgis()
 
 
 class TestDemDownloaderGeometry:

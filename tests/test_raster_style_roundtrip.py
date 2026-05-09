@@ -9,7 +9,7 @@ import numpy as np
 
 try:
     from qgis.core import (
-        QgsApplication, QgsRasterLayer, QgsColorRampShader,
+        QgsRasterLayer, QgsColorRampShader,
         QgsSingleBandPseudoColorRenderer,
     )
     _HAS_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
@@ -23,14 +23,6 @@ pytestmark = [
     ),
     pytest.mark.qgis_integration,
 ]
-
-
-@pytest.fixture(scope="module")
-def qgis_app():
-    qgis = QgsApplication([], True)
-    qgis.initQgis()
-    yield qgis
-    qgis.exitQgis()
 
 
 def _make_geotiff(path, grid, min_lat, max_lat, min_lon, max_lon):

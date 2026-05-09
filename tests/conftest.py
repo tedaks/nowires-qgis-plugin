@@ -28,6 +28,8 @@ import sys
 import types
 from unittest.mock import MagicMock
 
+import pytest
+
 # Detect whether a real QGIS runtime is available.
 # When running inside the QGIS container (or with QGIS_PREFIX_PATH set),
 # we should NOT mock qgis modules — let the real ones load.
@@ -38,6 +40,21 @@ if not _HAS_REAL_QGIS:
         _HAS_REAL_QGIS = True
     except ImportError:
         pass
+
+
+@pytest.fixture(scope="session")
+def qgis_app():
+    """Session-scoped QgsApplication for integration tests.
+
+    Qt6 only allows one QApplication per process.  Module-scoped fixtures
+    that create/destroy QgsApplication cause segfaults, so we create a
+    single instance for the entire test session.
+    """
+    from qgis.core import QgsApplication
+    app = QgsApplication([], True)
+    app.initQgis()
+    yield app
+    app.exitQgis()
 
 
 def _mock_factory(*args, _return_mock=None, **kwargs):
