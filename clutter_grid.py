@@ -13,8 +13,6 @@ import logging
 import numpy as np
 from osgeo import gdal
 
-from .clutter_categories import legacy_to_advanced_override, worldcover_class_to_advanced_category
-
 logger = logging.getLogger(__name__)
 
 _LEGACY_CLUTTER_CATEGORIES = ("open", "rural", "vegetation", "suburban", "urban")
@@ -176,8 +174,6 @@ class LandCoverGrid:
         """
         from .clutter_advanced import _legacy_to_advanced_override
 
-        n = len(lats)
-        m = len(lons)
         advanced = context is not None and context.model == "advanced"
 
         if self.data is None:

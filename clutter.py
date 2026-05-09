@@ -35,7 +35,6 @@ from .clutter_advanced import (  # noqa: F401
     _resolve_category_advanced, _legacy_to_advanced_override,
     compute_terminal_clutter_losses, _resolve_category,
 )
-from .clutter_categories import worldcover_class_to_advanced_category
 from .clutter_grid import LandCoverGrid  # noqa: F401
 
 logger = logging.getLogger(__name__)
