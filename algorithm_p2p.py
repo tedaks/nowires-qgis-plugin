@@ -134,6 +134,12 @@ class P2PAlgorithm(NoWiresAlgorithm):
         rx_clutter_override = clutter_override_value(
             self.parameterAsEnum(parameters, self.RX_CLUTTER_OVERRIDE, context)
         )
+        clutter_percentile = self.parameterAsDouble(parameters, self.CLUTTER_PERCENTILE, context)
+        street_width_m = self.parameterAsDouble(parameters, self.STREET_WIDTH, context)
+        bel_enabled = self.parameterAsBool(parameters, self.BEL_ENABLED, context)
+        bel_building_type_idx = self.parameterAsEnum(parameters, self.BEL_BUILDING_TYPE, context)
+        bel_building_type = "traditional" if bel_building_type_idx == 0 else "thermally_efficient"
+        bel_elevation_angle = self.parameterAsDouble(parameters, self.BEL_ELEVATION_ANGLE, context)
 
         show_chart = self.parameterAsBool(parameters, self.SHOW_CHART, context)
         profile_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_PROFILE, context)
@@ -159,6 +165,11 @@ class P2PAlgorithm(NoWiresAlgorithm):
             rx_clutter_override=rx_clutter_override,
             clutter_model=clutter_model,
             cch_override_m=cch_override_m,
+            clutter_percentile=clutter_percentile,
+            street_width_m=street_width_m,
+            bel_enabled=bel_enabled,
+            bel_building_type=bel_building_type,
+            bel_elevation_angle_deg=bel_elevation_angle,
             profile_dest=profile_dest, fresnel_dest=fresnel_dest,
             markers_dest=markers_dest,
             report_csv_path=report_csv_path,

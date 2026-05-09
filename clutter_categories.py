@@ -8,15 +8,57 @@ ADVANCED_CLUTTER_CATEGORIES = (
 )
 
 CLUTTER_CATEGORY_PARAMS = {
-    "open":        {"height_m": 0.0,  "model": "none",   "base_loss_db": 0.0,  "description": "Water, bare ground, snow/ice, wetland"},
-    "open_rural":  {"height_m": 2.0,  "model": "p2108",  "base_loss_db": 2.0,  "description": "Grassland, cropland"},
-    "dense_rural": {"height_m": 4.0,  "model": "p2108",  "base_loss_db": 4.0,  "description": "Shrubland, moss/lichen"},
-    "vegetation":  {"height_m": 12.0, "model": "saalos", "base_loss_db": 6.0,  "description": "Tree cover, mangroves"},
-    "suburban":    {"height_m": 9.0,  "model": "p2108",  "base_loss_db": 8.0,  "description": "Low-density built-up"},
-    "urban":       {"height_m": 15.0, "model": "p2108",  "base_loss_db": 10.0, "description": "High-density built-up"},
+    "open": {
+        "height_m": 0.0,
+        "R_m": 10,
+        "p2108_3_1_method": "2b",
+        "p2108_3_2_applicable": False,
+        "model": "none",
+        "description": "Water, bare ground, snow/ice, wetland",
+    },
+    "open_rural": {
+        "height_m": 2.0,
+        "R_m": 10,
+        "p2108_3_1_method": "2b",
+        "p2108_3_2_applicable": False,
+        "model": "p2108_height_gain",
+        "description": "Grassland, cropland",
+    },
+    "dense_rural": {
+        "height_m": 4.0,
+        "R_m": 10,
+        "p2108_3_1_method": "2b",
+        "p2108_3_2_applicable": False,
+        "model": "p2108_height_gain",
+        "description": "Shrubland, moss/lichen",
+    },
+    "vegetation": {
+        "height_m": 12.0,
+        "R_m": 15,
+        "p2108_3_1_method": "2a",
+        "p2108_3_2_applicable": False,
+        "model": "saalos",
+        "description": "Tree cover, mangroves",
+    },
+    "suburban": {
+        "height_m": 9.0,
+        "R_m": 10,
+        "p2108_3_1_method": "2a",
+        "p2108_3_2_applicable": True,
+        "model": "p2108_combined",
+        "description": "Low-density built-up",
+    },
+    "urban": {
+        "height_m": 15.0,
+        "R_m": 20,
+        "p2108_3_1_method": "2a",
+        "p2108_3_2_applicable": True,
+        "model": "p2108_combined",
+        "description": "High-density built-up",
+    },
 }
 
-_WORLDCOVER_MAP = {
+_WORLDVER_MAP = {
     10: "vegetation",
     20: "dense_rural",
     30: "open_rural",
@@ -33,6 +75,6 @@ _WORLDCOVER_MAP = {
 
 def worldcover_class_to_advanced_category(class_id) -> str:
     try:
-        return _WORLDCOVER_MAP.get(int(class_id), "open")
+        return _WORLDVER_MAP.get(int(class_id), "open")
     except (TypeError, ValueError):
         return "open"

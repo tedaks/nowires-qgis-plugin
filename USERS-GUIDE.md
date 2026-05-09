@@ -306,7 +306,8 @@ The simple loss table is:
 | suburban | 8.0 |
 | urban | 10.0 |
 
-- **Advanced clutter correction** — saalos vegetation model for vegetation categories; ITU-R P.2108 site-general clutter loss for built and rural categories. Clutter loss increases with frequency for all categories, consistent with P.2108-1 §3.1. Uses antenna height, distance, frequency, and polarization to compute a geometry-aware loss. If the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal. An optional canopy/clutter height override (CCH_OVERRIDE) parameter lets you specify the effective canopy height instead of relying on the built-in defaults.
+- **Advanced clutter correction** — ITU-R P.2108-1 §3.1 height-gain terminal correction for low-frequency (0.03–3 GHz) rural categories; P.2108-1 §3.2 statistical clutter loss for suburban/urban (0.5–67 GHz); saalos vegetation model for vegetation categories. Suburban and urban categories apply both §3.1 and §3.2 in the overlap band (0.5–3 GHz) and take the maximum. Loss increases with frequency for built categories, consistent with P.2108-1. When the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal. An optional canopy/clutter height override (CCH_OVERRIDE) parameter lets you specify the effective canopy height.
+- **Building entry loss (BEL)** — ITU-R P.2109-2 building entry loss model. When enabled, adds indoor penetration loss at the receiver based on building type (Traditional or Thermally-efficient), elevation angle, and frequency. Applied to RX only (TX is assumed outdoor). Available under advanced clutter settings.
 
 Use TX/RX overrides when the raster is unavailable or visibly wrong. Neither simple nor advanced clutter models sample clutter along the full path — they apply terminal corrections only.
 
@@ -316,14 +317,42 @@ When clutter is enabled and the land-cover raster field is left blank, NoWires a
 
 Advanced clutter mode adds a saalos calculation per coverage pixel for vegetation cells. On a 250×250 grid with vegetation-dominated land cover this can add several seconds. Built-environment categories use vectorized P.2108 and are essentially free in comparison.
 
+#### Advanced Clutter Parameters
+
+When advanced clutter correction is enabled, additional parameters become available:
+
+- **Clutter Percentile** (0.01–99.99, default 50.0): Location percentile for P.2108-1 §3.2 statistical clutter loss and P.2109-2 building entry loss. Lower percentile → lower loss (loss not exceeded for that percentage of locations). The same knob controls both §3.2 and BEL.
+- **Street Width** (5–100 m, default 27): Street width parameter for P.2108-1 §3.1 height-gain terminal correction.
+- **BEL Enabled** (boolean, default off): When enabled, P.2109-2 building entry loss is added to the RX terminal. TX terminal BEL is always 0.0 (outdoor transmitter).
+- **BEL Building Type** (Traditional / Thermally-efficient, default Traditional): Building type for P.2109-2. Thermally-efficient buildings have substantially higher loss at most frequencies.
+- **BEL Elevation Angle** (0–90°, default 0): Elevation angle of the path at the building façade. Higher angles increase BEL at 0.212 dB per degree. Default 0° corresponds to horizontal incidence.
+
+#### P.2108 Model Dispatch
+
+The advanced clutter mode automatically selects the correct ITU-R sub-model based on clutter category and frequency:
+
+| Category | f < 0.5 GHz | 0.5–3 GHz | 3–67 GHz | > 67 GHz |
+|---|---|---|---|---|
+| Open | 0 | 0 | 0 | 0 |
+| Open rural / Dense rural | §3.1 | §3.1 | 0 | 0 |
+| Vegetation | SAALOS | SAALOS | SAALOS | SAALOS (clamped) |
+| Suburban | §3.1 | §3.1 + §3.2 (max) | §3.2 | §3.2 (clamped) |
+| Urban | §3.1 | §3.1 + §3.2 (max) | §3.2 | §3.2 (clamped) |
+
+No user configuration is needed for this dispatch — the correct model is applied automatically based on the land-cover category and operating frequency.
+
 ### Clutter in Reports
 
 Both P2P and coverage reports include clutter loss fields:
 
 - `clutter_source`: describes where the clutter data came from (e.g. `override`, a raster path, or `fallback_open`)
+- `clutter_method`: which P.2108/P.2109 sub-models were applied (e.g. `§3.1+§3.2/saalos`)
+- `clutter_percentile`: the location percentile used for §3.2 and BEL calculations
 - `clutter_tx_db`: TX terminal clutter loss
 - `clutter_rx_db`: RX terminal clutter loss
-- `total_path_loss_db`: ITM loss plus both terminal clutter losses
+- `total_path_loss_db`: ITM loss plus both terminal clutter losses (excluding BEL)
+- `bel_rx_db`: RX building entry loss from P.2109-2 (0.0 when BEL not enabled)
+- `total_with_bel_db`: total path loss including clutter and BEL
 
 For coverage, `itm_loss_db` and `total_path_loss_db` are grid-wide means over valid pixels.
 

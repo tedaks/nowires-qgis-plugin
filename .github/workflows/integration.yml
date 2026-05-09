@@ -1,0 +1,35 @@
+name: QGIS Integration Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+jobs:
+  qgis-integration:
+    runs-on: ubuntu-latest
+
+    container:
+      # QGIS 4.x (Qt6 / PyQGIS6) — matches the plugin's target runtime
+      image: qgis/qgis:4.0
+      env:
+        QGIS_PREFIX_PATH: /usr
+        QT_QPA_PLATFORM: offscreen
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install test dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install pytest numpy
+
+      - name: Run integration tests
+        run: pytest tests/test_qgis_integration.py -v --tb=short
+
+      - name: Run Qt dialog tests
+        run: pytest tests/test_pyqt_dialogs.py -v --tb=short

@@ -204,6 +204,11 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             polarization=p.polarization,
             cch_override_m=p.cch_override_m,
             model=p.clutter_model,
+            percentile=p.clutter_percentile,
+            street_width_m=p.street_width_m,
+            bel_enabled=p.bel_enabled,
+            bel_building_type=p.bel_building_type,
+            bel_elevation_angle_deg=p.bel_elevation_angle_deg,
         )
     cl = compute_terminal_clutter_losses(
         tx_lat=p.tx_lat, tx_lon=p.tx_lon,
@@ -214,7 +219,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         rx_override=p.rx_clutter_override,
         context=clutter_context,
     )
-    total_path_loss_db = result.loss_db + cl.total_loss_db
+    total_path_loss_db = result.loss_db + cl.total_with_bel_db
     prx_dbm = eirp_dbm + p.rx_gain + ant_adj_total - total_path_loss_db
     margin_db = prx_dbm - p.rx_sens
     fspl_db = (20.0 * math.log10(dist_m / 1000.0) + 20.0 * math.log10(p.f_mhz) + 32.45
@@ -259,7 +264,9 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             tx_antenna_preset=p.tx_antenna_config.preset,
             rx_antenna_preset=p.rx_antenna_config.preset,
             antenna_gain_adjustment_db=ant_adj_total,
-            tx_cch_m=cl.tx_cch_m, rx_cch_m=cl.rx_cch_m)
+            tx_cch_m=cl.tx_cch_m, rx_cch_m=cl.rx_cch_m,
+            clutter_method=cl.method, clutter_percentile=cl.percentile,
+            bel_rx_db=cl.rx_bel_db, total_bel_db=cl.rx_bel_db)
         _write_p2p_reports(p.report_csv_path, p.report_json_path, p.report_html_path, report_payload)
         p.feedback.setProgress(90)
         chart_kwargs = dict(distances=dist_arr, elevations=elev_arr,

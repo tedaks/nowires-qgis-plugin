@@ -102,6 +102,12 @@ def _extract_batch_radio_params(algorithm, parameters, context):
     cch_override_m = cch_raw if cch_raw > 0.0 else None
     cg = LandCoverGrid.from_raster(_pF(p, algorithm.CLUTTER_RASTER, context)) if _pF(p, algorithm.CLUTTER_RASTER, context) else None
     tco, rco = clutter_override_value(_pE(p, algorithm.TX_CLUTTER_OVERRIDE, context)), clutter_override_value(_pE(p, algorithm.RX_CLUTTER_OVERRIDE, context))
+    clutter_percentile = _pD(p, algorithm.CLUTTER_PERCENTILE, context)
+    street_width_m = _pD(p, algorithm.STREET_WIDTH, context)
+    bel_enabled = p.algorithm.parameterAsBool(parameters, algorithm.BEL_ENABLED, context)
+    bel_building_type_idx = _pE(p, algorithm.BEL_BUILDING_TYPE, context)
+    bel_building_type = "traditional" if bel_building_type_idx == 0 else "thermally_efficient"
+    bel_elevation_angle = _pD(p, algorithm.BEL_ELEVATION_ANGLE, context)
     tfb, rfb = _pD(p, algorithm.TX_FRONT_BACK_DB, context), _pD(p, algorithm.RX_FRONT_BACK_DB, context)
     return dict(
         tx_h=tx_h, rx_h=rx_h, f_mhz=f_mhz, polarization=polarization,
@@ -111,6 +117,9 @@ def _extract_batch_radio_params(algorithm, parameters, context):
         tx_pk=tx_pk, rx_pk=rx_pk, tx_az=tx_az, rx_az=rx_az, kf=kf,
         n0=n0, epsilon=epsilon, sigma=sigma, ce=ce, cg=cg, tco=tco, rco=rco,
         tfb=tfb, rfb=rfb, clutter_model=clutter_model, cch_override_m=cch_override_m,
+        clutter_percentile=clutter_percentile, street_width_m=street_width_m,
+        bel_enabled=bel_enabled, bel_building_type=bel_building_type,
+        bel_elevation_angle_deg=bel_elevation_angle,
     )
 
 
@@ -190,6 +199,11 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
             clutter_enabled=rp["ce"], clutter_grid=rp["cg"],
             tx_clutter_override=rp["tco"], rx_clutter_override=rp["rco"],
             clutter_model=rp["clutter_model"], cch_override_m=rp["cch_override_m"],
+            clutter_percentile=rp["clutter_percentile"],
+            street_width_m=rp["street_width_m"],
+            bel_enabled=rp["bel_enabled"],
+            bel_building_type=rp["bel_building_type"],
+            bel_elevation_angle_deg=rp["bel_elevation_angle_deg"],
             elev=elev, total=total)
     except Exception:
         elev.close()

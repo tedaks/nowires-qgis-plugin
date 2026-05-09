@@ -106,6 +106,11 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
             rx_ground_elevation_m=float(elevations[-1]),
             polarization=params.polarization,
             cch_override_m=params.cch_override_m, model=params.clutter_model,
+            percentile=params.clutter_percentile,
+            street_width_m=params.street_width_m,
+            bel_enabled=params.bel_enabled,
+            bel_building_type=params.bel_building_type,
+            bel_elevation_angle_deg=params.bel_elevation_angle_deg,
         )
 
     clutter_losses = compute_terminal_clutter_losses(
@@ -117,7 +122,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
         context=clutter_context,
     )
 
-    total_loss_db = itm_result.loss_db + clutter_losses.total_loss_db
+    total_loss_db = itm_result.loss_db + clutter_losses.total_with_bel_db
 
     tx_bearing = bearing_deg(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon)
     rx_bearing = bearing_deg(rx_lat, rx_lon, tx_def["lat"], tx_def["lon"])

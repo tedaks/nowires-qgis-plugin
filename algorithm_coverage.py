@@ -111,6 +111,11 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                         tx_height_m=p.tx_h, rx_height_m=p.rx_h,
                         rx_ground_elevation_m=0.0, polarization=p.polarization,
                         cch_override_m=p.cch_override_m, model=p.clutter_model,
+                        percentile=p.clutter_percentile,
+                        street_width_m=p.street_width_m,
+                        bel_enabled=p.bel_enabled,
+                        bel_building_type=p.bel_building_type,
+                        bel_elevation_angle_deg=p.bel_elevation_angle_deg,
                     )
                 tx_clutter_for_report = compute_terminal_clutter_losses(
                     tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.tx_lat,
@@ -148,6 +153,11 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                     tx_clutter_loss_db=tx_clutter_for_report.tx_loss_db,
                     clutter_model=p.clutter_model,
                     cch_override_m=p.cch_override_m,
+                    clutter_percentile=p.clutter_percentile,
+                    street_width_m=p.street_width_m,
+                    bel_enabled=p.bel_enabled,
+                    bel_building_type=p.bel_building_type,
+                    bel_elevation_angle_deg=p.bel_elevation_angle_deg,
                     feedback=feedback)
 
                 if result is None or result.prx_grid is None:
