@@ -4,7 +4,6 @@
 
 import math
 
-import numpy as np
 import pytest
 
 from p2109_bel import building_entry_loss, building_entry_loss_vec
@@ -17,8 +16,6 @@ class TestBuildingEntryLoss:
         L_e = 0.0
         mu1 = L_h + L_e
         mu2 = 9.1 + (-3.0) * 0
-        A = 0.0 * mu1
-        B = 0.0 * mu2
         expected = 10.0 * math.log10(
             10.0 ** (0.1 * mu1) + 10.0 ** (0.1 * mu2) + 10.0 ** (-0.3)
         )
