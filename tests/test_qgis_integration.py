@@ -103,7 +103,7 @@ class TestCoverageStyleIntegration:
 
 class TestWriteGeotiffIntegration:
     def test_write_geotiff_produces_valid_raster(self, qgis_app):
-        from raster_io import write_geotiff
+        from NoWires.raster_io import write_geotiff
         tmp = tempfile.mktemp(suffix=".tif")
         grid = np.full((10, 10), -80.0, dtype=np.float32)
         write_geotiff(tmp, grid, 0.0, 0.1, 0.0, 0.1)
