@@ -34,7 +34,10 @@ class TestAuthConfigParameter:
 
     def test_contour_algorithm_has_auth_config_param(self, qgis_app):
         from NoWires.provider import NoWiresProvider
+        from qgis.core import QgsApplication
+        registry = QgsApplication.processingRegistry()
         provider = NoWiresProvider()
+        registry.addProvider(provider)
         provider.loadAlgorithms()
         for alg in provider.algorithms():
             if alg.name() == "contour_lines":
@@ -45,6 +48,7 @@ class TestAuthConfigParameter:
                 break
         else:
             pytest.skip("contour_lines algorithm not found")
+        registry.removeProvider(provider)
 
     def test_qgs_auth_method_config_can_be_created(self, qgis_app):
         try:
