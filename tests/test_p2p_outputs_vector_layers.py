@@ -25,8 +25,8 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def qgis_app():
     from qgis.PyQt.QtCore import QCoreApplication
-    QCoreApplication()
-    qgis = QgsApplication()
+    QCoreApplication([])
+    qgis = QgsApplication([], True)
     qgis.initQgis()
     yield qgis
     qgis.exitQgis()
@@ -80,8 +80,8 @@ class TestProfileLineVectorLayer:
         ft = next(layer.getFeatures())
         assert ft.geometry() is not None
         assert ft.geometry().wkbType() in (
-            QgsWkbTypes.LineString, QgsWkbTypes.LineStringZ,
-            QgsWkbTypes.LineStringM, QgsWkbTypes.LineStringZM,
+            QgsWkbTypes.Type.LineString, QgsWkbTypes.Type.LineStringZ,
+            QgsWkbTypes.Type.LineStringM, QgsWkbTypes.Type.LineStringZM,
         )
 
 
@@ -111,8 +111,8 @@ class TestFresnelZoneVectorLayers:
         layer = QgsVectorLayer(poly_gpkg, "fresnel", "ogr")
         assert layer.isValid()
         assert layer.wkbType() in (
-            QgsWkbTypes.Polygon, QgsWkbTypes.PolygonZ,
-            QgsWkbTypes.MultiPolygon, QgsWkbTypes.MultiPolygonZ,
+            QgsWkbTypes.Type.Polygon, QgsWkbTypes.Type.PolygonZ,
+            QgsWkbTypes.Type.MultiPolygon, QgsWkbTypes.Type.MultiPolygonZ,
         )
 
     def test_fresnel_lines_gpkg_loads(self, qgis_app, tmp_path):
@@ -137,6 +137,6 @@ class TestFresnelZoneVectorLayers:
         layer = QgsVectorLayer(lines_gpkg, "fresnel_lines", "ogr")
         assert layer.isValid()
         assert layer.wkbType() in (
-            QgsWkbTypes.LineString, QgsWkbTypes.LineStringZ,
-            QgsWkbTypes.MultiLineString, QgsWkbTypes.MultiLineStringZ,
+            QgsWkbTypes.Type.LineString, QgsWkbTypes.Type.LineStringZ,
+            QgsWkbTypes.Type.MultiLineString, QgsWkbTypes.Type.MultiLineStringZ,
         )

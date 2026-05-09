@@ -104,7 +104,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             options=["Metres", "Feet"], defaultValue=0, optional=False))
         self.addParameter(QgsProcessingParameterNumber(
             name=self.INTERVAL, description=self.tr("Contour interval"),
-            type=QgsProcessingParameterNumber.Integer,
+            type=QgsProcessingParameterNumber.Type.Integer,
             defaultValue=10, minValue=1, maxValue=5000, optional=False))
         self.addParameter(QgsProcessingParameterEnum(
             name=self.SMOOTHING, description=self.tr("Contour line smoothing level"),

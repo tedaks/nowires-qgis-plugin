@@ -77,7 +77,7 @@ OUTPUT_CONSTANTS = {
 }
 
 
-def _num_param(name, desc, type=QgsProcessingParameterNumber.Double, **kw):
+def _num_param(name, desc, type=QgsProcessingParameterNumber.Type.Double, **kw):
     return QgsProcessingParameterNumber(name, desc, type=type, **kw)
 
 

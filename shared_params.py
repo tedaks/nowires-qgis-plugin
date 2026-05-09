@@ -23,7 +23,7 @@ from .defaults import (
 )
 from .radio import ITM_MIN_N0, ITM_MAX_N0, ITM_MIN_SIGMA
 
-_DBL = QgsProcessingParameterNumber.Double
+_DBL = QgsProcessingParameterNumber.Type.Double
 
 BEL_BUILDING_TYPE_OPTIONS = ["Traditional", "Thermally-efficient"]
 
@@ -35,7 +35,7 @@ def add_advanced_param(algorithm, attr, label, default, min_val=None, max_val=No
     if max_val is not None:
         kwargs["maxValue"] = max_val
     param = QgsProcessingParameterNumber(attr, label, **kwargs)
-    param.setFlags(param.flags() | QgsProcessingParameterNumber.FlagAdvanced)
+    param.setFlags(param.flags() | QgsProcessingParameterNumber.Flag.FlagAdvanced)
     algorithm.addParameter(param)
 
 
@@ -56,20 +56,20 @@ def add_clutter_params(algorithm, attr_getter=None):
     algorithm.addParameter(QgsProcessingParameterNumber(
         ag("CCH_OVERRIDE"),
         "Canopy/clutter height override (m, 0 = auto)",
-        type=QgsProcessingParameterNumber.Double,
+        type=QgsProcessingParameterNumber.Type.Double,
         defaultValue=0.0, minValue=0.0, optional=True,
     ))
     algorithm.addParameter(QgsProcessingParameterNumber(
         ag("CLUTTER_PERCENTILE"),
         "Clutter loss percentile (0.01–99.99)",
-        type=QgsProcessingParameterNumber.Double,
+        type=QgsProcessingParameterNumber.Type.Double,
         defaultValue=DEFAULT_CLUTTER_PERCENTILE,
         minValue=0.01, maxValue=99.99, optional=True,
     ))
     algorithm.addParameter(QgsProcessingParameterNumber(
         ag("STREET_WIDTH"),
         "Street width for P.2108 §3.1 (m)",
-        type=QgsProcessingParameterNumber.Double,
+        type=QgsProcessingParameterNumber.Type.Double,
         defaultValue=DEFAULT_STREET_WIDTH_M,
         minValue=5.0, maxValue=100.0, optional=True,
     ))
@@ -85,7 +85,7 @@ def add_clutter_params(algorithm, attr_getter=None):
     algorithm.addParameter(QgsProcessingParameterNumber(
         ag("BEL_ELEVATION_ANGLE"),
         "Building entry elevation angle (degrees)",
-        type=QgsProcessingParameterNumber.Double,
+        type=QgsProcessingParameterNumber.Type.Double,
         defaultValue=DEFAULT_BEL_ELEVATION_ANGLE_DEG,
         minValue=0.0, maxValue=90.0, optional=True,
     ))

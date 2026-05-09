@@ -37,8 +37,8 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def qgis_app():
     """Bootstrap a QgsApplication for the test module."""
-    QCoreApplication()
-    qgis = QgsApplication()
+    QCoreApplication([])
+    qgis = QgsApplication([], True)
     qgis.initQgis()
     yield qgis
     qgis.exitQgis()
