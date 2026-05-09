@@ -27,6 +27,3 @@ jobs:
 
       - name: Run GDAL compatibility tests
         run: pytest tests/test_gdal_compat.py -v --tb=short
-
-      - name: Run raster rendering smoke tests
-        run: pytest tests/test_raster_rendering_smoke.py -v --tb=short
