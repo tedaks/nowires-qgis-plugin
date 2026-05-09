@@ -24,9 +24,13 @@ pytestmark = [
 @pytest.fixture
 def provider(qgis_app):
     from NoWires.provider import NoWiresProvider
+    from qgis.core import QgsApplication
+    registry = QgsApplication.processingRegistry()
     p = NoWiresProvider()
+    registry.addProvider(p)
     p.loadAlgorithms()
-    return p
+    yield p
+    registry.removeProvider(p)
 
 
 def _get_algorithm(provider, name):

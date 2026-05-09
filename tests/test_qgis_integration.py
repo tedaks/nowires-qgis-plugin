@@ -46,7 +46,10 @@ def feedback():
 class TestProviderRegistryIntegration:
     def test_provider_registers_in_processing_registry(self, qgis_app):
         from NoWires.provider import NoWiresProvider
+        from qgis.core import QgsApplication
+        registry = QgsApplication.processingRegistry()
         provider = NoWiresProvider()
+        registry.addProvider(provider)
         provider.loadAlgorithms()
         alg_names = [alg.name() for alg in provider.algorithms()]
         assert len(alg_names) == 5
@@ -55,15 +58,20 @@ class TestProviderRegistryIntegration:
         assert "coverage_comparison" in alg_names
         assert "contour_lines" in alg_names
         assert "batch_p2p_analysis" in alg_names
+        registry.removeProvider(provider)
 
     def test_all_algorithms_are_executable(self, qgis_app):
         from NoWires.provider import NoWiresProvider
+        from qgis.core import QgsApplication
+        registry = QgsApplication.processingRegistry()
         provider = NoWiresProvider()
+        registry.addProvider(provider)
         provider.loadAlgorithms()
         for alg in provider.algorithms():
             assert alg.name() is not None
             instance = alg.createInstance()
             assert instance.name() == alg.name()
+        registry.removeProvider(provider)
 
 
 class TestCoverageStyleIntegration:
