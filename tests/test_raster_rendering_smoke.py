@@ -1,8 +1,22 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # This program is free software under GPLv3 or later. See LICENSE.
-"""Raster rendering smoke tests — shader pipeline, palette constants, style variants."""
+"""Raster rendering smoke tests — shader pipeline, palette constants, style variants.
+
+SKIPPED when real QGIS is available because they pass MagicMock layers to
+QgsSingleBandPseudoColorRenderer, which expects a real QgsRasterDataProvider.
+"""
+
+import os
+import pytest
 from unittest.mock import MagicMock
+
+_HAS_REAL_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
+
+pytestmark = pytest.mark.skipif(
+    _HAS_REAL_QGIS,
+    reason="Raster rendering smoke tests use MagicMock layers incompatible with real QGIS",
+)
 
 
 class TestCoveragePaletteConstants:
