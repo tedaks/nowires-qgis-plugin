@@ -104,6 +104,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
             frequency_mhz=params.f_mhz, distance_m=dist_m,
             tx_height_m=tx_h_eff, rx_height_m=rx_h_eff,
             rx_ground_elevation_m=float(elevations[-1]),
+            tx_ground_elevation_m=float(elevations[0]),
             polarization=params.polarization,
             cch_override_m=params.cch_override_m, model=params.clutter_model,
             percentile=params.clutter_percentile,

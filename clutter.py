@@ -68,12 +68,15 @@ _CLUTTER_LOSS_ARRAY = np.array([
 ], dtype=np.float64)
 
 # Lookup table: ESA WorldCover class ID (0-255) -> clutter category index (0-4)
-# Unknown classes default to 0 (open)
+# Unknown classes default to 0 (open). Legacy mapping kept consistent with the
+# advanced taxonomy: low-stature land cover (shrubland 20, moss/lichen 100)
+# is treated as rural rather than vegetation so that switching simple ↔
+# advanced does not silently change the dominant category for those areas.
 _WORLDCOVER_TO_CATEGORY = np.zeros(256, dtype=np.int32)
 _WORLDCOVER_TO_CATEGORY[10] = 2
-_WORLDCOVER_TO_CATEGORY[20] = 2
+_WORLDCOVER_TO_CATEGORY[20] = 1
 _WORLDCOVER_TO_CATEGORY[95] = 2
-_WORLDCOVER_TO_CATEGORY[100] = 2
+_WORLDCOVER_TO_CATEGORY[100] = 1
 _WORLDCOVER_TO_CATEGORY[30] = 1
 _WORLDCOVER_TO_CATEGORY[40] = 1
 _WORLDCOVER_TO_CATEGORY[50] = 4
@@ -226,7 +229,10 @@ class LandCoverGrid:
                 if rx_override:
                     default_cat = _legacy_to_advanced_override(rx_override)
                 return np.full((n, m), default_cat, dtype=object)
-            default = _CLUTTER_LOSS_ARRAY[0] if rx_override else 0.0
+            if rx_override:
+                default = _CLUTTER_LOSS_ARRAY[_CATEGORY_IDX.get(rx_override, 0)]
+            else:
+                default = 0.0
             return np.full((n, m), default, dtype=np.float64)
         n_rows, n_cols = self.data.shape
         d_lat = (self.max_lat - self.min_lat) / n_rows

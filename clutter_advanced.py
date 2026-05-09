@@ -23,6 +23,10 @@ def _terminal_height_m(terminal, context):
     return context.tx_height_m if terminal == "tx" else context.rx_height_m
 
 
+def _terminal_ground_elev_m(terminal, context):
+    return context.tx_ground_elevation_m if terminal == "tx" else context.rx_ground_elevation_m
+
+
 def _compute_advanced_loss(category, terminal, context):
     """Compute per-terminal clutter loss using the §6 dispatch table."""
     params = CLUTTER_CATEGORY_PARAMS.get(category, CLUTTER_CATEGORY_PARAMS["open"])
@@ -43,7 +47,7 @@ def _compute_advanced_loss(category, terminal, context):
             cch__meter=cch_m,
             h_tx__meter=cch_m,
             h_rx__meter=ant_h_m,
-            h_rx_gnd__meter=context.rx_ground_elevation_m,
+            h_rx_gnd__meter=_terminal_ground_elev_m(terminal, context),
             pol=context.polarization,
             f__mhz=context.frequency_mhz,
         )
@@ -87,6 +91,13 @@ def _compute_advanced_loss(category, terminal, context):
                 )
                 if stat_loss > 0.0:
                     method_parts.append("§3.2(clamped)")
+        # P.2108-1 presents §3.1 (height-gain terminal correction) and §3.2
+        # (path-statistical urban/suburban) as alternative methods covering
+        # different physical effects, not as additive contributions. We report
+        # whichever predicts the larger loss in their joint validity window
+        # (0.5–3 GHz for §3.1+§3.2 overlap), which avoids double-counting while
+        # still surfacing the dominant mechanism. This is a heuristic combiner
+        # — not specified by the recommendation.
         combined = max(hg_loss, stat_loss) if method_parts else 0.0
         method_str = "+".join(method_parts) if method_parts else "p2108_combined(0)"
         return combined, method_str
@@ -111,7 +122,7 @@ def compute_terminal_clutter_loss(category, terminal, context):
             cch__meter=cch_m,
             h_tx__meter=cch_m,
             h_rx__meter=ant_h_m,
-            h_rx_gnd__meter=context.rx_ground_elevation_m,
+            h_rx_gnd__meter=_terminal_ground_elev_m(terminal, context),
             pol=context.polarization,
             f__mhz=context.frequency_mhz,
         )

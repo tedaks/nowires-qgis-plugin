@@ -21,6 +21,7 @@
 """
 
 import logging
+import math
 import multiprocessing
 import os
 import warnings
@@ -131,6 +132,22 @@ def compute_coverage(
     itm_loss_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
     clutter_loss_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
 
+    _sample_elev = getattr(elev_grid, "sample", None)
+    if callable(_sample_elev):
+        tx_ground_elev_m = float(_sample_elev(tx_lat, tx_lon))
+        if not math.isfinite(tx_ground_elev_m):
+            tx_ground_elev_m = 0.0
+    else:
+        tx_ground_elev_m = 0.0
+    rx_ground_grid = None
+    if clutter_enabled and clutter_model == "advanced" and callable(_sample_elev):
+        rx_ground_grid = np.zeros((grid_size, grid_size), dtype=np.float32)
+        for i in range(grid_size):
+            lat_i = float(lats[i])
+            for j in range(grid_size):
+                v = _sample_elev(lat_i, float(lons[j]))
+                rx_ground_grid[i, j] = v if math.isfinite(v) else 0.0
+
     antenna_config = antenna_config_from_values(
         preset=antenna_preset,
         azimuth_deg=antenna_az_deg,
@@ -145,7 +162,9 @@ def compute_coverage(
         clutter_context = ClutterLossContext(
             frequency_mhz=f_mhz, distance_m=0.0,
             tx_height_m=tx_h_m, rx_height_m=rx_h_m,
-            rx_ground_elevation_m=0.0, polarization=polarization,
+            rx_ground_elevation_m=tx_ground_elev_m,
+            tx_ground_elevation_m=tx_ground_elev_m,
+            polarization=polarization,
             cch_override_m=cch_override_m, model=clutter_model,
             percentile=clutter_percentile, street_width_m=street_width_m,
             bel_enabled=bel_enabled, bel_building_type=bel_building_type,
@@ -191,6 +210,8 @@ def compute_coverage(
         rx_clutter_override,
         lats, lons, clutter_context=clutter_context,
         tx_clutter_override=tx_clutter_override,
+        tx_ground_elev_m=tx_ground_elev_m,
+        rx_ground_grid=rx_ground_grid,
     )
     if not tasks:
         logger.error("No coverage pixels within the specified radius.")

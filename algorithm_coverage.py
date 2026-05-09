@@ -106,10 +106,16 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                 clutter_context = None
                 if p.clutter_enabled:
                     from .clutter_context import ClutterLossContext
+                    import math as _math
+                    _tx_ground = float(elev.sample(p.tx_lat, p.tx_lon))
+                    if not _math.isfinite(_tx_ground):
+                        _tx_ground = 0.0
                     clutter_context = ClutterLossContext(
                         frequency_mhz=p.f_mhz, distance_m=0.0,
                         tx_height_m=p.tx_h, rx_height_m=p.rx_h,
-                        rx_ground_elevation_m=0.0, polarization=p.polarization,
+                        rx_ground_elevation_m=_tx_ground,
+                        tx_ground_elevation_m=_tx_ground,
+                        polarization=p.polarization,
                         cch_override_m=p.cch_override_m, model=p.clutter_model,
                         percentile=p.clutter_percentile,
                         street_width_m=p.street_width_m,
