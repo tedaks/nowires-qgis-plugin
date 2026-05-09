@@ -24,8 +24,8 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def qgis_app():
     from qgis.PyQt.QtCore import QCoreApplication
-    QCoreApplication([])
-    qgis = QgsApplication([], False)
+    QCoreApplication()
+    qgis = QgsApplication()
     qgis.initQgis()
     yield qgis
     qgis.exitQgis()
@@ -52,7 +52,7 @@ class TestBatchMarkerLayer:
         write_batch_marker_layer(gpkg, results, feedback, mode=0)
         layer = QgsVectorLayer(gpkg, "batch_markers", "ogr")
         assert layer.isValid(), "Batch marker GPKG did not load: {}".format(
-            layer.error().summary())
+            "layer load failed")
 
     def test_marker_layer_feature_count(self, qgis_app, tmp_path):
         from NoWires.batch_writer import write_batch_marker_layer

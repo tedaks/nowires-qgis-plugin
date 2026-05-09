@@ -27,8 +27,8 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def qgis_app():
     from qgis.PyQt.QtCore import QCoreApplication
-    QCoreApplication([])
-    qgis = QgsApplication([], False)
+    QCoreApplication()
+    qgis = QgsApplication()
     qgis.initQgis()
     yield qgis
     qgis.exitQgis()
@@ -93,7 +93,7 @@ class TestFresnelPolygonSymbology:
         gpkg = str(tmp_path / "fresnel_poly.gpkg")
         _create_polygon_gpkg(gpkg)
         layer = QgsVectorLayer(gpkg, "Fresnel Polygons", "ogr")
-        assert layer.isValid(), "Layer not valid: {}".format(layer.error().summary())
+        assert layer.isValid(), "Layer not valid: {}".format("layer load failed")
         apply_fresnel_polygon_symbology(layer)
         renderer = layer.renderer()
         assert isinstance(renderer, QgsRuleBasedRenderer), \

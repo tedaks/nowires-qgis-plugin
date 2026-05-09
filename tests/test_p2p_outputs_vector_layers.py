@@ -25,8 +25,8 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def qgis_app():
     from qgis.PyQt.QtCore import QCoreApplication
-    QCoreApplication([])
-    qgis = QgsApplication([], False)
+    QCoreApplication()
+    qgis = QgsApplication()
     qgis.initQgis()
     yield qgis
     qgis.exitQgis()
@@ -62,7 +62,7 @@ class TestProfileLineVectorLayer:
         _write_profile_line(gpkg, srs)
         layer = QgsVectorLayer(gpkg, "profile", "ogr")
         assert layer.isValid(), "Profile line GPKG did not load: {}".format(
-            layer.error().summary())
+            "layer load failed")
         assert layer.featureCount() == 1
         assert layer.fields().lookupField("distance") >= 0
         assert layer.fields().lookupField("loss_db") >= 0
@@ -95,7 +95,7 @@ class TestFresnelZoneVectorLayers:
         _write_fresnel_zone(poly_gpkg, lines_gpkg, srs)
         layer = QgsVectorLayer(poly_gpkg, "fresnel", "ogr")
         assert layer.isValid(), "Fresnel polygon GPKG did not load: {}".format(
-            layer.error().summary())
+            "layer load failed")
         assert layer.featureCount() == 2
         for ft in layer.getFeatures():
             assert ft.attribute("type") is not None
@@ -124,7 +124,7 @@ class TestFresnelZoneVectorLayers:
         _write_fresnel_zone(poly_gpkg, lines_gpkg, srs)
         layer = QgsVectorLayer(lines_gpkg, "fresnel_lines", "ogr")
         assert layer.isValid(), "Fresnel lines GPKG did not load: {}".format(
-            layer.error().summary())
+            "layer load failed")
         assert layer.featureCount() == 2
 
     def test_fresnel_lines_geometry_is_linestring(self, qgis_app, tmp_path):
