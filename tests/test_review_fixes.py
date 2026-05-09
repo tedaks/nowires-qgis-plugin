@@ -255,6 +255,9 @@ def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypa
         def parameterAsFileOutput(self, parameters, name, context):
             return parameters.get(name, "")
 
+        def parameterAsOutputLayer(self, parameters, name, context):
+            return parameters.get(name, "")
+
     alg = Algorithm()
     params = {
         alg.OUTPUT_RASTER: str(tmp_path / "coverage.tif"),
