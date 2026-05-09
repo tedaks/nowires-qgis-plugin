@@ -138,6 +138,11 @@ class TerminalClutterLosses:
     source: str
     tx_cch_m: float = 0.0
     rx_cch_m: float = 0.0
+    tx_bel_db: float = 0.0
+    rx_bel_db: float = 0.0
+    total_with_bel_db: float = 0.0
+    method: str = "simple"
+    percentile: float = 50.0
 
 
 @dataclass(slots=True)

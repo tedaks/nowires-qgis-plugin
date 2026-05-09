@@ -8,19 +8,44 @@ All notable changes to this project will be documented in this file.
 
 - Added "Advanced clutter correction" mode: saalos vegetation model, ITU-R P.2108 for built/rural categories
 - Added saalos vegetation clutter model (Python port of ITWOM 3.0 ClutterLoss by Sid Shumate, via the MIT-licensed clutterloss-itm Rust crate). See THIRD_PARTY_NOTICES.md.
-- Added ITU-R P.2108-style site-general clutter loss for built and rural categories
-- Added canopy/clutter height override (CCH_OVERRIDE) parameter for advanced mode
-- Added `tx_cch_m` and `rx_cch_m` to P2P report payload
-- Added `ClutterLossContext` dataclass for bundling advanced clutter model inputs
-- Added per-category model assignment for advanced clutter (`clutter_categories.py`, `clutter_advanced.py`)
-- Added per-pixel TX clutter computation and caching in coverage pipeline for advanced mode
-- Added per-task TX clutter override support in batch and comparison workflows
+- Added ITU-R P.2108-1 §3.2 statistical clutter loss for terrestrial paths (combined urban+suburban model, 0.5–67 GHz, percentile-based, distance-capped at 2 km)
+- Added ITU-R P.2108-1 §3.1 height-gain terminal correction (per-category, 0.03–3 GHz, methods 2a/2b)
+- Added ITU-R P.2109-2 building entry loss (two-lognormal model with elevation angle, per building type)
+- Added per-category model dispatch per the P.2108/P.2109 compliance design: `none` (open), `p2108_height_gain` (open_rural, dense_rural), `saalos` (vegetation), `p2108_combined` (suburban, urban with §3.1+§3.2 overlap max)
+- Added `CLUTTER_PERCENTILE` parameter (0.01–99.99) for P.2108 §3.2 and P.2109 BEL
+- Added `STREET_WIDTH_M` parameter (5–100 m, default 27) for P.2108 §3.1
+- Added `BEL_ENABLED` boolean parameter for P.2109 building entry loss
+- Added `BEL_BUILDING_TYPE` enum (Traditional / Thermally-efficient) for P.2109
+- Added `BEL_ELEVATION_ANGLE` parameter (0–90°, default 0) for P.2109
+- Added `method`, `percentile`, `tx_bel_db`, `rx_bel_db`, `total_with_bel_db` fields to `TerminalClutterLosses`
+- Added `p2108_common.py` — shared Q⁻¹ and F⁻¹ inverse normal CDF implementations with sign-convention guard tests
+- Added `p2108_height_gain.py` — P.2108-1 §3.1 height-gain terminal correction (scalar + vectorized)
+- Added `p2108_terrestrial_stat.py` — P.2108-1 §3.2 statistical clutter loss (scalar + vectorized)
+- Added `p2109_bel.py` — P.2109-2 building entry loss (scalar + vectorized)
+- Added `R_m`, `p2108_3_1_method`, `p2108_3_2_applicable` fields to `CLUTTER_CATEGORY_PARAMS`
+- Added `percentile`, `street_width_m`, `bel_enabled`, `bel_building_type`, `bel_elevation_angle_deg` to `ClutterLossContext`
+- Added `clutter_method` and `clutter_percentile` to P2P report payload
+- Added `bel_rx_db` to P2P report payload
+- Added `clutter_method` field to `TerminalClutterLosses` for reporting which sub-model fired (e.g. `"§3.1+§3.2/saalos"`)
+- Added total path loss computation including BEL: `total_with_bel_db = total_loss_db + rx_bel_db`
+- Added comprehensive test suites for p2108_common (24 tests), p2108_terrestrial_stat (14), p2108_height_gain (14), p2109_bel (10)
 
 ### Changed
 
+- **Breaking**: Replaced the simplified per-category `clutter_loss_p2108` with proper ITU-R P.2108-1 §3.2 statistical model. Urban/suburban clutter loss values will differ significantly from the previous approximation (which was incorrect).
+- **Breaking**: `CLUTTER_CATEGORY_PARAMS` no longer has `base_loss_db` or `model="p2108"`. Use `R_m`, `p2108_3_1_method`, `p2108_3_2_applicable`, and `model="p2108_height_gain"` / `"p2108_combined"` instead.
 - P2P analysis now passes `ClutterLossContext` to the advanced clutter dispatch, including antenna height, distance, frequency, and polarization for saalos and P.2108
+- P2P total path loss now uses `total_with_bel_db` (includes BEL when enabled)
 - Coverage engine caches the TX terminal clutter loss and reuses it across all coverage pixels when using advanced mode
+- Coverage per-pixel loop now adds P.2109 building entry loss to RX clutter when `BEL_ENABLED=True`
 - Batch and comparison workflows now propagate advanced clutter context and canopy height overrides through their parameter pipelines
+- `clutter_p2108.py` is now a deprecation shim that delegates to `p2108_terrestrial_stat` with a `DeprecationWarning`
+- Advanced clutter mode now dispatches per-category per-frequency per §6 of the compliance design:
+  - open → 0 dB
+  - open_rural / dense_rural → P.2108 §3.1 height-gain (f < 3 GHz)
+  - vegetation → SAALOS (unchanged)
+  - suburban / urban → P.2108 §3.1 + §3.2 combined (max of both in 0.5–3 GHz overlap; §3.2 only above 3 GHz)
+- Coverage comparison now propagates BEL parameters through its parameter pipeline
 
 ### Fixed
 

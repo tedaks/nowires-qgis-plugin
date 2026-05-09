@@ -17,8 +17,9 @@ This repository contains the QGIS 4 plugin source for **NoWires** version 1.5.0.
 - **Clutter / Land-Cover Correction**: Three clutter modes are available:
   - **Off** — no terminal clutter correction.
   - **Simple clutter correction** — flat per-category losses (legacy behaviour, unchanged).
-  - **Advanced clutter correction** — saalos for vegetation, ITU-R P.2108 for built/rural; uses antenna height, distance, frequency, and polarization. Unsupported antenna geometries (antenna at or above the canopy height) gate the loss to zero.
-  Reports include per-terminal clutter loss (`clutter_tx_db`, `clutter_rx_db`), canopy heights (`tx_cch_m`, `rx_cch_m`), and `total_path_loss_db` breakdown. WorldCover 2020 tiles are auto-downloaded from the ESA AWS open data bucket when clutter is enabled and no raster is supplied; users can also provide a local raster.
+  - **Advanced clutter correction** — ITU-R P.2108-1 §3.1 height-gain terminal correction for rural categories (0.03–3 GHz); P.2108-1 §3.2 statistical clutter loss for suburban/urban (0.5–67 GHz); saalos for vegetation. Suburban/urban categories use both §3.1 and §3.2 in the overlap band (0.5–3 GHz) and take the maximum. When the antenna is at or above the canopy height, the model gates the loss to zero for that terminal.
+  - **Building entry loss (BEL)** — ITU-R P.2109-2 indoor penetration loss for the RX terminal, with traditional/thermally-efficient building types and elevation angle support. Enabled under advanced clutter settings.
+  Reports include per-terminal clutter loss (`clutter_tx_db`, `clutter_rx_db`), canopy heights (`tx_cch_m`, `rx_cch_m`), `total_path_loss_db` breakdown, BEL (`bel_rx_db`), and combined total (`total_with_bel_db`). WorldCover 2020 tiles are auto-downloaded from the ESA AWS open data bucket when clutter is enabled and no raster is supplied; users can also provide a local raster.
 - **Reliability Outputs**: P2P and coverage reports now include fade-margin classes plus formal-or-fallback availability guidance.
 - **Coverage Opacity Control**: Adjust the most recent coverage raster opacity from a live plugin dialog after the analysis finishes.
 
@@ -63,11 +64,15 @@ This plugin also adapts code from [tedaks/nowires](https://github.com/tedaks/now
 - `base_algorithm.py`: shared base class for NoWires Processing algorithms
 - `antenna.py`: antenna radiation pattern model with presets and pattern files
 - `clutter.py`: terminal clutter correction dispatch and helpers
-- `clutter_advanced.py`: advanced clutter mode (saalos + P.2108) dispatcher
-- `clutter_categories.py`: clutter category definitions and WorldCover class mapping
+- `clutter_advanced.py`: advanced clutter mode dispatcher (saalos + P.2108 §3.1/§3.2 + P.2109 BEL)
+- `clutter_categories.py`: clutter category definitions, WorldCover class mapping, P.2108 model dispatch params
 - `clutter_constants.py`: shared clutter constants (simple loss table, limits)
 - `clutter_context.py`: ClutterLossContext dataclass definition
-- `clutter_p2108.py`: ITU-R P.2108 site-general clutter loss (scalar + vector)
+- `clutter_p2108.py`: deprecation shim for legacy P.2108 callers
+- `p2108_common.py`: shared inverse-normal CDF helpers and validation for P.2108/P.2109
+- `p2108_height_gain.py`: ITU-R P.2108-1 §3.1 height-gain terminal correction
+- `p2108_terrestrial_stat.py`: ITU-R P.2108-1 §3.2 statistical clutter loss for terrestrial paths
+- `p2109_bel.py`: ITU-R P.2109-2 building entry loss
 - `clutter_saalos.py`: saalos vegetation clutter loss (Python port from Rust)
 - `coverage_engine.py`: coverage raster computation engine
 - `coverage_compute.py`: shared coverage propagation helpers
@@ -109,7 +114,7 @@ This plugin also adapts code from [tedaks/nowires](https://github.com/tedaks/now
 - `report_export.py`: shared CSV/JSON/HTML report writers
 - `report_payloads.py`: pure-Python report payload and marker helpers
 - `report_markers.py`: TX/RX marker output helpers
-- `shared_params.py`: shared parameter registration helpers
+- `shared_params.py`: shared parameter registration helpers (including clutter/BEL params)
 - `shared_dem_grid.py`: shared DEM grid download and cache management
 - `constants.py`: shared numerical constants
 - `defaults.py`: default parameter values
@@ -188,6 +193,12 @@ The advanced clutter model uses the saalos vegetation algorithm,
 ported from ITWOM 3.0 (Sid Shumate, Givens & Bell, Inc.) via an
 intermediate MIT-licensed Rust crate. See `THIRD_PARTY_NOTICES.md`
 for the full upstream notice.
+
+The P.2108-1 and P.2109-2 clutter and building entry loss models are
+implemented from ITU-R Recommendations P.2108-1 (09/2021) and
+P.2109-2 (08/2023). The inverse normal CDF approximation uses the
+Abramowitz & Stegun §26.2.23 rational approximation with Newton
+refinement via `math.erf`.
 
 ## License
 

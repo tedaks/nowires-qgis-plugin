@@ -117,6 +117,8 @@ def compute_coverage(
     feedback=None,
     clutter_model="simple",
     cch_override_m=None,
+    clutter_percentile=50.0, street_width_m=27.0,
+    bel_enabled=False, bel_building_type="traditional", bel_elevation_angle_deg=0.0,
 ):
     radius_m = radius_km * 1000.0
     min_lat, max_lat, min_lon, max_lon = coverage_bounds(tx_lat, tx_lon, radius_km)
@@ -145,6 +147,9 @@ def compute_coverage(
             tx_height_m=tx_h_m, rx_height_m=rx_h_m,
             rx_ground_elevation_m=0.0, polarization=polarization,
             cch_override_m=cch_override_m, model=clutter_model,
+            percentile=clutter_percentile, street_width_m=street_width_m,
+            bel_enabled=bel_enabled, bel_building_type=bel_building_type,
+            bel_elevation_angle_deg=bel_elevation_angle_deg,
         )
     if tx_clutter_loss_db is not None:
         tx_clutter_loss = tx_clutter_loss_db

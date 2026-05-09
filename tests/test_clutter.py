@@ -260,7 +260,7 @@ def test_advanced_mode_uses_dispatcher():
         context=ctx,
     )
     assert result.rx_category == "urban"
-    assert 0.0 < result.rx_loss_db < 10.0
+    assert result.rx_loss_db > 0.0
     assert result.rx_cch_m == 15.0
 
 
@@ -302,3 +302,28 @@ def test_overrides_take_precedence_in_advanced():
 def test_terminal_clutter_losses_dataclass_extension_is_additive():
     legacy = TerminalClutterLosses("open", "open", 0.0, 0.0, 0.0, "off")
     assert legacy.tx_cch_m == 0.0 and legacy.rx_cch_m == 0.0
+    assert legacy.tx_bel_db == 0.0
+    assert legacy.rx_bel_db == 0.0
+    assert legacy.total_with_bel_db == 0.0
+
+
+def test_advanced_with_bel_enabled():
+    grid = LandCoverGrid(
+        data=np.array([[50, 50], [50, 50]], dtype=np.int16),
+        min_lat=0.0, max_lat=1.0, min_lon=0.0, max_lon=1.0,
+        nodata=None, source="memory",
+    )
+    ctx = ClutterLossContext(
+        frequency_mhz=3500.0, distance_m=1000.0,
+        tx_height_m=30.0, rx_height_m=2.0, model="advanced",
+        bel_enabled=True, bel_building_type="traditional",
+        bel_elevation_angle_deg=0.0,
+    )
+    result = compute_terminal_clutter_losses(
+        tx_lat=0.5, tx_lon=0.5, rx_lat=0.5, rx_lon=0.5,
+        frequency_mhz=3500.0, enabled=True, land_cover_grid=grid,
+        context=ctx,
+    )
+    assert result.rx_bel_db > 0.0, "BEL should be positive for indoor RX"
+    assert result.total_with_bel_db > result.total_loss_db
+    assert result.tx_bel_db == 0.0

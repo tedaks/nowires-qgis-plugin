@@ -84,15 +84,23 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
 - [clutter.py](clutter.py)
   Terminal clutter correction dispatch and helpers
 - [clutter_advanced.py](clutter_advanced.py)
-  Advanced clutter mode dispatcher (saalos + P.2108)
+  Advanced clutter mode dispatcher (saalos + P.2108 §3.1/§3.2 + P.2109 BEL)
 - [clutter_categories.py](clutter_categories.py)
-  Clutter category definitions and WorldCover class mapping
+  Clutter category definitions, WorldCover class mapping, P.2108 model dispatch params
 - [clutter_constants.py](clutter_constants.py)
   Shared clutter constants (simple loss table, limits)
 - [clutter_context.py](clutter_context.py)
   ClutterLossContext dataclass
 - [clutter_p2108.py](clutter_p2108.py)
-  ITU-R P.2108 site-general clutter loss (scalar + vector)
+  Deprecation shim delegating to `p2108_terrestrial_stat`
+- [p2108_common.py](p2108_common.py)
+  Shared inverse-normal CDF helpers (`Q⁻¹`, `F⁻¹`) and validation for P.2108/P.2109
+- [p2108_height_gain.py](p2108_height_gain.py)
+  ITU-R P.2108-1 §3.1 height-gain terminal correction (scalar + vectorized)
+- [p2108_terrestrial_stat.py](p2108_terrestrial_stat.py)
+  ITU-R P.2108-1 §3.2 statistical clutter loss for terrestrial paths (scalar + vectorized)
+- [p2109_bel.py](p2109_bel.py)
+  ITU-R P.2109-2 building entry loss (scalar + vectorized)
 - [clutter_saalos.py](clutter_saalos.py)
   Saalos vegetation clutter loss (Python port from Rust)
 - [worldcover_downloader.py](worldcover_downloader.py)
@@ -108,7 +116,7 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
 - [defaults.py](defaults.py)
   Default parameter values
 - [shared_params.py](shared_params.py)
-  Shared parameter registration helpers
+  Shared parameter registration helpers (including clutter/BEL params)
 - [shared_dem_grid.py](shared_dem_grid.py)
   Shared DEM grid download and cache management
 - [raster_io.py](raster_io.py)
@@ -265,11 +273,14 @@ Point-to-point reports carry reliability and clutter fields:
 - `fade_margin_class`
 - `reliability_summary`
 - `clutter_source`
+- `clutter_method`
+- `clutter_percentile`
 - `clutter_tx_db`
 - `clutter_rx_db`
 - `tx_cch_m`
 - `rx_cch_m`
 - `total_path_loss_db`
+- `bel_rx_db`
 
 ### P2P Parameters
 
@@ -304,6 +315,11 @@ Point-to-point reports carry reliability and clutter fields:
 - TX clutter override
 - RX clutter override
 - canopy/clutter height override (CCH_OVERRIDE) for advanced mode
+- clutter percentile (0.01–99.99) for P.2108 §3.2 and P.2109
+- street width (5–100 m, default 27) for P.2108 §3.1
+- BEL enabled (boolean) for P.2109 building entry loss
+- BEL building type (Traditional / Thermally-efficient) for P.2109
+- BEL elevation angle (0–90°, default 0) for P.2109
 
 ### Earth Radius Factor Handling
 
@@ -356,10 +372,13 @@ Coverage reports now also include reliability guidance and clutter loss breakdow
 - `availability_estimate_pct` when the formal path is used
 - `reliability_summary`
 - `clutter_source`
+- `clutter_method`
+- `clutter_percentile`
 - `clutter_tx_db`
 - `clutter_rx_db`
 - `itm_loss_db` (grid-wide mean over valid pixels)
 - `total_path_loss_db` (grid-wide mean over valid pixels)
+- `bel_rx_db`
 
 ### Max Analysis Distance vs Actual Coverage
 
@@ -396,6 +415,11 @@ This is an important product distinction:
 - TX clutter override
 - RX clutter override
 - canopy/clutter height override (CCH_OVERRIDE) for advanced mode
+- clutter percentile (0.01–99.99) for P.2108 §3.2 and P.2109
+- street width (5–100 m, default 27) for P.2108 §3.1
+- BEL enabled (boolean) for P.2109 building entry loss
+- BEL building type (Traditional / Thermally-efficient) for P.2109
+- BEL elevation angle (0–90°, default 0) for P.2109
 
 #### Advanced inputs
 
@@ -510,21 +534,88 @@ Key helpers:
 
 | Field | Type | Description |
 |---|---|---|
-| `category` | `str` | Clutter category (`open`, `rural`, `vegetation`, `suburban`, `urban`) |
+| `category` | `str` | Clutter category (`open`, `open_rural`, `dense_rural`, `vegetation`, `suburban`, `urban`) |
 | `freq_hz` | `float` | Frequency in Hz |
 | `polarization` | `int` | ITM polarization code (0 = horizontal, 1 = vertical) |
 | `htx_m` | `float` | TX antenna height above ground (m) |
 | `hrx_m` | `float` | RX antenna height above ground (m) |
 | `dist_m` | `float` | Path distance (m) |
 | `cch_m` | `float` | Canopy/clutter height override (m); `0.0` means no override |
+| `percentile` | `float` | Location percentile (0.01–99.99) for P.2108 §3.2 and P.2109 BEL |
+| `street_width_m` | `float` | Street width (m) for P.2108 §3.1 (default 27) |
+| `bel_enabled` | `bool` | Whether P.2109 building entry loss is enabled |
+| `bel_building_type` | `str` | Building type for P.2109 (`traditional` or `thermally_efficient`) |
+| `bel_elevation_angle_deg` | `float` | Elevation angle at façade (°) for P.2109 (default 0) |
 
 ### Advanced Clutter Models
 
-The advanced mode selects between three internal models based on the clutter category:
+The advanced mode selects between four internal models based on the clutter category and frequency, per the ITU-R P.2108-1 and P.2109-2 specifications:
 
-1. **None** (`open` and `suburban` categories) — returns 0.0 dB loss. These categories have no applicable clutter model in advanced mode.
-2. **Saalos** (`vegetation` category) — the saalos vegetation attenuation algorithm, ported from ITWOM 3.0 ClutterLoss by Sid Shumate (Givens & Bell, Inc.) via the MIT-licensed `clutterloss-itm` Rust crate. The model computes vegetation loss as a function of frequency, polarization, antenna height, distance, and canopy height. See Decision D9 for invocation geometry.
-3. **ITU-R P.2108** (`built` and `rural` categories) — site-general clutter loss following the ITU-R P.2108-1 methodology. For all categories (rural and built-up), clutter loss increases with frequency, consistent with P.2108-1 §3.1 Eq. (2f) and §3.2. Building entry loss (ITU-R P.2109) is not included in this module. Applied in vectorized form for coverage computations, making it essentially free in terms of runtime cost.
+1. **None** (`open` category) — returns 0.0 dB loss. Open areas have no applicable clutter model.
+2. **P.2108 §3.1 height-gain** (`open_rural` and `dense_rural` categories) — ITU-R P.2108-1 §3.1 height-gain terminal correction for frequencies 0.03–3 GHz. Uses method (2b) for open/rural categories, computing a height-gain correction based on antenna height, representative clutter height R, frequency, and street width. Not a function of distance or percentile. Returns 0.0 dB for antennas at or above the representative clutter height R.
+3. **P.2108 §3.1 + §3.2 combined** (`suburban` and `urban` categories) — applies both the §3.1 height-gain correction and the §3.2 statistical clutter loss, taking the maximum of the two in the overlap band (0.5–3 GHz). Above 3 GHz, only §3.2 applies. The §3.2 model is a combined urban+suburban statistic (not per-category) and is percentile-based with a 2 km distance cap.
+4. **Saalos** (`vegetation` category) — the saalos vegetation attenuation algorithm, ported from ITWOM 3.0 ClutterLoss by Sid Shumate (Givens & Bell, Inc.) via the MIT-licensed `clutterloss-itm` Rust crate. See Decision D9 for invocation geometry.
+
+The frequency-based dispatch table (per P.2108/P.2109 compliance design §6):
+
+| Category | f < 0.5 GHz | 0.5 ≤ f ≤ 3 GHz | 3 < f ≤ 67 GHz | f > 67 GHz |
+|---|---|---|---|---|
+| open | 0 | 0 | 0 | 0 |
+| open_rural | §3.1 | §3.1 | 0 | 0 |
+| dense_rural | §3.1 | §3.1 | 0 | 0 |
+| vegetation | SAALOS | SAALOS | SAALOS | SAALOS (clamped) |
+| suburban | §3.1 | §3.1 + §3.2 (max) | §3.2 | §3.2 (clamped) |
+| urban | §3.1 | §3.1 + §3.2 (max) | §3.2 | §3.2 (clamped) |
+
+For suburban/urban in the overlap band (0.5–3 GHz), both §3.1 and §3.2 are computed and the larger value is used — they model different physical effects (terminal-local height-gain vs path-statistical clutter).
+
+Out-of-band frequencies are clamped to the nearest valid range, with a warning logged once per session.
+
+### P.2108-1 §3.1 — Height-Gain Terminal Correction
+
+`p2108_height_gain.py` implements the ITU-R P.2108-1 §3.1 height-gain terminal correction.
+
+- **Validity:** 0.03–3 GHz, antenna height h below representative clutter height R.
+- **Per-category** (from P.2108-1 Table 3)：categories `open`, `open_rural`, and `dense_rural` use method (2b) — `Ah = −Kh2 · log10(h/R)`; categories `suburban`, `urban`, and `vegetation` use method (2a) — `Ah = J(ν) − 6.03` with knife-edge diffraction `J(ν)`.
+- **Not a function of distance or percentile** — depends only on h, f, R, and street width w_s.
+- **Gated to zero** when antenna height ≥ representative clutter height R.
+
+API: `height_gain_loss(h_m, f_ghz, category, w_s_m=27.0)` returns loss in dB.
+
+### P.2108-1 §3.2 — Statistical Clutter Loss
+
+`p2108_terrestrial_stat.py` implements the ITU-R P.2108-1 §3.2 statistical clutter loss for terrestrial paths.
+
+- **Validity:** 0.5–67 GHz, percentage locations 0 < p < 100.
+- **Combined urban+suburban statistic** — not per-category. Caller is responsible for only invoking this for urban/suburban categories.
+- **Percentile-based:** lower percentile → lower loss (loss not exceeded for that percentage of locations).
+- **Distance cap:** loss is capped at the value for d = 2 km (Eq. (6)).
+- Uses `Q⁻¹` (inverse complementary normal CDF): `Q⁻¹(α) = −F⁻¹(α)`, opposite sign convention to P.2109's `F⁻¹`.
+
+API: `clutter_loss_p2108_terrestrial_stat(d_km, f_ghz, p=50.0)` returns loss in dB.
+
+### P.2109-2 — Building Entry Loss
+
+`p2109_bel.py` implements the ITU-R P.2109-2 building entry loss model.
+
+- **Validity:** 0.08–100 GHz, building type `traditional` or `thermally_efficient`, elevation angle θ (degrees above horizontal), probability P (0–100%).
+- **Two-lognormal model** (P.2109-2 §3, eqs (1)–(10)): `L_BEL(P) = 10·log10(10^(0.1·A) + 10^(0.1·B) + 10^(0.1·C))` where A and B are lognormal terms and C = −3.0 dB is a constant floor.
+- **Elevation-angle term** `L_e = 0.212·|θ|` adds loss proportional to elevation at the building façade (default 0° = horizontal incidence).
+- **No floor-penetration term** — P.2109 does not model floor penetration; this was a v1 design error.
+- Uses `F⁻¹` (regular inverse normal CDF), opposite sign convention to P.2108's `Q⁻¹`.
+- Applied to RX terminal only when `BEL_ENABLED=True`.
+
+API: `building_entry_loss(f_ghz, building_type, theta_deg=0.0, p=50.0)` returns loss in dB.
+
+### P.2108/P.2109 Shared Helpers
+
+`p2108_common.py` provides:
+
+- `_ndtri(p)` — Abramowitz & Stegun §26.2.23 rational approximation with 2 Newton refinement steps using `math.erf`. Avoids scipy dependency.
+- `q_inv_complementary_normal(p)` — `Q⁻¹(p) = −F⁻¹(p)` (P.2108/§3.2 convention).
+- `f_inv_normal(p)` — regular `F⁻¹(p)` (P.2109 convention).
+- `validate_frequency_ghz(f, f_min, f_max)` — clamps and warns on out-of-band frequencies.
+- `validate_distance_km(d, d_min)` — clamps and warns on short distances.
 
 #### Decision D9: Saalos Invocation Geometry
 
@@ -540,12 +631,24 @@ The saalos model is invoked with the **local terminal** as `h_rx` and the **far 
 
 | Field | Type | Description |
 |---|---|---|
+| `tx_category` | `str` | TX clutter category |
+| `rx_category` | `str` | RX clutter category |
 | `tx_loss_db` | `float` | TX terminal clutter loss (dB) |
 | `rx_loss_db` | `float` | RX terminal clutter loss (dB) |
 | `total_loss_db` | `float` | Sum of TX and RX clutter losses (dB) |
+| `source` | `str` | Descriptive label for the clutter data source |
 | `tx_cch_m` | `float` | Effective canopy/clutter height used at TX (m) |
 | `rx_cch_m` | `float` | Effective canopy/clutter height used at RX (m) |
-| `source` | `str` | Descriptive label for the clutter data source |
+| `tx_bel_db` | `float` | TX building entry loss (always 0.0 — TX is outdoor) |
+| `rx_bel_db` | `float` | RX building entry loss (dB, P.2109-2; 0.0 when BEL not enabled) |
+| `total_with_bel_db` | `float` | Total clutter + BEL: `total_loss_db + rx_bel_db` |
+| `method` | `str` | Which sub-model fired (e.g. `"§3.1+§3.2/saalos"`) |
+| `percentile` | `float` | Location percentile used for §3.2 and BEL |
+
+The `method` field identifies which P.2108/P.2109 sub-models were applied for TX and RX. Examples:
+- `"none/none"` for open terrain on both terminals
+- `"§3.1/§3.1+§3.2"` for open_rural TX and urban RX
+- `"saalos/saalos"` for vegetation on both terminals
 
 The `tx_cch_m` and `rx_cch_m` fields are included in P2P report payloads. For simple mode, these are always 0.0. For advanced mode, they reflect the canopy height used in the saalos or P.2108 computation.
 
@@ -560,30 +663,50 @@ Simple mode clutter categories and loss table:
 | Category | Loss (dB) |
 |---|---|
 | open | 0.0 |
-| rural | 2.0 |
+| open_rural | 2.0 |
+| dense_rural | 2.0 |
 | vegetation | 6.0 |
 | suburban | 8.0 |
 | urban | 10.0 |
 
-WorldCover class-to-category mapping (`worldcover_class_to_clutter_category`):
+Advanced mode category dispatch (per P.2108/P.2109 compliance design §6):
+
+| Category | Model | P.2108 §3.1 Method | R (m) | §3.2 Applicable |
+|---|---|---|---|---|
+| open | none | — | — | no |
+| open_rural | p2108_height_gain | (2b) | 10 | no |
+| dense_rural | p2108_height_gain | (2b) | 10 | no |
+| vegetation | saalos | (2a) | 15 | no |
+| suburban | p2108_combined | (2a) | 10 | yes |
+| urban | p2108_combined | (2a) | 20 | yes |
+
+WorldCover class-to-category mapping (`worldcover_class_to_clutter_category` for simple mode, `worldcover_class_to_advanced_category` for advanced mode):
+
+Simple mode:
 
 | WorldCover class | Category |
 |---|---|
 | 10, 95, 100 | vegetation |
-| 20, 30, 40 | rural |
+| 20, 30, 40 | open_rural |
 | 50 | urban |
 | 60, 70, 80, 90 | open |
+
+Advanced mode uses the same mapping but with `open_rural` and `dense_rural` replacing `rural`.
 
 ### Clutter Reporting
 
 Both P2P and coverage reports expose clutter loss breakdown:
 
 - `clutter_source`: a descriptive label produced by `clutter_source_label()` rather than a raw file path.
+- `clutter_method`: which P.2108/P.2109 sub-model fired (e.g. `"§3.1/§3.1+§3.2"`).
+- `clutter_percentile`: the location percentile used for §3.2 and BEL calculations.
 - `clutter_tx_db`: TX terminal clutter loss (dB).
 - `clutter_rx_db`: RX terminal clutter loss (dB).
 - `tx_cch_m`: effective canopy/clutter height used at TX (m). Always 0.0 in simple mode.
 - `rx_cch_m`: effective canopy/clutter height used at RX (m). Always 0.0 in simple mode.
-- `total_path_loss_db`: `itm_loss_db + clutter_tx_db + clutter_rx_db`.
+- `total_path_loss_db`: `itm_loss_db + clutter_tx_db + clutter_rx_db` (clutter only, no BEL).
+- `bel_rx_db`: RX building entry loss from P.2109-2 (0.0 when BEL not enabled).
+- `total_with_bel_db`: `total_path_loss_db + bel_rx_db` (clutter + BEL).
 
 For coverage reports, `itm_loss_db` and `total_path_loss_db` are grid-wide means over valid pixels, `clutter_tx_db` is the TX terminal loss at the transmitter location, and `clutter_rx_db` is derived as `clutter_total_mean - clutter_tx_db`.
 
@@ -866,6 +989,48 @@ Used both as:
 - a link-budget threshold in P2P
 - a usable-cell threshold in coverage summary calculations
 
+### Clutter Percentile (`CLUTTER_PERCENTILE`)
+
+Location percentile for P.2108-1 §3.2 statistical clutter loss and P.2109-2 building entry loss.
+
+- Range: `0.01` to `99.99`
+- Default: `50.0`
+- Lower percentile → lower loss (loss not exceeded for that percentage of locations)
+- Same knob controls both §3.2 and BEL
+
+### Street Width (`STREET_WIDTH_M`)
+
+Street width parameter for P.2108-1 §3.1 height-gain terminal correction.
+
+- Range: `5` to `100` m
+- Default: `27.0` (P.2108-1 default)
+- Only used in advanced clutter mode
+
+### BEL Enabled (`BEL_ENABLED`)
+
+Boolean toggle for P.2109-2 building entry loss.
+
+- Default: `False`
+- When enabled, building entry loss is computed for the RX terminal and added to the path budget
+- TX terminal BEL is always 0.0 (outdoor transmitter assumption)
+- Available in P2P, coverage, batch, and comparison workflows
+
+### BEL Building Type (`BEL_BUILDING_TYPE`)
+
+Building type for P.2109-2 building entry loss.
+
+- Options: `Traditional` / `Thermally-efficient`
+- Default: `Traditional`
+- Thermally-efficient buildings have substantially higher BEL at most frequencies
+
+### BEL Elevation Angle (`BEL_ELEVATION_ANGLE`)
+
+Elevation angle of the path at the building façade (degrees above horizontal) for P.2109-2.
+
+- Range: `0.0` to `90.0`°
+- Default: `0.0` (horizontal incidence)
+- Higher elevation angles increase BEL at 0.212 dB per degree
+
 ## Testing Strategy
 
 The repository includes a fast `pytest` suite designed to run outside QGIS.
@@ -874,6 +1039,10 @@ Test coverage includes:
 
 - source-based regression checks for Processing contracts
 - unit tests for pure Python helpers
+- P.2108-1 §3.1 height-gain terminal correction (14 tests in `test_p2108_height_gain.py`)
+- P.2108-1 §3.2 statistical clutter loss (14 tests in `test_p2108_terrestrial_stat.py`)
+- P.2109-2 building entry loss (10 tests in `test_p2109_bel.py`)
+- P.2108/P.2109 shared inverse-normal helpers and sign-convention guards (24 tests in `test_p2108_common.py`)
 - coverage-engine behavior checks
 - benchmark and module-split regressions
 - 3D support contract checks
@@ -918,6 +1087,9 @@ A `postProcessAlgorithm` override in `base_algorithm.py` reorders raster layers 
 - Coverage comparison requires both panels to share the same DEM and grid extent.
 - DEM access depends on external network availability.
 - The repository test suite does not substitute for in-QGIS manual validation.
+- P.2108-1 §3.2 is a combined urban+suburban statistic; it should not be applied to open or rural categories (the plugin enforces this by only invoking §3.2 for suburban and urban categories).
+- P.2109-2 BEL elevation angle in coverage analysis is a fixed user-set value per run; per-pixel elevation computation is out of scope for the current version.
+- `clutter_p2108.py` is a deprecation shim that delegates to `p2108_terrestrial_stat` with a `DeprecationWarning`; it will be removed after one release cycle.
 
 ## ITM Propagation Edge Cases
 

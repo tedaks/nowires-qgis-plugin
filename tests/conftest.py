@@ -6,13 +6,18 @@
 When tests are run via ``pytest tests/`` from the repo root, the osgeo
 module is not available (it ships with QGIS). This conftest:
 
-1. Mocks osgeo/gdal so modules that transitively import it don't fail.
+1. Mocks osgeo/gdal/ogr so modules that transitively import it don't fail.
 2. Creates a fake ``NoWires`` package in sys.modules so that relative
    imports inside the plugin (e.g. ``from .antenna import ...``) resolve
    to the actual plugin modules already on sys.path.
 3. Ensures that when coverage_engine is imported through the package
    (NoWires.coverage_engine), its __spec__.parent is set to "NoWires" so
    relative imports resolve correctly.
+4. Mocks qgis.PyQt, qgis.utils, processing, and QgsProcessingProvider
+   so that plugin lifecycle and dialog tests work without a QGIS runtime.
+5. Provides explicit stubs for all QGIS types used by the plugin, rather
+   than a broad __getattr__, to avoid interfering with other test files
+   that set up their own QGIS mocks.
 """
 
 import os
@@ -20,9 +25,35 @@ import sys
 import types
 from unittest.mock import MagicMock
 
+
+def _mock_factory(*args, _return_mock=None, **kwargs):
+    """Create a callable that returns a MagicMock, avoiding InvalidSpecError."""
+    m = MagicMock()
+    if _return_mock is not None:
+        return _return_mock
+    return m
+
+
+def _mock_layout_factory(*args, **kwargs):
+    """Factory for QVBoxLayout/QHBoxLayout that returns unspecced MagicMock."""
+    return MagicMock()
+
+
+def _mock_qslider_factory(*args, **kwargs):
+    """Factory for QSlider that returns unspecced MagicMock with TickPosition."""
+    return MagicMock()
+
+
+_mock_qslider_factory.TickPosition = MagicMock()
+_mock_qslider_factory.TickPosition.TicksBelow = 0
+_mock_qslider_factory.TickPosition.TicksAbove = 1
+_mock_qslider_factory.TickPosition.NoTicks = 2
+
+
 sys.modules["osgeo"] = MagicMock()
 sys.modules["osgeo.gdal"] = MagicMock()
 sys.modules["osgeo.osr"] = MagicMock()
+sys.modules["osgeo.ogr"] = MagicMock()
 
 _qgis = types.ModuleType("qgis")
 _qgis_core = types.ModuleType("qgis.core")
@@ -30,13 +61,217 @@ _qgis_core = types.ModuleType("qgis.core")
 class _FakeProcessingException(Exception):
     pass
 
+class _FakeQgis:
+    class ProcessingAlgorithmFlag:
+        NoThreading = 1
+    class GeometryType:
+        Point = 0
+    NULL = MagicMock()
+
+# Explicitly set all QGIS types used by the plugin on _qgis_core.
 _qgis_core.QgsProcessingException = _FakeProcessingException
-_qgis_core.QgsColorRampShader = MagicMock
-_qgis_core.QgsRasterShader = MagicMock
-_qgis_core.QgsSingleBandPseudoColorRenderer = MagicMock
+# --- Color ramp shader stubs ---
+class _ColorRampItem:
+    def __init__(self, value, color, label):
+        self.value = value
+        self.color = color
+        self.label = label
+
+class _ColorRampShader:
+    Discrete = 0
+    Interpolated = 1
+    ColorRampItem = _ColorRampItem
+
+    def __new__(cls, *args, **kwargs):
+        # Return a MagicMock instance with shader methods
+        instance = MagicMock()
+        instance.setColorRampItemList = MagicMock()
+        instance.setColorRampType = MagicMock()
+        instance.setColorRampItemList.return_value = None
+        instance.setColorRampType.return_value = None
+        return instance
+
+_qgis_core.QgsColorRampShader = _ColorRampShader
+# --- Raster shader stubs that avoid InvalidSpecError ---
+# QgsSingleBandPseudoColorRenderer(provider, band, shader) receives a mock
+# as the first arg causing InvalidSpecError in Python 3.12+.
+# Use factory functions to return plain MagicMock instances.
+
+def _make_raster_shader(*args, **kwargs):
+    m = MagicMock()
+    m.setRasterShaderFunction = MagicMock()
+    return m
+
+def _make_pseudo_color_renderer(*args, **kwargs):
+    return MagicMock()
+
+_qgis_core.QgsRasterShader = _make_raster_shader
+_qgis_core.QgsSingleBandPseudoColorRenderer = _make_pseudo_color_renderer
 _qgis_core.QgsVectorLayer = MagicMock
+_qgis_core.QgsRasterLayer = MagicMock
+_qgis_core.QgsProject = MagicMock()
+_qgis_core.QgsProject.instance = MagicMock()
+_qgis_core.QgsMessageLog = MagicMock()
+_qgis_core.Qgis = _FakeQgis
+_qgis_core.QgsProcessingAlgorithm = MagicMock
+_qgis_core.QgsProcessingContext = MagicMock
+_qgis_core.QgsCoordinateReferenceSystem = MagicMock
+_qgis_core.QgsCoordinateTransform = MagicMock
+_qgis_core.QgsAuthMethodConfig = MagicMock
+_qgis_core.QgsRasterDemTerrainProvider = MagicMock
+# --- Processing parameter stubs with enum-like attributes ---
+class _ParamNumber:
+    Double = 0
+    Integer = 1
+    FlagAdvanced = 2
+    def __call__(self, *a, **kw):
+        return MagicMock()
+
+class _ParamPoint:
+    def __call__(self, *a, **kw):
+        return MagicMock()
+
+class _ParamBoolean:
+    def __call__(self, *a, **kw):
+        return MagicMock()
+
+class _ParamEnum:
+    def __call__(self, *a, **kw):
+        return MagicMock()
+
+class _ParamFile:
+    def __call__(self, *a, **kw):
+        return MagicMock()
+
+class _ParamFileDest:
+    def __call__(self, *a, **kw):
+        return MagicMock()
+
+class _ParamString:
+    def __call__(self, *a, **kw):
+        return MagicMock()
+
+class _ParamField:
+    def __call__(self, *a, **kw):
+        return MagicMock()
+
+_qgis_core.QgsProcessingParameterNumber = _ParamNumber
+_qgis_core.QgsProcessingParameterPoint = _ParamPoint
+_qgis_core.QgsProcessingParameterBoolean = _ParamBoolean
+_qgis_core.QgsProcessingParameterEnum = _ParamEnum
+_qgis_core.QgsProcessingParameterFile = _ParamFile
+_qgis_core.QgsProcessingParameterFileDestination = _ParamFileDest
+_qgis_core.QgsProcessingParameterString = _ParamString
+_qgis_core.QgsProcessingParameterField = _ParamField
+
+# __getattr__ returns MagicMock for any QGIS type not explicitly listed above.
+# This avoids the need to enumerate every single QGIS class while still
+# providing specific behaviors for the most commonly used types.
+_qgis_core.__getattr__ = lambda name: MagicMock(name=f"qgis.core.{name}")
+_qgis_core.NULL = MagicMock()
+_qgis_core.QT_VERSION_STR = "6.0.0"
+
+# --- Processing provider stub ---
+_qgis_core.QgsProcessingProvider = type(
+    "QgsProcessingProvider", (), {
+        "__init__": lambda self: setattr(self, "_algorithms", []) or None,
+        "addAlgorithm": lambda self, alg: self._algorithms.append(alg),
+        "algorithms": lambda self: list(self._algorithms),
+        "id": lambda self: "",
+        "name": lambda self: "",
+        "unload": lambda self: None,
+        "tr": lambda self, s: s,
+        "loadAlgorithms": lambda self: None,
+    },
+)
+
+# --- QgsApplication stub ---
+_mock_registry = MagicMock()
+
+class _FakeQgsApplication:
+    @staticmethod
+    def processingRegistry():
+        return _mock_registry
+
+_qgis_core.QgsApplication = _FakeQgsApplication
+
 sys.modules.setdefault("qgis", _qgis)
 sys.modules.setdefault("qgis.core", _qgis_core)
+
+# --- PyQt stubs ---
+# Use factory functions for Qt GUI types to avoid InvalidSpecError
+# when nested calls like QIcon(QPixmap(path)) pass a Mock as spec.
+
+def _make_qicon(*args, **kwargs):
+    return MagicMock()
+
+def _make_qpixmap(*args, **kwargs):
+    return MagicMock()
+
+def _make_qaction(*args, **kwargs):
+    return MagicMock()
+
+def _make_qcolor(*args, **kwargs):
+    return MagicMock()
+
+def _make_qpainter(*args, **kwargs):
+    return MagicMock()
+
+def _make_qlabel(*args, **kwargs):
+    return MagicMock()
+
+_qgis_pyqt = types.ModuleType("qgis.PyQt")
+_qgis_pyqtQtCore = types.ModuleType("qgis.PyQt.QtCore")
+_qgis_pyqtQtGui = types.ModuleType("qgis.PyQt.QtGui")
+_qgis_pyqtQtWidgets = types.ModuleType("qgis.PyQt.QtWidgets")
+
+_qgis_pyqtQtCore.Qt = MagicMock()
+_qgis_pyqtQtCore.QTimer = MagicMock()
+_qgis_pyqtQtCore.QEvent = MagicMock()
+_qgis_pyqtQtCore.QCoreApplication = MagicMock()
+_qgis_pyqtQtCore.QT_VERSION_STR = "6.0.0"
+_qgis_pyqtQtGui.QAction = _make_qaction
+_qgis_pyqtQtGui.QIcon = _make_qicon
+_qgis_pyqtQtGui.QPixmap = _make_qpixmap
+_qgis_pyqtQtGui.QColor = _make_qcolor
+_qgis_pyqtQtGui.QPainter = _make_qpainter
+_qgis_pyqtQtWidgets.QDialog = type(
+    "QDialog", (), {
+        "__init__": lambda self, parent=None: None,
+        "setModal": lambda self, m: None,
+        "setWindowTitle": lambda self, t: None,
+        "setMinimumWidth": lambda self, w: None,
+        "show": lambda self: None,
+        "close": lambda self: None,
+    },
+)
+_qgis_pyqtQtWidgets.QSlider = _mock_qslider_factory
+_qgis_pyqtQtWidgets.QVBoxLayout = _mock_layout_factory
+_qgis_pyqtQtWidgets.QHBoxLayout = _mock_layout_factory
+_qgis_pyqtQtWidgets.QLabel = _make_qlabel
+_qgis_pyqtQtWidgets.QInputDialog = MagicMock
+_qgis_pyqtQtWidgets.QCheckBox = MagicMock
+_qgis_pyqtQtWidgets.QMessageBox = MagicMock
+_qgis_pyqtQtWidgets.QFileDialog = MagicMock
+_qgis_pyqtQtWidgets.QFrame = MagicMock
+_qgis_pyqtQtWidgets.QWidget = MagicMock
+
+_qgis_pyqt.QtCore = _qgis_pyqtQtCore
+_qgis_pyqt.QtGui = _qgis_pyqtQtGui
+_qgis_pyqt.QtWidgets = _qgis_pyqtQtWidgets
+
+sys.modules.setdefault("qgis.PyQt", _qgis_pyqt)
+sys.modules.setdefault("qgis.PyQt.QtCore", _qgis_pyqtQtCore)
+sys.modules.setdefault("qgis.PyQt.QtGui", _qgis_pyqtQtGui)
+sys.modules.setdefault("qgis.PyQt.QtWidgets", _qgis_pyqtQtWidgets)
+
+# --- qgis.utils stub ---
+_qgis_utils = types.ModuleType("qgis.utils")
+_qgis_utils.iface = None
+sys.modules.setdefault("qgis.utils", _qgis_utils)
+
+# --- processing stub ---
+sys.modules.setdefault("processing", MagicMock())
 
 plugin_dir = os.path.join(os.path.dirname(__file__), "..")
 if plugin_dir not in sys.path:
@@ -96,6 +331,10 @@ for _pkg_sub in (
     "clutter_constants",
     "clutter_context",
     "clutter_advanced",
+    "p2108_common",
+    "p2108_terrestrial_stat",
+    "p2108_height_gain",
+    "p2109_bel",
     "tile_download_base",
     "worldcover_downloader",
     "p2p_outputs",
@@ -105,6 +344,8 @@ for _pkg_sub in (
     "contour_overlay",
     "contour_generation",
     "comparison_outputs",
+    "coverage_opacity",
+    "coverage_legend",
     "benchmarks.coverage_runtime",
     "benchmarks.p2p_runtime",
     "benchmarks.reference_cases",

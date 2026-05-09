@@ -158,11 +158,25 @@ def build_coverage_tasks(
                     polarization=polarization,
                     cch_override_m=clutter_context.cch_override_m,
                     model="advanced",
+                    percentile=clutter_context.percentile,
+                    street_width_m=clutter_context.street_width_m,
+                    bel_enabled=clutter_context.bel_enabled,
+                    bel_building_type=clutter_context.bel_building_type,
+                    bel_elevation_angle_deg=clutter_context.bel_elevation_angle_deg,
                 )
                 tx_clutter_db = compute_terminal_clutter_loss(
                     tx_category, "tx", pixel_ctx)
                 rx_clutter_db = compute_terminal_clutter_loss(
                     rx_category_grid[i, j], "rx", pixel_ctx)
+                if clutter_context.bel_enabled:
+                    from .p2109_bel import building_entry_loss
+                    rx_bel_db = building_entry_loss(
+                        f_mhz / 1000.0,
+                        clutter_context.bel_building_type,
+                        theta_deg=clutter_context.bel_elevation_angle_deg,
+                        p=clutter_context.percentile,
+                    )
+                    rx_clutter_db += rx_bel_db
             elif rx_clutter_loss_grid is not None:
                 tx_clutter_db = tx_clutter_loss_db
                 rx_clutter_db = float(rx_clutter_loss_grid[i, j])
