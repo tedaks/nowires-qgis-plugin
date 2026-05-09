@@ -230,9 +230,9 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
                 valid_count = ds["valid_count"]
                 total_count = ds["total_count"]
 
-                output_a_path = self.parameterAsFileOutput(parameters, self.OUTPUT_A, context)
-                output_b_path = self.parameterAsFileOutput(parameters, self.OUTPUT_B, context)
-                output_delta_path = self.parameterAsFileOutput(parameters, self.OUTPUT_DELTA, context)
+                output_a_path = self.parameterAsOutputLayer(parameters, self.OUTPUT_A, context)
+                output_b_path = self.parameterAsOutputLayer(parameters, self.OUTPUT_B, context)
+                output_delta_path = self.parameterAsOutputLayer(parameters, self.OUTPUT_DELTA, context)
                 output_report_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_HTML, context)
 
                 output_a_path, output_b_path, output_delta_path, output_report_path, _comp_tmpdir = (

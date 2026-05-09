@@ -35,7 +35,7 @@ class TestCoordinateTransform:
         result = transform.transform(point)
         assert abs(result.x() - 890555.85) < 100, \
             "EPSG:3857 X too far off: {}".format(result.x())
-        assert abs(result.y() - 5922072.0) < 100, \
+        assert abs(result.y() - 5942074.0) < 100, \
             "EPSG:3857 Y too far off: {}".format(result.y())
 
     def test_3857_to_4326(self, qgis_app):
@@ -44,7 +44,7 @@ class TestCoordinateTransform:
         assert src_crs.isValid()
         assert dst_crs.isValid()
         transform = QgsCoordinateTransform(src_crs, dst_crs, QgsProject.instance())
-        web_merc = QgsPointXY(890555.85, 5922072.0)
+        web_merc = QgsPointXY(890555.85, 5942074.0)
         result = transform.transform(web_merc)
         assert abs(result.x() - 8.0) < 0.01, \
             "Round-trip lon too far off: {}".format(result.x())

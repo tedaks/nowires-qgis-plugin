@@ -31,6 +31,7 @@ from qgis.core import (
     QgsProcessingParameterFileDestination,
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
+    QgsProcessingParameterRasterDestination,
     QgsCoordinateReferenceSystem,
 )
 from .defaults import (
@@ -138,8 +139,8 @@ def _add_antenna_params(alg):
 
 
 def _add_output_params(alg):
-    alg.addParameter(QgsProcessingParameterFileDestination(
-        alg.OUTPUT_RASTER, "Coverage raster output", "GeoTIFF files (*.tif)"))
+    alg.addParameter(QgsProcessingParameterRasterDestination(
+        alg.OUTPUT_RASTER, "Coverage raster output"))
     alg.addParameter(QgsProcessingParameterFileDestination(
         alg.OUTPUT_REPORT_CSV, "Coverage report CSV",
         "CSV files (*.csv)", optional=True))

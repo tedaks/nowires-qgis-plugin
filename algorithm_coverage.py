@@ -185,7 +185,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                 feedback.pushInfo("Writing coverage raster...")
                 feedback.setProgress(85)
 
-                tif_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_RASTER, context)
+                tif_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
                 tif_path = tif_dest
                 if not tif_path:
                     coverage_tmpdir = self._tmp.make_dir("coverage_prx", persistent=True)

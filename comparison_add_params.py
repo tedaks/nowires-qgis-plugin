@@ -32,6 +32,7 @@ from qgis.core import (
     QgsProcessingParameterFileDestination,
     QgsProcessingParameterFolderDestination,
     QgsProcessingParameterNumber,
+    QgsProcessingParameterRasterDestination,
 )
 
 from .antenna import ANTENNA_PRESET_OPTIONS
@@ -236,24 +237,21 @@ def add_comparison_params(algorithm):
         )
     )
     algorithm.addParameter(
-        QgsProcessingParameterFileDestination(
+        QgsProcessingParameterRasterDestination(
             OUTPUT_CONSTANTS["OUTPUT_A"],
             "Panel A coverage raster output",
-            fileFilter="GeoTIFF files (*.tif)",
         )
     )
     algorithm.addParameter(
-        QgsProcessingParameterFileDestination(
+        QgsProcessingParameterRasterDestination(
             OUTPUT_CONSTANTS["OUTPUT_B"],
             "Panel B coverage raster output",
-            fileFilter="GeoTIFF files (*.tif)",
         )
     )
     algorithm.addParameter(
-        QgsProcessingParameterFileDestination(
+        QgsProcessingParameterRasterDestination(
             OUTPUT_CONSTANTS["OUTPUT_DELTA"],
             "Delta raster output (A - B in dB)",
-            fileFilter="GeoTIFF files (*.tif)",
         )
     )
     algorithm.addParameter(
