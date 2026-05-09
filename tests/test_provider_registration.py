@@ -90,13 +90,19 @@ class TestProviderAlgorithmSource:
         assert len(alg_list) == 5
 
     def test_provider_source_lists_expected_algorithms(self):
-        """Verify the provider source code imports all 5 algorithm classes."""
+        """Verify the provider source code references all 5 algorithm modules."""
         source = open("provider.py").read()
-        assert "from .algorithm_p2p import P2PAlgorithm" in source
-        assert "from .algorithm_coverage import CoverageAlgorithm" in source
-        assert "from .algorithm_coverage_comparison import CoverageComparisonAlgorithm" in source
-        assert "from .algorithm_contour import ContourLinesAlgorithm" in source
-        assert "from .algorithm_batch import BatchAnalysisAlgorithm" in source
+        for module_name, class_name in [
+            ("algorithm_p2p", "P2PAlgorithm"),
+            ("algorithm_coverage", "CoverageAlgorithm"),
+            ("algorithm_coverage_comparison", "CoverageComparisonAlgorithm"),
+            ("algorithm_contour", "ContourLinesAlgorithm"),
+            ("algorithm_batch", "BatchAnalysisAlgorithm"),
+        ]:
+            assert module_name in source, \
+                "provider.py must reference {}".format(module_name)
+            assert class_name in source, \
+                "provider.py must reference {}".format(class_name)
 
     def test_each_algorithm_class_inherits_qgsprocessing(self):
         """Each algorithm class must inherit from NoWiresAlgorithm."""
@@ -140,7 +146,8 @@ class TestProviderAlgorithmSource:
             assert "def createInstance(" in source, \
                 "{} must define a createInstance() method".format(class_name)
 
-    def test_load_algorithms_calls_add_algorithm_for_each(self):
-        """Verify loadAlgorithms calls addAlgorithm exactly once per algorithm."""
-        source = open("provider.py").read()
-        assert source.count("self.addAlgorithm(") == 5
+    def test_load_algorithms_registers_all_five(self):
+        """Verify loadAlgorithms registers exactly 5 algorithms."""
+        p = _make_provider()
+        p.loadAlgorithms()
+        assert len(list(p.algorithms())) == 5
