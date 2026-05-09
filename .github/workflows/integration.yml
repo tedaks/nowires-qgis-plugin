@@ -22,7 +22,7 @@ jobs:
       - name: Install test dependencies
         run: |
           python3 -m pip install --upgrade pip
-          pip install pytest numpy
+          pip install --break-system-packages pytest numpy
 
       - name: Run QGIS integration tests
         run: pytest tests/test_qgis_integration.py -v --tb=short
