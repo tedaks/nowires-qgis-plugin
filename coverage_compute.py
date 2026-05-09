@@ -108,17 +108,6 @@ def compute_itm_p2p(
         return None
     if result.loss_db > ITM_LOSS_UPPER_BOUND:
         logger.debug("ITM loss %.1f dB exceeds cap (%.1f); returning capped result", result.loss_db, ITM_LOSS_UPPER_BOUND)
-        clutter_total_db = clutter_tx_db + clutter_rx_db
-        total_path_loss_db = result.loss_db + clutter_total_db
-        prx = eirp_dbm + ant_gain_adj + rx_gain_dbi - total_path_loss_db
-        return {
-            "itm_loss_db": result.loss_db,
-            "clutter_tx_db": clutter_tx_db,
-            "clutter_rx_db": clutter_rx_db,
-            "total_path_loss_db": total_path_loss_db,
-            "antenna_gain_adjustment_db": ant_gain_adj,
-            "received_power_dbm": prx,
-        }
     clutter_total_db = clutter_tx_db + clutter_rx_db
     total_path_loss_db = result.loss_db + clutter_total_db
     prx = eirp_dbm + ant_gain_adj + rx_gain_dbi - total_path_loss_db

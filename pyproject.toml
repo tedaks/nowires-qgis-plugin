@@ -19,7 +19,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["nowires_qgis_plugin"]
+source = ["NoWires"]
 
 [tool.coverage.report]
 show_missing = true
