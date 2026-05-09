@@ -201,6 +201,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             tx_height_m=p.tx_h,
             rx_height_m=p.rx_h,
             rx_ground_elevation_m=float(rx_elev),
+            tx_ground_elevation_m=float(tx_elev),
             polarization=p.polarization,
             cch_override_m=p.cch_override_m,
             model=p.clutter_model,

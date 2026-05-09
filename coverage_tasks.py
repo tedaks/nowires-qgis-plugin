@@ -100,6 +100,8 @@ def build_coverage_tasks(
     lons,
     clutter_context=None,
     tx_clutter_override=None,
+    tx_ground_elev_m=0.0,
+    rx_ground_grid=None,
 ):
     dist_grid = _haversine_grid(tx_lat, tx_lon, lats, lons)
     bearing_grid = _bearing_grid(tx_lat, tx_lon, lats, lons)
@@ -149,12 +151,16 @@ def build_coverage_tasks(
             )
             step_m = modeled_d_m / (n_pts - 1)
             if advanced and rx_category_grid is not None:
+                rx_ground_m = (
+                    float(rx_ground_grid[i, j]) if rx_ground_grid is not None else 0.0
+                )
                 pixel_ctx = ClutterLossContext(
                     frequency_mhz=f_mhz,
                     distance_m=modeled_d_m,
                     tx_height_m=tx_h_m,
                     rx_height_m=rx_h_m,
-                    rx_ground_elevation_m=0.0,
+                    rx_ground_elevation_m=rx_ground_m,
+                    tx_ground_elevation_m=tx_ground_elev_m,
                     polarization=polarization,
                     cch_override_m=clutter_context.cch_override_m,
                     model="advanced",
