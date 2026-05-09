@@ -6,9 +6,12 @@
 These tests use the conftest-provided PyQt stubs. They verify structural
 contracts without requiring a real QGIS runtime.
 """
+
 import sys
 import pytest
 from unittest.mock import MagicMock, patch
+
+pytestmark = pytest.mark.qt_dialog
 
 
 # Same restoration pattern as test_plugin_load to handle mock corruption.

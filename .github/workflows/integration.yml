@@ -5,7 +5,6 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  # Allow manual trigger for testing
   workflow_dispatch:
 
 jobs:
@@ -13,7 +12,6 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      # QGIS 4.x (Qt6 / PyQGIS6) — matches the plugin's target runtime
       image: qgis/qgis:4.0
       env:
         QGIS_PREFIX_PATH: /usr
@@ -28,8 +26,20 @@ jobs:
           python3 -m pip install --upgrade pip
           pip install pytest numpy
 
-      - name: Run integration tests
+      - name: Run QGIS integration tests
         run: pytest tests/test_qgis_integration.py -v --tb=short
 
       - name: Run Qt dialog tests
         run: pytest tests/test_pyqt_dialogs.py -v --tb=short
+
+      - name: Run plugin lifecycle tests
+        run: pytest tests/test_plugin_load.py -v --tb=short
+
+      - name: Run provider registration tests
+        run: pytest tests/test_provider_registration.py -v --tb=short
+
+      - name: Run GDAL compatibility tests
+        run: pytest tests/test_gdal_compat.py -v --tb=short
+
+      - name: Run raster rendering smoke tests
+        run: pytest tests/test_raster_rendering_smoke.py -v --tb=short
