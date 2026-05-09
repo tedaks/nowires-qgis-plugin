@@ -1,5 +1,9 @@
 # NoWires QGIS Plugin — Notice & Attribution
 
+SPDX-License-Identifier: GPL-3.0-or-later
+
+Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+
 This plugin combines and adapts code from multiple open-source projects.
 The plugin as a whole is distributed under the **GNU General Public License v3 or later** because it includes and adapts GPL-licensed code from the ContourLines plugin alongside MIT-licensed and public-domain-compatible components.
 
@@ -23,7 +27,7 @@ The following files are derived from or inspired by the nowires project (adapted
 | `radio.py` (ITM bridge, Fresnel, signal levels) | `apps/api/app/itm_bridge.py`, `apps/api/app/math_kernels.py`, `apps/api/app/signal_levels.py` |
 | `antenna.py` | `apps/api/app/antenna.py` |
 | `clutter.py`, `clutter_advanced.py`, `clutter_categories.py`, `clutter_constants.py`, `clutter_context.py`, `clutter_p2108.py` | `apps/api/app/clutter.py` |
-| `clutter_saalos.py` | clutterloss-itm Rust crate (see THIRD_PARTY_NOTICES.md) |
+| `clutter_saalos.py` | clutterloss-itm Rust crate (see section 6 below) |
 | `elevation.py` (terrain utilities, ElevationGrid) | `apps/api/app/elevation_grid.py`, `apps/api/app/terrain.py` |
 | `coverage_palette.py` (signal level palette) | `apps/api/app/signal_levels.py`, `apps/api/app/coverage_render.py` |
 
@@ -119,7 +123,29 @@ The Irregular Terrain Model was originally developed by:
 **License:** MIT License  
 **Copyright:** © 2026 Bortre Tenamo (Python port), © 2026 Bortre Tenamo (Rust crate)
 
-`clutter_saalos.py` is a Python port of the saalos vegetation clutter loss algorithm from the MIT-licensed `clutterloss-itm` Rust crate. ITWOM is a derivative of the public-domain Longley-Rice ITM model. See `THIRD_PARTY_NOTICES.md` for the full MIT license text.
+`clutter_saalos.py` is a Python port of the saalos vegetation clutter loss algorithm from the MIT-licensed `clutterloss-itm` Rust crate. ITWOM is a derivative of the public-domain Longley-Rice ITM model.
+
+MIT license text:
+
+> Copyright (c) 2026 Bortre Tenamo
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy
+> of this software and associated documentation files (the "Software"), to deal
+> in the Software without restriction, including without limitation the rights
+> to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+> copies of the Software, and to permit persons to whom the Software is
+> furnished to do so, subject to the following conditions:
+>
+> The above copyright notice and this permission notice shall be included in all
+> copies or substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+> IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+> FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+> AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+> LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+> OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+> SOFTWARE.
 
 ---
 

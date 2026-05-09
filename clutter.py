@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 /***************************************************************************
  NoWires
@@ -6,7 +8,7 @@
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                                -------------------
          begin                : 2026-04-22
-         copyright            : (C) 2026 Bortre Tenamo
+         copyright            : (C) 2026 Bortre Tenamo <tedaks@gmail.com>
          email                : tedaks@gmail.com
  ***************************************************************************/
 

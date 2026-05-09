@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Geographic bounding-box helpers for longitude wraparound."""
 
 import math

@@ -1,13 +1,20 @@
 # Changelog
 
+SPDX-License-Identifier: GPL-3.0-or-later
+
 All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
 
 ## [1.5.0] - 2026-05-07
 
 ### Added
 
 - Added "Advanced clutter correction" mode: saalos vegetation model, ITU-R P.2108 for built/rural categories
-- Added saalos vegetation clutter model (Python port of ITWOM 3.0 ClutterLoss by Sid Shumate, via the MIT-licensed clutterloss-itm Rust crate). See THIRD_PARTY_NOTICES.md.
+- Added saalos vegetation clutter model (Python port of ITWOM 3.0 ClutterLoss by Sid Shumate, via the MIT-licensed clutterloss-itm Rust crate). See NOTICE.md for the full MIT license text.
 - Added ITU-R P.2108-1 §3.2 statistical clutter loss for terrestrial paths (combined urban+suburban model, 0.5–67 GHz, percentile-based, distance-capped at 2 km)
 - Added ITU-R P.2108-1 §3.1 height-gain terminal correction (per-category, 0.03–3 GHz, methods 2a/2b)
 - Added ITU-R P.2109-2 building entry loss (two-lognormal model with elevation angle, per building type)

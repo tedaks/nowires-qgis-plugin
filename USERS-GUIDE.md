@@ -1,5 +1,7 @@
 # NoWires User's Guide
 
+SPDX-License-Identifier: GPL-3.0-or-later
+
 ## Overview
 
 NoWires is a QGIS 4 plugin for:
