@@ -4,27 +4,53 @@
 name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
-description=Radio propagation analysis and terrain tools with unified Coverage Analysis heatmap workflow
-version=1.4.0
+description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
+version=1.5.0
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
-about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's Irregular Terrain Model (ITM), using the Qt 6 / PyQt 6 runtime bundled with QGIS 4. It provides point-to-point path loss analysis with Fresnel zone visualization, unified Coverage Analysis heatmap prediction with raster-derived range metrics, and contour line generation. DEM data is automatically downloaded from the Copernicus GLO-30 dataset hosted on AWS Open Data. The plugin bundles the ITM library from https://github.com/tedaks/pyitm and adapts code from https://github.com/tedaks/nowires and https://github.com/tedaks/ContourLines. See NOTICE.md for attribution and third-party licensing details.
+about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's Irregular Terrain Model (ITM), using the Qt 6 / PyQt 6 runtime bundled with QGIS 4. It provides point-to-point path loss analysis with Fresnel zone visualization, batch P2P analysis (one-to-many and many-to-one), unified Coverage Analysis heatmap prediction with raster-derived range metrics, Coverage Comparison producing delta rasters, and contour line generation. Clutter correction supports simple per-category losses and advanced mode (saalos vegetation model, ITU-R P.2108 for built/rural). DEM data is automatically downloaded from the Copernicus GLO-30 dataset hosted on AWS Open Data. The plugin bundles the ITM library from https://github.com/tedaks/pyitm and adapts code from https://github.com/tedaks/nowires and https://github.com/tedaks/ContourLines. See NOTICE.md for attribution and third-party licensing details.
 
 hasProcessingProvider=yes
 
 changelog=
+    Version 1.5.0
+    - Add advanced clutter correction mode with saalos vegetation and ITU-R P.2108 site-general clutter loss
+    - Add canopy/clutter height override for advanced mode
+    - Add tx_cch_m and rx_cch_m to P2P report payload
+    - Add per-pixel TX clutter computation and caching in coverage pipeline for advanced mode
+    - Add per-task TX clutter override support in batch and comparison workflows
+    - Add Very Strong (-30 dBm) color stop to coverage palette for near-transmitter pixels
+    - Fix ModuleNotFoundError for clutter_constants at QGIS runtime (absolute vs relative import)
+    - Fix coverage heatmap missing color near transmitter (palette had no stop above -60 dBm; added Very Strong stop and +100 dBm ceiling entry)
+    - Fix P2P owned clutter grid not closed after sampling (GDAL handle leak)
+    - Fix TOCTOU race conditions in temp directory creation
+    - Fix macOS multiprocessing compatibility
+    - Fix P.2108 frequency factor: all categories now use diffraction-based scaling where clutter loss increases with frequency, consistent with P.2108-1
+    - Fix coverage pool fallback to sequential mode on worker errors
+    - Fix duplicate compute_terminal_clutter_losses call in coverage pipeline
     Version 1.4.0
+    - Add Batch P2P Analysis algorithm (one-to-many and many-to-one)
+    - Add Coverage Comparison algorithm (dual-panel delta raster)
+    - Add interactive P2P profile chart with hover callouts and export
+    - Add P2P report and marker outputs
+    - Add coverage report outputs
+    - Add reliability outputs (fade-margin classes, availability guidance)
+    - Add live coverage opacity slider dialog
+    - Add 3D scene tracking and opening for coverage and contour outputs
+    - Add advanced clutter correction mode
+    - Architecture refactor: split monolithic algorithm files into focused helper modules
     - Fix Windows access violation crash from unsafe project layer mutation in processAlgorithm
-    - Fix “layer not correctly generated” error from double-loading conflict with styled output layers
+    - Fix "layer not correctly generated" error from double-loading conflict with styled output layers
     - Fix DEM raster layers loading on top of coverage and contour outputs
     - Fix missing ANTENNA_AZ class constant that caused AttributeError
+    - Fix P2P Fresnel zone, line, and profile layers rule-based symbology
     - Version 1.1.0
     - Replace separate area coverage and radius sweep tools with Coverage Analysis
     - Add raster-derived coverage range statistics
     - Improve coverage raster styling with a heatmap presentation
 
-tags=radio, propagation, ITM, coverage, path loss, terrain, DEM, contour, GLO-30, elevation, antenna, Fresnel
+tags=radio, propagation, ITM, coverage, path loss, terrain, DEM, contour, GLO-30, elevation, antenna, Fresnel, batch, comparison, clutter
 category=Analysis
 icon=logo.png
 experimental=False

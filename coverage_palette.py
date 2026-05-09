@@ -28,6 +28,7 @@ attribution details.
 """
 
 SIGNAL_LEVELS = [
+    (-30.0, (0, 70, 20, 220), "Very Strong"),
     (-60.0, (0, 110, 40, 210), "Excellent"),
     (-75.0, (0, 180, 80, 200), "Good"),
     (-85.0, (180, 220, 40, 195), "Fair"),
@@ -36,6 +37,8 @@ SIGNAL_LEVELS = [
     # Transparent by design: no-service cells should reveal the base map.
     (-120.0, (200, 40, 40, 0), "No service"),
 ]
+
+_RAMP_CEILING_DBM = 100.0
 
 
 def build_heatmap_stops():
@@ -57,6 +60,12 @@ def apply_coverage_style(layer):
             "{} ({:.0f} dBm)".format(label, value),
         )
         entries.append(entry)
+    very_strong_rgba = SIGNAL_LEVELS[0][1]
+    entries.append(QgsColorRampShader.ColorRampItem(
+        _RAMP_CEILING_DBM,
+        QColor(very_strong_rgba[0], very_strong_rgba[1], very_strong_rgba[2], very_strong_rgba[3]),
+        "",
+    ))
     color_ramp_shader = QgsColorRampShader()
     color_ramp_shader.setColorRampType(QgsColorRampShader.Discrete)
     color_ramp_shader.setColorRampItemList(entries)

@@ -2,12 +2,12 @@
 """
 /***************************************************************************
  NoWires
-                     A QGIS plugin
+                      A QGIS plugin
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                             -------------------
-        begin                : 2026-04-22
-        copyright            : (C) 2026 Bortre Tenamo
-        email                : tedaks@gmail.com
+                              -------------------
+         begin                : 2026-04-22
+         copyright            : (C) 2026 Bortre Tenamo
+         email                : tedaks@gmail.com
  ***************************************************************************/
 
  /***************************************************************************
@@ -210,9 +210,13 @@ def compute_delta_summary(loss_grid_a, loss_grid_b, threshold_db):
         min_delta = float(np.nanmin(delta_values))
         max_delta = float(np.nanmax(delta_values))
         mean_delta = float(np.nanmean(delta_values))
+        improved_pct = improved / valid_count * 100
+        degraded_pct = degraded / valid_count * 100
+        unchanged_pct = unchanged / valid_count * 100
     else:
         improved = degraded = unchanged = 0
         min_delta = max_delta = mean_delta = 0.0
+        improved_pct = degraded_pct = unchanged_pct = 0.0
 
     delta_info = {
         "valid_count": valid_count,
@@ -220,10 +224,20 @@ def compute_delta_summary(loss_grid_a, loss_grid_b, threshold_db):
         "improved": improved,
         "degraded": degraded,
         "unchanged": unchanged,
+        "improved_pixels": improved,
+        "degraded_pixels": degraded,
+        "unchanged_pixels": unchanged,
+        "improved_pct": improved_pct,
+        "degraded_pct": degraded_pct,
+        "unchanged_pct": unchanged_pct,
+        "valid_pixels": valid_count,
+        "total_pixels": total_count,
         "min_delta": min_delta,
         "max_delta": max_delta,
         "mean_delta": mean_delta,
         "loss_delta_grid": loss_delta_grid,
         "valid_mask": valid_mask,
+        "threshold_db": threshold_db,
+        "style": "diverging",
     }
     return delta_info

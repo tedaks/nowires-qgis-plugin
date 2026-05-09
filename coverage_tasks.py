@@ -25,6 +25,12 @@ import math
 import numpy as np
 
 from .clutter import CLUTTER_LOSS_DB
+from .clutter_advanced import (
+    _legacy_to_advanced_override,
+    _resolve_category_advanced,
+    compute_terminal_clutter_loss,
+)
+from .clutter_context import ClutterLossContext
 from .constants import EARTH_RADIUS_M
 from .coverage_pool import _CoverageTask
 
@@ -92,22 +98,45 @@ def build_coverage_tasks(
     rx_clutter_override,
     lats,
     lons,
+    clutter_context=None,
+    tx_clutter_override=None,
+    tx_ground_elev_m=0.0,
+    rx_ground_grid=None,
 ):
     dist_grid = _haversine_grid(tx_lat, tx_lon, lats, lons)
     bearing_grid = _bearing_grid(tx_lat, tx_lon, lats, lons)
 
     n_rows_lat = len(lats)
     n_cols_lon = len(lons)
-    if clutter_enabled and clutter_grid is not None and rx_clutter_override is None:
+    advanced = clutter_context is not None and clutter_context.model == "advanced"
+
+    if advanced and clutter_enabled:
+        tx_category, _tx_source = _resolve_category_advanced(
+            tx_lat, tx_lon, tx_clutter_override, clutter_grid)
+        rx_category_grid = (
+            clutter_grid.sample_category_grid(
+                lats, lons, rx_override=rx_clutter_override, context=clutter_context)
+            if clutter_grid is not None else np.full(
+                (n_rows_lat, n_cols_lon),
+                _legacy_to_advanced_override(rx_clutter_override or "open"),
+                dtype=object,
+            )
+        )
+        rx_clutter_loss_grid = None
+    elif clutter_enabled and clutter_grid is not None and rx_clutter_override is None:
         rx_clutter_loss_grid = clutter_grid.sample_category_grid(lats, lons)
+        rx_category_grid = None
     elif clutter_enabled and rx_clutter_override is not None:
         override_loss = CLUTTER_LOSS_DB.get(rx_clutter_override, 0.0)
         rx_clutter_loss_grid = np.full((n_rows_lat, n_cols_lon), override_loss, dtype=np.float64)
+        rx_category_grid = None
     elif clutter_enabled and clutter_grid is None:
         fallback_loss = CLUTTER_LOSS_DB.get(rx_clutter_override or "open", 0.0)
         rx_clutter_loss_grid = np.full((n_rows_lat, n_cols_lon), fallback_loss, dtype=np.float64)
+        rx_category_grid = None
     else:
         rx_clutter_loss_grid = None
+        rx_category_grid = None
 
     tasks = []
     for i in range(grid_size):
@@ -121,7 +150,45 @@ def build_coverage_tasks(
                 3, min(int(round(modeled_d_m / profile_step_m)) + 1, max_profile_pts)
             )
             step_m = modeled_d_m / (n_pts - 1)
-            rx_clutter_db = float(rx_clutter_loss_grid[i, j]) if rx_clutter_loss_grid is not None else 0.0
+            if advanced and rx_category_grid is not None:
+                rx_ground_m = (
+                    float(rx_ground_grid[i, j]) if rx_ground_grid is not None else 0.0
+                )
+                pixel_ctx = ClutterLossContext(
+                    frequency_mhz=f_mhz,
+                    distance_m=modeled_d_m,
+                    tx_height_m=tx_h_m,
+                    rx_height_m=rx_h_m,
+                    rx_ground_elevation_m=rx_ground_m,
+                    tx_ground_elevation_m=tx_ground_elev_m,
+                    polarization=polarization,
+                    cch_override_m=clutter_context.cch_override_m,
+                    model="advanced",
+                    percentile=clutter_context.percentile,
+                    street_width_m=clutter_context.street_width_m,
+                    bel_enabled=clutter_context.bel_enabled,
+                    bel_building_type=clutter_context.bel_building_type,
+                    bel_elevation_angle_deg=clutter_context.bel_elevation_angle_deg,
+                )
+                tx_clutter_db = compute_terminal_clutter_loss(
+                    tx_category, "tx", pixel_ctx)
+                rx_clutter_db = compute_terminal_clutter_loss(
+                    rx_category_grid[i, j], "rx", pixel_ctx)
+                if clutter_context.bel_enabled:
+                    from .p2109_bel import building_entry_loss
+                    rx_bel_db = building_entry_loss(
+                        f_mhz / 1000.0,
+                        clutter_context.bel_building_type,
+                        theta_deg=clutter_context.bel_elevation_angle_deg,
+                        p=clutter_context.percentile,
+                    )
+                    rx_clutter_db += rx_bel_db
+            elif rx_clutter_loss_grid is not None:
+                tx_clutter_db = tx_clutter_loss_db
+                rx_clutter_db = float(rx_clutter_loss_grid[i, j])
+            else:
+                tx_clutter_db = tx_clutter_loss_db
+                rx_clutter_db = 0.0
             tasks.append(
                 _CoverageTask(
                     i=i,
@@ -146,7 +213,7 @@ def build_coverage_tasks(
                     eirp_dbm=eirp_dbm,
                     antenna_config=antenna_config,
                     rx_gain_dbi=rx_gain_dbi,
-                    clutter_tx_db=tx_clutter_loss_db,
+                    clutter_tx_db=tx_clutter_db,
                     clutter_rx_db=rx_clutter_db,
                 )
             )

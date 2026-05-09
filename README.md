@@ -4,15 +4,22 @@ Radio propagation analysis and terrain tools powered by NTIA's Irregular Terrain
 
 ## Status
 
-This repository contains the QGIS 4 plugin source for **NoWires** version 1.4.0.
+This repository contains the QGIS 4 plugin source for **NoWires** version 1.5.0.
 
 ## Features
 
 ### Radio Propagation
-- **Point-to-Point Analysis**: Place TX and RX points on the map. Computes ITM path loss, terrain profile with Fresnel zone analysis, generates CSV/JSON/HTML reports, and creates vector layers for the link path, Fresnel geometry, and TX/RX markers.
+- **Point-to-Point Analysis**: Place TX and RX points on the map. Computes ITM path loss, terrain profile with Fresnel zone analysis, generates CSV/JSON/HTML reports, and creates vector layers for the link path, Fresnel geometry, and TX/RX markers. Includes an interactive profile chart with hover callouts and export.
+- **Batch P2P Analysis**: One-to-many and many-to-one batch link computation. Ranks results by link margin and outputs a combined results layer.
 - **Coverage Analysis**: Place a transmitter, set a max analysis distance and grid resolution, then generate a heatmap raster showing received signal strength (dBm) plus range statistics derived from cells above sensitivity, with optional CSV/JSON/HTML report export. Coverage cells are sampled and georeferenced at cell centers so the heatmap lines up with the terrain and requested map extent.
+- **Coverage Comparison**: Side-by-side coverage comparison producing a delta raster (Panel A – Panel B in dB) with dual-panel statistics and optional report export.
 - **Antenna Presets And Pattern Files**: Antenna presets for omni, sector, and dish-style pattern planning, with optional horizontal/vertical pattern CSV files.
-- **Clutter / Land-Cover Correction**: Optional simple clutter correction using terminal land-cover categories. Reports include per-terminal clutter loss (`clutter_tx_db`, `clutter_rx_db`) and `total_path_loss_db` breakdown. WorldCover 2020 tiles are auto-downloaded from the ESA AWS open data bucket when clutter is enabled and no raster is supplied; users can also provide a local raster.
+- **Clutter / Land-Cover Correction**: Three clutter modes are available:
+  - **Off** — no terminal clutter correction.
+  - **Simple clutter correction** — flat per-category losses (legacy behaviour, unchanged).
+  - **Advanced clutter correction** — ITU-R P.2108-1 §3.1 height-gain terminal correction for rural categories (0.03–3 GHz); P.2108-1 §3.2 statistical clutter loss for suburban/urban (0.5–67 GHz); saalos for vegetation. Suburban/urban categories use both §3.1 and §3.2 in the overlap band (0.5–3 GHz) and take the maximum. When the antenna is at or above the canopy height, the model gates the loss to zero for that terminal.
+  - **Building entry loss (BEL)** — ITU-R P.2109-2 indoor penetration loss for the RX terminal, with traditional/thermally-efficient building types and elevation angle support. Enabled under advanced clutter settings.
+  Reports include per-terminal clutter loss (`clutter_tx_db`, `clutter_rx_db`), canopy heights (`tx_cch_m`, `rx_cch_m`), `total_path_loss_db` breakdown, BEL (`bel_rx_db`), and combined total (`total_with_bel_db`). WorldCover 2020 tiles are auto-downloaded from the ESA AWS open data bucket when clutter is enabled and no raster is supplied; users can also provide a local raster.
 - **Reliability Outputs**: P2P and coverage reports now include fade-margin classes plus formal-or-fallback availability guidance.
 - **Coverage Opacity Control**: Adjust the most recent coverage raster opacity from a live plugin dialog after the analysis finishes.
 
@@ -51,31 +58,95 @@ This plugin also adapts code from [tedaks/nowires](https://github.com/tedaks/now
 
 - `algorithm_p2p.py`: point-to-point ITM analysis
 - `algorithm_coverage.py`: coverage heatmap analysis
+- `algorithm_coverage_comparison.py`: coverage comparison producing a delta raster
+- `algorithm_batch.py`: batch P2P analysis (one-to-many and many-to-one)
 - `algorithm_contour.py`: contour line generation
+- `base_algorithm.py`: shared base class for NoWires Processing algorithms
 - `antenna.py`: antenna radiation pattern model with presets and pattern files
-- `clutter.py`: terminal clutter correction helpers
+- `clutter.py`: terminal clutter correction dispatch and helpers
+- `clutter_advanced.py`: advanced clutter mode dispatcher (saalos + P.2108 §3.1/§3.2 + P.2109 BEL)
+- `clutter_categories.py`: clutter category definitions, WorldCover class mapping, P.2108 model dispatch params
+- `clutter_constants.py`: shared clutter constants (simple loss table, limits)
+- `clutter_context.py`: ClutterLossContext dataclass definition
+- `clutter_p2108.py`: deprecation shim for legacy P.2108 callers
+- `p2108_common.py`: shared inverse-normal CDF helpers and validation for P.2108/P.2109
+- `p2108_height_gain.py`: ITU-R P.2108-1 §3.1 height-gain terminal correction
+- `p2108_terrestrial_stat.py`: ITU-R P.2108-1 §3.2 statistical clutter loss for terrestrial paths
+- `p2109_bel.py`: ITU-R P.2109-2 building entry loss
+- `clutter_saalos.py`: saalos vegetation clutter loss (Python port from Rust)
 - `coverage_engine.py`: coverage raster computation engine
 - `coverage_compute.py`: shared coverage propagation helpers
-- `coverage_colors.py`: coverage color-application helpers
+- `coverage_analysis_params.py`: coverage algorithm parameter registration
+- `coverage_params.py`: coverage parameter definitions and defaults
+- `coverage_pool.py`: coverage multiprocessing pool and shared-memory management
+- `coverage_tasks.py`: coverage per-pixel task definitions
+- `coverage_summary.py`: raster-derived usable-distance metrics
+- `coverage_palette.py`: heatmap stop definitions and coverage style renderer
+- `coverage_legend.py`: coverage legend support in QGIS
 - `coverage_opacity.py`: live coverage opacity dialog
+- `coverage_reporting.py`: coverage report output helpers
+- `comparison_add_params.py`: comparison algorithm parameter registration
+- `comparison_panel.py`: single-panel comparison computation
+- `comparison_params.py`: comparison parameter definitions
+- `comparison_outputs.py`: comparison output helpers (vector + raster)
+- `comparison_reporting.py`: comparison report output helpers
+- `p2p_analysis_params.py`: P2P algorithm parameter registration
+- `p2p_params.py`: P2P parameter definitions and defaults
+- `p2p_compute.py`: P2P ITM and link-budget computation
+- `p2p_outputs.py`: P2P vector output helpers
+- `p2p_chart.py`: interactive profile chart with hover, callouts, and export
+- `p2p_chart_format.py`: chart axis and label formatting
+- `p2p_symbology.py`: P2P vector layer symbology
+- `p2p_report_display.py`: P2P report display in QGIS
+- `batch_analysis_params.py`: batch algorithm parameter registration
+- `batch_params.py`: batch parameter definitions and defaults
+- `batch_outputs.py`: batch output helpers
+- `batch_writer.py`: batch CSV/layer writer
+- `contour_generation.py`: contour line generation core
+- `contour_overlay.py`: hillshade/elevation overlay helpers
+- `contour_pipeline.py`: contour processing pipeline
+- `contour_smoothing.py`: VRT Gaussian smoothing for contour DEM
+- `contour_symbology.py`: rule-based contour symbology
+- `radio.py`: ITM bridge, Fresnel analysis, signal-level definitions
+- `fresnel.py`: Fresnel zone and LOS analysis
+- `elevation.py`: DEM sampling, terrain profiles, ElevationGrid class
 - `reliability.py`: formal-or-fallback availability and reliability helpers
 - `report_export.py`: shared CSV/JSON/HTML report writers
 - `report_payloads.py`: pure-Python report payload and marker helpers
+- `report_markers.py`: TX/RX marker output helpers
+- `shared_params.py`: shared parameter registration helpers (including clutter/BEL params)
+- `shared_dem_grid.py`: shared DEM grid download and cache management
+- `constants.py`: shared numerical constants
+- `defaults.py`: default parameter values
+- `dem_downloader.py`: Copernicus GLO-30 DEM tile download, cache, merge, clip
+- `worldcover_downloader.py`: ESA WorldCover 2020 tile download, cache, clip/merge
+- `tile_download_base.py`: shared tile-downloader base class with retry and fsync
+- `raster_io.py`: shared GeoTIFF writer
+- `processing_utils.py`: QGIS Processing utility helpers
+- `geo_bounds.py`: geographic bounds and padding helpers
+- `nan_utils.py`: NaN-safe array utilities
+- `temp_manager.py`: temporary directory management with cleanup
+- `macos_compat.py`: macOS multiprocessing compatibility guards
+- `overlay_raster.py`: overlay raster sizing helpers
 - `three_d.py`: 3D layer tracking and scene helpers
-- `benchmarks/coverage_runtime.py`: synthetic coverage runtime benchmark
+- `provider.py`: NoWires Processing provider registration
+- `nowires.py`: main plugin class and menu/toolbar actions
+- `benchmarks/`: synthetic runtime benchmarks
 - `itm/`: bundled ITM implementation
-- `tests/`: regression and unit tests, including ITM reference-vector tests (`test_itm_reference_vectors.py`)
+- `tests/`: regression and unit tests, including ITM reference-vector tests
 - `metadata.txt`: QGIS plugin metadata
 
 ## Usage
 
 Open the **Processing Toolbox** (`Ctrl+Alt+T`) and navigate to **NoWires**:
 
-1. **Point-to-Point Analysis**: Select TX and RX points, configure frequency, antenna heights, and link parameters. Click Run to generate the link outputs, TX/RX markers, and any requested reports.
-2. **Coverage Analysis**: Select a TX point, set max analysis distance and grid resolution. Click Run to generate a signal-strength heatmap raster, coverage summary, and any requested reports.
-3. **Contour Lines**: Draw an extent, set contour interval and smoothing. Generates contour lines and optional hillshade.
-4. **Coverage Opacity**: After running coverage, open the menu action to adjust the latest coverage raster opacity live.
-5. **Open 3D View**: After running coverage or contours, open a tracked 3D scene from the plugin menu on Linux/macOS. On Windows, NoWires now points you to the native QGIS 3D view and tells you to use the NoWires DEM as terrain.
+1. **Point-to-Point Analysis**: Select TX and RX points, configure frequency, antenna heights, and link parameters. Click Run to generate the link outputs, TX/RX markers, optional profile chart, and any requested reports.
+2. **Batch P2P Analysis**: Select a TX point and a set of RX points (one-to-many), or an RX point and a set of TX points (many-to-one). Results are ranked by link margin.
+3. **Coverage Analysis**: Select a TX point, set max analysis distance and grid resolution. Click Run to generate a signal-strength heatmap raster, coverage summary, and any requested reports.
+4. **Coverage Comparison**: Run two coverage configurations side-by-side (Panel A and Panel B) and produce a delta raster showing path-loss difference in dB.
+5. **Contour Lines**: Draw an extent, set contour interval and smoothing. Generates contour lines and optional hillshade.
+6. **Coverage Opacity**: After running coverage, open the menu action to adjust the latest coverage raster opacity live.
+7. **Open 3D View**: After running coverage or contours, open a tracked 3D scene from the plugin menu on Linux/macOS. On Windows, NoWires points you to the native QGIS 3D view.
 
 ## Data Source
 
@@ -115,6 +186,19 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development and contribution notes.
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for notable project changes.
+
+## Attribution
+
+The advanced clutter model uses the saalos vegetation algorithm,
+ported from ITWOM 3.0 (Sid Shumate, Givens & Bell, Inc.) via an
+intermediate MIT-licensed Rust crate. See `THIRD_PARTY_NOTICES.md`
+for the full upstream notice.
+
+The P.2108-1 and P.2109-2 clutter and building entry loss models are
+implemented from ITU-R Recommendations P.2108-1 (09/2021) and
+P.2109-2 (08/2023). The inverse normal CDF approximation uses the
+Abramowitz & Stegun §26.2.23 rational approximation with Newton
+refinement via `math.erf`.
 
 ## License
 

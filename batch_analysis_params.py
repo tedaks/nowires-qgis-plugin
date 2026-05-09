@@ -68,5 +68,12 @@ class BatchAnalysisParams:
     clutter_grid: LandCoverGrid | None = None
     tx_clutter_override: str | None = None
     rx_clutter_override: str | None = None
+    clutter_model: str = "simple"
+    cch_override_m: float | None = None
+    clutter_percentile: float = 50.0
+    street_width_m: float = 27.0
+    bel_enabled: bool = False
+    bel_building_type: str = "traditional"
+    bel_elevation_angle_deg: float = 0.0
     elev: ElevationGrid | None = None
     total: int = 0

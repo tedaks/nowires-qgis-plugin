@@ -66,6 +66,13 @@ class CoverageAnalysisParams:
     clutter_grid: LandCoverGrid | None = None
     tx_clutter_override: str | None = None
     rx_clutter_override: str | None = None
+    clutter_model: str = "simple"
+    cch_override_m: float | None = None
+    clutter_percentile: float = 50.0
+    street_width_m: float = 27.0
+    bel_enabled: bool = False
+    bel_building_type: str = "traditional"
+    bel_elevation_angle_deg: float = 0.0
     n0: float = 301.0
     epsilon: float = 15.0
     sigma: float = 0.005

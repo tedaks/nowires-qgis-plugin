@@ -76,8 +76,8 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                 p.tx_lat, p.tx_lon, p.f_mhz,
                 p.radius_km, p.grid_size, p.grid_size))
         feedback.pushInfo("Clutter correction: {}".format(
-            CLUTTER_MODEL_OPTIONS[1] if p.clutter_enabled
-            else CLUTTER_MODEL_OPTIONS[0]))
+            CLUTTER_MODEL_OPTIONS[2] if p.clutter_enabled and p.clutter_model == "advanced"
+            else CLUTTER_MODEL_OPTIONS[1] if p.clutter_enabled else CLUTTER_MODEL_OPTIONS[0]))
         feedback.pushInfo("TX antenna preset: {}".format(
             ANTENNA_PRESET_OPTIONS[p.antenna_preset]))
 
@@ -103,11 +103,32 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                     enabled=p.clutter_enabled, land_cover_grid=clutter_grid,
                     raster_path=p.clutter_raster_path,
                     tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override)
+                clutter_context = None
+                if p.clutter_enabled:
+                    from .clutter_context import ClutterLossContext
+                    import math as _math
+                    _tx_ground = float(elev.sample(p.tx_lat, p.tx_lon))
+                    if not _math.isfinite(_tx_ground):
+                        _tx_ground = 0.0
+                    clutter_context = ClutterLossContext(
+                        frequency_mhz=p.f_mhz, distance_m=0.0,
+                        tx_height_m=p.tx_h, rx_height_m=p.rx_h,
+                        rx_ground_elevation_m=_tx_ground,
+                        tx_ground_elevation_m=_tx_ground,
+                        polarization=p.polarization,
+                        cch_override_m=p.cch_override_m, model=p.clutter_model,
+                        percentile=p.clutter_percentile,
+                        street_width_m=p.street_width_m,
+                        bel_enabled=p.bel_enabled,
+                        bel_building_type=p.bel_building_type,
+                        bel_elevation_angle_deg=p.bel_elevation_angle_deg,
+                    )
                 tx_clutter_for_report = compute_terminal_clutter_losses(
                     tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.tx_lat,
                     rx_lon=p.tx_lon, frequency_mhz=p.f_mhz,
                     enabled=p.clutter_enabled, land_cover_grid=clutter_grid,
-                    tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override)
+                    tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override,
+                    context=clutter_context)
 
                 feedback.pushInfo("Computing coverage...")
                 feedback.setProgress(20)
@@ -136,9 +157,16 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                     tx_clutter_override=p.tx_clutter_override,
                     rx_clutter_override=p.rx_clutter_override,
                     tx_clutter_loss_db=tx_clutter_for_report.tx_loss_db,
+                    clutter_model=p.clutter_model,
+                    cch_override_m=p.cch_override_m,
+                    clutter_percentile=p.clutter_percentile,
+                    street_width_m=p.street_width_m,
+                    bel_enabled=p.bel_enabled,
+                    bel_building_type=p.bel_building_type,
+                    bel_elevation_angle_deg=p.bel_elevation_angle_deg,
                     feedback=feedback)
 
-                if result.prx_grid is None:
+                if result is None or result.prx_grid is None:
                     raise QgsProcessingException("Coverage computation was cancelled.")
 
                 report_payload, raster_grid, valid, summary = (
@@ -155,6 +183,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                         situation_pct=p.situation_pct, tx_power=p.tx_power,
                         tx_gain=p.tx_gain, rx_gain=p.rx_gain, cable_loss=p.cable_loss,
                         rx_sens=p.rx_sens, clutter_enabled=p.clutter_enabled,
+                        clutter_model=p.clutter_model,
                         antenna_preset=p.antenna_preset,
                         clutter_source=clutter_source,
                         tx_clutter_for_report=tx_clutter_for_report))
@@ -162,7 +191,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                 feedback.pushInfo("Writing coverage raster...")
                 feedback.setProgress(85)
 
-                tif_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_RASTER, context)
+                tif_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
                 tif_path = tif_dest
                 if not tif_path:
                     coverage_tmpdir = self._tmp.make_dir("coverage_prx", persistent=True)

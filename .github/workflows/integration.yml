@@ -1,0 +1,29 @@
+name: QGIS Integration Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  qgis-integration:
+    runs-on: ubuntu-latest
+
+    container:
+      image: qgis/qgis:4.0
+      env:
+        QGIS_PREFIX_PATH: /usr
+        QT_QPA_PLATFORM: offscreen
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install test dependencies
+        run: pip install --break-system-packages pytest numpy
+
+      - name: Run all QGIS integration tests
+        run: pytest -m qgis_integration -v --tb=short
+
+      - name: Run GDAL compatibility tests
+        run: pytest tests/test_gdal_compat.py -v --tb=short

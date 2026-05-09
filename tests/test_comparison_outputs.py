@@ -1,14 +1,25 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # This program is free software under GPLv3 or later. See LICENSE.
-"""Behavioral tests for comparison_outputs.compute_delta_summary."""
+"""Behavioral tests for comparison_outputs.compute_delta_summary.
 
+SKIPPED when real QGIS is available because they mock QGIS shader types.
+"""
+
+import os
 import sys
 import types
 from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
+
+_HAS_REAL_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
+
+pytestmark = pytest.mark.skipif(
+    _HAS_REAL_QGIS,
+    reason="Comparison output tests mock QGIS shader types incompatible with real QGIS",
+)
 
 qgis = types.ModuleType("qgis")
 qgis_core = types.ModuleType("qgis.core")

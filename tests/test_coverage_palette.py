@@ -7,6 +7,7 @@ from coverage_palette import SIGNAL_LEVELS, build_heatmap_stops, build_legend_en
 
 
 EXPECTED_SIGNAL_LEVELS = [
+    (-30.0, (0, 70, 20, 220), "Very Strong"),
     (-60.0, (0, 110, 40, 210), "Excellent"),
     (-75.0, (0, 180, 80, 200), "Good"),
     (-85.0, (180, 220, 40, 195), "Fair"),

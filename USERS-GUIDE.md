@@ -125,6 +125,8 @@ You should then see:
   - `Point-to-Point Analysis`
   - `Coverage Analysis`
   - `Contour Lines`
+  - `Coverage Comparison`
+  - `Batch P2P Analysis`
   - `Coverage Opacity`
   - `Open 3D View`
 
@@ -170,9 +172,10 @@ Advanced inputs include:
 - earth permittivity (`epsilon`)
 - earth conductivity (`sigma`)
 - antenna preset, azimuth, beamwidth, front-to-back ratio, downtilt, and optional pattern CSV files
-- clutter model (Off / Simple clutter correction)
+- clutter model (Off / Simple clutter correction / Advanced clutter correction)
 - clutter raster path (optional; auto-downloads WorldCover when enabled and left blank)
 - TX and RX clutter overrides
+- canopy/clutter height override (CCH_OVERRIDE) for advanced mode
 
 ### What It Produces
 
@@ -181,9 +184,10 @@ Advanced inputs include:
 - Fresnel zone analysis
 - vector outputs for the path, Fresnel geometry, and TX/RX markers
 - clutter loss breakdown (`clutter_tx_db`, `clutter_rx_db`, `total_path_loss_db`) when clutter correction is enabled
+- canopy heights (`tx_cch_m`, `rx_cch_m`) when advanced clutter correction is enabled
 - antenna gain adjustment in the link budget when a directional antenna preset is used
 - optional `CSV`, `JSON`, and `HTML` reports
-- optional profile chart
+- optional profile chart with hover callouts, Fresnel toggle, and export
 
 ### Basic Steps
 
@@ -221,6 +225,17 @@ Interpretation:
 - `formal_p530` means the plugin judged the case suitable for the formal availability path
 - `fallback_margin` means the plugin used the margin-based fallback summary instead
 
+### Profile Chart
+
+Point-to-point analysis can produce an interactive profile chart showing:
+
+- terrain profile with earth curvature
+- Fresnel zone outline (first Fresnel zone)
+- LOS line between TX and RX
+- hover callouts for terrain elevation and Fresnel clearance
+- toggle buttons for Fresnel zone, LOS, and profile line visibility
+- chart export to PNG/SVG
+
 ### Good Defaults for New Users
 
 - Polarization: `Vertical`
@@ -248,9 +263,10 @@ Main inputs include:
 - RX sensitivity
 - antenna azimuth and beamwidth
 - antenna preset, front-to-back ratio, downtilt, and optional pattern CSV files
-- clutter model (Off / Simple clutter correction)
+- clutter model (Off / Simple clutter correction / Advanced clutter correction)
 - clutter raster path (optional; auto-downloads WorldCover when enabled and left blank)
 - TX and RX clutter overrides
+- canopy/clutter height override (CCH_OVERRIDE) for advanced mode
 
 ### Antenna Presets And Pattern Files
 
@@ -271,13 +287,16 @@ Horizontal pattern angles wrap around 360 degrees. Vertical pattern angles are c
 
 ### Clutter / Land-Cover Correction
 
-The simple clutter correction is optional. When enabled, NoWires samples land cover at the TX and RX terminals, maps the raw class into `open`, `rural`, `vegetation`, `suburban`, or `urban`, and adds terminal excess loss after ITM:
+NoWires offers three clutter modes:
+
+- **Off** — no terminal clutter correction.
+- **Simple clutter correction** — flat per-category losses (legacy behaviour, unchanged). When enabled, NoWires samples land cover at the TX and RX terminals, maps the raw class into `open`, `rural`, `vegetation`, `suburban`, or `urban`, and adds terminal excess loss after ITM:
 
 ```text
 total_path_loss_db = itm_loss_db + clutter_tx_db + clutter_rx_db
 ```
 
-The loss table is:
+The simple loss table is:
 
 | Category | Loss (dB) |
 |---|---|
@@ -287,18 +306,53 @@ The loss table is:
 | suburban | 8.0 |
 | urban | 10.0 |
 
-Use TX/RX overrides when the raster is unavailable or visibly wrong. This v1 model does not sample clutter along the full path.
+- **Advanced clutter correction** — ITU-R P.2108-1 §3.1 height-gain terminal correction for low-frequency (0.03–3 GHz) rural categories; P.2108-1 §3.2 statistical clutter loss for suburban/urban (0.5–67 GHz); saalos vegetation model for vegetation categories. Suburban and urban categories apply both §3.1 and §3.2 in the overlap band (0.5–3 GHz) and take the maximum. Loss increases with frequency for built categories, consistent with P.2108-1. When the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal. An optional canopy/clutter height override (CCH_OVERRIDE) parameter lets you specify the effective canopy height.
+- **Building entry loss (BEL)** — ITU-R P.2109-2 building entry loss model. When enabled, adds indoor penetration loss at the receiver based on building type (Traditional or Thermally-efficient), elevation angle, and frequency. Applied to RX only (TX is assumed outdoor). Available under advanced clutter settings.
+
+Use TX/RX overrides when the raster is unavailable or visibly wrong. Neither simple nor advanced clutter models sample clutter along the full path — they apply terminal corrections only.
 
 When clutter is enabled and the land-cover raster field is left blank, NoWires automatically downloads the required ESA WorldCover 2020 tiles from the AWS open data bucket. Tiles are cached locally in a temporary directory for reuse. If the download fails, the correction falls back to `open` (0 dB) with a warning in the log.
+
+#### Advanced Mode Runtime Cost
+
+Advanced clutter mode adds a saalos calculation per coverage pixel for vegetation cells. On a 250×250 grid with vegetation-dominated land cover this can add several seconds. Built-environment categories use vectorized P.2108 and are essentially free in comparison.
+
+#### Advanced Clutter Parameters
+
+When advanced clutter correction is enabled, additional parameters become available:
+
+- **Clutter Percentile** (0.01–99.99, default 50.0): Location percentile for P.2108-1 §3.2 statistical clutter loss and P.2109-2 building entry loss. Lower percentile → lower loss (loss not exceeded for that percentage of locations). The same knob controls both §3.2 and BEL.
+- **Street Width** (5–100 m, default 27): Street width parameter for P.2108-1 §3.1 height-gain terminal correction.
+- **BEL Enabled** (boolean, default off): When enabled, P.2109-2 building entry loss is added to the RX terminal. TX terminal BEL is always 0.0 (outdoor transmitter).
+- **BEL Building Type** (Traditional / Thermally-efficient, default Traditional): Building type for P.2109-2. Thermally-efficient buildings have substantially higher loss at most frequencies.
+- **BEL Elevation Angle** (0–90°, default 0): Elevation angle of the path at the building façade. Higher angles increase BEL at 0.212 dB per degree. Default 0° corresponds to horizontal incidence.
+
+#### P.2108 Model Dispatch
+
+The advanced clutter mode automatically selects the correct ITU-R sub-model based on clutter category and frequency:
+
+| Category | f < 0.5 GHz | 0.5–3 GHz | 3–67 GHz | > 67 GHz |
+|---|---|---|---|---|
+| Open | 0 | 0 | 0 | 0 |
+| Open rural / Dense rural | §3.1 | §3.1 | 0 | 0 |
+| Vegetation | SAALOS | SAALOS | SAALOS | SAALOS (clamped) |
+| Suburban | §3.1 | §3.1 + §3.2 (max) | §3.2 | §3.2 (clamped) |
+| Urban | §3.1 | §3.1 + §3.2 (max) | §3.2 | §3.2 (clamped) |
+
+No user configuration is needed for this dispatch — the correct model is applied automatically based on the land-cover category and operating frequency.
 
 ### Clutter in Reports
 
 Both P2P and coverage reports include clutter loss fields:
 
 - `clutter_source`: describes where the clutter data came from (e.g. `override`, a raster path, or `fallback_open`)
+- `clutter_method`: which P.2108/P.2109 sub-models were applied (e.g. `§3.1+§3.2/saalos`)
+- `clutter_percentile`: the location percentile used for §3.2 and BEL calculations
 - `clutter_tx_db`: TX terminal clutter loss
 - `clutter_rx_db`: RX terminal clutter loss
-- `total_path_loss_db`: ITM loss plus both terminal clutter losses
+- `total_path_loss_db`: ITM loss plus both terminal clutter losses (excluding BEL)
+- `bel_rx_db`: RX building entry loss from P.2109-2 (0.0 when BEL not enabled)
+- `total_with_bel_db`: total path loss including clutter and BEL
 
 For coverage, `itm_loss_db` and `total_path_loss_db` are grid-wide means over valid pixels.
 
@@ -377,9 +431,58 @@ The tool reports:
 - percent of pixels above sensitivity
 - min, max, and mean received signal
 
-Transparent or faint areas usually indicate very weak or no service, depending on the rendered signal level and raster NoData behavior.
+Transparent or faint areas usually indicate very weak or no service, depending on the rendered signal level and raster NoData behavior. Areas near the transmitter with the strongest signals appear as the darkest green (Very Strong, > -30 dBm).
 
 The heatmap should track the same north-up orientation as the basemap and NoWires DEM. If a raster appears offset or upside down, make sure you are using a current plugin build and remove any older copy of the plugin before reinstalling.
+
+## Basic Workflow: Coverage Comparison
+
+Use this tool to compare two coverage configurations side-by-side and see where one provides stronger or weaker signal than the other.
+
+### What It Produces
+
+- A delta raster showing the difference in path loss between Panel A and Panel B (positive values mean Panel A has higher loss)
+- Dual-panel statistics with min, max, mean, and standard deviation
+- Optional CSV, JSON, and HTML reports
+
+### Basic Steps
+
+1. Open `Coverage Comparison` from the Processing Toolbox or the NoWires menu.
+2. Configure Panel A parameters (TX point, frequency, power, heights, etc.).
+3. Configure Panel B parameters (same TX point, potentially different radio settings).
+4. Run the tool.
+5. Review the delta raster and summary statistics.
+
+### Interpreting the Delta Raster
+
+- **Red/warm colours**: Panel A has higher path loss (Panel B is better in that area)
+- **Blue/cool colours**: Panel A has lower path loss (Panel A is better in that area)
+- **Near-zero values**: Both panels produce similar results
+
+## Basic Workflow: Batch P2P Analysis
+
+Use this tool to compute multiple point-to-point links in one run.
+
+### Modes
+
+- **One-to-Many**: A single TX point is paired with each RX point from a vector layer.
+- **Many-to-One**: Each TX point from a vector layer is paired with a single RX point.
+
+### What It Produces
+
+- A combined vector layer with all link results ranked by link margin
+- Link margin and path loss for each computed link
+- Optional CSV and JSON reports
+
+### Basic Steps
+
+1. Open `Batch P2P Analysis` from the Processing Toolbox or the NoWires menu.
+2. Select the mode (one-to-many or many-to-one).
+3. Specify the fixed endpoint and the vector layer of opposite-end points.
+4. Enter radio parameters (frequency, heights, power, gains, etc.).
+5. Optionally configure antenna and clutter settings.
+6. Run the tool.
+7. Review the ranked results layer and optional report.
 
 ## Basic Workflow: Contour Lines
 
@@ -493,7 +596,7 @@ When reporting a problem, include:
 - operating system
 - QGIS version
 - plugin version
-- which tool you ran
+- which tool you ran (P2P, Coverage, Coverage Comparison, Batch P2P, Contour Lines, etc.)
 - the parameters you used
 - the exact error message from the Processing log
 

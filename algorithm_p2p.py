@@ -119,7 +119,11 @@ class P2PAlgorithm(NoWiresAlgorithm):
             horizontal_pattern_path=self.parameterAsFile(parameters, self.RX_H_PATTERN, context),
             vertical_pattern_path=self.parameterAsFile(parameters, self.RX_V_PATTERN, context),
         )
-        clutter_enabled = self.parameterAsEnum(parameters, self.CLUTTER_MODEL, context) == 1
+        clutter_model_idx = self.parameterAsEnum(parameters, self.CLUTTER_MODEL, context)
+        clutter_enabled = clutter_model_idx > 0
+        clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
+        cch_raw = self.parameterAsDouble(parameters, self.CCH_OVERRIDE, context)
+        cch_override_m = cch_raw if cch_raw > 0.0 else None
         clutter_raster_path = self.parameterAsFile(parameters, self.CLUTTER_RASTER, context)
         clutter_grid = None
         if clutter_raster_path:
@@ -130,11 +134,17 @@ class P2PAlgorithm(NoWiresAlgorithm):
         rx_clutter_override = clutter_override_value(
             self.parameterAsEnum(parameters, self.RX_CLUTTER_OVERRIDE, context)
         )
+        clutter_percentile = self.parameterAsDouble(parameters, self.CLUTTER_PERCENTILE, context)
+        street_width_m = self.parameterAsDouble(parameters, self.STREET_WIDTH, context)
+        bel_enabled = self.parameterAsBool(parameters, self.BEL_ENABLED, context)
+        bel_building_type_idx = self.parameterAsEnum(parameters, self.BEL_BUILDING_TYPE, context)
+        bel_building_type = "traditional" if bel_building_type_idx == 0 else "thermally_efficient"
+        bel_elevation_angle = self.parameterAsDouble(parameters, self.BEL_ELEVATION_ANGLE, context)
 
         show_chart = self.parameterAsBool(parameters, self.SHOW_CHART, context)
-        profile_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_PROFILE, context)
-        fresnel_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_FRESNEL, context)
-        markers_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_MARKERS, context)
+        profile_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT_PROFILE, context)
+        fresnel_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT_FRESNEL, context)
+        markers_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT_MARKERS, context)
         report_csv_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_CSV, context)
         report_json_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_JSON, context)
         report_html_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_HTML, context)
@@ -153,6 +163,13 @@ class P2PAlgorithm(NoWiresAlgorithm):
             clutter_enabled=clutter_enabled, clutter_grid=clutter_grid,
             tx_clutter_override=tx_clutter_override,
             rx_clutter_override=rx_clutter_override,
+            clutter_model=clutter_model,
+            cch_override_m=cch_override_m,
+            clutter_percentile=clutter_percentile,
+            street_width_m=street_width_m,
+            bel_enabled=bel_enabled,
+            bel_building_type=bel_building_type,
+            bel_elevation_angle_deg=bel_elevation_angle,
             profile_dest=profile_dest, fresnel_dest=fresnel_dest,
             markers_dest=markers_dest,
             report_csv_path=report_csv_path,

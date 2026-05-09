@@ -24,8 +24,8 @@ class TestClutterOverrideValue:
         for cat in ("open", "rural", "vegetation", "suburban", "urban"):
             assert clutter_override_value(cat) == cat
 
-    def test_index_0_returns_none(self):
-        assert clutter_override_value(0) is None
+    def test_index_0_returns_auto(self):
+        assert clutter_override_value(0) == "Auto"
 
     def test_index_1_returns_open(self):
         assert clutter_override_value(1) == "open"
@@ -34,7 +34,7 @@ class TestClutterOverrideValue:
         assert clutter_override_value(2) == "rural"
 
     def test_index_maps_to_override_options(self):
-        for idx in range(1, len(CLUTTER_OVERRIDE_OPTIONS)):
+        for idx in range(0, len(CLUTTER_OVERRIDE_OPTIONS)):
             assert clutter_override_value(idx) == CLUTTER_OVERRIDE_OPTIONS[idx]
 
     def test_out_of_range_returns_none(self):

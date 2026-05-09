@@ -31,6 +31,7 @@ from qgis.core import (
     QgsProcessingParameterFileDestination,
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
+    QgsProcessingParameterRasterDestination,
     QgsCoordinateReferenceSystem,
 )
 from .defaults import (
@@ -67,13 +68,16 @@ _PARAM_NAMES = (
     "RX_SENSITIVITY", "ANTENNA_BW", "ANTENNA_AZ", "ANTENNA_PRESET",
     "FRONT_BACK_DB", "DOWNTILT_DEG", "H_PATTERN", "V_PATTERN",
     "CLUTTER_MODEL", "CLUTTER_RASTER", "TX_CLUTTER_OVERRIDE",
-    "RX_CLUTTER_OVERRIDE", "N0", "EPSILON", "SIGMA", "OUTPUT_RASTER",
+    "RX_CLUTTER_OVERRIDE", "CCH_OVERRIDE",
+    "CLUTTER_PERCENTILE", "STREET_WIDTH", "BEL_ENABLED", "BEL_BUILDING_TYPE",
+    "BEL_ELEVATION_ANGLE",
+    "N0", "EPSILON", "SIGMA", "OUTPUT_RASTER",
     "OUTPUT_REPORT_CSV", "OUTPUT_REPORT_JSON", "OUTPUT_REPORT_HTML",
 )
 PARAM_CONSTANTS = {k: k for k in _PARAM_NAMES}
 
 
-_DBL = QgsProcessingParameterNumber.Double
+_DBL = QgsProcessingParameterNumber.Type.Double
 
 
 def _add_basic_params(alg):
@@ -135,8 +139,8 @@ def _add_antenna_params(alg):
 
 
 def _add_output_params(alg):
-    alg.addParameter(QgsProcessingParameterFileDestination(
-        alg.OUTPUT_RASTER, "Coverage raster output", "GeoTIFF files (*.tif)"))
+    alg.addParameter(QgsProcessingParameterRasterDestination(
+        alg.OUTPUT_RASTER, "Coverage raster output"))
     alg.addParameter(QgsProcessingParameterFileDestination(
         alg.OUTPUT_REPORT_CSV, "Coverage report CSV",
         "CSV files (*.csv)", optional=True))
@@ -163,6 +167,7 @@ def extract_coverage_params(alg, parameters, context):
     from .coverage_analysis_params import CoverageAnalysisParams
     _dbl = alg.parameterAsDouble
     _enum = alg.parameterAsEnum
+    _bool = alg.parameterAsBool
     tx_point = alg.parameterAsPoint(
         parameters, alg.TX_POINT, context,
         crs=QgsCoordinateReferenceSystem("EPSG:4326"),
@@ -190,7 +195,11 @@ def extract_coverage_params(alg, parameters, context):
     antenna_preset = _enum(parameters, alg.ANTENNA_PRESET, context)
     h_pattern = alg.parameterAsFile(parameters, alg.H_PATTERN, context)
     v_pattern = alg.parameterAsFile(parameters, alg.V_PATTERN, context)
-    clutter_enabled = _enum(parameters, alg.CLUTTER_MODEL, context) == 1
+    clutter_model_idx = _enum(parameters, alg.CLUTTER_MODEL, context)
+    clutter_enabled = clutter_model_idx > 0
+    clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
+    cch_raw = _dbl(parameters, alg.CCH_OVERRIDE, context)
+    cch_override_m = cch_raw if cch_raw > 0.0 else None
     clutter_raster_path = alg.parameterAsFile(
         parameters, alg.CLUTTER_RASTER, context
     )
@@ -204,6 +213,12 @@ def extract_coverage_params(alg, parameters, context):
     rx_clutter_override = clutter_override_value(
         _enum(parameters, alg.RX_CLUTTER_OVERRIDE, context)
     )
+    clutter_percentile = _dbl(parameters, alg.CLUTTER_PERCENTILE, context)
+    street_width_m = _dbl(parameters, alg.STREET_WIDTH, context)
+    bel_enabled = _bool(parameters, alg.BEL_ENABLED, context)
+    bel_building_type_idx = _enum(parameters, alg.BEL_BUILDING_TYPE, context)
+    bel_building_type = "traditional" if bel_building_type_idx == 0 else "thermally_efficient"
+    bel_elevation_angle = _dbl(parameters, alg.BEL_ELEVATION_ANGLE, context)
     antenna_bw_override = (
         None if antenna_preset != CUSTOM_ANTENNA_PRESET_INDEX and doubles["antenna_bw"] == 360.0
         else doubles["antenna_bw"]
@@ -233,5 +248,12 @@ def extract_coverage_params(alg, parameters, context):
         clutter_raster_path=clutter_raster_path, clutter_grid=clutter_grid,
         tx_clutter_override=tx_clutter_override,
         rx_clutter_override=rx_clutter_override,
+        clutter_model=clutter_model,
+        cch_override_m=cch_override_m,
+        clutter_percentile=clutter_percentile,
+        street_width_m=street_width_m,
+        bel_enabled=bel_enabled,
+        bel_building_type=bel_building_type,
+        bel_elevation_angle_deg=bel_elevation_angle,
         n0=doubles["n0"], epsilon=doubles["epsilon"], sigma=doubles["sigma"],
     )

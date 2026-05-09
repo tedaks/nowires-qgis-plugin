@@ -29,6 +29,7 @@ from qgis.core import (
     QgsProcessingParameterFileDestination,
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
+    QgsProcessingParameterVectorDestination,
 )
 from .defaults import (
     DEFAULT_ANTENNA_AZIMUTH,
@@ -67,13 +68,16 @@ _PARAM_NAMES = (
     "TX_FRONT_BACK_DB", "TX_DOWNTILT_DEG", "TX_H_PATTERN", "TX_V_PATTERN",
     "RX_ANTENNA_PRESET", "RX_ANTENNA_AZ", "RX_FRONT_BACK_DB", "RX_DOWNTILT_DEG",
     "RX_H_PATTERN", "RX_V_PATTERN", "CLUTTER_MODEL", "CLUTTER_RASTER",
-    "TX_CLUTTER_OVERRIDE", "RX_CLUTTER_OVERRIDE", "K_FACTOR_PRESET", "K_FACTOR",
+    "TX_CLUTTER_OVERRIDE", "RX_CLUTTER_OVERRIDE", "CCH_OVERRIDE",
+    "CLUTTER_PERCENTILE", "STREET_WIDTH", "BEL_ENABLED", "BEL_BUILDING_TYPE",
+    "BEL_ELEVATION_ANGLE",
+    "K_FACTOR_PRESET", "K_FACTOR",
     "N0", "EPSILON", "SIGMA", "OUTPUT_PROFILE", "OUTPUT_FRESNEL", "OUTPUT_MARKERS",
     "OUTPUT_REPORT_CSV", "OUTPUT_REPORT_JSON", "OUTPUT_REPORT_HTML", "SHOW_CHART",
 )
 PARAM_CONSTANTS = {k: k for k in _PARAM_NAMES}
 
-_DBL = QgsProcessingParameterNumber.Double
+_DBL = QgsProcessingParameterNumber.Type.Double
 
 
 
@@ -134,15 +138,12 @@ def _add_antenna_params(algorithm, prefix):
 
 
 def _add_output_params(algorithm):
-    algorithm.addParameter(QgsProcessingParameterFileDestination(
-        algorithm.OUTPUT_PROFILE, "Profile line output",
-        "GeoPackage files (*.gpkg)"))
-    algorithm.addParameter(QgsProcessingParameterFileDestination(
-        algorithm.OUTPUT_FRESNEL, "Fresnel zone polygon",
-        "GeoPackage files (*.gpkg)"))
-    algorithm.addParameter(QgsProcessingParameterFileDestination(
-        algorithm.OUTPUT_MARKERS, "TX/RX marker output",
-        "GeoPackage files (*.gpkg)"))
+    algorithm.addParameter(QgsProcessingParameterVectorDestination(
+        algorithm.OUTPUT_PROFILE, "Profile line output"))
+    algorithm.addParameter(QgsProcessingParameterVectorDestination(
+        algorithm.OUTPUT_FRESNEL, "Fresnel zone polygon"))
+    algorithm.addParameter(QgsProcessingParameterVectorDestination(
+        algorithm.OUTPUT_MARKERS, "TX/RX marker output"))
     algorithm.addParameter(QgsProcessingParameterFileDestination(
         algorithm.OUTPUT_REPORT_CSV, "P2P report CSV",
         "CSV files (*.csv)", optional=True))

@@ -46,7 +46,7 @@ class FakeGrid:
 
 
 class TestComputeCoverageEmptyTasks:
-    def test_returns_nan_grids_when_no_tasks(self, monkeypatch):
+    def test_returns_none_when_no_tasks(self, monkeypatch):
         monkeypatch.setattr(coverage_engine, "build_coverage_tasks", lambda *a, **kw: [])
         result = coverage_engine.compute_coverage(
             elev_grid=FakeGrid(),
@@ -56,24 +56,7 @@ class TestComputeCoverageEmptyTasks:
             radius_km=0.001,
             grid_size=4,
         )
-        assert result.prx_grid.shape == (4, 4)
-        assert np.all(np.isnan(result.prx_grid))
-        assert np.all(np.isnan(result.loss_grid))
-
-    def test_empty_task_returns_correct_bounds(self, monkeypatch):
-        monkeypatch.setattr(coverage_engine, "build_coverage_tasks", lambda *a, **kw: [])
-        result = coverage_engine.compute_coverage(
-            elev_grid=FakeGrid(),
-            tx_lat=14.0, tx_lon=121.0,
-            tx_h_m=30.0, rx_h_m=10.0,
-            f_mhz=900.0,
-            radius_km=0.1,
-            grid_size=8,
-        )
-        assert result.min_lat < 14.0
-        assert result.max_lat > 14.0
-        assert result.min_lon < 121.0
-        assert result.max_lon > 121.0
+        assert result is None
 
 
 class TestComputeCoverageCancellation:

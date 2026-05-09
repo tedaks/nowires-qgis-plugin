@@ -271,3 +271,28 @@ def _release_shared_memory(shared_grid, unlink=True):
     if shared_grid is None:
         return
     shared_grid.release()
+
+
+def apply_batch_results(batch_results, loss_grid, prx_grid, itm_loss_grid,
+                        clutter_loss_grid):
+    pixels_failed = 0
+    for result in batch_results:
+        if result is not None:
+            i, j, loss_db, prx, itm_loss_db, c_tx, c_rx = result
+            loss_grid[i, j] = loss_db
+            prx_grid[i, j] = prx
+            itm_loss_grid[i, j] = itm_loss_db
+            clutter_loss_grid[i, j] = c_tx + c_rx
+        else:
+            pixels_failed += 1
+    return pixels_failed
+
+
+def log_coverage_failures(pixels_failed, total):
+    if total == 0:
+        return
+    failure_pct = pixels_failed / max(total, 1) * 100
+    if failure_pct > 50:
+        logger.error("High failure rate: %.1f%% of coverage pixels failed", failure_pct)
+    elif pixels_failed > 0:
+        logger.warning("Coverage: %d/%d pixels failed (%.1f%%)", pixels_failed, total, failure_pct)

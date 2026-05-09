@@ -112,7 +112,19 @@ def _install_qgis_stubs():
     sys.modules["qgis.PyQt.QtWidgets"] = qtwidgets
 
 
-_install_qgis_stubs()
+_HAS_REAL_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
+
+# Don't poison sys.modules["qgis.core"] when a real QGIS runtime is present;
+# its `__getattr__ = lambda _name: MagicMock()` would make integration tests
+# elsewhere see MagicMocks for QGIS classes (e.g. QgsProcessingProvider),
+# breaking provider instantiation in collection-shared state.
+if not _HAS_REAL_QGIS:
+    _install_qgis_stubs()
+
+pytestmark = pytest.mark.skipif(
+    _HAS_REAL_QGIS,
+    reason="Mock-based regression tests must not run against real QGIS extensions",
+)
 
 
 @pytest.fixture(autouse=True)
@@ -241,6 +253,9 @@ def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypa
 
     class Algorithm(module.CoverageAlgorithm):
         def parameterAsFileOutput(self, parameters, name, context):
+            return parameters.get(name, "")
+
+        def parameterAsOutputLayer(self, parameters, name, context):
             return parameters.get(name, "")
 
     alg = Algorithm()

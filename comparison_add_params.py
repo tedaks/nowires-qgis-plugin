@@ -32,6 +32,7 @@ from qgis.core import (
     QgsProcessingParameterFileDestination,
     QgsProcessingParameterFolderDestination,
     QgsProcessingParameterNumber,
+    QgsProcessingParameterRasterDestination,
 )
 
 from .antenna import ANTENNA_PRESET_OPTIONS
@@ -194,19 +195,19 @@ def add_panel_params(algorithm, prefix, config):
     n0_param = config["n0_param"](
         f"{prefix}_N0", f"Panel {panel_label} Surface refractivity N0 (N-units)", defaultValue=DEFAULT_N0,
     )
-    n0_param.setFlags(n0_param.flags() | QgsProcessingParameterNumber.FlagAdvanced)
+    n0_param.setFlags(n0_param.flags() | QgsProcessingParameterNumber.Flag.FlagAdvanced)
     algorithm.addParameter(n0_param)
 
     epsilon_param = config["epsilon_param"](
         f"{prefix}_EPSILON", f"Panel {panel_label} Earth permittivity (epsilon)", defaultValue=DEFAULT_EPSILON,
     )
-    epsilon_param.setFlags(epsilon_param.flags() | QgsProcessingParameterNumber.FlagAdvanced)
+    epsilon_param.setFlags(epsilon_param.flags() | QgsProcessingParameterNumber.Flag.FlagAdvanced)
     algorithm.addParameter(epsilon_param)
 
     sigma_param = config["sigma_param"](
         f"{prefix}_SIGMA", f"Panel {panel_label} Earth conductivity (sigma, S/m)", defaultValue=DEFAULT_SIGMA,
     )
-    sigma_param.setFlags(sigma_param.flags() | QgsProcessingParameterNumber.FlagAdvanced)
+    sigma_param.setFlags(sigma_param.flags() | QgsProcessingParameterNumber.Flag.FlagAdvanced)
     algorithm.addParameter(sigma_param)
 
 
@@ -230,30 +231,27 @@ def add_comparison_params(algorithm):
         QgsProcessingParameterNumber(
             OUTPUT_CONSTANTS["DELTA_THRESHOLD_DB"],
             "Significant difference threshold (dB)",
-            type=QgsProcessingParameterNumber.Double,
+            type=QgsProcessingParameterNumber.Type.Double,
             defaultValue=5.0,
             minValue=0.1,
         )
     )
     algorithm.addParameter(
-        QgsProcessingParameterFileDestination(
+        QgsProcessingParameterRasterDestination(
             OUTPUT_CONSTANTS["OUTPUT_A"],
             "Panel A coverage raster output",
-            fileFilter="GeoTIFF files (*.tif)",
         )
     )
     algorithm.addParameter(
-        QgsProcessingParameterFileDestination(
+        QgsProcessingParameterRasterDestination(
             OUTPUT_CONSTANTS["OUTPUT_B"],
             "Panel B coverage raster output",
-            fileFilter="GeoTIFF files (*.tif)",
         )
     )
     algorithm.addParameter(
-        QgsProcessingParameterFileDestination(
+        QgsProcessingParameterRasterDestination(
             OUTPUT_CONSTANTS["OUTPUT_DELTA"],
             "Delta raster output (A - B in dB)",
-            fileFilter="GeoTIFF files (*.tif)",
         )
     )
     algorithm.addParameter(

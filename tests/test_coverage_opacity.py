@@ -93,7 +93,8 @@ def test_opacity_dialog_slider_range_is_0_100():
 
 def test_opacity_dialog_refreshes_map_canvas():
     source = _text(OPACITY_SOURCE)
-    assert "iface.mapCanvas().refresh()" in source
+    assert "canvas = iface.mapCanvas()" in source
+    assert "if canvas is not None:" in source
 
 
 def test_plugin_imports_opacity_module():

@@ -120,6 +120,28 @@ def test_build_coverage_report_payload_handles_all_nan_grid():
     assert payload["status"]["summary"] == "NO VALID COVERAGE CELLS"
 
 
+def test_build_coverage_report_payload_labels_advanced_clutter():
+    prx_grid = np.array([[-95.0]], dtype=np.float32)
+    loss_grid = np.array([[122.0]], dtype=np.float32)
+    itm_loss_grid = np.array([[115.0]], dtype=np.float32)
+    clutter_loss_grid = np.array([[7.0]], dtype=np.float32)
+
+    payload, _raster_grid, _valid, _summary = build_coverage_report_payload_for_grid(
+        prx_grid=prx_grid,
+        loss_grid=loss_grid,
+        itm_loss_grid=itm_loss_grid,
+        clutter_loss_grid=clutter_loss_grid,
+        min_lat=0.0,
+        max_lat=1.0,
+        min_lon=0.0,
+        max_lon=1.0,
+        clutter_model="advanced",
+        **_base_payload_kwargs(),
+    )
+
+    assert payload["inputs"]["clutter_model"] == "Advanced clutter correction"
+
+
 def test_write_coverage_geotiff_delegates_raw_compute_grid(monkeypatch, tmp_path):
     import NoWires.coverage_reporting as module
 

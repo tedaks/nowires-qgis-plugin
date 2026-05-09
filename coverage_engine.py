@@ -2,12 +2,12 @@
 """
 /***************************************************************************
  NoWires
-                     A QGIS plugin
+                      A QGIS plugin
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                             -------------------
-        begin                : 2026-04-22
-        copyright            : (C) 2026 Bortre Tenamo
-        email                : tedaks@gmail.com
+                              -------------------
+         begin                : 2026-04-22
+         copyright            : (C) 2026 Bortre Tenamo
+         email                : tedaks@gmail.com
  ***************************************************************************/
 
 /***************************************************************************
@@ -21,20 +21,25 @@
 """
 
 import logging
+import math
 import multiprocessing
 import os
+import warnings
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 
 from .antenna import antenna_config_from_values
 from .clutter import compute_terminal_clutter_losses
+from .clutter_context import ClutterLossContext
 from .coverage_pool import (
+    apply_batch_results,
     CoverageResult,
     _dynamic_chunk_size,
     _init_cov_pool,
     _itm_worker,
     _itm_worker_batch,
+    log_coverage_failures,
     _make_shared_grid,
     _MAX_WORKERS,
     _release_shared_memory,
@@ -50,28 +55,6 @@ from .geo_bounds import coverage_bounds
 
 logger = logging.getLogger(__name__)
 
-
-def _run_sequential(tasks, grid_data, grid_meta, prx_grid, loss_grid,
-                    itm_loss_grid, clutter_loss_grid, feedback, total_tasks):
-    pixels_failed = 0
-    pixels_done = 0
-    for task_idx, task in enumerate(tasks):
-        if feedback and feedback.isCanceled():
-            return pixels_failed, pixels_done, True
-        result = _itm_worker(task, grid_data=grid_data, grid_meta=grid_meta)
-        if result is not None:
-            i, j, loss_db, prx, itm_loss_db, c_tx, c_rx = result
-            loss_grid[i, j] = loss_db
-            prx_grid[i, j] = prx
-            itm_loss_grid[i, j] = itm_loss_db
-            clutter_loss_grid[i, j] = c_tx + c_rx
-        else:
-            pixels_failed += 1
-        pixels_done += 1
-        if feedback and task_idx % 500 == 0:
-            pct = int(pixels_done / max(total_tasks, 1) * 80)
-            feedback.setProgress(pct)
-    return pixels_failed, pixels_done, False
 
 
 def compute_coverage(
@@ -111,6 +94,10 @@ def compute_coverage(
     rx_clutter_override=None,
     tx_clutter_loss_db=None,
     feedback=None,
+    clutter_model="simple",
+    cch_override_m=None,
+    clutter_percentile=50.0, street_width_m=27.0,
+    bel_enabled=False, bel_building_type="traditional", bel_elevation_angle_deg=0.0,
 ):
     radius_m = radius_km * 1000.0
     min_lat, max_lat, min_lon, max_lon = coverage_bounds(tx_lat, tx_lon, radius_km)
@@ -123,6 +110,22 @@ def compute_coverage(
     itm_loss_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
     clutter_loss_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
 
+    _sample_elev = getattr(elev_grid, "sample", None)
+    if callable(_sample_elev):
+        tx_ground_elev_m = float(_sample_elev(tx_lat, tx_lon))
+        if not math.isfinite(tx_ground_elev_m):
+            tx_ground_elev_m = 0.0
+    else:
+        tx_ground_elev_m = 0.0
+    rx_ground_grid = None
+    if clutter_enabled and clutter_model == "advanced" and callable(_sample_elev):
+        rx_ground_grid = np.zeros((grid_size, grid_size), dtype=np.float32)
+        for i in range(grid_size):
+            lat_i = float(lats[i])
+            for j in range(grid_size):
+                v = _sample_elev(lat_i, float(lons[j]))
+                rx_ground_grid[i, j] = v if math.isfinite(v) else 0.0
+
     antenna_config = antenna_config_from_values(
         preset=antenna_preset,
         azimuth_deg=antenna_az_deg,
@@ -132,23 +135,32 @@ def compute_coverage(
         horizontal_pattern_path=antenna_horizontal_pattern_path,
         vertical_pattern_path=antenna_vertical_pattern_path,
     )
-
+    clutter_context = None
+    if clutter_enabled:
+        clutter_context = ClutterLossContext(
+            frequency_mhz=f_mhz, distance_m=0.0,
+            tx_height_m=tx_h_m, rx_height_m=rx_h_m,
+            rx_ground_elevation_m=tx_ground_elev_m,
+            tx_ground_elevation_m=tx_ground_elev_m,
+            polarization=polarization,
+            cch_override_m=cch_override_m, model=clutter_model,
+            percentile=clutter_percentile, street_width_m=street_width_m,
+            bel_enabled=bel_enabled, bel_building_type=bel_building_type,
+            bel_elevation_angle_deg=bel_elevation_angle_deg,
+        )
     if tx_clutter_loss_db is not None:
         tx_clutter_loss = tx_clutter_loss_db
     else:
         tx_clutter = compute_terminal_clutter_losses(
-            tx_lat=tx_lat,
-            tx_lon=tx_lon,
-            rx_lat=tx_lat,
-            rx_lon=tx_lon,
-            frequency_mhz=f_mhz,
-            enabled=clutter_enabled,
+            tx_lat=tx_lat, tx_lon=tx_lon,
+            rx_lat=tx_lat, rx_lon=tx_lon,
+            frequency_mhz=f_mhz, enabled=clutter_enabled,
             land_cover_grid=clutter_grid,
             tx_override=tx_clutter_override,
             rx_override=rx_clutter_override,
+            context=clutter_context,
         )
         tx_clutter_loss = tx_clutter.tx_loss_db
-
     tasks = build_coverage_tasks(
         tx_lat,
         tx_lon,
@@ -174,19 +186,14 @@ def compute_coverage(
         clutter_grid,
         tx_clutter_loss,
         rx_clutter_override,
-        lats,
-        lons,
+        lats, lons, clutter_context=clutter_context,
+        tx_clutter_override=tx_clutter_override,
+        tx_ground_elev_m=tx_ground_elev_m,
+        rx_ground_grid=rx_ground_grid,
     )
-
     if not tasks:
-        logger.warning("No coverage pixels within the specified radius.")
-        return CoverageResult(
-            prx_grid=prx_grid, loss_grid=loss_grid,
-            min_lat=min_lat, max_lat=max_lat,
-            min_lon=min_lon, max_lon=max_lon,
-            itm_loss_grid=itm_loss_grid, clutter_loss_grid=clutter_loss_grid,
-        )
-
+        logger.error("No coverage pixels within the specified radius.")
+        return None
     grid_meta = elev_grid.grid_meta_dict()
     grid_meta["tx_lat"] = tx_lat
     grid_meta["tx_lon"] = tx_lon
@@ -200,81 +207,78 @@ def compute_coverage(
         grid_size, grid_size, len(tasks), grid_data.shape, grid_data.nbytes / BYTES_PER_MEBIBYTE,
     )
 
-    shared_grid = None
-    n_workers = max(1, min(os.cpu_count() or 1, _MAX_WORKERS))
-    pixels_failed = 0
-    pixels_done = 0
-
     chunk_size = _dynamic_chunk_size(len(tasks))
     chunks = [tasks[i:i + chunk_size] for i in range(0, len(tasks), chunk_size)]
-
     cancelled = False
     use_mp = should_use_multiprocessing()
+    pixels_failed = 0
+    pixels_done = 0
     if use_mp:
         ensure_spawn_start_method()
         configure_macos_multiprocessing()
         if feedback:
             feedback.pushInfo(
-                "Computing {} pixels with {} workers...".format(len(tasks), n_workers)
+                "Computing {} pixels with {} workers...".format(
+                    len(tasks), max(1, min(os.cpu_count() or 1, _MAX_WORKERS)))
             )
+        shared_grid = None
         try:
             shared_grid = _make_shared_grid(grid_data)
             cancel_event = multiprocessing.Event()
-            with ProcessPoolExecutor(
+            n_workers = max(1, min(os.cpu_count() or 1, _MAX_WORKERS))
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="resource_tracker", category=UserWarning)
+                with ProcessPoolExecutor(
                     max_workers=n_workers,
                     initializer=_init_cov_pool,
                     initargs=(shared_grid.name, grid_data.shape, str(grid_data.dtype), grid_meta),
                 ) as pool:
-                shared_grid.shm.close()
-                for chunk_idx, batch_results in enumerate(
-                    pool.map(
-                        _itm_worker_batch,
-                        [(c, cancel_event) for c in chunks],
-                        chunksize=1,
-                    )
-                ):
-                    if feedback and feedback.isCanceled():
-                        logger.info("Coverage cancelled by user")
-                        cancelled = True
-                        cancel_event.set()
-                        break
-                    for result in batch_results:
-                        if result is not None:
-                            i, j, loss_db, prx, itm_loss_db, c_tx, c_rx = result
-                            loss_grid[i, j] = loss_db
-                            prx_grid[i, j] = prx
-                            itm_loss_grid[i, j] = itm_loss_db
-                            clutter_loss_grid[i, j] = c_tx + c_rx
-                        else:
-                            pixels_failed += 1
-                        pixels_done += 1
-                    if feedback and chunk_idx % 50 == 0:
-                        pct = int(pixels_done / len(tasks) * 80)
-                        feedback.setProgress(pct)
+                    for chunk_idx, batch_results in enumerate(
+                        pool.map(
+                            _itm_worker_batch,
+                            [(c, cancel_event) for c in chunks],
+                            chunksize=1,
+                        )
+                    ):
+                        if feedback and feedback.isCanceled():
+                            cancelled = True
+                            cancel_event.set()
+                            break
+                        pixels_failed += apply_batch_results(
+                            batch_results, loss_grid, prx_grid, itm_loss_grid, clutter_loss_grid)
+                        pixels_done += len(batch_results)
+                        if feedback and chunk_idx % 50 == 0:
+                            feedback.setProgress(int(pixels_done / len(tasks) * 80))
         except Exception as exc:
             logger.warning(
                 "Multiprocessing failed (%s: %s), falling back to sequential",
-                type(exc).__name__,
-                exc,
+                type(exc).__name__, exc,
             )
-            if feedback:
-                feedback.pushInfo(
-                    "Multiprocessing unavailable, using single-threaded mode..."
-                )
             use_mp = False
+            if feedback:
+                feedback.pushInfo("Multiprocessing unavailable, using single-threaded mode...")
         finally:
             if shared_grid is not None:
                 _release_shared_memory(shared_grid)
-    elif feedback:
-        feedback.pushInfo(
-            "Using single-threaded mode on Windows (multiprocessing unsafe)..."
-        )
-
     if not use_mp:
-        pixels_failed, pixels_done, cancelled = _run_sequential(
-            tasks, grid_data, grid_meta, prx_grid, loss_grid,
-            itm_loss_grid, clutter_loss_grid, feedback, len(tasks),
-        )
+        if feedback:
+            feedback.pushInfo("Using single-threaded mode...")
+        for task_idx, task in enumerate(tasks):
+            if feedback and feedback.isCanceled():
+                cancelled = True
+                break
+            result = _itm_worker(task, grid_data=grid_data, grid_meta=grid_meta)
+            if result is not None:
+                i, j, loss_db, prx, itm_loss_db, c_tx, c_rx = result
+                loss_grid[i, j] = loss_db
+                prx_grid[i, j] = prx
+                itm_loss_grid[i, j] = itm_loss_db
+                clutter_loss_grid[i, j] = c_tx + c_rx
+            else:
+                pixels_failed += 1
+            pixels_done += 1
+            if feedback and task_idx % 500 == 0:
+                feedback.setProgress(int(pixels_done / max(len(tasks), 1) * 80))
 
     if cancelled:
         return CoverageResult(
@@ -286,11 +290,7 @@ def compute_coverage(
         feedback.pushInfo("Coverage: {}/{} pixels computed ({} failed)".format(
             total - pixels_failed, total, pixels_failed))
 
-    failure_pct = pixels_failed / max(total, 1) * 100
-    if failure_pct > 50:
-        logger.error("High failure rate: %.1f%% of coverage pixels failed", failure_pct)
-    elif pixels_failed > 0:
-        logger.warning("Coverage: %d/%d pixels failed (%.1f%%)", pixels_failed, total, failure_pct)
+    log_coverage_failures(pixels_failed, total)
 
     return CoverageResult(
         prx_grid=prx_grid, loss_grid=loss_grid,

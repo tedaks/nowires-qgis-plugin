@@ -1,4 +1,5 @@
 from qgis.core import (
+    QgsProcessingParameterBoolean,
     QgsProcessingParameterEnum,
     QgsProcessingParameterFile,
     QgsProcessingParameterNumber,
@@ -7,19 +8,24 @@ from qgis.core import (
 from .clutter import CLUTTER_MODEL_OPTIONS, CLUTTER_OVERRIDE_OPTIONS
 from .constants import K_FACTOR_PRESETS_OPTIONS
 from .defaults import (
+    DEFAULT_BEL_ELEVATION_ANGLE_DEG,
     DEFAULT_CABLE_LOSS_DB,
+    DEFAULT_CLUTTER_PERCENTILE,
     DEFAULT_EPSILON,
     DEFAULT_K_FACTOR,
     DEFAULT_N0,
     DEFAULT_RX_GAIN_DBI,
     DEFAULT_RX_SENSITIVITY_DBM,
     DEFAULT_SIGMA,
+    DEFAULT_STREET_WIDTH_M,
     DEFAULT_TX_GAIN_DBI,
     DEFAULT_TX_POWER_DBM,
 )
 from .radio import ITM_MIN_N0, ITM_MAX_N0, ITM_MIN_SIGMA
 
-_DBL = QgsProcessingParameterNumber.Double
+_DBL = QgsProcessingParameterNumber.Type.Double
+
+BEL_BUILDING_TYPE_OPTIONS = ["Traditional", "Thermally-efficient"]
 
 
 def add_advanced_param(algorithm, attr, label, default, min_val=None, max_val=None):
@@ -29,7 +35,7 @@ def add_advanced_param(algorithm, attr, label, default, min_val=None, max_val=No
     if max_val is not None:
         kwargs["maxValue"] = max_val
     param = QgsProcessingParameterNumber(attr, label, **kwargs)
-    param.setFlags(param.flags() | QgsProcessingParameterNumber.FlagAdvanced)
+    param.setFlags(param.flags() | QgsProcessingParameterNumber.Flag.FlagAdvanced)
     algorithm.addParameter(param)
 
 
@@ -47,6 +53,42 @@ def add_clutter_params(algorithm, attr_getter=None):
     algorithm.addParameter(QgsProcessingParameterEnum(
         ag("RX_CLUTTER_OVERRIDE"), "RX clutter override",
         options=CLUTTER_OVERRIDE_OPTIONS, defaultValue=0))
+    algorithm.addParameter(QgsProcessingParameterNumber(
+        ag("CCH_OVERRIDE"),
+        "Canopy/clutter height override (m, 0 = auto)",
+        type=QgsProcessingParameterNumber.Type.Double,
+        defaultValue=0.0, minValue=0.0, optional=True,
+    ))
+    algorithm.addParameter(QgsProcessingParameterNumber(
+        ag("CLUTTER_PERCENTILE"),
+        "Clutter loss percentile (0.01–99.99)",
+        type=QgsProcessingParameterNumber.Type.Double,
+        defaultValue=DEFAULT_CLUTTER_PERCENTILE,
+        minValue=0.01, maxValue=99.99, optional=True,
+    ))
+    algorithm.addParameter(QgsProcessingParameterNumber(
+        ag("STREET_WIDTH"),
+        "Street width for P.2108 §3.1 (m)",
+        type=QgsProcessingParameterNumber.Type.Double,
+        defaultValue=DEFAULT_STREET_WIDTH_M,
+        minValue=5.0, maxValue=100.0, optional=True,
+    ))
+    algorithm.addParameter(QgsProcessingParameterBoolean(
+        ag("BEL_ENABLED"),
+        "Building entry loss (P.2109)",
+        defaultValue=False, optional=True,
+    ))
+    algorithm.addParameter(QgsProcessingParameterEnum(
+        ag("BEL_BUILDING_TYPE"),
+        "Building type (P.2109)",
+        options=BEL_BUILDING_TYPE_OPTIONS, defaultValue=0))
+    algorithm.addParameter(QgsProcessingParameterNumber(
+        ag("BEL_ELEVATION_ANGLE"),
+        "Building entry elevation angle (degrees)",
+        type=QgsProcessingParameterNumber.Type.Double,
+        defaultValue=DEFAULT_BEL_ELEVATION_ANGLE_DEG,
+        minValue=0.0, maxValue=90.0, optional=True,
+    ))
 
 
 def add_link_budget_params(algorithm, attr_getter=None, prefix=""):

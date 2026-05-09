@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  pytest:
+  lint:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,10 +17,36 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install test dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest numpy
+      - name: Install lint dependencies
+        run: pip install --break-system-packages ruff
 
-      - name: Run tests
-        run: pytest -q
+      - name: Run ruff check
+        run: ruff check .
+
+      - name: Verify no source file exceeds 300 lines
+        run: |
+          violating=$(find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | grep -v 'total$' | awk '$1 > 300 {print}')
+          if [ -n "$violating" ]; then
+            echo "ERROR: The following source files exceed 300 lines:"
+            echo "$violating"
+            exit 1
+          fi
+
+  pytest:
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: pip install --break-system-packages pytest numpy
+
+      - name: Run unit and contract tests
+        run: pytest -q -m "not benchmark and not qgis_integration"
