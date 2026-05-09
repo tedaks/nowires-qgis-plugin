@@ -6,11 +6,18 @@
 These tests must restore QGIS mock modules because some other test files
 overwrite sys.modules["qgis.core"] with their own stub implementations
 and don't restore them, breaking our mock state.
+
+SKIPPED when real QGIS is available because they overwrite sys.modules
+with mocks, which segfaults against compiled QGIS extensions.
 """
+
+import os
 import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+_HAS_REAL_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
 
 
 # Preserve the conftest-provided mock modules before any other test overwrites them.
@@ -25,6 +32,11 @@ _SAVED_MODULES = {
 
 # Also preserve the NoWires package itself so we can restore it.
 _SAVED_NOWIRES_PKG = sys.modules.get("NoWires")
+
+pytestmark = pytest.mark.skipif(
+    _HAS_REAL_QGIS,
+    reason="Plugin lifecycle tests use mock QGIS and must not run against real QGIS extensions",
+)
 
 
 @pytest.fixture(autouse=True)
