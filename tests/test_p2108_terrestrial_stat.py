@@ -4,13 +4,11 @@
 
 import math
 
-import numpy as np
 import pytest
 
 from p2108_terrestrial_stat import (
     _L_l,
     _L_s,
-    _compute_capped,
     clutter_loss_p2108_terrestrial_stat,
     clutter_loss_p2108_terrestrial_stat_vec,
 )
