@@ -5,13 +5,22 @@
 
 These tests use the conftest-provided PyQt stubs. They verify structural
 contracts without requiring a real QGIS runtime.
+
+SKIPPED when real QGIS is available because they overwrite sys.modules
+with mocks, which segfaults against compiled QGIS extensions.
 """
 
+import os
 import sys
 import pytest
 from unittest.mock import MagicMock, patch
 
-pytestmark = pytest.mark.qt_dialog
+_HAS_REAL_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
+
+pytestmark = pytest.mark.skipif(
+    _HAS_REAL_QGIS,
+    reason="PyQt dialog tests use mock QGIS and must not run against real QGIS extensions",
+)
 
 
 # Same restoration pattern as test_plugin_load to handle mock corruption.

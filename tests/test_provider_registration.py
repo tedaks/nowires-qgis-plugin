@@ -7,10 +7,17 @@ These tests verify the provider's contract structure (id, name, algorithm
 registration count) and that the source code declares the expected algorithms.
 Full algorithm instantiation is not tested here because QgsProcessingAlgorithm
 requires a real QGIS runtime.
+
+SKIPPED when real QGIS is available because they overwrite sys.modules
+with mocks, which segfaults against compiled QGIS extensions.
 """
+
+import os
 import sys
 
 import pytest
+
+_HAS_REAL_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
 
 
 # Same restoration pattern as test_plugin_load.
@@ -23,6 +30,11 @@ _SAVED_MODULES = {
     )
 }
 _SAVED_NOWIRES_PKG = sys.modules.get("NoWires")
+
+pytestmark = pytest.mark.skipif(
+    _HAS_REAL_QGIS,
+    reason="Provider registration tests use mock QGIS and must not run against real QGIS extensions",
+)
 
 
 @pytest.fixture(autouse=True)
