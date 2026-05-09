@@ -14,6 +14,8 @@ dev = [
 [tool.pytest.ini_options]
 markers = [
     "benchmark: benchmark tests (deselect with '-m \"not benchmark\"')",
+    "qgis_integration: requires a real QGIS runtime (deselect with '-m \"not qgis_integration\"')",
+    "qt_dialog: requires Qt libraries for headless dialog testing",
 ]
 
 [tool.coverage.run]

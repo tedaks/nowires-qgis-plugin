@@ -7,7 +7,10 @@ These tests are skipped unless QGIS_PREFIX_PATH is set.
 Run them via:
     pytest tests/test_qgis_integration.py -v
 or:
-    QGIS_PREFIX_PATH=/usr QGIS_PYTHON_PATH=/usr/lib/qgis pytest tests/test_qgis_integration.py -v
+    QGIS_PREFIX_PATH=/usr QGIS_PYTHON_PATH=/usr/lib/qisp pytest tests/test_qgis_integration.py -v
+
+Alternatively, select them by marker:
+    pytest -m qgis_integration -v
 """
 import os
 import tempfile
@@ -22,10 +25,13 @@ try:
 except ImportError:
     _HAS_QGIS = False
 
-pytestmark = pytest.mark.skipif(
-    not _HAS_QGIS,
-    reason="QGIS integration tests require QGIS_PREFIX_PATH to be set"
-)
+pytestmark = [
+    pytest.mark.skipif(
+        not _HAS_QGIS,
+        reason="QGIS integration tests require QGIS_PREFIX_PATH to be set",
+    ),
+    pytest.mark.qgis_integration,
+]
 
 
 @pytest.fixture(scope="module")
