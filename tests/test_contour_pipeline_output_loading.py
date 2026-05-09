@@ -9,7 +9,7 @@ import numpy as np
 
 try:
     from qgis.core import (
-        QgsApplication, QgsRasterLayer, Qgis,
+        QgsRasterLayer, Qgis,
     )
     _HAS_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
 except ImportError:
@@ -22,14 +22,6 @@ pytestmark = [
     ),
     pytest.mark.qgis_integration,
 ]
-
-
-@pytest.fixture(scope="module")
-def qgis_app():
-    qgis = QgsApplication([], True)
-    qgis.initQgis()
-    yield qgis
-    qgis.exitQgis()
 
 
 def _write_dem_geotiff(path):

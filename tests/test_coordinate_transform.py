@@ -8,7 +8,7 @@ import pytest
 
 try:
     from qgis.core import (
-        QgsApplication, QgsCoordinateReferenceSystem,
+        QgsCoordinateReferenceSystem,
         QgsCoordinateTransform, QgsPointXY, QgsProject,
     )
     _HAS_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
@@ -22,14 +22,6 @@ pytestmark = [
     ),
     pytest.mark.qgis_integration,
 ]
-
-
-@pytest.fixture(scope="module")
-def qgis_app():
-    qgis = QgsApplication([], True)
-    qgis.initQgis()
-    yield qgis
-    qgis.exitQgis()
 
 
 class TestCoordinateTransform:
