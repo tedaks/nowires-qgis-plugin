@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 """ITU-R P.2108-1 Section 3.2 — Statistical clutter loss for terrestrial paths.
 

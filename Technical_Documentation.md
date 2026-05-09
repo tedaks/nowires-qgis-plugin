@@ -1,5 +1,7 @@
 # NoWires Technical Documentation
 
+SPDX-License-Identifier: GPL-3.0-or-later
+
 ## Purpose
 
 This document describes the NoWires plugin from a technical and implementation perspective. It is intended for developers, maintainers, and advanced users who need more detail than the user guide provides.

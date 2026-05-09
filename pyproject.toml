@@ -4,6 +4,9 @@ version = "1.5.0"
 description = "QGIS plugin for radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM"
 requires-python = ">=3.9"
 license = {text = "GPL-3.0-or-later"}
+authors = [
+    {name = "Bortre Tenamo", email = "tedaks@gmail.com"},
+]
 
 [project.optional-dependencies]
 dev = [

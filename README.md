@@ -6,6 +6,9 @@ Radio propagation analysis and terrain tools powered by NTIA's Irregular Terrain
 
 This repository contains the QGIS 4 plugin source for **NoWires** version 1.5.0.
 
+Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+SPDX-License-Identifier: GPL-3.0-or-later
+
 ## Features
 
 ### Radio Propagation
@@ -191,8 +194,8 @@ See [CHANGELOG.md](CHANGELOG.md) for notable project changes.
 
 The advanced clutter model uses the saalos vegetation algorithm,
 ported from ITWOM 3.0 (Sid Shumate, Givens & Bell, Inc.) via an
-intermediate MIT-licensed Rust crate. See `THIRD_PARTY_NOTICES.md`
-for the full upstream notice.
+intermediate MIT-licensed Rust crate. See [NOTICE.md](NOTICE.md)
+for the full upstream notice and MIT license text.
 
 The P.2108-1 and P.2109-2 clutter and building entry loss models are
 implemented from ITU-R Recommendations P.2108-1 (09/2021) and
@@ -202,5 +205,8 @@ refinement via `math.erf`.
 
 ## License
 
+SPDX-License-Identifier: GPL-3.0-or-later
+
 GNU General Public License v3 or later.
+Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>.
 Third-party notices and upstream attribution details are documented in [NOTICE.md](NOTICE.md).

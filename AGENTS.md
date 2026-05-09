@@ -1,5 +1,7 @@
 # AGENTS.md
 
+SPDX-License-Identifier: GPL-3.0-or-later
+
 ## Source File Size Constraint
 
 All Python source files in this project must strictly adhere to a maximum of **300 lines** per file.

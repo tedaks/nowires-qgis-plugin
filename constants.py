@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
 METERS_PER_DEGREE_LAT = 111320.0
 DEGREE_PADDING = 0.05
 DEFAULT_PROFILE_STEP_M = 30.0

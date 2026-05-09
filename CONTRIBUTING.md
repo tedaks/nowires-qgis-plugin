@@ -1,5 +1,9 @@
 # Contributing
 
+SPDX-License-Identifier: GPL-3.0-or-later
+
+Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+
 ## Development Notes
 
 - Target platform: QGIS 4.x
@@ -46,6 +50,6 @@ For UI and Processing integration checks, copy the `NoWires` folder into your QG
 
 - Keep changes focused.
 - Update user-facing docs when behavior changes.
-- Preserve third-party attribution in `NOTICE.md` and `THIRD_PARTY_NOTICES.md`.
+- Preserve third-party attribution in `NOTICE.md`.
 - Avoid committing generated caches or temporary analysis outputs.
 - Do not add comments unless they explain non-obvious logic.
