@@ -1,46 +1,13 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # This program is free software under GPLv3 or later. See LICENSE.
-"""Tests for batch_writer: write_batch_csv and write_batch_json.
-
-Functions are extracted via exec to avoid the GDAL/OGR and QGIS dependency
-chain that batch_writer transitively imports.
-"""
+"""Tests for batch_writer: write_batch_csv and write_batch_json."""
 
 import csv
 import json
-import os
-import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-BATCH_MODE_OPTIONS = [
-    "One-to-Many (single TX → multiple RX)",
-    "Many-to-One (multiple TX → single RX)",
-]
-
-_SOURCE_FILE = os.path.join(
-    os.path.dirname(__file__), "..", "batch_writer.py"
-)
-
-_SOURCE_CODE = open(_SOURCE_FILE, encoding="utf-8").read()
-
-_MOCK_REPORT_MARKERS = type(sys)("report_markers")
-_MOCK_REPORT_MARKERS.ogr_driver_for_path = lambda *a, **kw: None
-_MOCK_REPORT_MARKERS.remove_existing_ogr_dataset = lambda *a, **kw: None
-
-_NS = {
-    "__builtins__": __builtins__,
-    "__name__": "batch_writer",
-    "__package__": "nowires_qgis_plugin",
-    "csv": csv,
-    "json": json,
-    "BATCH_MODE_OPTIONS": BATCH_MODE_OPTIONS,
-    "report_markers": _MOCK_REPORT_MARKERS,
-}
-exec(compile(_SOURCE_CODE, _SOURCE_FILE, "exec"), _NS)
-write_batch_csv = _NS["write_batch_csv"]
-write_batch_json = _NS["write_batch_json"]
+from NoWires.batch_writer import write_batch_csv, write_batch_json
+from batch_params import BATCH_MODE_OPTIONS
 
 SAMPLE_RESULTS = [
     {

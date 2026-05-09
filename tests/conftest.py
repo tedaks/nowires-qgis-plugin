@@ -358,6 +358,8 @@ for _pkg_sub in (
     "comparison_outputs",
     "coverage_opacity",
     "coverage_legend",
+    "batch_params",
+    "batch_writer",
     "benchmarks.coverage_runtime",
     "benchmarks.p2p_runtime",
     "benchmarks.reference_cases",
