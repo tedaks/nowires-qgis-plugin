@@ -27,7 +27,7 @@ jobs:
 
       - name: Verify no source file exceeds 300 lines
         run: |
-          violating=$(find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' -exec wc -l {} + | awk '$1 > 300 {print}')
+          violating=$(find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | grep -v 'total$' | awk '$1 > 300 {print}')
           if [ -n "$violating" ]; then
             echo "ERROR: The following source files exceed 300 lines:"
             echo "$violating"
