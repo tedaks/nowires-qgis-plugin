@@ -32,85 +32,28 @@ attribution details.
 """
 
 import logging
-import os
-from qgis.core import QgsProcessingException, QgsRasterLayer
+from qgis.core import QgsProcessingException
 from .base_algorithm import NoWiresAlgorithm, install_constants
 from .constants import DEGREE_PADDING
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
-from .processing_utils import queue_layer_for_loading
 from .geo_bounds import coverage_bounds
 from .comparison_params import (
     GRID_SIZE_PRESETS, DELTA_STYLE_OPTIONS,
     PANEL_A_CONSTANTS, PANEL_B_CONSTANTS, OUTPUT_CONSTANTS, make_panel_config)
 from .comparison_add_params import add_panel_params, add_comparison_params
 from .comparison_outputs import (
-    write_coverage_raster, write_delta_raster, apply_delta_style,
-    write_comparison_html_report, compute_delta_summary)
+    write_coverage_raster, write_delta_raster,
+    write_comparison_html_report, compute_delta_summary,
+    load_comparison_layers)
 from .clutter import ensure_clutter_grid_for_area
 from .comparison_panel import run_panel_coverage
-from .comparison_reporting import build_panel_info, build_delta_info, report_comparison_results
+from .comparison_reporting import (
+    build_panel_info, build_delta_info, report_comparison_results,
+    validate_panels, resolve_output_paths)
 from .temp_manager import TempDirManager
 
 logger = logging.getLogger(__name__)
-
-def _validate_panels(tx_point_a, tx_point_b, radius_km_a, radius_km_b):
-    if tx_point_a is None:
-        raise QgsProcessingException("Panel A TX point is required.")
-    if tx_point_b is None:
-        raise QgsProcessingException("Panel B TX point is required.")
-    tx_lat_a, tx_lon_a = tx_point_a.y(), tx_point_a.x()
-    tx_lat_b, tx_lon_b = tx_point_b.y(), tx_point_b.x()
-    if abs(tx_lat_a - tx_lat_b) > 1e-5 or abs(tx_lon_a - tx_lon_b) > 1e-5:
-        raise QgsProcessingException("Panel A and B TX positions differ. Delta comparison requires co-located transmitters.")
-    if abs(radius_km_a - radius_km_b) > 1e-9:
-        raise QgsProcessingException("Panel A and B radii differ. Delta comparison requires identical analysis radii.")
-    return tx_lat_a, tx_lon_a, tx_lat_b, tx_lon_b
-
-def _resolve_output_paths(output_dir, out_a, out_b, out_delta, out_report, tmp_mgr):
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-        out_a = out_a or os.path.join(output_dir, "coverage_a.tif")
-        out_b = out_b or os.path.join(output_dir, "coverage_b.tif")
-        out_delta = out_delta or os.path.join(output_dir, "coverage_delta.tif")
-        out_report = out_report or os.path.join(output_dir, "comparison_report.html")
-    tmpdir = None
-    if not out_a or not out_b or not out_delta:
-        tmpdir = tmp_mgr.make_dir("comp", persistent=True)
-    if not out_a:
-        out_a = os.path.join(tmpdir, "coverage_a.tif")
-    if not out_b:
-        out_b = os.path.join(tmpdir, "coverage_b.tif")
-    if not out_delta:
-        out_delta = os.path.join(tmpdir, "coverage_delta.tif")
-    return out_a, out_b, out_delta, out_report, tmpdir
-
-
-def _load_comparison_layers(context, output_a, output_b, output_delta, threshold_db, delta_style, feedback):
-    from .coverage_palette import apply_coverage_style
-    raster_layer_ids = []
-    layer_delta = QgsRasterLayer(output_delta, "Coverage Delta (A - B dB)")
-    if layer_delta.isValid():
-        apply_delta_style(layer_delta, threshold_db, style=delta_style)
-        queue_layer_for_loading(context, layer_delta, "Coverage Delta (A - B dB)")
-        raster_layer_ids.append(layer_delta.id())
-    else:
-        feedback.pushWarning("Could not load delta raster layer: {}".format(layer_delta.error().summary()))
-    layer_a = QgsRasterLayer(output_a, "Coverage Panel A")
-    if layer_a.isValid():
-        apply_coverage_style(layer_a)
-        queue_layer_for_loading(context, layer_a, "Coverage Panel A")
-        raster_layer_ids.append(layer_a.id())
-    else:
-        feedback.pushWarning("Could not load Panel A raster layer: {}".format(layer_a.error().summary()))
-    layer_b = QgsRasterLayer(output_b, "Coverage Panel B")
-    if layer_b.isValid():
-        apply_coverage_style(layer_b)
-        queue_layer_for_loading(context, layer_b, "Coverage Panel B")
-        raster_layer_ids.append(layer_b.id())
-    else:
-        feedback.pushWarning("Could not load Panel B raster layer: {}".format(layer_b.error().summary()))
-    return raster_layer_ids
 
 
 class CoverageComparisonAlgorithm(NoWiresAlgorithm):
@@ -141,7 +84,7 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
         tx_point_b = self.parameterAsPoint(parameters, self.PANEL_B_POINT, context, crs=crs4326)
         radius_km_a = self.parameterAsDouble(parameters, self.PANEL_A_RADIUS_KM, context)
         radius_km_b = self.parameterAsDouble(parameters, self.PANEL_B_RADIUS_KM, context)
-        tx_lat_a, tx_lon_a, tx_lat_b, tx_lon_b = _validate_panels(
+        tx_lat_a, tx_lon_a, tx_lat_b, tx_lon_b = validate_panels(
             tx_point_a, tx_point_b, radius_km_a, radius_km_b)
 
         radius_km = max(radius_km_a, radius_km_b)
@@ -238,7 +181,7 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
                 output_report_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_HTML, context)
 
                 output_a_path, output_b_path, output_delta_path, output_report_path, _comp_tmpdir = (
-                    _resolve_output_paths(
+                    resolve_output_paths(
                         output_dir, output_a_path, output_b_path, output_delta_path,
                         output_report_path, self._tmp))
                 if _comp_tmpdir:
@@ -248,7 +191,7 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
                 write_coverage_raster(output_b_path, prx_grid_b, min_lat_b, max_lat_b, min_lon_b, max_lon_b, panel_b["rx_sens"])
                 write_delta_raster(output_delta_path, loss_delta_grid, min_lat_a, max_lat_a, min_lon_a, max_lon_a)
 
-                self._raster_layer_ids = _load_comparison_layers(
+                self._raster_layer_ids = load_comparison_layers(
                     context, output_a_path, output_b_path, output_delta_path, threshold_db, delta_style, feedback)
 
                 panel_a_info = build_panel_info(panel_a, prx_grid_a)

@@ -22,10 +22,46 @@
   ***************************************************************************/
 
 
-Coverage comparison reporting helpers.
+Coverage comparison reporting and validation helpers.
 """
 
+import os
+
 import numpy as np
+from qgis.core import QgsProcessingException
+
+
+def validate_panels(tx_point_a, tx_point_b, radius_km_a, radius_km_b):
+    if tx_point_a is None:
+        raise QgsProcessingException("Panel A TX point is required.")
+    if tx_point_b is None:
+        raise QgsProcessingException("Panel B TX point is required.")
+    tx_lat_a, tx_lon_a = tx_point_a.y(), tx_point_a.x()
+    tx_lat_b, tx_lon_b = tx_point_b.y(), tx_point_b.x()
+    if abs(tx_lat_a - tx_lat_b) > 1e-5 or abs(tx_lon_a - tx_lon_b) > 1e-5:
+        raise QgsProcessingException("Panel A and B TX positions differ. Delta comparison requires co-located transmitters.")
+    if abs(radius_km_a - radius_km_b) > 1e-9:
+        raise QgsProcessingException("Panel A and B radii differ. Delta comparison requires identical analysis radii.")
+    return tx_lat_a, tx_lon_a, tx_lat_b, tx_lon_b
+
+
+def resolve_output_paths(output_dir, out_a, out_b, out_delta, out_report, tmp_mgr):
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+        out_a = out_a or os.path.join(output_dir, "coverage_a.tif")
+        out_b = out_b or os.path.join(output_dir, "coverage_b.tif")
+        out_delta = out_delta or os.path.join(output_dir, "coverage_delta.tif")
+        out_report = out_report or os.path.join(output_dir, "comparison_report.html")
+    tmpdir = None
+    if not out_a or not out_b or not out_delta:
+        tmpdir = tmp_mgr.make_dir("comp", persistent=True)
+    if not out_a:
+        out_a = os.path.join(tmpdir, "coverage_a.tif")
+    if not out_b:
+        out_b = os.path.join(tmpdir, "coverage_b.tif")
+    if not out_delta:
+        out_delta = os.path.join(tmpdir, "coverage_delta.tif")
+    return out_a, out_b, out_delta, out_report, tmpdir
 
 
 def build_panel_info(panel, prx_grid):
