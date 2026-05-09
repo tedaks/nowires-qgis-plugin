@@ -24,8 +24,8 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def qgis_app():
     from qgis.PyQt.QtCore import QCoreApplication
-    QCoreApplication()
-    qgis = QgsApplication()
+    QCoreApplication([])
+    qgis = QgsApplication([], True)
     qgis.initQgis()
     yield qgis
     qgis.exitQgis()
@@ -164,7 +164,7 @@ class TestContourParameterRegistration:
         alg = _get_algorithm(provider, "contour_lines")
         param = alg.parameterDefinition("PROXY_AUTH")
         assert isinstance(param, QgsProcessingParameterAuthConfig)
-        assert param.flags() & QgsProcessingParameterAuthConfig.FlagOptional
+        assert param.flags() & QgsProcessingParameterAuthConfig.Flag.FlagOptional
 
 
 class TestComparisonParameterRegistration:

@@ -24,8 +24,8 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def qgis_app():
     from qgis.PyQt.QtCore import QCoreApplication
-    QCoreApplication()
-    qgis = QgsApplication()
+    QCoreApplication([])
+    qgis = QgsApplication([], True)
     qgis.initQgis()
     yield qgis
     qgis.exitQgis()
@@ -107,4 +107,4 @@ class TestBatchMarkerLayer:
         layer = QgsVectorLayer(gpkg, "batch_geom", "ogr")
         assert layer.isValid()
         wkb = layer.wkbType()
-        assert QgsWkbTypes.flatType(wkb) == QgsWkbTypes.Point
+        assert QgsWkbTypes.flatType(wkb) == QgsWkbTypes.Type.Point

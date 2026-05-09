@@ -76,7 +76,7 @@ _PARAM_NAMES = (
 )
 PARAM_CONSTANTS = {k: k for k in _PARAM_NAMES}
 
-_DBL = QgsProcessingParameterNumber.Double
+_DBL = QgsProcessingParameterNumber.Type.Double
 
 
 

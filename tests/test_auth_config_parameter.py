@@ -24,8 +24,8 @@ pytestmark = [
 @pytest.fixture(scope="module")
 def qgis_app():
     from qgis.PyQt.QtCore import QCoreApplication
-    QCoreApplication()
-    qgis = QgsApplication()
+    QCoreApplication([])
+    qgis = QgsApplication([], True)
     qgis.initQgis()
     yield qgis
     qgis.exitQgis()
@@ -40,7 +40,7 @@ class TestAuthConfigParameter:
     def test_auth_config_parameter_optional_flag(self, qgis_app):
         from qgis.core import QgsProcessingParameterAuthConfig
         param = QgsProcessingParameterAuthConfig("PROXY_AUTH", "Proxy auth", optional=True)
-        assert param.flags() & QgsProcessingParameterAuthConfig.FlagOptional
+        assert param.flags() & QgsProcessingParameterAuthConfig.Flag.FlagOptional
 
     def test_contour_algorithm_has_auth_config_param(self, qgis_app):
         from NoWires.provider import NoWiresProvider

@@ -137,6 +137,11 @@ if not _HAS_REAL_QGIS:
 
     # --- Processing parameter stubs with enum-like attributes ---
     class _ParamNumber:
+        class Type:
+            Double = 0
+            Integer = 1
+        class Flag:
+            FlagAdvanced = 2
         Double = 0
         Integer = 1
         FlagAdvanced = 2
