@@ -6,7 +6,7 @@
 import numpy as np
 import pytest
 
-from NoWires.coverage_tasks import _coverage_axis_centers, build_coverage_tasks
+from NoWires.coverage_tasks import _coverage_axis_centers, _haversine_grid, _bearing_grid, build_coverage_tasks
 from antenna import AntennaConfig
 from clutter_context import ClutterLossContext
 
@@ -162,3 +162,57 @@ class TestBuildCoverageTasks:
         assert len(tasks) == 1
         assert tasks[0].clutter_tx_db > 0.0
         assert tasks[0].clutter_rx_db > 0.0
+
+
+class TestHaversineGrid:
+    def test_same_point_zero_distance(self):
+        lats = np.array([14.0])
+        lons = np.array([121.0])
+        dist = _haversine_grid(14.0, 121.0, lats, lons)
+        assert dist[0, 0] == pytest.approx(0.0, abs=1.0)
+
+    def test_known_distance_paris_london(self):
+        lats = np.array([51.5074])
+        lons = np.array([-0.1278])
+        dist = _haversine_grid(48.8566, 2.3522, lats, lons)
+        assert dist[0, 0] == pytest.approx(343000.0, rel=0.02)
+
+    def test_grid_shape_matches_lats_lons(self):
+        lats = np.array([14.0, 14.01, 14.02])
+        lons = np.array([121.0, 121.01, 121.02, 121.03])
+        dist = _haversine_grid(14.0, 121.0, lats, lons)
+        assert dist.shape == (3, 4)
+
+    def test_symmetry(self):
+        lats = np.array([14.01])
+        lons = np.array([121.01])
+        d1 = _haversine_grid(14.0, 121.0, lats, lons)[0, 0]
+        d2 = _haversine_grid(14.01, 121.01, np.array([14.0]), np.array([121.0]))[0, 0]
+        assert d1 == pytest.approx(d2, rel=1e-10)
+
+
+class TestBearingGrid:
+    def test_due_north(self):
+        lats = np.array([15.0])
+        lons = np.array([121.0])
+        bearing = _bearing_grid(14.0, 121.0, lats, lons)
+        assert bearing[0, 0] == pytest.approx(0.0, abs=1.0)
+
+    def test_due_south(self):
+        lats = np.array([13.0])
+        lons = np.array([121.0])
+        bearing = _bearing_grid(14.0, 121.0, lats, lons)
+        assert bearing[0, 0] == pytest.approx(180.0, abs=1.0)
+
+    def test_due_east(self):
+        lats = np.array([0.0])
+        lons = np.array([1.0])
+        bearing = _bearing_grid(0.0, 0.0, lats, lons)
+        assert bearing[0, 0] == pytest.approx(90.0, abs=1.0)
+
+    def test_bearing_range_0_360(self):
+        lats = np.array([0.0, 0.0, 0.0])
+        lons = np.array([1.0, -1.0, 179.0])
+        bearings = _bearing_grid(0.0, 0.0, lats, lons)
+        for b in bearings[0]:
+            assert 0.0 <= b <= 360.0
