@@ -115,6 +115,9 @@ def build_coverage_tasks(
     if advanced and clutter_enabled:
         tx_category, _tx_source = _resolve_category_advanced(
             tx_lat, tx_lon, tx_clutter_override, clutter_grid)
+        # In coverage mode every grid cell is an RX location, so rx_override
+        # correctly applies across the entire grid even though the name suggests
+        # a receiver-only parameter.
         rx_category_grid = (
             clutter_grid.sample_category_grid(
                 lats, lons, rx_override=rx_clutter_override, context=clutter_context)
@@ -125,6 +128,18 @@ def build_coverage_tasks(
             )
         )
         rx_clutter_loss_grid = None
+        # BEL parameters are uniform across all pixels (same frequency, building
+        # type, elevation angle, and percentile), so compute once outside the
+        # per-pixel loop instead of redundantly evaluating per pixel.
+        bel_db = 0.0
+        if clutter_context.bel_enabled:
+            from .p2109_bel import building_entry_loss
+            bel_db = building_entry_loss(
+                f_mhz / 1000.0,
+                clutter_context.bel_building_type,
+                theta_deg=clutter_context.bel_elevation_angle_deg,
+                p=clutter_context.percentile,
+            )
     elif clutter_enabled and clutter_grid is not None and rx_clutter_override is None:
         rx_clutter_loss_grid = clutter_grid.sample_category_grid(lats, lons)
         rx_category_grid = None
@@ -177,14 +192,7 @@ def build_coverage_tasks(
                 rx_clutter_db = compute_terminal_clutter_loss(
                     rx_category_grid[i, j], "rx", pixel_ctx)
                 if clutter_context.bel_enabled:
-                    from .p2109_bel import building_entry_loss
-                    rx_bel_db = building_entry_loss(
-                        f_mhz / 1000.0,
-                        clutter_context.bel_building_type,
-                        theta_deg=clutter_context.bel_elevation_angle_deg,
-                        p=clutter_context.percentile,
-                    )
-                    rx_clutter_db += rx_bel_db
+                    rx_clutter_db += bel_db
             elif rx_clutter_loss_grid is not None:
                 tx_clutter_db = tx_clutter_loss_db
                 rx_clutter_db = float(rx_clutter_loss_grid[i, j])

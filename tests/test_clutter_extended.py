@@ -4,6 +4,7 @@
 """Extended behavioral tests for clutter.py — clutter_override_value, nodata, context manager."""
 
 import numpy as np
+import pytest
 
 from clutter import (
     LandCoverGrid,
@@ -106,6 +107,29 @@ class TestLandCoverGridContextManager:
         grid.close()
         assert grid.data is None
 
+    def test_sampling_after_close_raises_runtime_error(self):
+        grid = LandCoverGrid(
+            data=np.array([[50]], dtype=np.int16),
+            min_lat=0.0, max_lat=1.0,
+            min_lon=0.0, max_lon=1.0,
+            nodata=None, source="test",
+        )
+        grid.close()
+        with pytest.raises(RuntimeError, match="closed"):
+            grid.sample_class(0.5, 0.5)
+
+    def test_sampling_after_close_grid_raises_runtime_error(self):
+        grid = LandCoverGrid(
+            data=np.array([[50]], dtype=np.int16),
+            min_lat=0.0, max_lat=1.0,
+            min_lon=0.0, max_lon=1.0,
+            nodata=None, source="test",
+        )
+        grid.close()
+        with pytest.raises(RuntimeError, match="closed"):
+            grid.sample_category_grid(
+                np.array([0.5]), np.array([0.5]))
+
 
 class TestComputeTerminalClutterLossesDisabled:
     def test_disabled_returns_zero_losses(self):
@@ -123,3 +147,61 @@ class TestComputeTerminalClutterLossesDisabled:
         assert result.rx_loss_db == 0.0
         assert result.total_loss_db == 0.0
         assert result.source == "off"
+
+
+class TestLandCoverGridVectorizedAdvanced:
+    def test_advanced_grid_returns_category_strings(self):
+        from clutter_context import ClutterLossContext
+        grid = LandCoverGrid(
+            data=np.array([[50, 10], [80, 20]], dtype=np.int16),
+            min_lat=0.0, max_lat=1.0,
+            min_lon=0.0, max_lon=1.0,
+            nodata=None, source="test",
+        )
+        ctx = ClutterLossContext(
+            frequency_mhz=1000.0, distance_m=1000.0,
+            tx_height_m=30.0, rx_height_m=2.0, model="advanced",
+        )
+        lats = np.array([0.75, 0.25])
+        lons = np.array([0.25, 0.75])
+        cats = grid.sample_category_grid(lats, lons, context=ctx)
+        assert cats.dtype == object
+        assert cats[0, 0] == "urban"
+        assert cats[0, 1] == "vegetation"
+        assert cats[1, 0] == "open"
+        assert cats[1, 1] == "dense_rural"
+
+    def test_advanced_grid_override_broadcasts(self):
+        from clutter_context import ClutterLossContext
+        grid = LandCoverGrid(
+            data=np.array([[50, 50]], dtype=np.int16),
+            min_lat=0.0, max_lat=1.0,
+            min_lon=0.0, max_lon=1.0,
+            nodata=None, source="test",
+        )
+        ctx = ClutterLossContext(
+            frequency_mhz=1000.0, distance_m=1000.0,
+            tx_height_m=30.0, rx_height_m=2.0, model="advanced",
+        )
+        lats = np.array([0.5])
+        lons = np.array([0.25, 0.75])
+        cats = grid.sample_category_grid(lats, lons, rx_override="vegetation", context=ctx)
+        assert cats[0, 0] == "vegetation"
+        assert cats[0, 1] == "vegetation"
+
+    def test_simple_grid_matches_advanced_for_consistent_classes(self):
+        grid = LandCoverGrid(
+            data=np.array([[50, 60], [10, 80]], dtype=np.int16),
+            min_lat=0.0, max_lat=1.0,
+            min_lon=0.0, max_lon=1.0,
+            nodata=None, source="test",
+        )
+        lats = np.array([0.75, 0.25])
+        lons = np.array([0.25, 0.75])
+        simple = grid.sample_category_grid(lats, lons)
+        assert simple.shape == (2, 2)
+        assert simple.dtype == np.float64
+        assert simple[0, 0] == 10.0
+        assert simple[0, 1] == 0.0
+        assert simple[1, 0] == 6.0
+        assert simple[1, 1] == 0.0

@@ -22,6 +22,15 @@ def _ndtr(x):
 
 
 def _ndtri(p):
+    """Inverse normal CDF using Abramowitz & Stegun §26.2.23.
+
+    Uses rational approximation followed by 2 Newton refinement steps
+    using math.erf. Accuracy is approximately 1e-7 in the central range
+    (0.01 < p < 0.99). In the tails (p < 1e-6 or p > 1-1e-6) the
+    rational approximation degrades; callers clamp p to [1e-12, 1-1e-12]
+    before invoking _ndtri, which keeps the worst-case error in the
+    low UHF range well below 0.1 dB for both P.2108 and P.2109 models.
+    """
     if p <= 0.0:
         return float("-inf")
     if p >= 1.0:

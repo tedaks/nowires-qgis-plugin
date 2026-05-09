@@ -4,6 +4,7 @@ import logging
 
 from .clutter_categories import (
     CLUTTER_CATEGORY_PARAMS,
+    legacy_to_advanced_override,
     worldcover_class_to_advanced_category,
 )
 from .p2108_height_gain import height_gain_loss
@@ -30,7 +31,17 @@ def _terminal_ground_elev_m(terminal, context):
 
 
 def _compute_advanced_loss(category, terminal, context):
-    """Compute per-terminal clutter loss using the §6 dispatch table."""
+    """Compute per-terminal clutter loss using the §6 dispatch table.
+
+    Design decision (§13 of P.2108 compliance design): For suburban/urban
+    in the 0.5–3 GHz overlap band where both §3.1 (height-gain terminal
+    correction) and §3.2 (path-statistical urban/suburban loss) apply, we
+    take max(hg_loss, stat_loss). P.2108-1 presents these as alternative
+    models for different physical effects and does not specify a switching
+    rule. Taking the max avoids double-counting while surfacing the dominant
+    mechanism. Note: this can cause a discontinuity in loss vs. percentile
+    at the point where stat_loss overtakes hg_loss.
+    """
     params = CLUTTER_CATEGORY_PARAMS.get(category, CLUTTER_CATEGORY_PARAMS["open"])
     model = params["model"]
     cch_m = _category_height_m(category, context.cch_override_m)
@@ -134,19 +145,8 @@ def compute_terminal_clutter_loss(category, terminal, context):
     return 0.0
 
 
-_LEGACY_TO_ADVANCED = {
-    "open": "open",
-    "rural": "open_rural",
-    "vegetation": "vegetation",
-    "suburban": "suburban",
-    "urban": "urban",
-    "open_rural": "open_rural",
-    "dense_rural": "dense_rural",
-}
-
-
 def _legacy_to_advanced_override(name):
-    return _LEGACY_TO_ADVANCED.get(name, "open")
+    return legacy_to_advanced_override(name)
 
 
 def _resolve_category_advanced(lat, lon, override, land_cover_grid):
@@ -194,6 +194,10 @@ def compute_terminal_clutter_losses(
     source = tx_src if tx_src == rx_src else "{},{}".format(tx_src, rx_src)
     method = "{}/{}".format(tx_method, rx_method)
     total = tx_loss + rx_loss
+    # Design decision: BEL (P.2109-2) is additive with P.2108 clutter loss
+    # because §3.1/§3.2 model terminal-local multipath/scatter effects while
+    # P.2109 models building penetration — different physical mechanisms that
+    # both contribute independent losses for an outdoor-to-indoor link.
     rx_bel = 0.0
     if context.bel_enabled:
         f_ghz = frequency_mhz / 1000.0

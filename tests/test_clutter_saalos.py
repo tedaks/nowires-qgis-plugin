@@ -69,3 +69,51 @@ def test_polarization_accepted_for_all_codes():
 def test_negative_arte_clamped_to_zero():
     v = clutter_loss_saalos(1.0, 0.5, 0.1, 0.001, 1000.0, 0, 10.0)
     assert v >= 0.0
+
+
+import numpy as np
+from clutter_saalos import clutter_loss_saalos_vec
+
+
+def test_vec_matches_scalar_h_pol():
+    ds = np.array([100.0, 150.0, 200.0])
+    cch = 15.0
+    h_tx = 30.0
+    h_rx = 2.0
+    h_gnd = 0.0
+    f = 1000.0
+    expected = np.array([
+        clutter_loss_saalos(d, cch, h_tx, h_rx, h_gnd, 0, f) for d in ds
+    ])
+    vec = clutter_loss_saalos_vec(ds, cch, h_tx, h_rx, h_gnd, 0, f)
+    np.testing.assert_allclose(vec, expected, atol=1e-6)
+
+
+def test_vec_zero_conditions():
+    d = np.array([0.0, 1000.0, 1000.0])
+    cch = np.array([15.0, 0.0, 15.0])
+    h_rx = np.array([2.0, 2.0, 20.0])
+    vec = clutter_loss_saalos_vec(d, cch, 30.0, h_rx, 0.0, 0, 1000.0)
+    np.testing.assert_allclose(vec, 0.0, atol=1e-10)
+
+
+def test_vec_scalar_inputs():
+    v = clutter_loss_saalos_vec(200.0, 15.0, 30.0, 2.0, 0.0, 0, 1000.0)
+    expected = clutter_loss_saalos(200.0, 15.0, 30.0, 2.0, 0.0, 0, 1000.0)
+    assert v == pytest.approx(expected, abs=1e-6)
+
+
+def test_vec_below_clutter():
+    cch = 15.0
+    h_tx_vals = np.array([5.0, 10.0])
+    vec = clutter_loss_saalos_vec(1000.0, cch, h_tx_vals, 2.0, 0.0, 0, 1000.0)
+    for i, h_tx in enumerate(h_tx_vals):
+        expected = clutter_loss_saalos(1000.0, cch, h_tx, 2.0, 0.0, 0, 1000.0)
+        assert vec[i] == pytest.approx(expected, abs=1e-4)
+
+
+def test_vec_monotone_in_rx_height():
+    h_rx_vals = np.linspace(0.5, 14.5, 15)
+    vec = clutter_loss_saalos_vec(200.0, 15.0, 30.0, h_rx_vals, 0.0, 0, 1000.0)
+    for i in range(1, len(vec)):
+        assert vec[i] <= vec[i - 1] + 1e-9

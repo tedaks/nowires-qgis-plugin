@@ -80,3 +80,24 @@ def worldcover_class_to_advanced_category(class_id) -> str:
         return _WORLDVER_MAP.get(int(class_id), "open")
     except (TypeError, ValueError):
         return "open"
+
+
+_LEGACY_TO_ADVANCED = {
+    "open": "open",
+    "rural": "open_rural",
+    "vegetation": "vegetation",
+    "suburban": "suburban",
+    "urban": "urban",
+    "open_rural": "open_rural",
+    "dense_rural": "dense_rural",
+}
+
+
+def legacy_to_advanced_override(name):
+    """Map a legacy simple-mode category to its advanced-mode counterpart.
+
+    Used by both the per-pixel grid sampler and the per-terminal resolver
+    so that switching simple ↔ advanced does not silently change categories
+    that have a direct mapping.
+    """
+    return _LEGACY_TO_ADVANCED.get(name, "open")

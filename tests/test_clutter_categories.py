@@ -2,6 +2,8 @@ import pytest
 from clutter_categories import (
     ADVANCED_CLUTTER_CATEGORIES,
     CLUTTER_CATEGORY_PARAMS,
+    _LEGACY_TO_ADVANCED,
+    legacy_to_advanced_override,
     worldcover_class_to_advanced_category,
 )
 
@@ -55,3 +57,34 @@ def test_p2108_3_2_applicable_flags():
     assert CLUTTER_CATEGORY_PARAMS["suburban"]["p2108_3_2_applicable"] is True
     assert CLUTTER_CATEGORY_PARAMS["open"]["p2108_3_2_applicable"] is False
     assert CLUTTER_CATEGORY_PARAMS["open_rural"]["p2108_3_2_applicable"] is False
+
+
+def test_legacy_to_advanced_mapping_covers_all_legacy_categories():
+    for cat in ("open", "rural", "vegetation", "suburban", "urban"):
+        assert cat in _LEGACY_TO_ADVANCED
+        result = legacy_to_advanced_override(cat)
+        assert result in ADVANCED_CLUTTER_CATEGORIES
+
+
+def test_legacy_to_advanced_is_idempotent_for_advanced_categories():
+    for cat in ADVANCED_CLUTTER_CATEGORIES:
+        assert legacy_to_advanced_override(cat) == cat
+
+
+def test_simple_and_advanced_mappings_consistent():
+    """Dual-mapping consistency: simple-mode and advanced-mode must agree.
+
+    Every WorldCover class that maps to a legacy category with a direct
+    advanced counterpart must produce the same result through both paths.
+    """
+    from clutter import CLUTTER_CATEGORIES, _WORLDCOVER_TO_CATEGORY
+    from NoWires.clutter_grid import _WORLDCOVER_TO_ADVANCED_IDX, _ADVANCED_CATEGORIES
+    consistent_legacy_classes = {10, 50, 60, 70, 80, 90}
+    for cls_id in consistent_legacy_classes:
+        legacy_cat = CLUTTER_CATEGORIES[_WORLDCOVER_TO_CATEGORY[cls_id]]
+        advanced_cat = _ADVANCED_CATEGORIES[_WORLDCOVER_TO_ADVANCED_IDX[cls_id]]
+        assert legacy_to_advanced_override(legacy_cat) == advanced_cat, (
+            f"Class {cls_id}: legacy '{legacy_cat}' -> "
+            f"'{legacy_to_advanced_override(legacy_cat)}' "
+            f"but advanced mapping gives '{advanced_cat}'"
+        )

@@ -96,7 +96,7 @@ class TestDatasetLifecycle:
         assert "ds_lines = None" in source
 
     def test_clutter_closes_gdal_band_and_dataset(self):
-        source = open("clutter.py").read()
+        source = open("clutter_grid.py").read()
         assert "band = None" in source
         assert "ds = None" in source
 

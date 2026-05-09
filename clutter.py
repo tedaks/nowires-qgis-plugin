@@ -28,7 +28,6 @@ import logging
 from dataclasses import dataclass
 
 import numpy as np
-from osgeo import gdal
 
 from .worldcover_downloader import ensure_worldcover_for_area
 from .clutter_advanced import (  # noqa: F401
@@ -37,6 +36,7 @@ from .clutter_advanced import (  # noqa: F401
     compute_terminal_clutter_losses, _resolve_category,
 )
 from .clutter_categories import worldcover_class_to_advanced_category
+from .clutter_grid import LandCoverGrid  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -69,11 +69,12 @@ _CLUTTER_LOSS_ARRAY = np.array([
     CLUTTER_LOSS_DB["urban"],
 ], dtype=np.float64)
 
-# Lookup table: ESA WorldCover class ID (0-255) -> clutter category index (0-4)
-# Unknown classes default to 0 (open). Legacy mapping kept consistent with the
-# advanced taxonomy: low-stature land cover (shrubland 20, moss/lichen 100)
-# is treated as rural rather than vegetation so that switching simple ↔
-# advanced does not silently change the dominant category for those areas.
+# Lookup table: ESA WorldCover class ID (0-255) -> legacy category index (0-4).
+# CAUTION: This LUT and _WORLDCOVER_ADVANCED_IDX in clutter_grid.py both
+# encode the WorldCover class mapping. They MUST stay consistent with
+# _WORLDVER_MAP in clutter_categories.py. When updating any one of them,
+# update all three and run the dual-mapping consistency test
+# (test_clutter_categories.py::test_simple_and_advanced_mappings_consistent).
 _WORLDCOVER_TO_CATEGORY = np.zeros(256, dtype=np.int32)
 _WORLDCOVER_TO_CATEGORY[10] = 2
 _WORLDCOVER_TO_CATEGORY[20] = 1
@@ -148,129 +149,6 @@ class TerminalClutterLosses:
     total_with_bel_db: float = 0.0
     method: str = "simple"
     percentile: float = 50.0
-
-
-@dataclass(slots=True)
-class LandCoverGrid:
-    data: np.ndarray
-    min_lat: float
-    max_lat: float
-    min_lon: float
-    max_lon: float
-    nodata: float | None
-    source: str
-
-    @classmethod
-    def from_raster(cls, path):
-        ds = gdal.Open(path)
-        if ds is None:
-            raise RuntimeError("Cannot open land-cover raster: {}".format(path))
-        try:
-            transform = ds.GetGeoTransform()
-            band = ds.GetRasterBand(1)
-            nodata = band.GetNoDataValue()
-            data = band.ReadAsArray()
-            if data is None:
-                raise RuntimeError("Failed to read land-cover raster: {}".format(path))
-            data = np.asarray(data)
-            n_rows, n_cols = data.shape
-            min_lon = transform[0]
-            max_lon = min_lon + transform[1] * n_cols
-            min_lat = transform[3] + transform[5] * n_rows
-            max_lat = transform[3]
-            if min_lat > max_lat:
-                logger.warning(
-                    "Land-cover raster %s appears to be south-up; row ordering may be "
-                    "inverted. All ESA WorldCover rasters are north-up. If using a custom "
-                    "land-cover raster, verify that latitude indexing is correct.",
-                    path,
-                )
-                min_lat, max_lat = max_lat, min_lat
-            return cls(data, min_lat, max_lat, min_lon, max_lon, nodata, str(path))
-        finally:
-            band = None
-            ds = None
-
-    def close(self):
-        """Release land-cover data to free memory."""
-        self.data = None
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-        return False
-
-    def sample_class(self, lat, lon) -> int | None:
-        if not (self.min_lat <= lat <= self.max_lat and self.min_lon <= lon <= self.max_lon):
-            return None
-        n_rows, n_cols = self.data.shape
-        d_lat = (self.max_lat - self.min_lat) / n_rows
-        d_lon = (self.max_lon - self.min_lon) / n_cols
-        y = min(int((self.max_lat - lat) / d_lat), n_rows - 1)
-        x = min(int((lon - self.min_lon) / d_lon), n_cols - 1)
-        value = self.data[y, x]
-        if self.nodata is not None and float(value) == self.nodata:
-            return None
-        return int(value)
-
-    def sample_category(self, lat, lon) -> str | None:
-        class_id = self.sample_class(lat, lon)
-        if class_id is None:
-            return None
-        return worldcover_class_to_clutter_category(class_id)
-
-    def sample_category_grid(self, lats, lons, rx_override=None, context=None):
-        advanced = context is not None and context.model == "advanced"
-        n = len(lats)
-        m = len(lons)
-        if self.data is None:
-            if advanced:
-                default_cat = "open"
-                if rx_override:
-                    default_cat = _legacy_to_advanced_override(rx_override)
-                return np.full((n, m), default_cat, dtype=object)
-            if rx_override:
-                default = _CLUTTER_LOSS_ARRAY[_CATEGORY_IDX.get(rx_override, 0)]
-            else:
-                default = 0.0
-            return np.full((n, m), default, dtype=np.float64)
-        n_rows, n_cols = self.data.shape
-        d_lat = (self.max_lat - self.min_lat) / n_rows
-        d_lon = (self.max_lon - self.min_lon) / n_cols
-        lat_arr = np.asarray(lats, dtype=np.float64)
-        lon_arr = np.asarray(lons, dtype=np.float64)
-        y_idx = np.clip(((self.max_lat - lat_arr) / d_lat).astype(np.int32), 0, n_rows - 1)
-        x_idx = np.clip(((lon_arr - self.min_lon) / d_lon).astype(np.int32), 0, n_cols - 1)
-        sampled = self.data[y_idx[:, np.newaxis], x_idx[np.newaxis, :]]
-        lat_oob = (lat_arr < self.min_lat) | (lat_arr > self.max_lat)
-        lon_oob = (lon_arr < self.min_lon) | (lon_arr > self.max_lon)
-        out_of_bounds = lat_oob[:, np.newaxis] | lon_oob[np.newaxis, :]
-        if self.nodata is not None:
-            nodata_val = self.data.dtype.type(self.nodata) if np.issubdtype(self.data.dtype, np.integer) else self.nodata
-            if np.isnan(nodata_val):
-                out_of_bounds |= np.isnan(sampled.astype(np.float64))
-            else:
-                out_of_bounds |= (sampled == nodata_val)
-        if advanced:
-            cats = np.empty(sampled.shape, dtype=object)
-            for i in range(sampled.shape[0]):
-                for j in range(sampled.shape[1]):
-                    if out_of_bounds[i, j]:
-                        cats[i, j] = "open"
-                    else:
-                        cats[i, j] = worldcover_class_to_advanced_category(int(sampled[i, j]))
-            if rx_override:
-                cats[:, :] = _legacy_to_advanced_override(rx_override)
-            return cats
-        valid_class = (sampled >= 0) & (sampled < len(_WORLDCOVER_TO_CATEGORY))
-        safe_sampled = np.where(valid_class, sampled, 0).astype(np.int32, copy=False)
-        cat_idx = _WORLDCOVER_TO_CATEGORY[safe_sampled]
-        cat_idx = np.where(out_of_bounds, 0, cat_idx)
-        if rx_override:
-            cat_idx[:] = _CATEGORY_IDX.get(rx_override, 0)
-        return _CLUTTER_LOSS_ARRAY[cat_idx]
 
 
 def ensure_clutter_grid_for_area(south, north, west, east, feedback=None) -> LandCoverGrid | None:
