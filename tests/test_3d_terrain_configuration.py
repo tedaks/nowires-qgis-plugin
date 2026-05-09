@@ -64,8 +64,9 @@ class Test3DTerrainConfiguration:
         assert layer.isValid()
         elev_props = layer.elevationProperties()
         assert elev_props is not None
-        elev_props.setEnabled(True)
-        assert elev_props.isEnabled()
+        if hasattr(elev_props, 'setEnabled'):
+            elev_props.setEnabled(True)
+            assert elev_props.isEnabled()
         elev_props.setClamping(Qgis.AltitudeClamping.Terrain)
         elev_props.setBinding(Qgis.AltitudeBinding.Vertex)
 

@@ -65,7 +65,6 @@ def apply_fresnel_polygon_symbology(layer):
     band_rule.setSymbol(band_fill)
     root_rule.appendChild(band_rule)
 
-    root_rule.removeChildAt(0)
     layer.setRenderer(renderer)
     layer.triggerRepaint()
 
@@ -107,7 +106,6 @@ def apply_fresnel_lines_symbology(layer):
     los_rule.setSymbol(los_sym)
     root_rule.appendChild(los_rule)
 
-    root_rule.removeChildAt(0)
     layer.setRenderer(renderer)
     layer.triggerRepaint()
 
@@ -160,6 +158,5 @@ def apply_profile_line_symbology(layer):
     other_rule.setSymbol(other_sym)
     root_rule.appendChild(other_rule)
 
-    root_rule.removeChildAt(0)
     layer.setRenderer(renderer)
     layer.triggerRepaint()

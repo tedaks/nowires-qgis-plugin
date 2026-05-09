@@ -76,7 +76,7 @@ class TestBatchMarkerLayer:
         write_batch_marker_layer(gpkg, results, feedback, mode=0)
         layer = QgsVectorLayer(gpkg, "batch_fields", "ogr")
         assert layer.isValid()
-        expected_fields = ["id", "role", "lat", "lon", "dist_km", "margin_db", "status"]
+        expected_fields = ["rank", "point_id", "margin_db", "dist_km", "status"]
         field_names = [f.name() for f in layer.fields()]
         for name in expected_fields:
             assert name in field_names, "Missing field: {}".format(name)

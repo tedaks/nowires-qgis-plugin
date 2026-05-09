@@ -27,7 +27,7 @@ class TestQgsProjectStatePersistence:
         project.writeEntry("NoWires", "last_dem_layer_id", "test_dem_id_123")
         result, ok = project.readEntry("NoWires", "last_dem_layer_id", "")
         assert ok
-        assert result == "test_dem_layer_id_123"
+        assert result == "test_dem_id_123"
 
     def test_write_and_read_coverage_layer_id(self, qgis_app):
         project = QgsProject.instance()

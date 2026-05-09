@@ -142,9 +142,9 @@ class P2PAlgorithm(NoWiresAlgorithm):
         bel_elevation_angle = self.parameterAsDouble(parameters, self.BEL_ELEVATION_ANGLE, context)
 
         show_chart = self.parameterAsBool(parameters, self.SHOW_CHART, context)
-        profile_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_PROFILE, context)
-        fresnel_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_FRESNEL, context)
-        markers_dest = self.parameterAsFileOutput(parameters, self.OUTPUT_MARKERS, context)
+        profile_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT_PROFILE, context)
+        fresnel_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT_FRESNEL, context)
+        markers_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT_MARKERS, context)
         report_csv_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_CSV, context)
         report_json_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_JSON, context)
         report_html_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_HTML, context)

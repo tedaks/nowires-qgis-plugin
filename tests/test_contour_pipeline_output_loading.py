@@ -63,13 +63,14 @@ class TestDemOutputLoading:
 
 class TestOverlayRasterLoading:
     def test_raster_layer_blend_mode(self, qgis_app, tmp_path):
-        from qgis.PyQt.QtCore import Qt
+        from qgis.PyQt.QtGui import QPainter
         tif = str(tmp_path / "overlay_blend.tif")
         _write_dem_geotiff(tif)
         layer = QgsRasterLayer(tif, "Overlay Test")
         assert layer.isValid()
-        layer.setBlendMode(Qt.BlendMode.CompositionMode_ColorDodge)
-        assert layer.blendMode() == Qt.BlendMode.CompositionMode_ColorDodge
+        blend_mode = QPainter.CompositionMode.CompositionMode_ColorDodge
+        layer.setBlendMode(blend_mode)
+        assert layer.blendMode() == blend_mode
 
     def test_raster_layer_opacity(self, qgis_app, tmp_path):
         tif = str(tmp_path / "overlay_opacity.tif")

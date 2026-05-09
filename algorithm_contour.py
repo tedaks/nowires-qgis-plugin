@@ -47,6 +47,7 @@ from qgis.core import (
     QgsProcessingParameterExtent,
     QgsProcessingParameterFileDestination,
     QgsProcessingParameterNumber,
+    QgsProcessingParameterVectorDestination,
     QgsProject,
     QgsVectorLayer,
 )
@@ -122,8 +123,8 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
         self.addParameter(QgsProcessingParameterAuthConfig(
             name=self.PROXY_AUTH,
             description=self.tr("Proxy authentication (optional)"), optional=True))
-        self.addParameter(QgsProcessingParameterFileDestination(
-            self.OUTPUT, "Contour lines output", "GeoPackage files (*.gpkg)"))
+        self.addParameter(QgsProcessingParameterVectorDestination(
+            self.OUTPUT, "Contour lines output"))
         self.addParameter(QgsProcessingParameterFileDestination(
             self.OUTPUT_DEM, "Raw DEM output (3D terrain)",
             "GeoTIFF files (*.tif)", optional=True))
@@ -219,7 +220,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             self.progress += 1
             feedback.setProgress(int(self.progress * self.status_total))
 
-            output_dest = self.parameterAsFileOutput(parameters, self.OUTPUT, context)
+            output_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
             try:
                 final_output_path, reproj_dir = reproject_and_export(
                     contour_shp_path, context.project().crs(), output_dest,

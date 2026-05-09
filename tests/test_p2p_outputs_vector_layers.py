@@ -25,7 +25,7 @@ pytestmark = [
 def _write_profile_line(path, srs):
     from NoWires.p2p_outputs import write_profile_line
     from NoWires.radio import ITMResult
-    result = ITMResult(loss_db=120.5, mode=1)
+    result = ITMResult(loss_db=120.5, mode=1, warnings=0)
     dist_m = 5000.0
     write_profile_line(path, srs, 47.0, 8.0, 47.05, 8.05, dist_m, result)
 
