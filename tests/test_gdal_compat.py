@@ -88,6 +88,10 @@ class TestDatasetLifecycle:
         has_ds_none = "ds = None" in source
         assert has_finally and has_ds_none, "raster_io must close ds in finally"
 
+    def test_raster_io_closes_band_before_dataset(self):
+        source = open("raster_io.py").read()
+        assert "band = None" in source, "raster_io must release band before closing dataset"
+
     def test_p2p_outputs_closes_poly_datasource(self):
         source = open("p2p_outputs.py").read()
         assert "ds_poly = None" in source

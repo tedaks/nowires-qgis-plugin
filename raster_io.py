@@ -39,4 +39,5 @@ def write_geotiff(path, grid, min_lat, max_lat, min_lon, max_lon, nodata=COVERAG
         band.WriteArray(raster)
         band.FlushCache()
     finally:
+        band = None
         ds = None
