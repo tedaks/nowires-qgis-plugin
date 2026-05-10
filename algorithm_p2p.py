@@ -52,10 +52,15 @@ from .p2p_compute import run_p2p_analysis
 class P2PAlgorithm(NoWiresAlgorithm):
     """Point-to-point radio link analysis."""
 
+    def __init__(self):
+        super().__init__()
+        self._p2p_post_processors = []
+
     def initAlgorithm(self, config):
         add_p2p_params(self)
 
     def processAlgorithm(self, parameters, context, feedback):
+        self._p2p_post_processors = []
         tx_point = self.parameterAsPoint(
             parameters, self.TX_POINT, context,
             crs=QgsCoordinateReferenceSystem("EPSG:4326"),
@@ -185,6 +190,7 @@ class P2PAlgorithm(NoWiresAlgorithm):
             output_report_csv=self.OUTPUT_REPORT_CSV,
             output_report_json=self.OUTPUT_REPORT_JSON,
             output_report_html=self.OUTPUT_REPORT_HTML,
+            post_processor_sink=self._p2p_post_processors,
         )
         try:
             return run_p2p_analysis(p2p_params)

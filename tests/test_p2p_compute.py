@@ -174,6 +174,7 @@ def _load_p2p_compute_with_test_stubs(monkeypatch):
     p2p_params_stub.report_p2p_results = lambda *args, **kwargs: None
     processing_utils_stub = types.ModuleType("NoWires.processing_utils")
     processing_utils_stub.queue_layer_for_loading = lambda *args, **kwargs: None
+    processing_utils_stub.register_destination_layer = lambda *args, **kwargs: None
     monkeypatch.setitem(sys.modules, "NoWires.dem_downloader", dem_stub)
     monkeypatch.setitem(sys.modules, "NoWires.p2p_params", p2p_params_stub)
     monkeypatch.setitem(sys.modules, "NoWires.processing_utils", processing_utils_stub)

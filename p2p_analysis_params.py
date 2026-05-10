@@ -86,3 +86,4 @@ class P2PAnalysisParams:
     output_report_csv: str = ""
     output_report_json: str = ""
     output_report_html: str = ""
+    post_processor_sink: list = field(default_factory=list)

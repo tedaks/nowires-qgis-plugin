@@ -31,7 +31,7 @@ from .report_markers import write_p2p_marker_layer
 from .antenna import antenna_gain_adjustment_db
 from .clutter import (compute_terminal_clutter_losses,
     ensure_clutter_grid_for_area)
-from .processing_utils import queue_layer_for_loading
+from .processing_utils import queue_layer_for_loading, register_destination_layer
 from .p2p_params import report_p2p_results
 from .p2p_outputs import write_profile_line, write_fresnel_zone
 from .p2p_chart import show_profile_chart
@@ -88,30 +88,33 @@ def _write_p2p_reports(report_csv_path, report_json_path, report_html_path,
 
 
 def _load_p2p_qgis_layers(context, profile_path, fresnel_poly_path,
-        fresnel_lines_path, markers_path, show_chart, chart_kwargs):
+        fresnel_lines_path, markers_path, show_chart, chart_kwargs, sink):
     from qgis.core import QgsVectorLayer
     from .p2p_symbology import (
-        apply_fresnel_polygon_symbology,
-        apply_fresnel_lines_symbology,
+        apply_fresnel_polygon_symbology, apply_fresnel_lines_symbology,
         apply_profile_line_symbology,
     )
-    f_mhz = chart_kwargs["f_mhz"]
-    dist_m = chart_kwargs["dist_m"]
-    link_name = "P2P Link ({:.0f} MHz, {:.1f} km)".format(f_mhz, dist_m / 1000)
-    profile_layer = QgsVectorLayer(profile_path, link_name)
-    fresnel_poly_layer = QgsVectorLayer(fresnel_poly_path, "Fresnel Zone Analysis")
+    link_name = "P2P Link ({:.0f} MHz, {:.1f} km)".format(
+        chart_kwargs["f_mhz"], chart_kwargs["dist_m"] / 1000)
+    # (path, name, styler) for the three declared vector destinations.
+    for path, name, styler in (
+        (fresnel_poly_path, "Fresnel Zone Analysis", apply_fresnel_polygon_symbology),
+        (profile_path, link_name, apply_profile_line_symbology),
+        (markers_path, "P2P TX/RX Markers", None),
+    ):
+        pp = register_destination_layer(context, path, name, styler=styler)
+        if pp is not None:
+            sink.append(pp)
+            continue
+        layer = QgsVectorLayer(path, name)
+        if styler is not None and layer.isValid():
+            styler(layer)
+        queue_layer_for_loading(context, layer, name)
+    # Fresnel lines is a derived sidecar, not a declared destination — queue manually.
     fresnel_lines_layer = QgsVectorLayer(fresnel_lines_path, "Fresnel Zone Lines")
-    marker_layer = QgsVectorLayer(markers_path, "P2P TX/RX Markers")
-    if profile_layer.isValid():
-        apply_profile_line_symbology(profile_layer)
-    if fresnel_poly_layer.isValid():
-        apply_fresnel_polygon_symbology(fresnel_poly_layer)
     if fresnel_lines_layer.isValid():
         apply_fresnel_lines_symbology(fresnel_lines_layer)
-    queue_layer_for_loading(context, fresnel_poly_layer, "Fresnel Zone Analysis")
     queue_layer_for_loading(context, fresnel_lines_layer, "Fresnel Zone Lines")
-    queue_layer_for_loading(context, profile_layer, link_name)
-    queue_layer_for_loading(context, marker_layer, "P2P TX/RX Markers")
     if show_chart:
         show_profile_chart(**chart_kwargs)
 
@@ -273,7 +276,8 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             cable_loss=p.cable_loss, rx_sens=p.rx_sens,
             prx_dbm=prx_dbm, margin_db=margin_db)
         _load_p2p_qgis_layers(p.context, profile_path, fresnel_poly_path,
-            fresnel_lines_path, markers_path, p.show_chart, chart_kwargs)
+            fresnel_lines_path, markers_path, p.show_chart, chart_kwargs,
+            p.post_processor_sink)
         p.feedback.setProgress(100)
         report_p2p_results(p.feedback, dist_m, p.f_mhz, result, report_payload, p.k_factor,
             los_blocked, float(fresnel_r.max()))

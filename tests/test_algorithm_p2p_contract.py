@@ -186,6 +186,11 @@ def test_p2p_algorithm_uses_processing_context_for_layer_loading():
     assert "processing_utils" in source
 
 
+def test_p2p_algorithm_routes_destinations_through_register_helper():
+    source = _p2p_source()
+    assert "register_destination_layer(" in source
+
+
 def test_p2p_algorithm_removes_existing_profile_and_fresnel_outputs():
     source = _p2p_source()
     assert "remove_existing_ogr_dataset(driver, path)" in source
