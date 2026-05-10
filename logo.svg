@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>NoWires — Radio Line-of-Sight Propagation</title>
+
+  <!-- Rounded square background -->
+  <rect x="16" y="16" width="480" height="480" rx="88" ry="88" fill="#16A34A"/>
+
+  <!-- Subtle inner border for depth -->
+  <rect x="32" y="32" width="448" height="448" rx="76" ry="76"
+        fill="none" stroke="#FFFFFF" stroke-width="3" opacity="0.22"/>
+
+  <!-- Symbolic lightning bolt -->
+  <path d="M 304 56
+           L 168 280
+           L 240 280
+           L 192 456
+           L 352 224
+           L 272 224
+           L 312 56
+           Z"
+        fill="#FFFFFF"
+        stroke="#FFFFFF" stroke-width="2"
+        stroke-linejoin="round"/>
+</svg>
