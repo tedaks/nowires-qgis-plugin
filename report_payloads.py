@@ -29,6 +29,31 @@ from __future__ import annotations
 
 from .reliability import summarize_reliability
 
+_COPERNICUS_DEM_ATTRIBUTION = (
+    "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and "
+    "© Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS "
+    "by the European Union and ESA; all rights reserved."
+)
+_NTIA_ITM_ATTRIBUTION = (
+    "ITM derived from NTIA's Irregular Terrain Model. See NOTICE.md for "
+    "the NTIA Software Disclaimer / Release."
+)
+_ESA_WORLDCOVER_ATTRIBUTION = (
+    "© ESA WorldCover project / Contains modified Copernicus Sentinel data "
+    "(2020) processed by ESA WorldCover consortium. Dataset: ESA WorldCover "
+    "10 m 2020 v100, https://doi.org/10.5281/zenodo.5571936."
+)
+
+
+def _build_attribution(clutter_source="off"):
+    attribution = {
+        "copernicus_dem": _COPERNICUS_DEM_ATTRIBUTION,
+        "ntia_itm": _NTIA_ITM_ATTRIBUTION,
+    }
+    if "worldcover" in str(clutter_source).lower():
+        attribution["esa_worldcover"] = _ESA_WORLDCOVER_ATTRIBUTION
+    return attribution
+
 
 def build_p2p_report_payload(
     tx_lat, tx_lon, rx_lat, rx_lon, tx_h, rx_h, f_mhz,
@@ -93,6 +118,7 @@ def build_p2p_report_payload(
             "summary": "VIABLE" if margin_db >= 0 else "NOT VIABLE",
             "viable": bool(margin_db >= 0),
         },
+        "attribution": _build_attribution(clutter_source),
     }
 
 
@@ -176,6 +202,7 @@ def build_coverage_report_payload(
             "summary": "HAS USABLE CELLS" if usable_cell_count else "NO USABLE CELLS",
             "usable_cells_present": bool(usable_cell_count),
         },
+        "attribution": _build_attribution(clutter_source),
     }
 
 
@@ -218,4 +245,5 @@ def build_empty_coverage_report_payload(
         "status": {
             "summary": "NO VALID COVERAGE CELLS", "usable_cells_present": False,
         },
+        "attribution": _build_attribution(clutter_source),
     }

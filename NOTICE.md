@@ -13,7 +13,7 @@ The plugin as a whole is distributed under the **GNU General Public License v3 o
 
 **Source:** <https://github.com/tedaks/nowires>  
 **License:** MIT License  
-**Copyright:** © 2024 Bortre Tenamo
+**Copyright:** Copyright (c) 2024 NoWires Contributors
 
 The following files are derived from or inspired by the nowires project (adapted from the FastAPI backend into QGIS Processing algorithms):
 
@@ -27,12 +27,14 @@ The following files are derived from or inspired by the nowires project (adapted
 | `radio.py` (ITM bridge, Fresnel, signal levels) | `apps/api/app/itm_bridge.py`, `apps/api/app/math_kernels.py`, `apps/api/app/signal_levels.py` |
 | `antenna.py` | `apps/api/app/antenna.py` |
 | `clutter.py`, `clutter_advanced.py`, `clutter_categories.py`, `clutter_constants.py`, `clutter_context.py`, `clutter_p2108.py` | `apps/api/app/clutter.py` |
-| `clutter_saalos.py` | clutterloss-itm Rust crate (see section 6 below) |
+| `clutter_saalos.py` | clutterloss-itm Rust crate (see section 7 below) |
 | `elevation.py` (terrain utilities, ElevationGrid) | `apps/api/app/elevation_grid.py`, `apps/api/app/terrain.py` |
 | `coverage_palette.py` (signal level palette) | `apps/api/app/signal_levels.py`, `apps/api/app/coverage_render.py` |
 
 Original MIT license text:
 
+> Copyright (c) 2024 NoWires Contributors
+>
 > Permission is hereby granted, free of charge, to any person obtaining a copy
 > of this software and associated documentation files (the "Software"), to deal
 > in the Software without restriction, including without limitation the rights
@@ -73,6 +75,8 @@ NTIA Disclaimer:
 >
 > You may improve, modify, and create derivative works of the software or any portion of the software, and you may copy and distribute such modifications or works. Modified works should carry a notice stating that you changed the software and should note the date and nature of any such change.
 >
+> You are solely responsible for determining the appropriateness of using and distributing the software and you assume all risks associated with its use, including but not limited to the risks and costs of program errors, compliance with applicable laws, damage to or loss of data, programs or equipment, and the unavailability or interruption of operation. This software is not intended to be used in any situation where a failure could cause risk of injury or damage to property.
+>
 > Please provide appropriate acknowledgments of NTIA's creation of the software in any copies or derivative works of this software.
 
 ---
@@ -89,6 +93,12 @@ The following files are derived from the ContourLines plugin:
 |---|---|
 | `algorithm_contour.py` | `contour_lines_algorithm.py` |
 | `dem_downloader.py` (DEM download, clip, merge logic) | `contour_lines_algorithm.py` (tile download and processing sections) |
+| `contour_generation.py` | `contour_lines_algorithm.py` (contour generation and export sections) |
+| `contour_pipeline.py` | `contour_lines_algorithm.py` (proxy, AOI, DEM pipeline, and layer-loading sections) |
+| `contour_symbology.py` | `contour_lines_algorithm.py` (rule-based contour renderer and labels) |
+| `contour_overlay.py` | `contour_lines_algorithm.py` (hillshade/elevation overlay sections) |
+| `contour_smoothing.py` | `contour_lines_algorithm.py` (smoothing sections) |
+
 ---
 
 ## 4. Copernicus DEM — Elevation Data
@@ -106,7 +116,26 @@ GLO-30 Public is available free of charge for any use under the terms of the [Co
 
 ---
 
-## 5. ITM References
+## 5. ESA WorldCover 2020 v100 — Land-Cover Data
+
+Land-cover data used for clutter correction is sourced from **ESA WorldCover 2020 v100**:
+
+- Data access: <https://esa-worldcover.org/en/data-access>
+- Download endpoint used by the plugin: <https://esa-worldcover.s3.eu-central-1.amazonaws.com/v100/2020/map/>
+- Dataset DOI: <https://doi.org/10.5281/zenodo.5571936>
+
+**License:** Creative Commons Attribution 4.0 International (CC BY 4.0), available at <https://creativecommons.org/licenses/by/4.0/>.
+
+**Attribution:**  
+© ESA WorldCover project / Contains modified Copernicus Sentinel data (2020) processed by ESA WorldCover consortium.
+
+Recommended citation:
+
+> Zanaga, D., Van De Kerchove, R., De Keersmaecker, W., Souverijns, N., Brockmann, C., Quast, R., Wevers, J., Grosu, A., Paccini, A., Vergnaud, S., Cartus, O., Santoro, M., Fritz, S., Georgieva, I., Lesiv, M., Carter, S., Herold, M., Li, Linlin, Tsendbazar, N.E., Ramoino, F., Arino, O., 2021. ESA WorldCover 10 m 2020 v100. <https://doi.org/10.5281/zenodo.5571936>
+
+---
+
+## 6. ITM References
 
 The Irregular Terrain Model was originally developed by:
 
@@ -116,7 +145,7 @@ The Irregular Terrain Model was originally developed by:
 
 ---
 
-## 6. saalos / clutterloss-itm — Vegetation Clutter Loss
+## 7. saalos / clutterloss-itm — Vegetation Clutter Loss
 
 **Source:** <https://github.com/tedaks/clutterloss-itm> (Rust crate v0.1.0)  
 **Original source:** ITWOM 3.0 ClutterLoss by Sid Shumate (Givens & Bell, Inc.)  
@@ -149,7 +178,13 @@ MIT license text:
 
 ---
 
-## 7. Local Modifications
+## 8. Project Assets
+
+`logo.png` is Original NoWires project artwork by Bortre Tenamo and is distributed as part of this GPLv3-or-later plugin.
+
+---
+
+## 9. Local Modifications
 
 - Files adapted from `nowires` retain the original MIT attribution in this notice and are redistributed as part of this GPLv3-or-later plugin.
 - Files adapted from `ContourLines` carry preserved upstream attribution where practical and are redistributed as part of this GPLv3-or-later plugin.

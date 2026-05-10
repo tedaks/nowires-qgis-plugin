@@ -1,4 +1,5 @@
 # itm/propagation.py
+# SPDX-License-Identifier: LicenseRef-NTIA-Software-Disclaimer
 """
 Derived from tedaks/pyitm, a Python port of NTIA's Irregular Terrain Model.
 Original work: Copyright NTIA and distributed under the NTIA Software

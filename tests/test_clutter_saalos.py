@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
+# This program is free software under GPLv3 or later. See LICENSE.
 import pytest
 from clutter_constants import MAX_CLUTTER_LOSS
 from clutter_saalos import clutter_loss_saalos

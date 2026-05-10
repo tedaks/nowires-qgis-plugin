@@ -1,4 +1,5 @@
 # itm/__init__.py
+# SPDX-License-Identifier: LicenseRef-NTIA-Software-Disclaimer
 """
 Pure-Python port of the ITS Irregular Terrain Model (ITM / Longley-Rice).
 

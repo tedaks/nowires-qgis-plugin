@@ -157,6 +157,11 @@ Elevation data: **Copernicus GLO-30 Public DEM** hosted on AWS Open Data.
 - Registry: https://registry.opendata.aws/copernicus-dem/
 - Copernicus DEM © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved.
 
+Land-cover data for automatic clutter correction: **ESA WorldCover 2020 v100**.
+- Data access: https://esa-worldcover.org/en/data-access
+- License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+- Attribution: © ESA WorldCover project / Contains modified Copernicus Sentinel data (2020) processed by ESA WorldCover consortium.
+
 ## Credits
 
 - Radio propagation engine: [tedaks/pyitm](https://github.com/tedaks/pyitm) — NTIA Irregular Terrain Model (bundled)
