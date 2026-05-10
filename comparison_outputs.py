@@ -35,7 +35,7 @@ from qgis.core import (
 )
 
 from .raster_io import write_geotiff
-from .processing_utils import queue_layer_for_loading
+from .processing_utils import queue_layer_for_loading, register_destination_layer
 
 __all__ = [
     "write_coverage_raster",
@@ -247,29 +247,47 @@ def compute_delta_summary(loss_grid_a, loss_grid_b, threshold_db):
     return delta_info
 
 
-def load_comparison_layers(context, output_a, output_b, output_delta, threshold_db, delta_style, feedback):
+def _load_one(context, path, name, styler, raster_layer_ids, feedback):
     from qgis.core import QgsRasterLayer
+
+    def _on_load(loaded):
+        styler(loaded)
+        raster_layer_ids.append(loaded.id())
+
+    pp = register_destination_layer(context, path, name, styler=_on_load)
+    if pp is not None:
+        return pp
+    layer = QgsRasterLayer(path, name)
+    if not layer.isValid():
+        feedback.pushWarning("Could not load {} raster layer: {}".format(
+            name, layer.error().summary()))
+        return None
+    _on_load(layer)
+    queue_layer_for_loading(context, layer, name)
+    return None
+
+
+def load_comparison_layers(context, output_a, output_b, output_delta, threshold_db, delta_style, feedback):
+    """Register the three comparison rasters for load-on-completion.
+
+    Returns ``(raster_layer_ids, post_processors)``. The id list is populated
+    synchronously for fallback paths and asynchronously by post-processors for
+    auto-loaded destinations; callers must keep the post-processor list alive
+    until QGIS finishes processing (otherwise QGIS will dereference freed
+    Python wrappers and crash).
+    """
     from .coverage_palette import apply_coverage_style
+
     raster_layer_ids = []
-    layer_delta = QgsRasterLayer(output_delta, "Coverage Delta (A - B dB)")
-    if layer_delta.isValid():
-        apply_delta_style(layer_delta, threshold_db, style=delta_style)
-        queue_layer_for_loading(context, layer_delta, "Coverage Delta (A - B dB)")
-        raster_layer_ids.append(layer_delta.id())
-    else:
-        feedback.pushWarning("Could not load delta raster layer: {}".format(layer_delta.error().summary()))
-    layer_a = QgsRasterLayer(output_a, "Coverage Panel A")
-    if layer_a.isValid():
-        apply_coverage_style(layer_a)
-        queue_layer_for_loading(context, layer_a, "Coverage Panel A")
-        raster_layer_ids.append(layer_a.id())
-    else:
-        feedback.pushWarning("Could not load Panel A raster layer: {}".format(layer_a.error().summary()))
-    layer_b = QgsRasterLayer(output_b, "Coverage Panel B")
-    if layer_b.isValid():
-        apply_coverage_style(layer_b)
-        queue_layer_for_loading(context, layer_b, "Coverage Panel B")
-        raster_layer_ids.append(layer_b.id())
-    else:
-        feedback.pushWarning("Could not load Panel B raster layer: {}".format(layer_b.error().summary()))
-    return raster_layer_ids
+    post_processors = []
+    targets = [
+        (output_delta, "Coverage Delta (A - B dB)",
+         lambda lyr: apply_delta_style(lyr, threshold_db, style=delta_style)),
+        (output_a, "Coverage Panel A", apply_coverage_style),
+        (output_b, "Coverage Panel B", apply_coverage_style),
+    ]
+    for path, name, styler in targets:
+        pp = _load_one(context, path, name, styler, raster_layer_ids, feedback)
+        if pp is not None:
+            post_processors.append(pp)
+    return raster_layer_ids, post_processors

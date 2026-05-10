@@ -217,6 +217,16 @@ def test_coverage_algorithm_uses_processing_context_for_layer_loading():
     assert "processing_utils" in source
 
 
+def test_coverage_algorithm_routes_destination_through_register_helper():
+    """The OUTPUT_RASTER raster destination must be registered via
+    ``register_destination_layer`` rather than manually queueing a duplicate
+    QgsRasterLayer. Otherwise QGIS auto-loads the destination AND the manual
+    queue, producing the "layers were not correctly generated" warning.
+    """
+    source = _coverage_source()
+    assert "register_destination_layer(" in source
+
+
 def test_coverage_algorithm_keeps_temporary_outputs_alive_for_qgis_loading():
     source = _coverage_source()
     assert "shutil.rmtree(_coverage_tmpdir" not in source

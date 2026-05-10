@@ -25,6 +25,7 @@
 Coverage Analysis Algorithm — heatmap prediction via ITM.
 """
 
+import contextlib
 import logging
 import os
 
@@ -43,9 +44,7 @@ from .clutter import (
     ensure_clutter_grid_for_area,
 )
 from .report_export import write_report_csv, write_report_html, write_report_json
-from .coverage_params import (
-    PARAM_CONSTANTS, add_coverage_params, extract_coverage_params,
-)
+from .coverage_params import PARAM_CONSTANTS, add_coverage_params, extract_coverage_params
 from .antenna import ANTENNA_PRESET_OPTIONS
 from .constants import DEGREE_PADDING
 from .geo_bounds import coverage_bounds
@@ -53,7 +52,7 @@ from .coverage_reporting import (
     build_coverage_report_payload_for_grid, report_coverage_results,
     write_coverage_geotiff,
 )
-from .processing_utils import queue_layer_for_loading
+from .processing_utils import queue_layer_for_loading, register_destination_layer
 from .temp_manager import TempDirManager
 
 
@@ -63,12 +62,14 @@ class CoverageAlgorithm(NoWiresAlgorithm):
     def __init__(self):
         super().__init__()
         self._raster_layer_ids = []
+        self._coverage_post_processor = None
 
     def initAlgorithm(self, config):
         add_coverage_params(self)
 
     def processAlgorithm(self, parameters, context, feedback):
         self._raster_layer_ids = []
+        self._coverage_post_processor = None
         self._tmp = TempDirManager()
         clutter_grid = None
         p = extract_coverage_params(self, parameters, context)
@@ -216,11 +217,10 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                 feedback.pushInfo("Writing coverage raster...")
                 feedback.setProgress(85)
 
-                tif_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
-                tif_path = tif_dest
+                tif_path = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
                 if not tif_path:
-                    coverage_tmpdir = self._tmp.make_dir("coverage_prx", persistent=True)
-                    tif_path = os.path.join(coverage_tmpdir, "coverage_prx.tif")
+                    tif_path = os.path.join(
+                        self._tmp.make_dir("coverage_prx", persistent=True), "coverage_prx.tif")
                     self._tmp.warn_persistent(feedback)
                 report_csv_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_CSV, context)
                 report_json_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_JSON, context)
@@ -231,11 +231,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                 layer_name = "Coverage ({:.0f} MHz, {:.0f} km, {}x{})".format(
                     p.f_mhz, p.radius_km, p.grid_size, p.grid_size)
                 raster_layer = QgsRasterLayer(tif_path, layer_name)
-
                 if raster_layer.isValid():
-                    self._apply_coverage_style(raster_layer)
-                    raster_layer.setOpacity(1.0)
-
                     dem_layer = QgsRasterLayer(dem_path, "NoWires DEM (GLO-30)")
                     if dem_layer.isValid():
                         elev_props = dem_layer.elevationProperties()
@@ -245,9 +241,13 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                         queue_layer_for_loading(context, dem_layer, "NoWires DEM (GLO-30)")
                         self._raster_layer_ids.append(dem_layer.id())
                         self._dem_layer_id = dem_layer.id()
-
-                    queue_layer_for_loading(context, raster_layer, layer_name)
-                    self._coverage_layer_id = raster_layer.id()
+                    pp = register_destination_layer(
+                        context, tif_path, layer_name, styler=self._on_coverage_loaded)
+                    if pp is not None:
+                        self._coverage_post_processor = pp
+                    else:
+                        self._on_coverage_loaded(raster_layer)
+                        queue_layer_for_loading(context, raster_layer, layer_name)
                     show_coverage_legend(rx_sensitivity_dbm=p.rx_sens)
                 else:
                     feedback.pushWarning("Could not load coverage raster layer: {}".format(raster_layer.error().summary()))
@@ -273,17 +273,19 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                 }
         finally:
             if clutter_grid is not None:
-                try:
+                with contextlib.suppress(Exception):
                     clutter_grid.close()
-                except Exception:
-                    pass
             self._tmp.cleanup()
             self._tmp.warn_persistent(feedback)
 
     def _apply_coverage_style(self, layer):
-        """Apply a color ramp renderer based on signal level thresholds."""
         from .coverage_palette import apply_coverage_style
         apply_coverage_style(layer)
+
+    def _on_coverage_loaded(self, raster_layer):
+        self._apply_coverage_style(raster_layer)
+        raster_layer.setOpacity(1.0)
+        self._coverage_layer_id = raster_layer.id()
 
     def name(self):
         return "coverage_analysis"

@@ -68,7 +68,7 @@ from .contour_pipeline import (
 from .contour_smoothing import _raster_calc, smooth_contour_dem
 from .contour_symbology import apply_contour_symbology
 from .dem_downloader import get_temp_dir
-from .processing_utils import queue_layer_for_loading
+from .processing_utils import queue_layer_for_loading, register_destination_layer
 from .temp_manager import TempDirManager
 from .three_d import configure_contours_for_3d
 
@@ -98,6 +98,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
         self._raster_layer_ids = []
         self._tmp = TempDirManager()  # per-run temp manager for clip/reproj files
         self._contour_layer_id = None
+        self._contour_post_processor = None
 
     def initAlgorithm(self, config):
         self.addParameter(QgsProcessingParameterExtent(
@@ -243,8 +244,6 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             layer = QgsVectorLayer(final_output_path, layer_name)
             feedback.pushInfo("Contour lines generated: " + str(layer.featureCount()))
 
-            apply_contour_symbology(layer, color, interval)
-            configure_contours_for_3d(layer, elevation_field="ELEV")
             self.progress += 1
             feedback.setProgress(int(self.progress * self.status_total))
 
@@ -260,8 +259,18 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
                     self._raster_layer_ids.append(lid)
                 self._tmp.make_dir("overlay_persistent", persistent=True)
 
-            queue_layer_for_loading(context, layer, layer_name)
-            self._contour_layer_id = layer.id()
+            def _style_contour(loaded):
+                apply_contour_symbology(loaded, color, interval)
+                configure_contours_for_3d(loaded, elevation_field="ELEV")
+                self._contour_layer_id = loaded.id()
+
+            pp = register_destination_layer(
+                context, final_output_path, layer_name, styler=_style_contour)
+            if pp is not None:
+                self._contour_post_processor = pp
+            else:
+                _style_contour(layer)
+                queue_layer_for_loading(context, layer, layer_name)
             feedback.pushInfo("\nDone.")
             return {self.OUTPUT: final_output_path, self.OUTPUT_DEM: dem_output}
         finally:

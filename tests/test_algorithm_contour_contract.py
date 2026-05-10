@@ -61,6 +61,11 @@ def test_contour_algorithm_uses_processing_context_for_layer_loading():
     assert "processing_utils" in source
 
 
+def test_contour_algorithm_routes_destination_through_register_helper():
+    source = _source_text()
+    assert "register_destination_layer(" in source
+
+
 def test_contour_algorithm_uses_direct_qt6_painter_blend_enum():
     source = _source_text()
     assert "QPainter.CompositionMode.CompositionMode_ColorDodge" in source

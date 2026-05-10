@@ -62,6 +62,7 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
     def __init__(self):
         super().__init__()
         self._raster_layer_ids = []
+        self._comparison_post_processors = []
         self._tmp = TempDirManager()
 
     def initAlgorithm(self, config):
@@ -74,6 +75,7 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
         from qgis.core import QgsCoordinateReferenceSystem
 
         self._raster_layer_ids = []
+        self._comparison_post_processors = []
         self._tmp = TempDirManager()
         crs4326 = QgsCoordinateReferenceSystem("EPSG:4326")
         delta_style = DELTA_STYLE_OPTIONS[self.parameterAsEnum(parameters, self.DELTA_STYLE, context)]
@@ -191,7 +193,7 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
                 write_coverage_raster(output_b_path, prx_grid_b, min_lat_b, max_lat_b, min_lon_b, max_lon_b, panel_b["rx_sens"])
                 write_delta_raster(output_delta_path, loss_delta_grid, min_lat_a, max_lat_a, min_lon_a, max_lon_a)
 
-                self._raster_layer_ids = load_comparison_layers(
+                self._raster_layer_ids, self._comparison_post_processors = load_comparison_layers(
                     context, output_a_path, output_b_path, output_delta_path, threshold_db, delta_style, feedback)
 
                 panel_a_info = build_panel_info(panel_a, prx_grid_a)

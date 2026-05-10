@@ -70,6 +70,11 @@ def test_comparison_algorithm_uses_queue_layer_for_loading():
     assert "processing_utils" in source
 
 
+def test_comparison_algorithm_routes_destinations_through_register_helper():
+    source = _comp_source()
+    assert "register_destination_layer(" in source
+
+
 def test_comparison_algorithm_rx_override_is_correct():
     source = _comp_source()
     assert "rx_override=rx_clutter_override" in source
