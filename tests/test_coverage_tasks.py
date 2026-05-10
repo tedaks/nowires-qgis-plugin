@@ -60,7 +60,8 @@ class TestBuildCoverageTasks:
         for task in tasks:
             assert task[4] <= 10.0 or task[4] < 1.0
 
-    def test_skips_tx_pixel_at_minimum_distance(self):
+    def test_skips_near_tx_pixel(self):
+        """Cells within _MIN_COVERAGE_DISTANCE_M of TX should be excluded."""
         lats = np.array([14.0])
         lons = np.array([121.0])
         tasks = build_coverage_tasks(
@@ -74,7 +75,8 @@ class TestBuildCoverageTasks:
             tx_clutter_loss_db=0.0, rx_clutter_override=None,
             lats=lats, lons=lons,
         )
-        assert len(tasks) == 0, "TX cell at zero distance should be skipped"
+        # Cell at exact TX location has d_m ≈ 0 < _MIN_COVERAGE_DISTANCE_M
+        assert len(tasks) == 0
 
     def test_task_tuple_contains_correct_fields(self):
         lats = np.array([14.0, 14.001])

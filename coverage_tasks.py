@@ -37,7 +37,6 @@ from .constants import EARTH_RADIUS_M
 from .coverage_pool import _CoverageTask
 
 _MIN_COVERAGE_DISTANCE_M = 1.0
-_SKIP_TX_CELL = True
 
 
 def _haversine_grid(tx_lat, tx_lon, lats, lons):
@@ -112,16 +111,6 @@ def build_coverage_tasks(
     n_rows_lat = len(lats)
     n_cols_lon = len(lons)
 
-    # Determine which grid cell is closest to TX for skipping.
-    # _SKIP_TX_CELL is True: the TX location itself has zero distance
-    # and would produce a degenerate terrain profile. The minimum-distance
-    # floor (_MIN_COVERAGE_DISTANCE_M) is still applied to the remaining
-    # near-center pixels so that very short profiles stay well-conditioned.
-    tx_i, tx_j = None, None
-    if _SKIP_TX_CELL:
-        flat_idx = int(np.argmin(dist_grid))
-        tx_i, tx_j = divmod(flat_idx, n_cols_lon)
-
     advanced = clutter_context is not None and clutter_context.model == "advanced"
 
     if advanced and clutter_enabled:
@@ -177,9 +166,7 @@ def build_coverage_tasks(
     for i in range(grid_size):
         for j in range(grid_size):
             d_m = float(dist_grid[i, j])
-            if _SKIP_TX_CELL and tx_i is not None and i == tx_i and j == tx_j:
-                continue
-            if d_m > radius_m:
+            if d_m < _MIN_COVERAGE_DISTANCE_M or d_m > radius_m:
                 continue
             modeled_d_m = max(d_m, _MIN_COVERAGE_DISTANCE_M)
             b = float(bearing_grid[i, j])

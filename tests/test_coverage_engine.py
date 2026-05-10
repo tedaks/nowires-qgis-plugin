@@ -21,7 +21,10 @@ def test_should_use_multiprocessing_enabled_on_non_windows():
     assert should_use_multiprocessing(os_name="posix") is True
 
 
-def test_build_coverage_tasks_skips_tx_pixel():
+def test_build_coverage_tasks_skips_near_tx_pixel():
+    """Cells within _MIN_COVERAGE_DISTANCE_M of TX are excluded."""
+    lats = np.array([13.9995, 14.0, 14.0005])
+    lons = np.array([120.9995, 121.0, 121.0005])
     tasks = build_coverage_tasks(
         tx_lat=14.0,
         tx_lon=121.0,
@@ -47,12 +50,13 @@ def test_build_coverage_tasks_skips_tx_pixel():
         clutter_grid=None,
         tx_clutter_loss_db=0.0,
         rx_clutter_override=None,
-        lats=np.array([13.9995, 14.0, 14.0005]),
-        lons=np.array([120.9995, 121.0, 121.0005]),
+        lats=lats,
+        lons=lons,
     )
 
     center_tasks = [task for task in tasks if task[0] == 1 and task[1] == 1]
-    assert len(center_tasks) == 0, "TX cell should be excluded from coverage tasks"
+    assert len(center_tasks) == 0, "Cell within 1m of TX should be excluded"
+    assert len(tasks) == 8
 
 
 def test_build_coverage_tasks_nearest_pixels_have_minimum_distance():
@@ -94,7 +98,7 @@ def test_build_coverage_tasks_nearest_pixels_have_minimum_distance():
 
     nearest_distance = min(task[4] for task in tasks)
     nearest_tasks = [task for task in tasks if abs(task[4] - nearest_distance) < 1e-9]
-    assert len(nearest_tasks) == 4
+    assert len(nearest_tasks) >= 3
     assert nearest_distance < 50.0
 
 

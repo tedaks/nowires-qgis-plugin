@@ -74,12 +74,20 @@ def test_build_coverage_report_payload_flips_grid_for_raster_summary():
         ],
         dtype=np.float32,
     )
+    clutter_rx_db_grid = np.array(
+        [
+            [np.nan, np.nan],
+            [5.0, np.nan],
+        ],
+        dtype=np.float32,
+    )
 
     payload, raster_grid, valid, summary = build_coverage_report_payload_for_grid(
         prx_grid=prx_grid,
         loss_grid=loss_grid,
         itm_loss_grid=itm_loss_grid,
         clutter_loss_grid=clutter_loss_grid,
+        clutter_rx_db_grid=clutter_rx_db_grid,
         min_lat=0.0,
         max_lat=2.0,
         min_lon=0.0,
@@ -106,6 +114,7 @@ def test_build_coverage_report_payload_handles_all_nan_grid():
         loss_grid=prx_grid.copy(),
         itm_loss_grid=prx_grid.copy(),
         clutter_loss_grid=prx_grid.copy(),
+        clutter_rx_db_grid=prx_grid.copy(),
         min_lat=0.0,
         max_lat=2.0,
         min_lon=0.0,
@@ -126,12 +135,14 @@ def test_build_coverage_report_payload_labels_advanced_clutter():
     loss_grid = np.array([[122.0]], dtype=np.float32)
     itm_loss_grid = np.array([[115.0]], dtype=np.float32)
     clutter_loss_grid = np.array([[7.0]], dtype=np.float32)
+    clutter_rx_db_grid = np.array([[5.0]], dtype=np.float32)
 
     payload, _raster_grid, _valid, _summary = build_coverage_report_payload_for_grid(
         prx_grid=prx_grid,
         loss_grid=loss_grid,
         itm_loss_grid=itm_loss_grid,
         clutter_loss_grid=clutter_loss_grid,
+        clutter_rx_db_grid=clutter_rx_db_grid,
         min_lat=0.0,
         max_lat=1.0,
         min_lon=0.0,

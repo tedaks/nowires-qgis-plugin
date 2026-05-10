@@ -305,6 +305,10 @@ def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypa
     monkeypatch.setattr(module, "extract_coverage_params", lambda *_args: p)
     monkeypatch.setattr(module, "ensure_dem_for_area", lambda *_args, **_kw: "dem.tif")
     class FakeElevationGrid:
+        min_lat = -0.1
+        max_lat = 0.1
+        min_lon = 179.4
+        max_lon = 179.6
         def __enter__(self):
             return self
         def __exit__(self, *args):
@@ -324,6 +328,7 @@ def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypa
             max_lon=179.6,
             itm_loss_grid=np.array([[100.0, 110.0]], dtype=np.float32),
             clutter_loss_grid=np.zeros((1, 2), dtype=np.float32),
+            clutter_rx_db_grid=np.zeros((1, 2), dtype=np.float32),
         )
     monkeypatch.setattr(
         module,
