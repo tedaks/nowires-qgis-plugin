@@ -1,26 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""
-/***************************************************************************
- NoWires
-                      A QGIS plugin
- Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                              -------------------
-         begin                : 2026-04-22
-         copyright            : (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-         email                : tedaks@gmail.com
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 3 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
-"""
 
 import logging
 import math
@@ -111,6 +91,7 @@ def compute_coverage(
     loss_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
     itm_loss_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
     clutter_loss_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
+    clutter_rx_db_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
 
     _sample_elev = getattr(elev_grid, "sample", None)
     if callable(_sample_elev):
@@ -195,6 +176,13 @@ def compute_coverage(
     )
     if not tasks:
         logger.error("No coverage pixels within the specified radius.")
+        if feedback:
+            feedback.reportError(
+                "No coverage pixels were generated within the specified radius. "
+                "This may indicate the analysis area is too small or the TX "
+                "coordinates are outside the DEM extent.",
+                fatalError=False,
+            )
         return None
     grid_meta = elev_grid.grid_meta_dict()
     grid_meta["tx_lat"] = tx_lat
@@ -235,6 +223,12 @@ def compute_coverage(
                     initializer=_init_cov_pool,
                     initargs=(shared_grid.name, grid_data.shape, str(grid_data.dtype), grid_meta),
                 ) as pool:
+                    # NOTE: ProcessPoolExecutor.map buffers submitted chunks
+                    # internally. Cancelling via cancel_event prevents *new*
+                    # chunks from starting, but chunks already queued for the
+                    # worker pool will still execute. This is inherent to the
+                    # executor API and cannot be avoided without switching to
+                    # submit()/as_completed() or a custom task queue.
                     for chunk_idx, batch_results in enumerate(
                         pool.map(
                             _itm_worker_batch,
@@ -247,7 +241,7 @@ def compute_coverage(
                             cancel_event.set()
                             break
                         pixels_failed += apply_batch_results(
-                            batch_results, loss_grid, prx_grid, itm_loss_grid, clutter_loss_grid)
+                            batch_results, loss_grid, prx_grid, itm_loss_grid, clutter_loss_grid, clutter_rx_db_grid)
                         pixels_done += len(batch_results)
                         if feedback and chunk_idx % 50 == 0:
                             feedback.setProgress(int(pixels_done / len(tasks) * 80))
@@ -265,6 +259,7 @@ def compute_coverage(
     if not use_mp:
         if feedback:
             feedback.pushInfo("Using single-threaded mode...")
+        progress_interval = max(1, len(tasks) // 100)
         for task_idx, task in enumerate(tasks):
             if feedback and feedback.isCanceled():
                 cancelled = True
@@ -276,16 +271,18 @@ def compute_coverage(
                 prx_grid[i, j] = prx
                 itm_loss_grid[i, j] = itm_loss_db
                 clutter_loss_grid[i, j] = c_tx + c_rx
+                clutter_rx_db_grid[i, j] = c_rx
             else:
                 pixels_failed += 1
             pixels_done += 1
-            if feedback and task_idx % 500 == 0:
+            if feedback and task_idx % progress_interval == 0:
                 feedback.setProgress(int(pixels_done / max(len(tasks), 1) * 80))
 
     if cancelled:
         return CoverageResult(
             prx_grid=None, loss_grid=None, min_lat=0.0, max_lat=0.0,
-            min_lon=0.0, max_lon=0.0, itm_loss_grid=None, clutter_loss_grid=None)
+            min_lon=0.0, max_lon=0.0, itm_loss_grid=None,
+            clutter_loss_grid=None, clutter_rx_db_grid=None)
 
     total = len(tasks)
     if feedback:
@@ -297,4 +294,5 @@ def compute_coverage(
     return CoverageResult(
         prx_grid=prx_grid, loss_grid=loss_grid,
         min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,
-        itm_loss_grid=itm_loss_grid, clutter_loss_grid=clutter_loss_grid)
+        itm_loss_grid=itm_loss_grid, clutter_loss_grid=clutter_loss_grid,
+        clutter_rx_db_grid=clutter_rx_db_grid)

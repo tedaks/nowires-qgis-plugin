@@ -6,7 +6,8 @@
 
 import numpy as np
 
-import coverage_engine
+from NoWires import coverage_engine
+from NoWires import coverage_pool
 
 
 
@@ -67,7 +68,6 @@ class TestComputeCoverageCancellation:
         def fake_itm_worker(task):
             return (task[0], task[1], 100.0, -50.0, 80.0, 0.0, 0.0)
 
-        import coverage_pool
         monkeypatch.setattr(coverage_pool, "_itm_worker", fake_itm_worker)
 
         fb = FakeFeedback(cancel_after=1)

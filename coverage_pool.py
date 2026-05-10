@@ -1,26 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""
-/***************************************************************************
- NoWires
-                     A QGIS plugin
- Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                             -------------------
-        begin                : 2026-04-22
-        copyright            : (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-        email                : tedaks@gmail.com
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 3 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
-"""
 
 import atexit
 import logging
@@ -39,14 +19,6 @@ from .coverage_compute import compute_itm_p2p
 from .elevation import sample_line_from_grid
 from .macos_compat import find_macos_python_executable
 from .shared_dem_grid import SharedDEMGrid
-
-try:
-    from concurrent.futures import BrokenExecutor as _BrokenPool
-except ImportError:
-    try:
-        from concurrent.futures.process import BrokenProcessPool as _BrokenPool
-    except ImportError:
-        _BrokenPool = RuntimeError
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +49,7 @@ class CoverageResult:
     max_lon: float
     itm_loss_grid: np.ndarray
     clutter_loss_grid: np.ndarray
+    clutter_rx_db_grid: np.ndarray
 
 _CoverageTask = namedtuple(
     "_CoverageTask",
@@ -90,6 +63,13 @@ _CoverageTask = namedtuple(
     ],
 )
 
+# Module-level shared-memory state for worker processes.
+# These globals are set per-pool by _init_cov_pool and read by _itm_worker.
+# They are safe because each worker process gets its own copy via the spawn
+# start method. However, if two CoverageAlgorithm instances run concurrently
+# in the same process (currently impossible because QGIS Processing enforces
+# NoThreading — see base_algorithm.py), the globals would conflict. A future
+# refactor could use a process-local dict keyed by pool ID for isolation.
 _cov_shm: Optional[multiprocessing.shared_memory.SharedMemory] = None
 _cov_grid_data: Optional[np.ndarray] = None
 _cov_grid_meta: dict = {}
@@ -276,7 +256,7 @@ def _release_shared_memory(shared_grid, unlink=True):
 
 
 def apply_batch_results(batch_results, loss_grid, prx_grid, itm_loss_grid,
-                        clutter_loss_grid):
+                        clutter_loss_grid, clutter_rx_db_grid):
     pixels_failed = 0
     for result in batch_results:
         if result is not None:
@@ -285,6 +265,7 @@ def apply_batch_results(batch_results, loss_grid, prx_grid, itm_loss_grid,
             prx_grid[i, j] = prx
             itm_loss_grid[i, j] = itm_loss_db
             clutter_loss_grid[i, j] = c_tx + c_rx
+            clutter_rx_db_grid[i, j] = c_rx
         else:
             pixels_failed += 1
     return pixels_failed

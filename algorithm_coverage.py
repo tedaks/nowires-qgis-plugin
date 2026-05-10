@@ -97,6 +97,28 @@ class CoverageAlgorithm(NoWiresAlgorithm):
         feedback.setProgress(15)
         try:
             with ElevationGrid(dem_path) as elev:
+                # Validate that the DEM actually covers the requested bounds.
+                # Partial DEM coverage causes edge pixels to be interpolated
+                # from distant valid cells, producing unreliable results.
+                dem_south = min(elev.min_lat, elev.max_lat)
+                dem_north = max(elev.min_lat, elev.max_lat)
+                dem_west = min(elev.min_lon, elev.max_lon)
+                dem_east = max(elev.min_lon, elev.max_lon)
+                uncovered_lat = (south < dem_south - 0.01) or (north > dem_north + 0.01)
+                uncovered_lon = (west < dem_west - 0.01) or (east > dem_east + 0.01)
+                if uncovered_lat or uncovered_lon:
+                    logger.warning(
+                        "DEM does not fully cover the analysis bounds. "
+                        "DEM: (%.4f, %.4f)-(%.4f, %.4f); "
+                        "Analysis: (%.4f, %.4f)-(%.4f, %.4f). "
+                        "Edge pixels may have unreliable terrain data.",
+                        dem_south, dem_west, dem_north, dem_east,
+                        south, west, north, east,
+                    )
+                    feedback.pushWarning(
+                        "Downloaded DEM does not fully cover the analysis area. "
+                        "Results near the edges may be unreliable."
+                    )
                 clutter_grid = p.clutter_grid
                 if clutter_grid is None and p.clutter_enabled:
                     clutter_grid = ensure_clutter_grid_for_area(
@@ -176,6 +198,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                         prx_grid=result.prx_grid, loss_grid=result.loss_grid,
                         itm_loss_grid=result.itm_loss_grid,
                         clutter_loss_grid=result.clutter_loss_grid,
+                        clutter_rx_db_grid=result.clutter_rx_db_grid,
                         min_lat=result.min_lat, max_lat=result.max_lat,
                         min_lon=result.min_lon, max_lon=result.max_lon,
                         tx_lat=p.tx_lat, tx_lon=p.tx_lon, tx_h=p.tx_h, rx_h=p.rx_h,
@@ -250,7 +273,10 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                 }
         finally:
             if clutter_grid is not None:
-                clutter_grid.close()
+                try:
+                    clutter_grid.close()
+                except Exception:
+                    pass
             self._tmp.cleanup()
             self._tmp.warn_persistent(feedback)
 

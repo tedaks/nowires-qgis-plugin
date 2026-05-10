@@ -51,6 +51,7 @@ def build_coverage_report_payload_for_grid(
     loss_grid,
     itm_loss_grid,
     clutter_loss_grid,
+    clutter_rx_db_grid,
     min_lat,
     max_lat,
     min_lon,
@@ -114,11 +115,10 @@ def build_coverage_report_payload_for_grid(
         float(np.nanmean(loss_grid[component_valid]))
         if component_valid.any() else None
     )
-    clutter_total_db = (
-        float(np.nanmean(clutter_loss_grid[component_valid]))
+    clutter_rx_db = (
+        float(np.nanmean(clutter_rx_db_grid[component_valid]))
         if component_valid.any() else 0.0
     )
-    clutter_rx_db = max(0.0, clutter_total_db - tx_clutter_for_report.tx_loss_db)
     report_payload = build_coverage_report_payload(
         tx_lat=tx_lat, tx_lon=tx_lon, tx_h=tx_h, rx_h=rx_h,
         f_mhz=f_mhz, radius_km=radius_km, grid_size=grid_size,

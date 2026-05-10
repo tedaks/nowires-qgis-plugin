@@ -4,7 +4,7 @@
 # This program is free software under GPLv3 or later. See LICENSE.
 """Behavioral tests for coverage_pool: _dynamic_chunk_size, _itm_worker, cancel_event."""
 
-from coverage_pool import _dynamic_chunk_size, _MIN_CHUNK_SIZE, _MAX_CHUNK_SIZE
+from NoWires.coverage_pool import _dynamic_chunk_size, _MIN_CHUNK_SIZE, _MAX_CHUNK_SIZE
 
 
 class TestDynamicChunkSize:

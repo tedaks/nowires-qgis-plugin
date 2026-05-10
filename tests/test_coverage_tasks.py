@@ -8,8 +8,8 @@ import numpy as np
 import pytest
 
 from NoWires.coverage_tasks import _coverage_axis_centers, _haversine_grid, _bearing_grid, build_coverage_tasks
-from antenna import AntennaConfig
-from clutter_context import ClutterLossContext
+from NoWires.antenna import AntennaConfig
+from NoWires.clutter_context import ClutterLossContext
 
 
 _OMNI = AntennaConfig(preset="omni")
@@ -60,7 +60,7 @@ class TestBuildCoverageTasks:
         for task in tasks:
             assert task[4] <= 10.0 or task[4] < 1.0
 
-    def test_includes_center_pixel_with_minimum_distance(self):
+    def test_skips_tx_pixel_at_minimum_distance(self):
         lats = np.array([14.0])
         lons = np.array([121.0])
         tasks = build_coverage_tasks(
@@ -74,8 +74,7 @@ class TestBuildCoverageTasks:
             tx_clutter_loss_db=0.0, rx_clutter_override=None,
             lats=lats, lons=lons,
         )
-        assert len(tasks) == 1
-        assert tasks[0][4] == pytest.approx(1.0)
+        assert len(tasks) == 0, "TX cell at zero distance should be skipped"
 
     def test_task_tuple_contains_correct_fields(self):
         lats = np.array([14.0, 14.001])

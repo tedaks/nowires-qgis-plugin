@@ -109,12 +109,13 @@ def compute_itm_p2p(
     if not math.isfinite(result.loss_db):
         return None
     if result.loss_db > ITM_LOSS_UPPER_BOUND:
-        logger.debug("ITM loss %.1f dB exceeds cap (%.1f); returning capped result", result.loss_db, ITM_LOSS_UPPER_BOUND)
+        logger.debug("ITM loss %.1f dB exceeds cap (%.1f); capping", result.loss_db, ITM_LOSS_UPPER_BOUND)
+    loss_db = min(result.loss_db, ITM_LOSS_UPPER_BOUND)
     clutter_total_db = clutter_tx_db + clutter_rx_db
-    total_path_loss_db = result.loss_db + clutter_total_db
+    total_path_loss_db = loss_db + clutter_total_db
     prx = eirp_dbm + ant_gain_adj + rx_gain_dbi - total_path_loss_db
     return {
-        "itm_loss_db": result.loss_db,
+        "itm_loss_db": loss_db,
         "clutter_tx_db": clutter_tx_db,
         "clutter_rx_db": clutter_rx_db,
         "total_path_loss_db": total_path_loss_db,

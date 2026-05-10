@@ -6,8 +6,8 @@
 
 import numpy as np
 
-from antenna import AntennaConfig
-from coverage_engine import build_coverage_tasks, should_use_multiprocessing
+from NoWires.antenna import AntennaConfig
+from NoWires.coverage_engine import build_coverage_tasks, should_use_multiprocessing
 
 
 _OMNI_CONFIG = AntennaConfig(preset="omni")
@@ -21,7 +21,7 @@ def test_should_use_multiprocessing_enabled_on_non_windows():
     assert should_use_multiprocessing(os_name="posix") is True
 
 
-def test_build_coverage_tasks_keeps_center_pixel_with_minimum_distance():
+def test_build_coverage_tasks_skips_tx_pixel():
     tasks = build_coverage_tasks(
         tx_lat=14.0,
         tx_lon=121.0,
@@ -52,11 +52,10 @@ def test_build_coverage_tasks_keeps_center_pixel_with_minimum_distance():
     )
 
     center_tasks = [task for task in tasks if task[0] == 1 and task[1] == 1]
-    assert len(center_tasks) == 1
-    assert center_tasks[0][4] == 1.0
+    assert len(center_tasks) == 0, "TX cell should be excluded from coverage tasks"
 
 
-def test_build_coverage_tasks_keeps_nearest_pixels_for_even_ui_grid_sizes():
+def test_build_coverage_tasks_nearest_pixels_have_minimum_distance():
     radius_m = 100.0
     grid_size = 64
     lat_per_m = 1.0 / 111320.0

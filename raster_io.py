@@ -13,6 +13,12 @@ def write_geotiff(path, grid, min_lat, max_lat, min_lon, max_lon, nodata=COVERAG
 
     The grid is passed through grid_to_raster_array for the row-orientation
     flip the QGIS pipeline expects.
+
+    **Axis convention**: ``grid`` uses (i=0 → southernmost latitude) indexing.
+    grid_to_raster_array flips the rows with [::-1] so that `raster[0]`
+    corresponds to the northernmost latitude, matching GDAL's north-up
+    geotransform (origin = north-west corner).  Any change to the axis
+    ordering in coverage_tasks / coverage_engine must be reflected here.
     """
     raster = grid_to_raster_array(grid)
     n_rows, n_cols = raster.shape
