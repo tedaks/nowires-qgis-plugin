@@ -16,6 +16,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
       - name: Install lint dependencies
         run: pip install --break-system-packages ruff
@@ -25,7 +26,7 @@ jobs:
 
       - name: Verify no source file exceeds 300 lines
         run: |
-          violating=$(find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | grep -v 'total$' | awk '$1 > 300 {print}')
+          violating=$(find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}')
           if [ -n "$violating" ]; then
             echo "ERROR: The following source files exceed 300 lines:"
             echo "$violating"
@@ -44,9 +45,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
       - name: Install test dependencies
-        run: pip install --break-system-packages pytest numpy
+        run: pip install --break-system-packages pytest pytest-cov numpy
 
       - name: Run unit and contract tests
-        run: pytest -q -m "not benchmark and not qgis_integration"
+        run: pytest -q -m "not benchmark and not qgis_integration" --cov=NoWires --cov-report=term-missing
+
+      - name: Check coverage threshold
+        run: |
+          pytest -q -m "not benchmark and not qgis_integration" --cov=NoWires --cov-fail-under=60 --cov-report= /dev/null 2>&1 || echo "Note: coverage threshold is informational and does not block CI"

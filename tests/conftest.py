@@ -361,7 +361,6 @@ for _pkg_sub in (
     "report_payloads",
     "clutter",
     "clutter_saalos",
-    "clutter_p2108",
     "clutter_categories",
     "clutter_constants",
     "clutter_context",

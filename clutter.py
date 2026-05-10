@@ -71,7 +71,7 @@ _CLUTTER_LOSS_ARRAY = np.array([
 # Lookup table: ESA WorldCover class ID (0-255) -> legacy category index (0-4).
 # CAUTION: This LUT and _WORLDCOVER_ADVANCED_IDX in clutter_grid.py both
 # encode the WorldCover class mapping. They MUST stay consistent with
-# _WORLDVER_MAP in clutter_categories.py. When updating any one of them,
+# _WORLDCOVER_MAP in clutter_categories.py. When updating any one of them,
 # update all three and run the dual-mapping consistency test
 # (test_clutter_categories.py::test_simple_and_advanced_mappings_consistent).
 _WORLDCOVER_TO_CATEGORY = np.zeros(256, dtype=np.int32)

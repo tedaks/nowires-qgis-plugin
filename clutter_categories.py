@@ -60,7 +60,7 @@ CLUTTER_CATEGORY_PARAMS = {
     },
 }
 
-_WORLDVER_MAP = {
+_WORLDCOVER_MAP = {
     10: "vegetation",
     20: "dense_rural",
     30: "open_rural",
@@ -77,7 +77,7 @@ _WORLDVER_MAP = {
 
 def worldcover_class_to_advanced_category(class_id) -> str:
     try:
-        return _WORLDVER_MAP.get(int(class_id), "open")
+        return _WORLDCOVER_MAP.get(int(class_id), "open")
     except (TypeError, ValueError):
         return "open"
 

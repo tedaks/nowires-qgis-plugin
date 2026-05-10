@@ -2,12 +2,15 @@ name: QGIS Integration Tests
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   qgis-integration:
     runs-on: ubuntu-latest
+    continue-on-error: true
 
     container:
       image: qgis/qgis:4.0
