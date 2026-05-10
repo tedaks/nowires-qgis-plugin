@@ -1,28 +1,6 @@
-# -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""
-/***************************************************************************
- NoWires
-                     A QGIS plugin
- Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                         -------------------
-        begin                : 2026-04-22
-        copyright            : (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-        email                : tedaks@gmail.com
- ***************************************************************************/
-
- /***************************************************************************
-  *                                                                         *
-  *   This program is free software; you can redistribute it and/or modify  *
-  *   it under the terms of the GNU General Public License as published by  *
-  *   the Free Software Foundation; either version 3 of the License, or     *
-  *   (at your option) any later version.                                   *
-  *                                                                         *
-  ***************************************************************************/
-
-
-Core P2P analysis execution: DEM download, ITM prediction, Fresnel analysis,
+"""Core P2P analysis execution: DEM download, ITM prediction, Fresnel analysis,
 output writing, report generation, chart display, and feedback reporting.
 """
 
@@ -34,8 +12,6 @@ import numpy as np
 from osgeo import osr
 from qgis.core import QgsProcessingException
 
-logger = logging.getLogger(__name__)
-
 from .constants import (
     CLIMATE_NAMES, DEFAULT_PROFILE_STEP_M, DEGREE_PADDING, METERS_PER_DEGREE_LAT,
     POLARIZATION_NAMES,
@@ -46,8 +22,8 @@ from .elevation import ElevationGrid, bearing_deg, haversine_m
 from .fresnel import C_LIGHT
 from .geo_bounds import shortest_longitude_bounds
 from .p2p_analysis_params import P2PAnalysisParams
-from .radio import (PROP_MODE_NAMES, build_pfl,
-    itm_p2p_loss)
+from .radio import PROP_MODE_NAMES, build_pfl, itm_p2p_loss
+from .constants import ITM_LOSS_UPPER_BOUND
 from .fresnel import fresnel_profile_analysis
 from .report_export import write_report_csv, write_report_html, write_report_json
 from .report_payloads import build_p2p_report_payload
@@ -60,7 +36,11 @@ from .p2p_params import report_p2p_results
 from .p2p_outputs import write_profile_line, write_fresnel_zone
 from .p2p_chart import show_profile_chart
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["run_p2p_analysis"]
+
+_MIN_P2P_DISTANCE_M = 1.0
 
 
 def _interpolate_nan_elevations(elevations):
@@ -139,6 +119,10 @@ def _load_p2p_qgis_layers(context, profile_path, fresnel_poly_path,
 def run_p2p_analysis(params: P2PAnalysisParams):
     p = params
     dist_m = haversine_m(p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon)
+    if dist_m < _MIN_P2P_DISTANCE_M:
+        raise QgsProcessingException(
+            "TX and RX points are too close ({:.2f} m); minimum path distance is {:.0f} m.".format(
+                dist_m, _MIN_P2P_DISTANCE_M))
     p.feedback.pushInfo("TX: ({:.5f}, {:.5f}), RX: ({:.5f}, {:.5f})".format(
         p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon))
     p.feedback.pushInfo("Path distance: {:.1f} m ({:.2f} km)".format(dist_m, dist_m / 1000.0))
@@ -169,6 +153,8 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         if nan_count == len(elevations):
             raise QgsProcessingException(
                 "All {} elevation samples are NaN — DEM data is missing for this path.".format(nan_count))
+        p.feedback.pushInfo(
+            "Interpolating {} NaN elevation value(s) from nearest valid samples (missing DEM data)".format(nan_count))
         logger.warning(
             "Interpolating %d NaN elevation value(s) from nearest valid samples (missing DEM data)", nan_count)
         elevations = _interpolate_nan_elevations(elevations)
@@ -180,6 +166,13 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         climate=p.climate, N0=p.n0, f__mhz=p.f_mhz, polarization=p.polarization,
         epsilon=p.epsilon, sigma=p.sigma, time_pct=p.time_pct,
         location_pct=p.location_pct, situation_pct=p.situation_pct)
+    if result.failed or not math.isfinite(result.loss_db):
+        raise QgsProcessingException(
+            "ITM prediction failed (loss_db={:.1f}, mode={}, warnings={}).".format(
+                result.loss_db, result.mode, result.warnings))
+    if result.loss_db > ITM_LOSS_UPPER_BOUND:
+        logger.debug("ITM loss %.1f dB exceeds cap (%.1f); capping", result.loss_db, ITM_LOSS_UPPER_BOUND)
+    loss_db = min(result.loss_db, ITM_LOSS_UPPER_BOUND)
     tx_elev, rx_elev = elevations[0], elevations[-1]
     tx_ant_h, rx_ant_h = tx_elev + p.tx_h, rx_elev + p.rx_h
     wavelength_m = C_LIGHT / (p.f_mhz * 1e6)
@@ -222,7 +215,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         rx_override=p.rx_clutter_override,
         context=clutter_context,
     )
-    total_path_loss_db = result.loss_db + cl.total_with_bel_db
+    total_path_loss_db = loss_db + cl.total_with_bel_db
     prx_dbm = eirp_dbm + p.rx_gain + ant_adj_total - total_path_loss_db
     margin_db = prx_dbm - p.rx_sens
     fspl_db = (20.0 * math.log10(dist_m / 1000.0) + 20.0 * math.log10(p.f_mhz) + 32.45
@@ -254,7 +247,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             climate_name=CLIMATE_NAMES.get(p.climate, str(p.climate)),
             k_factor=p.k_factor, dist_m=dist_m, propagation_mode=result.mode,
             propagation_mode_name=PROP_MODE_NAMES.get(result.mode, "Unknown"),
-            fspl_db=fspl_db, itm_loss_db=result.loss_db,
+            fspl_db=fspl_db, itm_loss_db=loss_db,
             tx_power=p.tx_power, tx_gain=p.tx_gain, rx_gain=p.rx_gain,
             cable_loss=p.cable_loss, eirp_dbm=eirp_dbm,
             prx_dbm=prx_dbm, rx_sensitivity_dbm=p.rx_sens,
@@ -294,6 +287,9 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         }
     finally:
         if owns_clutter_grid and clutter_grid is not None:
-            clutter_grid.close()
+            try:
+                clutter_grid.close()
+            except Exception:
+                logger.warning("Failed to close clutter grid", exc_info=True)
         tmp_mgr.cleanup()
         tmp_mgr.warn_persistent(p.feedback)

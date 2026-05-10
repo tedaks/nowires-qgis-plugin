@@ -35,11 +35,10 @@ import math
 import numpy as np
 
 from .radio import build_pfl, itm_p2p_loss
-from .constants import COVERAGE_NODATA
+from .constants import COVERAGE_NODATA, ITM_LOSS_UPPER_BOUND
 
 logger = logging.getLogger(__name__)
 
-ITM_LOSS_UPPER_BOUND = 400.0
 COVERAGE_PROFILE_STEP_M = 100.0
 DEFAULT_MAX_PROFILE_PTS = 200
 

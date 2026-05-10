@@ -13,6 +13,7 @@ from constants import (
     EARTH_RADIUS_M,
     GRID_SIZE_OPTIONS,
     GRID_SIZE_PRESETS,
+    ITM_LOSS_UPPER_BOUND,
     K_FACTOR_PRESETS_OPTIONS,
     MAX_AOI_EXTENT_DEGREES,
     METERS_PER_DEGREE_LAT,
@@ -214,3 +215,11 @@ def test_default_street_width():
 def test_k_factor_cross_reference_with_presets():
     assert "1.33" in K_FACTOR_PRESETS_OPTIONS[2]
     assert math.isclose(DEFAULT_K_FACTOR, 4.0 / 3.0, rel_tol=1e-9)
+
+
+def test_itm_loss_upper_bound_is_400():
+    assert ITM_LOSS_UPPER_BOUND == 400.0
+
+
+def test_itm_loss_upper_bound_is_numeric():
+    assert isinstance(ITM_LOSS_UPPER_BOUND, float)

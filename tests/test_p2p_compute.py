@@ -20,6 +20,7 @@ import pytest
 
 from NoWires.p2p_analysis_params import P2PAnalysisParams
 from NoWires.radio import ITMResult
+from NoWires.constants import ITM_LOSS_UPPER_BOUND
 from nan_utils import interpolate_nan_elevations, interpolate_nan_array
 from itm.propagation import free_space_loss
 
@@ -242,3 +243,163 @@ def test_run_p2p_analysis_leaves_supplied_clutter_grid_open(monkeypatch):
     p2p_compute.run_p2p_analysis(params)
 
     assert not supplied_grid.closed
+
+
+class TestP2PClutterGridCloseErrorIsolation:
+    """Verify that errors closing a supplied clutter_grid are silently caught."""
+
+    class _FailingCloseGrid:
+        source = "auto"
+        closed = False
+
+        def sample_category(self, _lat, _lon):
+            return "open"
+
+        def close(self):
+            self.closed = True
+            raise RuntimeError("close failed")
+
+
+class TestP2PMinDistanceValidation:
+    """Verify that P2P analysis rejects paths shorter than _MIN_P2P_DISTANCE_M."""
+
+    def test_zero_distance_raises_processing_exception(self, monkeypatch):
+        p2p_compute = _load_p2p_compute_with_test_stubs(monkeypatch)
+        params = P2PAnalysisParams(
+            tx_lat=14.0, tx_lon=121.0, rx_lat=14.0, rx_lon=121.0,
+            tx_h=30.0, rx_h=10.0, f_mhz=900.0,
+            polarization=1, climate=1,
+            time_pct=50.0, location_pct=50.0, situation_pct=50.0,
+            tx_power=30.0, tx_gain=10.0, rx_gain=8.0,
+            cable_loss=1.0, rx_sens=-90.0,
+            k_factor=4.0 / 3.0, n0=301.0, epsilon=15.0, sigma=0.005,
+            tx_antenna_config=SimpleNamespace(preset="omni"),
+            rx_antenna_config=SimpleNamespace(preset="omni"),
+            clutter_enabled=False,
+            context=object(),
+            feedback=_Feedback(),
+            output_profile="OUTPUT_PROFILE",
+            output_fresnel="OUTPUT_FRESNEL",
+            output_markers="OUTPUT_MARKERS",
+            output_report_csv="", output_report_json="", output_report_html="",
+        )
+        with pytest.raises(Exception, match="too close"):
+            p2p_compute.run_p2p_analysis(params)
+
+
+class TestP2PITMLossCap:
+    """Verify that P2P analysis caps ITM loss at ITM_LOSS_UPPER_BOUND."""
+
+    def test_loss_capped_at_upper_bound(self, monkeypatch):
+        p2p_compute = _load_p2p_compute_with_test_stubs(monkeypatch)
+        params = _make_p2p_params()
+        params.clutter_enabled = False
+        params.clutter_grid = None
+        monkeypatch.setattr(p2p_compute, "ElevationGrid", _ElevationGrid)
+        monkeypatch.setattr(
+            p2p_compute,
+            "itm_p2p_loss",
+            lambda **_kwargs: ITMResult(loss_db=999.0, mode=2, warnings=0),
+        )
+        monkeypatch.setattr(p2p_compute, "antenna_gain_adjustment_db", lambda *a, **kw: 0.0)
+        monkeypatch.setattr(
+            p2p_compute,
+            "_write_p2p_output_layers",
+            lambda *a, **kw: ("/tmp/profile.gpkg", "/tmp/fresnel.gpkg", "/tmp/markers.gpkg"),
+        )
+        monkeypatch.setattr(p2p_compute, "_load_p2p_qgis_layers", lambda *a, **kw: None)
+        monkeypatch.setattr(p2p_compute, "_write_p2p_reports", lambda *a, **kw: None)
+        monkeypatch.setattr(p2p_compute, "report_p2p_results", lambda *a, **kw: None)
+
+        captured = {}
+        def _capturing_build_payload(*args, **kwargs):
+            captured.update(kwargs)
+            return {"results": {}, "inputs": {}, "status": {}}
+        monkeypatch.setattr(p2p_compute, "build_p2p_report_payload", _capturing_build_payload)
+        p2p_compute.run_p2p_analysis(params)
+        assert captured["itm_loss_db"] == ITM_LOSS_UPPER_BOUND
+
+    def test_loss_not_capped_below_upper_bound(self, monkeypatch):
+        p2p_compute = _load_p2p_compute_with_test_stubs(monkeypatch)
+        params = _make_p2p_params()
+        params.clutter_enabled = False
+        params.clutter_grid = None
+        monkeypatch.setattr(p2p_compute, "ElevationGrid", _ElevationGrid)
+        monkeypatch.setattr(
+            p2p_compute,
+            "itm_p2p_loss",
+            lambda **_kwargs: ITMResult(loss_db=150.0, mode=1, warnings=0),
+        )
+        monkeypatch.setattr(p2p_compute, "antenna_gain_adjustment_db", lambda *a, **kw: 0.0)
+        monkeypatch.setattr(
+            p2p_compute,
+            "_write_p2p_output_layers",
+            lambda *a, **kw: ("/tmp/profile.gpkg", "/tmp/fresnel.gpkg", "/tmp/markers.gpkg"),
+        )
+        monkeypatch.setattr(p2p_compute, "_load_p2p_qgis_layers", lambda *a, **kw: None)
+        monkeypatch.setattr(p2p_compute, "_write_p2p_reports", lambda *a, **kw: None)
+        monkeypatch.setattr(p2p_compute, "report_p2p_results", lambda *a, **kw: None)
+
+        captured = {}
+        def _capturing_build_payload(*args, **kwargs):
+            captured.update(kwargs)
+            return {"results": {}, "inputs": {}, "status": {}}
+        monkeypatch.setattr(p2p_compute, "build_p2p_report_payload", _capturing_build_payload)
+        p2p_compute.run_p2p_analysis(params)
+        assert captured["itm_loss_db"] == 150.0
+
+
+class TestP2PITMFailureRejection:
+    """Verify that P2P analysis rejects ITM results that are failed or NaN."""
+
+    def test_failed_itm_result_raises_exception(self, monkeypatch):
+        p2p_compute = _load_p2p_compute_with_test_stubs(monkeypatch)
+        params = _make_p2p_params()
+        params.clutter_enabled = False
+        params.clutter_grid = None
+        monkeypatch.setattr(p2p_compute, "ElevationGrid", _ElevationGrid)
+        monkeypatch.setattr(
+            p2p_compute,
+            "itm_p2p_loss",
+            lambda **_kwargs: ITMResult(loss_db=float("nan"), mode=0, warnings=1, failed=True),
+        )
+        with pytest.raises(Exception, match="ITM prediction failed"):
+            p2p_compute.run_p2p_analysis(params)
+
+    def test_nan_loss_raises_exception(self, monkeypatch):
+        p2p_compute = _load_p2p_compute_with_test_stubs(monkeypatch)
+        params = _make_p2p_params()
+        params.clutter_enabled = False
+        params.clutter_grid = None
+        monkeypatch.setattr(p2p_compute, "ElevationGrid", _ElevationGrid)
+        monkeypatch.setattr(
+            p2p_compute,
+            "itm_p2p_loss",
+            lambda **_kwargs: ITMResult(loss_db=float("nan"), mode=0, warnings=1, failed=False),
+        )
+        with pytest.raises(Exception, match="ITM prediction failed"):
+            p2p_compute.run_p2p_analysis(params)
+
+    def test_inf_loss_raises_exception(self, monkeypatch):
+        p2p_compute = _load_p2p_compute_with_test_stubs(monkeypatch)
+        params = _make_p2p_params()
+        params.clutter_enabled = False
+        params.clutter_grid = None
+        monkeypatch.setattr(p2p_compute, "ElevationGrid", _ElevationGrid)
+        monkeypatch.setattr(
+            p2p_compute,
+            "itm_p2p_loss",
+            lambda **_kwargs: ITMResult(loss_db=float("inf"), mode=0, warnings=1, failed=False),
+        )
+        with pytest.raises(Exception, match="ITM prediction failed"):
+            p2p_compute.run_p2p_analysis(params)
+
+
+class TestITMLossUpperBoundInConstants:
+    """Verify that ITM_LOSS_UPPER_BOUND is defined and accessible from constants."""
+
+    def test_itm_loss_upper_bound_is_400(self):
+        assert ITM_LOSS_UPPER_BOUND == 400.0
+
+    def test_itm_loss_upper_bound_is_numeric(self):
+        assert isinstance(ITM_LOSS_UPPER_BOUND, float)

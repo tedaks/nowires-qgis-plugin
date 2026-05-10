@@ -190,7 +190,10 @@ class P2PAlgorithm(NoWiresAlgorithm):
             return run_p2p_analysis(p2p_params)
         finally:
             if clutter_grid is not None:
-                clutter_grid.close()
+                try:
+                    clutter_grid.close()
+                except Exception:
+                    pass
 
     def name(self):
         return "p2p_analysis"

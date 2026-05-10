@@ -234,3 +234,28 @@ def test_p2p_algorithm_loads_auto_clutter_after_path_bounds_exist():
     bounds_idx = source.index("south, north = min(p.tx_lat, p.rx_lat) - pad")
     auto_clutter_idx = source.index("clutter_grid = ensure_clutter_grid_for_area(")
     assert bounds_idx < auto_clutter_idx
+
+
+def test_p2p_pipeline_caps_itm_loss():
+    source = _p2p_source()
+    assert "ITM_LOSS_UPPER_BOUND" in source
+    assert "min(result.loss_db" in source or "min(result.loss_db, ITM_LOSS_UPPER_BOUND)" in source
+
+
+def test_p2p_pipeline_rejects_failed_itm_result():
+    source = _p2p_source()
+    assert "result.failed" in source
+    assert "math.isfinite(result.loss_db)" in source
+
+
+def test_p2p_pipeline_validates_minimum_distance():
+    source = _p2p_source()
+    assert "_MIN_P2P_DISTANCE_M" in source
+    assert "minimum path distance" in source
+
+
+def test_p2p_pipeline_reports_nan_interpolation_to_feedback():
+    source = _p2p_source()
+    nan_info_idx = source.index("Interpolating {} NaN elevation")
+    feedback_push_idx = source.index("p.feedback.pushInfo")
+    assert feedback_push_idx < nan_info_idx or "p.feedback.pushInfo" in source[nan_info_idx:nan_info_idx + 200]
