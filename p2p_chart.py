@@ -65,10 +65,8 @@ def _add_obstruction_annotations(ax, d_km, terrain_bulge, los_h, fresnel_r):
 
 
 def _setup_tooltip(ax, fig, d_km, distances, terrain_bulge, los_h, fresnel_r):
-    tooltip = ax.text(
-        0, 0, "", fontsize=8, visible=False,
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue", alpha=0.8),
-    )
+    tooltip = ax.text(0, 0, "", fontsize=8, visible=False,
+                      bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue", alpha=0.8))
     vline = ax.axvline(x=0, color="gray", linewidth=0.8, visible=False)
 
     def on_motion(event):
@@ -90,16 +88,13 @@ def _setup_tooltip(ax, fig, d_km, distances, terrain_bulge, los_h, fresnel_r):
         tooltip.set_text(
             "Dist: {:.1f} km\nTerrain: {:.1f} m\nLOS: {:.1f} m\n"
             "Fresnel R: {:.1f} m\nClearance: {:.1f} m".format(
-                dist_val / 1000, elev_val, los_val, fresnel_val, clear_val
-            )
-        )
+                dist_val / 1000, elev_val, los_val, fresnel_val, clear_val))
         tooltip.set_visible(True)
         vline.set_visible(True)
         vline.set_xdata([event.xdata, event.xdata])
-        tooltip_x = event.xdata
         mid = (d_km[-1] + d_km[0]) / 2
         span = d_km[-1] - d_km[0]
-        tooltip_x = event.xdata - span * 0.15 if tooltip_x > mid else event.xdata + span * 0.02
+        tooltip_x = event.xdata - span * 0.15 if event.xdata > mid else event.xdata + span * 0.02
         tooltip.set_position((tooltip_x, max(elev_val, los_val) + 3))
         fig.canvas.draw_idle()
 
@@ -115,7 +110,8 @@ def _make_save_png(fig, f_mhz, dist_m, dock):
             path, _ = QFileDialog.getSaveFileName(
                 dock, "Save PNG", default_name, "PNG Files (*.png)")
             if path:
-                if not path.lower().endswith(".png"): path += ".png"
+                if not path.lower().endswith(".png"):
+                    path += ".png"
                 fig.savefig(path, dpi=300, bbox_inches="tight")
                 QMessageBox.information(dock, "Saved", "Chart saved to:\n" + path)
         except Exception as e:
@@ -133,7 +129,8 @@ def _make_export_csv(distances, terrain_bulge, los_h, fresnel_r, f_mhz, dist_m, 
             path, _ = QFileDialog.getSaveFileName(
                 dock, "Export CSV", default_name, "CSV Files (*.csv)")
             if path:
-                if not path.lower().endswith(".csv"): path += ".csv"
+                if not path.lower().endswith(".csv"):
+                    path += ".csv"
                 obstructs_los = terrain_bulge > los_h
                 with open(path, "w", newline="") as f:
                     f.write("distance_m,terrain_elevation_m,los_m,"
@@ -159,9 +156,8 @@ def show_profile_chart(
         import matplotlib
         matplotlib.use("QtAgg")
         from matplotlib.figure import Figure
-        from qgis.PyQt.QtWidgets import (
-            QDockWidget, QWidget, QVBoxLayout, QToolBar, QCheckBox, QPushButton,
-        )
+        from qgis.PyQt.QtWidgets import (QDockWidget, QWidget, QVBoxLayout,
+                                          QToolBar, QCheckBox, QPushButton)
         from qgis.PyQt.QtCore import Qt
         from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
     except ImportError:
@@ -212,10 +208,8 @@ def show_profile_chart(
     obstruction_annotations = _add_obstruction_annotations(
         ax, d_km, terrain_bulge, los_h, fresnel_r)
     fig.tight_layout()
-    toggle_state = {
-        "terrain": True, "los": True, "fresnel": True,
-        "violation_band": True, "antennas": True, "obstructions": True,
-    }
+    toggle_state = {"terrain": True, "los": True, "fresnel": True,
+                    "violation_band": True, "antennas": True, "obstructions": True}
 
     def _set_obstructions_visible(visible):
         # Remove/recreate instead of set_visible: toggling visibility on an
@@ -265,7 +259,8 @@ def show_profile_chart(
             update_visibility()
         return _toggle
 
-    toolbar.addWidget(btn_png); toolbar.addWidget(btn_csv)
+    toolbar.addWidget(btn_png)
+    toolbar.addWidget(btn_csv)
     toolbar.addSeparator()
     for label, key in [("Terrain", "terrain"), ("LOS", "los"), ("Fresnel", "fresnel"),
                        ("60% Band", "violation_band"), ("Antennas", "antennas"),

@@ -25,7 +25,6 @@ Portions adapted from tedaks/nowires (MIT). See NOTICE.md.
 """
 
 import logging
-import os
 from qgis.core import QgsProcessingException
 from .base_algorithm import NoWiresAlgorithm, install_constants
 from .constants import DEGREE_PADDING
@@ -35,14 +34,13 @@ from .geo_bounds import shortest_longitude_bounds_for
 from .radio import K_FACTOR_PRESETS, resolve_k_factor, validate_itm_input_ranges
 from .antenna import antenna_preset_key
 from .clutter import LandCoverGrid, clutter_override_value, ensure_clutter_grid_for_area
-from .processing_utils import queue_layer_for_loading
 from .batch_params import BATCH_PARAM_CONSTANTS, add_batch_params
 from .batch_outputs import (
     _feat_attr, compute_batch_links, rank_batch_results,
-    write_batch_marker_layer, write_batch_csv, write_batch_json,
 )
 from .temp_manager import TempDirManager
 from .batch_analysis_params import BatchAnalysisParams
+from .batch_writer import write_batch_outputs
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +70,8 @@ def _extract_batch_radio_params(algorithm, parameters, context):
     _pD = algorithm.parameterAsDouble
     _pE = algorithm.parameterAsEnum
     _pF = algorithm.parameterAsFile
-    tx_h = _pD(p, algorithm.TX_HEIGHT, context); rx_h = _pD(p, algorithm.RX_HEIGHT, context)
+    tx_h = _pD(p, algorithm.TX_HEIGHT, context)
+    rx_h = _pD(p, algorithm.RX_HEIGHT, context)
     f_mhz = _pD(p, algorithm.FREQ_MHZ, context)
     polarization = _pE(p, algorithm.POLARIZATION, context)
     climate = _pE(p, algorithm.CLIMATE, context)
@@ -88,15 +87,18 @@ def _extract_batch_radio_params(algorithm, parameters, context):
     rx_pk = antenna_preset_key(_pE(p, algorithm.RX_ANTENNA_PRESET, context))
     tx_az = _pD(p, algorithm.TX_ANTENNA_AZ, context)
     rx_az = _pD(p, algorithm.RX_ANTENNA_AZ, context)
-    pi = _pE(p, algorithm.K_FACTOR_PRESET, context); kf = resolve_k_factor(
+    pi = _pE(p, algorithm.K_FACTOR_PRESET, context)
+    kf = resolve_k_factor(
         has_preset=pi < len(K_FACTOR_PRESETS), has_custom=True,
         custom_value=_pD(p, algorithm.K_FACTOR, context), preset_index=pi)
-    n0 = _pD(p, algorithm.N0, context); epsilon = _pD(p, algorithm.EPSILON, context)
+    n0 = _pD(p, algorithm.N0, context)
+    epsilon = _pD(p, algorithm.EPSILON, context)
     sigma = _pD(p, algorithm.SIGMA, context)
     validate_itm_input_ranges(tx_height_m=tx_h, rx_height_m=rx_h, frequency_mhz=f_mhz,
         surface_refractivity_n0=n0, earth_conductivity_sigma=sigma)
     clutter_model_idx = _pE(p, algorithm.CLUTTER_MODEL, context)
-    ce = clutter_model_idx > 0; clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
+    ce = clutter_model_idx > 0
+    clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
     cch_raw = _pD(p, algorithm.CCH_OVERRIDE, context)
     cch_override_m = cch_raw if cch_raw > 0.0 else None
     _crp = _pF(p, algorithm.CLUTTER_RASTER, context)
@@ -111,18 +113,16 @@ def _extract_batch_radio_params(algorithm, parameters, context):
     bel_elevation_angle = _pD(p, algorithm.BEL_ELEVATION_ANGLE, context)
     tfb = _pD(p, algorithm.TX_FRONT_BACK_DB, context)
     rfb = _pD(p, algorithm.RX_FRONT_BACK_DB, context)
-    return dict(
-        tx_h=tx_h, rx_h=rx_h, f_mhz=f_mhz, polarization=polarization,
+    return dict(tx_h=tx_h, rx_h=rx_h, f_mhz=f_mhz, polarization=polarization,
         climate=climate, time_pct=time_pct, location_pct=location_pct,
         situation_pct=situation_pct, tx_power=tx_power, tx_gain_d=tx_gain_d,
-        rx_gain_d=rx_gain_d, cable_loss=cable_loss, rx_sens=rx_sens,
-        tx_pk=tx_pk, rx_pk=rx_pk, tx_az=tx_az, rx_az=rx_az, kf=kf,
-        n0=n0, epsilon=epsilon, sigma=sigma, ce=ce, cg=cg, tco=tco, rco=rco, tfb=tfb, rfb=rfb,
+        rx_gain_d=rx_gain_d, cable_loss=cable_loss, rx_sens=rx_sens, tx_pk=tx_pk,
+        rx_pk=rx_pk, tx_az=tx_az, rx_az=rx_az, kf=kf, n0=n0, epsilon=epsilon,
+        sigma=sigma, ce=ce, cg=cg, tco=tco, rco=rco, tfb=tfb, rfb=rfb,
         clutter_model=clutter_model, cch_override_m=cch_override_m,
         clutter_percentile=clutter_percentile, street_width_m=street_width_m,
         bel_enabled=bel_enabled, bel_building_type=bel_building_type,
-        bel_elevation_angle_deg=bel_elevation_angle,
-    )
+        bel_elevation_angle_deg=bel_elevation_angle)
 
 def _collect_batch_inputs(algorithm, parameters, context, feedback):
     from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform
@@ -166,6 +166,7 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
         feedback.pushInfo("Many-to-One: {} TX sites".format(len(candidate_tx)))
     rp = _extract_batch_radio_params(algorithm, parameters, context)
     lats = [pt["lat"] for pt in candidate_tx] + [pt["lat"] for pt in rx_points]
+    lons = [pt["lon"] for pt in candidate_tx] + [pt["lon"] for pt in rx_points]
     south, north = min(lats), max(lats)
     pad = max(DEGREE_PADDING, (north - south) * 0.1)
     west, east = shortest_longitude_bounds_for(lons, padding_deg=pad)
@@ -173,12 +174,13 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
         rp["cg"] = ensure_clutter_grid_for_area(south=south - pad, north=north + pad,
             west=west - pad, east=east + pad, feedback=feedback)
     feedback.pushInfo("Downloading DEM data...")
-    feedback.pushInfo("Downloading DEM data..."); feedback.setProgress(5)
+    feedback.setProgress(5)
     dem_path = ensure_dem_for_area(
         south - pad, north + pad, west - pad, east + pad, feedback=feedback)
     if dem_path is None:
         raise QgsProcessingException("Failed to obtain DEM data for the analysis area.")
-    feedback.pushInfo("Building elevation grid..."); feedback.setProgress(15)
+    feedback.pushInfo("Building elevation grid...")
+    feedback.setProgress(15)
     try:
         elev = ElevationGrid(dem_path)
     except Exception:
@@ -188,9 +190,9 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
     try:
         total = len(candidate_tx) * len(rx_points)
         return BatchAnalysisParams(
-            mode=mode, candidate_tx=candidate_tx, rx_points=rx_points,
-            tx_h=rp["tx_h"], rx_h=rp["rx_h"],
-            f_mhz=rp["f_mhz"], polarization=rp["polarization"], climate=rp["climate"],
+            mode=mode, candidate_tx=candidate_tx, rx_points=rx_points, elev=elev,
+            total=total, tx_h=rp["tx_h"], rx_h=rp["rx_h"], f_mhz=rp["f_mhz"],
+            polarization=rp["polarization"], climate=rp["climate"],
             time_pct=rp["time_pct"], location_pct=rp["location_pct"],
             situation_pct=rp["situation_pct"], tx_power=rp["tx_power"],
             tx_gain_default=rp["tx_gain_d"], rx_gain_default=rp["rx_gain_d"],
@@ -206,8 +208,7 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
             street_width_m=rp["street_width_m"],
             bel_enabled=rp["bel_enabled"],
             bel_building_type=rp["bel_building_type"],
-            bel_elevation_angle_deg=rp["bel_elevation_angle_deg"],
-            elev=elev, total=total)
+            bel_elevation_angle_deg=rp["bel_elevation_angle_deg"])
     except Exception:
         elev.close()
         if rp["cg"] is not None:
@@ -231,29 +232,6 @@ def _report_batch_results(feedback, results, mode):
     feedback.pushInfo("=" * 50)
 
 
-def _write_batch_outputs(algorithm, parameters, context, feedback, results, mode, tmp_mgr):
-    from qgis.core import QgsVectorLayer
-    md = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_MARKERS, context)
-    if md:
-        mp = md
-    else:
-        _bt = tmp_mgr.make_dir("batch_markers", persistent=True)
-        mp = os.path.join(_bt, "batch_markers.gpkg")
-        tmp_mgr.warn_persistent(feedback)
-    write_batch_marker_layer(mp, results, feedback, mode)
-    queue_layer_for_loading(context, QgsVectorLayer(mp, "Batch P2P Markers"), "Batch P2P Markers")
-    csv_p = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_CSV, context)
-    json_p = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_JSON, context)
-    if csv_p: write_batch_csv(csv_p, results, mode)
-    if json_p: write_batch_json(json_p, results, mode)
-    feedback.setProgress(100)
-    out = {}
-    if mp: out[algorithm.OUTPUT_MARKERS] = mp
-    if csv_p: out[algorithm.OUTPUT_CSV] = csv_p
-    if json_p: out[algorithm.OUTPUT_JSON] = json_p
-    return out
-
-
 class BatchAnalysisAlgorithm(NoWiresAlgorithm):
     """Batch point-to-point link analysis."""
 
@@ -264,13 +242,14 @@ class BatchAnalysisAlgorithm(NoWiresAlgorithm):
         tmp_mgr = TempDirManager()
         rank_by = self.parameterAsEnum(parameters, self.RANK_BY, context)
         inp = _collect_batch_inputs(self, parameters, context, feedback)
-        feedback.pushInfo("Computing batch P2P links..."); feedback.setProgress(20)
+        feedback.pushInfo("Computing batch P2P links...")
+        feedback.setProgress(20)
         try:
             results = compute_batch_links(inp, feedback)
             results = rank_batch_results(results, rank_by)
             _report_batch_results(feedback, results, inp.mode)
             feedback.setProgress(85)
-            return _write_batch_outputs(
+            return write_batch_outputs(
                 self, parameters, context, feedback,
                 results, inp.mode, tmp_mgr)
         finally:

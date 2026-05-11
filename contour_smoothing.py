@@ -175,7 +175,8 @@ def smooth_contour_dem(smoothing, input_dem, temp_dir, feedback, progress, statu
     else:
         translate_ds = gdal.Translate(
             dem_tif, input_dem, outputType=gdal.GDT_Float32, noData=-32768)
-    if translate_ds is not None: translate_ds = None
+    if translate_ds is not None:
+        translate_ds = None
 
     _make_blur_vrt(os.path.join(path, "dem_blur_3x3.vrt"), dem_tif, kernel_size=3)
     feedback.setProgress(int((progress + 0.2) * status_total))

@@ -11,7 +11,6 @@
         copyright            : (C) 2026 Bortre Tenamo <tedaks@gmail.com>
         email                : tedaks@gmail.com
  ***************************************************************************/
-
  /***************************************************************************
   *                                                                         *
   *   This program is free software; you can redistribute it and/or modify  *
@@ -27,11 +26,13 @@ Batch P2P writer functions for marker layers, CSV, and JSON output.
 
 import csv
 import json
+import os
 
 from osgeo import ogr, osr
 
 from .report_markers import ogr_driver_for_path, remove_existing_ogr_dataset
 from .batch_params import BATCH_MODE_OPTIONS
+from .processing_utils import queue_layer_for_loading
 
 
 def write_batch_marker_layer(path, results, feedback, mode):
@@ -141,3 +142,33 @@ def write_batch_json(path, results, mode):
     with open(str(path), "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, sort_keys=True)
         f.write("\n")
+
+
+def write_batch_outputs(algorithm, parameters, context, feedback, results, mode, tmp_mgr):
+    """Write all batch P2P outputs: markers, CSV, JSON, and return output dict."""
+    from qgis.core import QgsVectorLayer
+    md = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_MARKERS, context)
+    if md:
+        mp = md
+    else:
+        _bt = tmp_mgr.make_dir("batch_markers", persistent=True)
+        mp = os.path.join(_bt, "batch_markers.gpkg")
+        tmp_mgr.warn_persistent(feedback)
+    write_batch_marker_layer(mp, results, feedback, mode)
+    queue_layer_for_loading(
+        context, QgsVectorLayer(mp, "Batch P2P Markers"), "Batch P2P Markers")
+    csv_p = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_CSV, context)
+    json_p = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_JSON, context)
+    if csv_p:
+        write_batch_csv(csv_p, results, mode)
+    if json_p:
+        write_batch_json(json_p, results, mode)
+    feedback.setProgress(100)
+    out = {}
+    if mp:
+        out[algorithm.OUTPUT_MARKERS] = mp
+    if csv_p:
+        out[algorithm.OUTPUT_CSV] = csv_p
+    if json_p:
+        out[algorithm.OUTPUT_JSON] = json_p
+    return out

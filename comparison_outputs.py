@@ -110,10 +110,11 @@ def apply_delta_style(layer, threshold_db, style="diverging"):
         color_ramp_shader.setColorRampType(QgsColorRampShader.Interpolated)
     color_ramp_shader.setColorRampItemList(entries)
 
-    shader = QgsRasterShader(); shader.setRasterShaderFunction(color_ramp_shader)
-
+    shader = QgsRasterShader()
+    shader.setRasterShaderFunction(color_ramp_shader)
     renderer = QgsSingleBandPseudoColorRenderer(provider, 1, shader)
-    layer.setRenderer(renderer); layer.triggerRepaint()
+    layer.setRenderer(renderer)
+    layer.triggerRepaint()
 
 
 def write_comparison_html_report(path, panel_a_info, panel_b_info, delta_info):
@@ -138,7 +139,8 @@ def write_comparison_html_report(path, panel_a_info, panel_b_info, delta_info):
         rows.append(f"<tr><th>TX Gain</th><td>{panel['tx_gain']:.1f} dBi</td></tr>")
         rows.append(f"<tr><th>RX Gain</th><td>{panel['rx_gain']:.1f} dBi</td></tr>")
         rows.append(f"<tr><th>Cable Loss</th><td>{panel['cable_loss']:.1f} dB</td></tr>")
-        vpx = panel['valid_pixels']; tpx = panel['total_pixels']
+        vpx = panel['valid_pixels']
+        tpx = panel['total_pixels']
         rows.append(f"<tr><th>Valid Pixels</th><td>{vpx} / {tpx}</td></tr>")
         rows.append(f"<tr><th>Mean Received Power</th><td>{panel['mean_prx']:.1f} dBm</td></tr>")
         rows.append("</table>")
@@ -229,26 +231,15 @@ def compute_delta_summary(loss_grid_a, loss_grid_b, threshold_db):
         improved_pct = degraded_pct = unchanged_pct = 0.0
 
     delta_info = {
-        "valid_count": valid_count,
-        "total_count": total_count,
-        "improved": improved,
-        "degraded": degraded,
-        "unchanged": unchanged,
-        "improved_pixels": improved,
-        "degraded_pixels": degraded,
-        "unchanged_pixels": unchanged,
-        "improved_pct": improved_pct,
-        "degraded_pct": degraded_pct,
-        "unchanged_pct": unchanged_pct,
-        "valid_pixels": valid_count,
-        "total_pixels": total_count,
-        "min_delta": min_delta,
-        "max_delta": max_delta,
-        "mean_delta": mean_delta,
-        "loss_delta_grid": loss_delta_grid,
-        "valid_mask": valid_mask,
-        "threshold_db": threshold_db,
-        "style": "diverging",
+        "valid_count": valid_count, "total_count": total_count,
+        "improved": improved, "degraded": degraded, "unchanged": unchanged,
+        "improved_pixels": improved, "degraded_pixels": degraded,
+        "unchanged_pixels": unchanged, "improved_pct": improved_pct,
+        "degraded_pct": degraded_pct, "unchanged_pct": unchanged_pct,
+        "valid_pixels": valid_count, "total_pixels": total_count,
+        "min_delta": min_delta, "max_delta": max_delta, "mean_delta": mean_delta,
+        "loss_delta_grid": loss_delta_grid, "valid_mask": valid_mask,
+        "threshold_db": threshold_db, "style": "diverging",
     }
     return delta_info
 
