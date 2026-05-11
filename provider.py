@@ -62,8 +62,13 @@ class NoWiresProvider(QgsProcessingProvider):
                 mod = importlib.import_module(".{}".format(module_name), __package__)
                 cls = getattr(mod, class_name)
                 self.addAlgorithm(cls())
-            except Exception:
+            except Exception as exc:
                 logger.exception("Failed to load algorithm %s.%s", module_name, class_name)
+                from qgis.core import QgsMessageLog
+                QgsMessageLog.logMessage(
+                    "NoWires: algorithm {}.{} failed to load: {}".format(
+                        module_name, class_name, exc),
+                    "NoWires")
 
     def id(self):
         return "nowires"

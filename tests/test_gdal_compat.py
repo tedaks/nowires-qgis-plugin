@@ -82,15 +82,15 @@ class TestOgrStableApiUsage:
 class TestDatasetLifecycle:
     """Verify GDAL/OGR datasets are properly closed in finally blocks."""
 
-    def test_raster_io_closes_with_ds_none(self):
+    def test_raster_io_closes_with_del_ds(self):
         source = open("raster_io.py").read()
         has_finally = "finally:" in source
-        has_ds_none = "ds = None" in source
-        assert has_finally and has_ds_none, "raster_io must close ds in finally"
+        has_del_ds = "del ds" in source
+        assert has_finally and has_del_ds, "raster_io must close ds in finally"
 
     def test_raster_io_closes_band_before_dataset(self):
         source = open("raster_io.py").read()
-        assert "band = None" in source, "raster_io must release band before closing dataset"
+        assert "del band" in source, "raster_io must release band before closing dataset"
 
     def test_p2p_outputs_closes_poly_datasource(self):
         source = open("p2p_outputs.py").read()
@@ -102,8 +102,8 @@ class TestDatasetLifecycle:
 
     def test_clutter_closes_gdal_band_and_dataset(self):
         source = open("clutter_grid.py").read()
-        assert "band = None" in source
-        assert "ds = None" in source
+        assert "del band" in source
+        assert "del ds" in source
 
 
 class TestGdalVersionSensitiveFeatures:

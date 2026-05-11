@@ -174,9 +174,9 @@ def test_coverage_algorithm_exposes_report_outputs():
 
 def test_coverage_algorithm_returns_report_outputs():
     source = _coverage_source()
-    assert "self.OUTPUT_REPORT_CSV: report_csv_path" in source
-    assert "self.OUTPUT_REPORT_JSON: report_json_path" in source
-    assert "self.OUTPUT_REPORT_HTML: report_html_path" in source
+    assert ("self.OUTPUT_REPORT_CSV: report_csv_path" in source or "algorithm.OUTPUT_REPORT_CSV: report_csv_path" in source)
+    assert ("self.OUTPUT_REPORT_JSON: report_json_path" in source or "algorithm.OUTPUT_REPORT_JSON: report_json_path" in source)
+    assert ("self.OUTPUT_REPORT_HTML: report_html_path" in source or "algorithm.OUTPUT_REPORT_HTML: report_html_path" in source)
 
 
 def test_coverage_algorithm_reports_reliability_fields():

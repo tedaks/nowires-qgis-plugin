@@ -199,7 +199,9 @@ class P2PAlgorithm(NoWiresAlgorithm):
                 try:
                     clutter_grid.close()
                 except Exception:
-                    pass
+                    import logging as _logging
+                    _logging.getLogger(__name__).warning(
+                        'Failed to close clutter grid', exc_info=True)
 
     def name(self):
         return "p2p_analysis"

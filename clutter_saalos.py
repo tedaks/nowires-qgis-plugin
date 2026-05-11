@@ -95,12 +95,17 @@ def clutter_loss_saalos(d__meter, cch__meter, h_tx__meter, h_rx__meter,
             arte = d1a * q - (18.0 * math.log10(rsp)) / math.exp(hone / 37.5)
             zi = 1.5 * math.sqrt(hone - cch__meter)
             if pdk > zi:
-                q = (pdk - zi) * 10.2 * math.sqrt(max(0.01, math.log10(wn * 47.7) - 2.0)) / (100.0 - zi)
+                q = ((pdk - zi) * 10.2 *
+                     math.sqrt(max(0.01, math.log10(wn * 47.7) - 2.0)) /
+                     (100.0 - zi))
             else:
-                q = ((zi - pdk) / zi) * (-20.0 * max(0.01, math.log10(wn * 47.7) - 2.0)) / math.sqrt(hone)
+                q = ((zi - pdk) / zi) * (
+                    -20.0 * max(0.01, math.log10(wn * 47.7) - 2.0)
+                ) / math.sqrt(hone)
             arte = arte + q
     else:
-        q1 = (cch__meter - h_tx__meter) * (2.06943 - 1.56184 * math.exp(1.0 / cch__meter - h_tx__meter))
+        q1 = (cch__meter - h_tx__meter) * (
+            2.06943 - 1.56184 * math.exp(1.0 / cch__meter - h_tx__meter))
         q2 = (17.98 - 0.84224 * (cch__meter - h_tx__meter)) * math.exp(-0.00000061 * pd)
         arte = q1 + q2 + 1.34795 * 20.0 * math.log10(pd + 1.0)
         arte -= max(0.01, math.log10(wn * 47.7) - 2.0) * (h_rx__meter / h_tx__meter)
@@ -232,12 +237,18 @@ def _saalos_vec_above(result, mask, pd, pdk, cch, htx, hrx, hrx_gnd, pol, wn):
                    * (hrx[mid] / hone[mid]))
 
     long_d = mask & (d1a >= 225.0) & ~ssnps_neg
-    q_base = 0.00055 * pdk + np.log10(np.maximum(pdk, 1e-10)) * (0.041 - 0.0017 * np.sqrt(hone) + 0.019)
+    q_base = (0.00055 * pdk
+              + np.log10(np.maximum(pdk, 1e-10))
+              * (0.041 - 0.0017 * np.sqrt(hone) + 0.019))
     arte_base = d1a * q_base - (18.0 * np.log10(np.maximum(rsp, 1e-30))) / np.exp(hone / 37.5)
     zi = 1.5 * np.sqrt(np.maximum(hone - cch, 0.0))
     pdk_over_zi = pdk > zi
-    q_over = (pdk - zi) * 10.2 * np.sqrt(np.maximum(0.01, np.log10(wn * 47.7) - 2.0)) / np.maximum(100.0 - zi, 1.0)
-    q_under = ((zi - pdk) / np.maximum(zi, 1e-10)) * (-20.0 * np.maximum(0.01, np.log10(wn * 47.7) - 2.0)) / np.sqrt(np.maximum(hone, 1.0))
+    q_over = ((pdk - zi) * 10.2
+              * np.sqrt(np.maximum(0.01, np.log10(wn * 47.7) - 2.0))
+              / np.maximum(100.0 - zi, 1.0))
+    q_under = (((zi - pdk) / np.maximum(zi, 1e-10))
+               * (-20.0 * np.maximum(0.01, np.log10(wn * 47.7) - 2.0))
+               / np.sqrt(np.maximum(hone, 1.0)))
     q_extra = np.where(pdk_over_zi, q_over, q_under)
     result[long_d] = arte_base[long_d] + q_extra[long_d]
 

@@ -123,7 +123,8 @@ def _add_antenna_params(algorithm, prefix):
         options=ANTENNA_PRESET_OPTIONS, defaultValue=0))
     algorithm.addParameter(QgsProcessingParameterNumber(
         getattr(algorithm, prefix + "ANTENNA_AZ"), "{} antenna azimuth (deg)".format(label),
-        type=_DBL, defaultValue=DEFAULT_ANTENNA_AZIMUTH, minValue=0.0, maxValue=360.0, optional=True))
+        type=_DBL, defaultValue=DEFAULT_ANTENNA_AZIMUTH,
+        minValue=0.0, maxValue=360.0, optional=True))
     algorithm.addParameter(QgsProcessingParameterNumber(
         getattr(algorithm, prefix + "FRONT_BACK_DB"),
         "{} front-to-back ratio (dB)".format(label),

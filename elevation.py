@@ -100,52 +100,63 @@ class ElevationGrid:
     """
 
     def __init__(self, dem_path):
-        self._ds = gdal.Open(dem_path)
-        if self._ds is None:
+        ds = gdal.Open(dem_path)
+        if ds is None:
             raise RuntimeError("Cannot open DEM: {}".format(dem_path))
 
         try:
-            self.transform = self._ds.GetGeoTransform()
-            self.projection = self._ds.GetProjection()
-            band = self._ds.GetRasterBand(1)
-            self.nodata = band.GetNoDataValue()
+            transform = ds.GetGeoTransform()
+            projection = ds.GetProjection()
+            band = ds.GetRasterBand(1)
+            nodata = band.GetNoDataValue()
 
             data = band.ReadAsArray(
-                buf_xsize=self._ds.RasterXSize,
-                buf_ysize=self._ds.RasterYSize,
+                buf_xsize=ds.RasterXSize,
+                buf_ysize=ds.RasterYSize,
                 buf_type=gdal.GDT_Float32,
             )
             if data is None:
                 raise RuntimeError("Failed to read DEM band: {}".format(dem_path))
             self.data = np.asarray(data, dtype=np.float32)
-            if self.nodata is not None:
-                self.data[self.data == self.nodata] = np.nan
+            if nodata is not None:
+                self.data[self.data == nodata] = np.nan
 
             self.n_rows, self.n_cols = self.data.shape
-            self.min_lon = self.transform[0]
-            self.max_lon = self.min_lon + self.transform[1] * self.n_cols
-            self.min_lat = self.transform[3] + self.transform[5] * self.n_rows
-            self.max_lat = self.transform[3]
-            self._origin_is_north_up = self.min_lat < self.max_lat
-            if self.min_lat > self.max_lat:
-                self.min_lat, self.max_lat = self.max_lat, self.min_lat
-
-            if not self._origin_is_north_up:
+            self.min_lon = transform[0]
+            self.max_lon = self.min_lon + transform[1] * self.n_cols
+            self.min_lat = transform[3] + transform[5] * self.n_rows
+            self.max_lat = transform[3]
+            origin_is_north_up = self.min_lat < self.max_lat
+            if not origin_is_north_up:
+                # South-up raster: row 0 corresponds to the southernmost
+                # latitude, which breaks our (max_lat - lat) indexing that
+                # assumes row 0 = northernmost.  Flip the data rows so the
+                # array is in north-up order, matching Copernicus GLO-30 and
+                # ESA WorldCover conventions.
                 logger.warning(
-                    "DEM %s appears to be south-up; row ordering may be inverted. "
-                    "All Copernicus GLO-30 and ESA WorldCover rasters are north-up. "
-                    "If using a custom DEM, verify that latitude indexing is correct.",
+                    "DEM %s is south-up; flipping rows to north-up order. "
+                    "All Copernicus GLO-30 and ESA WorldCover rasters are "
+                    "north-up. If using a custom south-up DEM, verify that "
+                    "latitude indexing is correct after this flip.",
                     dem_path,
                 )
+                self.data = self.data[::-1].copy()
+                self.min_lat, self.max_lat = self.max_lat, self.min_lat
 
             self.d_lat = (self.max_lat - self.min_lat) / self.n_rows
             self.d_lon = (self.max_lon - self.min_lon) / self.n_cols
+            self.transform = transform
+            self.projection = projection
+            self.nodata = nodata
         finally:
-            band = None
+            # Release band before dataset per GDAL best practice.
+            del band
             # Release the GDAL dataset handle promptly after reading data.
             # The numpy array (self.data) is an independent copy, so
             # closing the dataset does not affect subsequent sampling.
+            del ds
             self._ds = None
+
 
         logger.info(
             "ElevationGrid: %s shape=%s bounds=(%.4f,%.4f)-(%.4f,%.4f) %.1f MB",
@@ -190,7 +201,10 @@ class ElevationGrid:
         lons = _interpolate_longitudes_shortest(lon1, lon2, ts)
         fy_raw = (self.max_lat - lats) / self.d_lat - 0.5
         fx_raw = (lons - self.min_lon) / self.d_lon - 0.5
-        oob = (fy_raw < -0.5) | (fx_raw < -0.5) | (fy_raw > self.n_rows - 0.5) | (fx_raw > self.n_cols - 0.5)
+        oob = (
+            (fy_raw < -0.5) | (fx_raw < -0.5)
+            | (fy_raw > self.n_rows - 0.5) | (fx_raw > self.n_cols - 0.5)
+        )
         fy = np.clip(fy_raw, 0.0, self.n_rows - 1.0 - 1e-9)
         fx = np.clip(fx_raw, 0.0, self.n_cols - 1.0 - 1e-9)
         y0 = np.floor(fy).astype(np.int32)

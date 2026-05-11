@@ -136,14 +136,15 @@ class TestClassFactory:
         plugin = classFactory(_make_iface())
         plugin.unload()  # should not raise
 
-    def test_noop_plugin_getattr_returns_none(self, monkeypatch):
+    def test_noop_plugin_getattr_raises_attribute_error(self, monkeypatch):
         monkeypatch.setattr(
             "multiprocessing.current_process",
             lambda: type("Proc", (), {"name": "PoolWorker-1"})()
         )
         from NoWires import classFactory
         plugin = classFactory(_make_iface())
-        assert plugin.nonexistent_method is None
+        with pytest.raises(AttributeError):
+            plugin.nonexistent_method
 
 
 class TestPluginInitGui:

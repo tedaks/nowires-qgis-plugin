@@ -78,7 +78,8 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
         self._comparison_post_processors = []
         self._tmp = TempDirManager()
         crs4326 = QgsCoordinateReferenceSystem("EPSG:4326")
-        delta_style = DELTA_STYLE_OPTIONS[self.parameterAsEnum(parameters, self.DELTA_STYLE, context)]
+        delta_style = DELTA_STYLE_OPTIONS[
+            self.parameterAsEnum(parameters, self.DELTA_STYLE, context)]
         threshold_db = self.parameterAsDouble(parameters, self.DELTA_THRESHOLD_DB, context)
         output_dir = self.parameterAsString(parameters, self.OUTPUT_DIR, context)
 
@@ -167,10 +168,13 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
                 feedback.setProgress(80)
 
                 if prx_grid_a.shape != prx_grid_b.shape:
-                    gs_a = GRID_SIZE_PRESETS[self.parameterAsEnum(parameters, self.PANEL_A_GRID_SIZE, context)]
-                    gs_b = GRID_SIZE_PRESETS[self.parameterAsEnum(parameters, self.PANEL_B_GRID_SIZE, context)]
+                    gs_a = GRID_SIZE_PRESETS[
+                        self.parameterAsEnum(parameters, self.PANEL_A_GRID_SIZE, context)]
+                    gs_b = GRID_SIZE_PRESETS[
+                        self.parameterAsEnum(parameters, self.PANEL_B_GRID_SIZE, context)]
                     raise QgsProcessingException(
-                        "Panel A grid size ({}) and Panel B grid size ({}) must match.".format(gs_a, gs_b))
+                        "Panel A grid size ({}) and Panel B grid size ({}) "
+                        "must match.".format(gs_a, gs_b))
 
                 ds = compute_delta_summary(loss_grid_a, loss_grid_b, threshold_db)
                 loss_delta_grid = ds["loss_delta_grid"]
@@ -179,37 +183,51 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
 
                 output_a_path = self.parameterAsOutputLayer(parameters, self.OUTPUT_A, context)
                 output_b_path = self.parameterAsOutputLayer(parameters, self.OUTPUT_B, context)
-                output_delta_path = self.parameterAsOutputLayer(parameters, self.OUTPUT_DELTA, context)
-                output_report_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_HTML, context)
+                output_delta_path = self.parameterAsOutputLayer(
+                    parameters, self.OUTPUT_DELTA, context)
+                output_report_path = self.parameterAsFileOutput(
+                    parameters, self.OUTPUT_REPORT_HTML, context)
 
-                output_a_path, output_b_path, output_delta_path, output_report_path, _comp_tmpdir = (
+                (output_a_path, output_b_path,
+                 output_delta_path, output_report_path, _comp_tmpdir) = \
                     resolve_output_paths(
-                        output_dir, output_a_path, output_b_path, output_delta_path,
-                        output_report_path, self._tmp))
+                        output_dir, output_a_path, output_b_path,
+                        output_delta_path, output_report_path, self._tmp)
                 if _comp_tmpdir:
                     self._tmp.warn_persistent(feedback)
 
-                write_coverage_raster(output_a_path, prx_grid_a, min_lat_a, max_lat_a, min_lon_a, max_lon_a, panel_a["rx_sens"])
-                write_coverage_raster(output_b_path, prx_grid_b, min_lat_b, max_lat_b, min_lon_b, max_lon_b, panel_b["rx_sens"])
-                write_delta_raster(output_delta_path, loss_delta_grid, min_lat_a, max_lat_a, min_lon_a, max_lon_a)
+                write_coverage_raster(
+                    output_a_path, prx_grid_a,
+                    min_lat_a, max_lat_a, min_lon_a, max_lon_a, panel_a["rx_sens"])
+                write_coverage_raster(
+                    output_b_path, prx_grid_b,
+                    min_lat_b, max_lat_b, min_lon_b, max_lon_b, panel_b["rx_sens"])
+                write_delta_raster(
+                    output_delta_path, loss_delta_grid,
+                    min_lat_a, max_lat_a, min_lon_a, max_lon_a)
 
                 self._raster_layer_ids, self._comparison_post_processors = load_comparison_layers(
-                    context, output_a_path, output_b_path, output_delta_path, threshold_db, delta_style, feedback)
+                    context, output_a_path, output_b_path,
+                    output_delta_path, threshold_db, delta_style, feedback)
 
                 panel_a_info = build_panel_info(panel_a, prx_grid_a)
                 panel_b_info = build_panel_info(panel_b, prx_grid_b)
                 delta_info = build_delta_info(delta_style, threshold_db, ds)
 
-                report_comparison_results(feedback, valid_count, total_count, delta_info, threshold_db)
+                report_comparison_results(
+                    feedback, valid_count, total_count, delta_info, threshold_db)
 
                 if output_report_path:
                     from pathlib import Path
                     try:
-                        write_comparison_html_report(Path(output_report_path), panel_a_info, panel_b_info, delta_info)
+                        write_comparison_html_report(
+                            Path(output_report_path),
+                            panel_a_info, panel_b_info, delta_info)
                     except OSError as exc:
                         feedback.pushWarning("Could not write comparison report: {}".format(exc))
                     else:
-                        feedback.pushInfo("Comparison report written to: {}".format(output_report_path))
+                        feedback.pushInfo(
+                            "Comparison report written to: {}".format(output_report_path))
 
                 feedback.setProgress(100)
                 return {

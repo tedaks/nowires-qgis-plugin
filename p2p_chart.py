@@ -112,10 +112,10 @@ def _make_save_png(fig, f_mhz, dist_m, dock):
     def save_png():
         try:
             default_name = "p2p_profile_{:.0f}MHz_{:.1f}km.png".format(f_mhz, dist_m / 1000)
-            path, _ = QFileDialog.getSaveFileName(dock, "Save PNG", default_name, "PNG Files (*.png)")
+            path, _ = QFileDialog.getSaveFileName(
+                dock, "Save PNG", default_name, "PNG Files (*.png)")
             if path:
-                if not path.lower().endswith(".png"):
-                    path += ".png"
+                if not path.lower().endswith(".png"): path += ".png"
                 fig.savefig(path, dpi=300, bbox_inches="tight")
                 QMessageBox.information(dock, "Saved", "Chart saved to:\n" + path)
         except Exception as e:
@@ -130,13 +130,14 @@ def _make_export_csv(distances, terrain_bulge, los_h, fresnel_r, f_mhz, dist_m, 
     def export_csv():
         try:
             default_name = "p2p_profile_{:.0f}MHz_{:.1f}km.csv".format(f_mhz, dist_m / 1000)
-            path, _ = QFileDialog.getSaveFileName(dock, "Export CSV", default_name, "CSV Files (*.csv)")
+            path, _ = QFileDialog.getSaveFileName(
+                dock, "Export CSV", default_name, "CSV Files (*.csv)")
             if path:
-                if not path.lower().endswith(".csv"):
-                    path += ".csv"
+                if not path.lower().endswith(".csv"): path += ".csv"
                 obstructs_los = terrain_bulge > los_h
                 with open(path, "w", newline="") as f:
-                    f.write("distance_m,terrain_elevation_m,los_m,fresnel_radius_m,clearance_m,obstructs_los\n")
+                    f.write("distance_m,terrain_elevation_m,los_m,"
+                            "fresnel_radius_m,clearance_m,obstructs_los\n")
                     for i in range(len(distances)):
                         f.write("{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.0f}\n".format(
                             distances[i], terrain_bulge[i], los_h[i],
@@ -191,7 +192,8 @@ def show_profile_chart(
         tx_marker, = ax.plot(0, los_h[0], "r^", markersize=12, label="TX", zorder=5)
         rx_marker, = ax.plot(d_km[-1], los_h[-1], "rv", markersize=12, label="RX", zorder=5)
     ax.set_xlim(d_km[0], d_km[-1])
-    ax.set_ylim(np.min(terrain_bulge) - 10, max(np.max(los_h + fresnel_r), np.max(terrain_bulge) + 10))
+    ax.set_ylim(np.min(terrain_bulge) - 10,
+                max(np.max(los_h + fresnel_r), np.max(terrain_bulge) + 10))
     ax.set_xlabel("Distance (km)")
     ax.set_ylabel("Height (m)")
     ax.set_title("P2P Profile: {:.1f} MHz, {:.2f} km (k={:.3f})".format(
@@ -207,7 +209,8 @@ def show_profile_chart(
         bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
     )
 
-    obstruction_annotations = _add_obstruction_annotations(ax, d_km, terrain_bulge, los_h, fresnel_r)
+    obstruction_annotations = _add_obstruction_annotations(
+        ax, d_km, terrain_bulge, los_h, fresnel_r)
     fig.tight_layout()
     toggle_state = {
         "terrain": True, "los": True, "fresnel": True,
@@ -254,20 +257,19 @@ def show_profile_chart(
     btn_png = QPushButton("Save PNG", toolbar)
     btn_csv = QPushButton("Export CSV", toolbar)
     btn_png.clicked.connect(_make_save_png(fig, f_mhz, dist_m, dock))
-    btn_csv.clicked.connect(_make_export_csv(distances, terrain_bulge, los_h, fresnel_r, f_mhz, dist_m, dock))
+    btn_csv.clicked.connect(_make_export_csv(
+        distances, terrain_bulge, los_h, fresnel_r, f_mhz, dist_m, dock))
     def _make_toggle(key):
         def _toggle(state):
             toggle_state[key] = int(state) == int(Qt.CheckState.Checked)
             update_visibility()
         return _toggle
 
-    toolbar.addWidget(btn_png)
-    toolbar.addWidget(btn_csv)
+    toolbar.addWidget(btn_png); toolbar.addWidget(btn_csv)
     toolbar.addSeparator()
-    for label, key in [
-        ("Terrain", "terrain"), ("LOS", "los"), ("Fresnel", "fresnel"),
-        ("60% Band", "violation_band"), ("Antennas", "antennas"), ("Obstructions", "obstructions"),
-    ]:
+    for label, key in [("Terrain", "terrain"), ("LOS", "los"), ("Fresnel", "fresnel"),
+                       ("60% Band", "violation_band"), ("Antennas", "antennas"),
+                       ("Obstructions", "obstructions")]:
         cb = QCheckBox(label, toolbar)
         cb.setChecked(True)
         cb.checkStateChanged.connect(_make_toggle(key))

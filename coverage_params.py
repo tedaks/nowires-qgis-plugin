@@ -189,6 +189,10 @@ def extract_coverage_params(alg, parameters, context):
     ):
         doubles[key] = _dbl(parameters, getattr(alg, attr), context)
     grid_size = GRID_SIZE_PRESETS[_enum(parameters, alg.GRID_SIZE, context)]
+    if grid_size > 1024:
+        from qgis.core import QgsProcessingException
+        raise QgsProcessingException(
+            "Grid size {} exceeds maximum (1024). Choose a smaller grid size.".format(grid_size))
     polarization = _enum(parameters, alg.POLARIZATION, context)
     climate = _enum(parameters, alg.CLIMATE, context)
     antenna_az = None

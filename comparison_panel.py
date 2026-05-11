@@ -48,7 +48,8 @@ from .comparison_params import GRID_SIZE_PRESETS
 __all__ = ["run_panel_coverage"]
 
 
-def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback, elev, south, north, west, east, shared_clutter_grid=None):
+def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback,
+                      elev, south, north, west, east, shared_clutter_grid=None):
     """Run compute_coverage for one panel and return the result tuple.
 
     If *shared_clutter_grid* is provided, it is used instead of downloading
@@ -71,13 +72,17 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
     rx_h = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_RX_HEIGHT", context)
     f_mhz = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_FREQ_MHZ", context)
     radius_km = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_RADIUS_KM", context)
-    grid_size_index = algorithm_instance.parameterAsEnum(parameters, f"{prefix}_GRID_SIZE", context)
+    grid_size_index = algorithm_instance.parameterAsEnum(
+        parameters, f"{prefix}_GRID_SIZE", context)
     grid_size = GRID_SIZE_PRESETS[grid_size_index]
-    polarization = algorithm_instance.parameterAsEnum(parameters, f"{prefix}_POLARIZATION", context)
+    polarization = algorithm_instance.parameterAsEnum(
+        parameters, f"{prefix}_POLARIZATION", context)
     climate = algorithm_instance.parameterAsEnum(parameters, f"{prefix}_CLIMATE", context)
     time_pct = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_TIME_PCT", context)
-    location_pct = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_LOCATION_PCT", context)
-    situation_pct = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_SITUATION_PCT", context)
+    location_pct = algorithm_instance.parameterAsDouble(
+        parameters, f"{prefix}_LOCATION_PCT", context)
+    situation_pct = algorithm_instance.parameterAsDouble(
+        parameters, f"{prefix}_SITUATION_PCT", context)
     tx_power = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_TX_POWER", context)
     tx_gain = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_TX_GAIN", context)
     rx_gain = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_RX_GAIN", context)
@@ -87,19 +92,25 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
 
     antenna_az = None
     if antenna_bw < 360.0:
-        antenna_az = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_ANTENNA_AZ", context)
+        antenna_az = algorithm_instance.parameterAsDouble(
+            parameters, f"{prefix}_ANTENNA_AZ", context)
 
-    antenna_preset = algorithm_instance.parameterAsEnum(parameters, f"{prefix}_ANTENNA_PRESET", context)
-    front_back_db = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_FRONT_BACK_DB", context)
-    downtilt_deg = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_DOWNTILT_DEG", context)
+    antenna_preset = algorithm_instance.parameterAsEnum(
+        parameters, f"{prefix}_ANTENNA_PRESET", context)
+    front_back_db = algorithm_instance.parameterAsDouble(
+        parameters, f"{prefix}_FRONT_BACK_DB", context)
+    downtilt_deg = algorithm_instance.parameterAsDouble(
+        parameters, f"{prefix}_DOWNTILT_DEG", context)
     h_pattern = algorithm_instance.parameterAsFile(parameters, f"{prefix}_H_PATTERN", context)
     v_pattern = algorithm_instance.parameterAsFile(parameters, f"{prefix}_V_PATTERN", context)
-    clutter_model_idx = algorithm_instance.parameterAsEnum(parameters, f"{prefix}_CLUTTER_MODEL", context)
+    clutter_model_idx = algorithm_instance.parameterAsEnum(
+        parameters, f"{prefix}_CLUTTER_MODEL", context)
     clutter_enabled = clutter_model_idx > 0
     clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
     cch_raw = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_CCH_OVERRIDE", context)
     cch_override_m = cch_raw if cch_raw > 0.0 else None
-    clutter_raster_path = algorithm_instance.parameterAsFile(parameters, f"{prefix}_CLUTTER_RASTER", context)
+    clutter_raster_path = algorithm_instance.parameterAsFile(
+        parameters, f"{prefix}_CLUTTER_RASTER", context)
     if shared_clutter_grid is not None:
         clutter_grid = shared_clutter_grid
     elif clutter_raster_path:
@@ -132,7 +143,8 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
     )
 
     feedback.pushInfo(
-        f"[{prefix}] TX: ({tx_lat:.5f}, {tx_lon:.5f}), F={f_mhz:.1f} MHz, R={radius_km:.1f} km, Grid={grid_size}x{grid_size}"
+        f"[{prefix}] TX: ({tx_lat:.5f}, {tx_lon:.5f}), "
+        f"F={f_mhz:.1f} MHz, R={radius_km:.1f} km, Grid={grid_size}x{grid_size}"
     )
 
     if clutter_grid is None and clutter_enabled:

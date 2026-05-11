@@ -110,12 +110,10 @@ def apply_delta_style(layer, threshold_db, style="diverging"):
         color_ramp_shader.setColorRampType(QgsColorRampShader.Interpolated)
     color_ramp_shader.setColorRampItemList(entries)
 
-    shader = QgsRasterShader()
-    shader.setRasterShaderFunction(color_ramp_shader)
+    shader = QgsRasterShader(); shader.setRasterShaderFunction(color_ramp_shader)
 
     renderer = QgsSingleBandPseudoColorRenderer(provider, 1, shader)
-    layer.setRenderer(renderer)
-    layer.triggerRepaint()
+    layer.setRenderer(renderer); layer.triggerRepaint()
 
 
 def write_comparison_html_report(path, panel_a_info, panel_b_info, delta_info):
@@ -130,7 +128,8 @@ def write_comparison_html_report(path, panel_a_info, panel_b_info, delta_info):
     for panel, label in [(panel_a, "Panel A"), (panel_b, "Panel B")]:
         rows.append(f"<h3>{label}</h3>")
         rows.append("<table>")
-        rows.append(f"<tr><th>TX Location</th><td>{panel['tx_lat']:.5f}, {panel['tx_lon']:.5f}</td></tr>")
+        rows.append(f"<tr><th>TX Location</th>"
+                    f"<td>{panel['tx_lat']:.5f}, {panel['tx_lon']:.5f}</td></tr>")
         rows.append(f"<tr><th>TX Height</th><td>{panel['tx_h']:.1f} m</td></tr>")
         rows.append(f"<tr><th>RX Height</th><td>{panel['rx_h']:.1f} m</td></tr>")
         rows.append(f"<tr><th>Frequency</th><td>{panel['f_mhz']:.1f} MHz</td></tr>")
@@ -139,7 +138,8 @@ def write_comparison_html_report(path, panel_a_info, panel_b_info, delta_info):
         rows.append(f"<tr><th>TX Gain</th><td>{panel['tx_gain']:.1f} dBi</td></tr>")
         rows.append(f"<tr><th>RX Gain</th><td>{panel['rx_gain']:.1f} dBi</td></tr>")
         rows.append(f"<tr><th>Cable Loss</th><td>{panel['cable_loss']:.1f} dB</td></tr>")
-        rows.append(f"<tr><th>Valid Pixels</th><td>{panel['valid_pixels']} / {panel['total_pixels']}</td></tr>")
+        vpx = panel['valid_pixels']; tpx = panel['total_pixels']
+        rows.append(f"<tr><th>Valid Pixels</th><td>{vpx} / {tpx}</td></tr>")
         rows.append(f"<tr><th>Mean Received Power</th><td>{panel['mean_prx']:.1f} dBm</td></tr>")
         rows.append("</table>")
 
@@ -150,9 +150,12 @@ def write_comparison_html_report(path, panel_a_info, panel_b_info, delta_info):
             <tr><th>Delta Style</th><td>{html.escape(delta['style'])}</td></tr>
             <tr><th>Threshold</th><td>{delta['threshold_db']:.1f} dB</td></tr>
             <tr><th>Valid Delta Pixels</th><td>{delta['valid_pixels']}</td></tr>
-            <tr><th>Improved (A better than B)</th><td>{delta['improved_pixels']} ({delta['improved_pct']:.1f}%)</td></tr>
-            <tr><th>Degraded (A worse than B)</th><td>{delta['degraded_pixels']} ({delta['degraded_pct']:.1f}%)</td></tr>
-            <tr><th>Unchanged</th><td>{delta['unchanged_pixels']} ({delta['unchanged_pct']:.1f}%)</td></tr>
+            <tr><th>Improved (A better than B)</th>
+                <td>{delta['improved_pixels']} ({delta['improved_pct']:.1f}%)</td></tr>
+            <tr><th>Degraded (A worse than B)</th>
+                <td>{delta['degraded_pixels']} ({delta['degraded_pct']:.1f}%)</td></tr>
+            <tr><th>Unchanged</th>
+                <td>{delta['unchanged_pixels']} ({delta['unchanged_pct']:.1f}%)</td></tr>
             <tr><th>Min Delta</th><td>{delta['min_delta']:.2f} dB</td></tr>
             <tr><th>Max Delta</th><td>{delta['max_delta']:.2f} dB</td></tr>
             <tr><th>Mean Delta</th><td>{delta['mean_delta']:.2f} dB</td></tr>
@@ -177,7 +180,8 @@ def write_comparison_html_report(path, panel_a_info, panel_b_info, delta_info):
   <body>
     <h1>NoWires Coverage Comparison Report</h1>
     <div class="delta-summary">
-      <strong>Delta Interpretation:</strong> Positive values indicate Panel A has higher path loss than Panel B (Panel B is better).
+      <strong>Delta Interpretation:</strong> Positive values indicate Panel A
+      has higher path loss than Panel B (Panel B is better).
       Negative values indicate Panel A has lower path loss than Panel B (Panel A is better).
     </div>
     {''.join(rows)}
@@ -193,8 +197,10 @@ def compute_delta_summary(loss_grid_a, loss_grid_b, threshold_db):
     import numpy as np
     from .constants import COVERAGE_NODATA
 
-    loss_grid_a = np.where(np.isfinite(loss_grid_a) & (loss_grid_a != COVERAGE_NODATA), loss_grid_a, np.nan)
-    loss_grid_b = np.where(np.isfinite(loss_grid_b) & (loss_grid_b != COVERAGE_NODATA), loss_grid_b, np.nan)
+    a_valid = np.isfinite(loss_grid_a) & (loss_grid_a != COVERAGE_NODATA)
+    loss_grid_a = np.where(a_valid, loss_grid_a, np.nan)
+    b_valid = np.isfinite(loss_grid_b) & (loss_grid_b != COVERAGE_NODATA)
+    loss_grid_b = np.where(b_valid, loss_grid_b, np.nan)
 
     if loss_grid_a.shape != loss_grid_b.shape:
         raise ValueError(
@@ -267,7 +273,8 @@ def _load_one(context, path, name, styler, raster_layer_ids, feedback):
     return None
 
 
-def load_comparison_layers(context, output_a, output_b, output_delta, threshold_db, delta_style, feedback):
+def load_comparison_layers(context, output_a, output_b, output_delta,
+                           threshold_db, delta_style, feedback):
     """Register the three comparison rasters for load-on-completion.
 
     Returns ``(raster_layer_ids, post_processors)``. The id list is populated

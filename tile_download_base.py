@@ -61,7 +61,9 @@ def download_tile_with_retry(
             try:
                 stats = test_ds.GetRasterBand(1).ComputeStatistics(False)
                 if stats is None:
-                    logger.warning("Cached tile %s failed stats read; re-downloading", base_name_label)
+                    logger.warning(
+                        "Cached tile %s failed stats read; re-downloading",
+                        base_name_label)
                 else:
                     band_count = test_ds.RasterCount
                     xsize = test_ds.RasterXSize
@@ -72,7 +74,9 @@ def download_tile_with_retry(
                             feedback.pushInfo("Cache hit: " + base_name_label)
                         test_ds = None
                         return local_tif
-                    logger.warning("Cached tile %s has degenerate dimensions; re-downloading", base_name_label)
+                    logger.warning(
+                        "Cached tile %s has degenerate dimensions; re-downloading",
+                        base_name_label)
             except RuntimeError:
                 logger.warning("Cached tile %s failed stats read; re-downloading", base_name_label)
             finally:
@@ -181,7 +185,9 @@ def download_tile_with_retry(
                 if attempt < max_retries - 1:
                     time.sleep(wait_secs)
             else:
-                logger.error("HTTP %d downloading %s (non-retryable): %s", e.code, base_name_label, e)
+                logger.error(
+                    "HTTP %d downloading %s (non-retryable): %s",
+                    e.code, base_name_label, e)
                 break
         except Exception as e:
             logger.warning("Error downloading %s (attempt %d/%d): %s",

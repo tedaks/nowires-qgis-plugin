@@ -46,7 +46,8 @@ class Windows3DFallbackDialog(QMessageBox):
         super().__init__(parent)
         self.setWindowTitle("3D View Not Available on Windows")
         self.setText(
-            "Plugin-launched 3D view crashes QGIS on Windows due to a Qt/OpenGL conflict on Windows.\n\n"
+            "Plugin-launched 3D view crashes QGIS on Windows due to "
+            "a Qt/OpenGL conflict on Windows.\n\n"
             "You can still view your results in 3D manually:\n\n"
             "1. Go to View > 3D Map Views > New 3D Map View\n"
             "2. In the 3D view panel, click the wrench icon to configure terrain\n"

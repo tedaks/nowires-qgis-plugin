@@ -106,7 +106,7 @@ class TestRasterIOContract:
 
     def test_write_geotiff_closes_dataset_in_finally(self):
         source = open("raster_io.py").read()
-        assert "ds = None" in source
+        assert "del ds" in source
 
     def test_write_geotiff_sets_projection(self):
         source = open("raster_io.py").read()

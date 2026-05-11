@@ -115,7 +115,7 @@ def test_comparison_algorithm_uses_output_dir_for_each_missing_output():
 def test_comparison_algorithm_gdal_try_finally():
     source = _comp_source()
     assert "finally:" in source
-    assert "ds_delta = None" in source or "ds = None" in source
+    assert "ds_delta = None" in source or "ds = None" in source or "del ds" in source or "del ds_delta" in source
 
 
 def test_comparison_algorithm_tx_position_warning():

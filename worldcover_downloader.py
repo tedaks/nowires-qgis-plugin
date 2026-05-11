@@ -178,7 +178,9 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
         if feedback and feedback.isCanceled():
             return available
         if time.monotonic() > deadline:
-            logger.warning("WorldCover download wall-clock timeout exceeded (%ds)", _WALL_CLOCK_TIMEOUT)
+            logger.warning(
+                "WorldCover download wall-clock timeout exceeded (%ds)",
+                _WALL_CLOCK_TIMEOUT)
             if feedback:
                 feedback.pushInfo(
                     "Download timed out after {}s".format(_WALL_CLOCK_TIMEOUT))

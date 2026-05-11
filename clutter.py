@@ -1,35 +1,19 @@
-# -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""
-/***************************************************************************
- NoWires
-                       A QGIS plugin
- Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                               -------------------
-         begin                : 2026-04-22
-         copyright            : (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-         email                : tedaks@gmail.com
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 3 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
-
-Terminal clutter correction helpers for NoWires.
-"""
+"""Terminal clutter correction helpers for NoWires."""
 
 import logging
 from dataclasses import dataclass
 
-import numpy as np
 
 from .worldcover_downloader import ensure_worldcover_for_area
+from .clutter_categories import (
+    LEGACY_CLUTTER_CATEGORIES,
+    LEGACY_CLUTTER_LOSS_DB,
+    _WORLDCOVER_TO_LEGACY_IDX,
+    _LEGACY_CAT_IDX,
+    _LEGACY_CLUTTER_LOSS_ARRAY,
+)
 from .clutter_advanced import (  # noqa: F401
     compute_terminal_clutter_loss, _category_height_m,
     _resolve_category_advanced, _legacy_to_advanced_override,
@@ -39,15 +23,14 @@ from .clutter_grid import LandCoverGrid  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
-LEGACY_CLUTTER_CATEGORIES = ("open", "rural", "vegetation", "suburban", "urban")
 CLUTTER_CATEGORIES = LEGACY_CLUTTER_CATEGORIES
-CLUTTER_LOSS_DB = {
-    "open": 0.0,
-    "rural": 2.0,
-    "vegetation": 6.0,
-    "suburban": 8.0,
-    "urban": 10.0,
-}
+CLUTTER_LOSS_DB = LEGACY_CLUTTER_LOSS_DB
+# Re-export the canonical lookup table from clutter_categories for use
+# by clutter_grid.py and any other consumer that needs vectorised lookups.
+_WORLDCOVER_TO_CATEGORY = _WORLDCOVER_TO_LEGACY_IDX
+_CATEGORY_IDX = _LEGACY_CAT_IDX
+_CLUTTER_LOSS_ARRAY = _LEGACY_CLUTTER_LOSS_ARRAY
+
 CLUTTER_MODEL_OPTIONS = [
     "Off",
     "Simple clutter correction",
@@ -58,34 +41,6 @@ CLUTTER_OVERRIDE_OPTIONS = [
     "open", "rural", "vegetation", "suburban", "urban",
     "open_rural", "dense_rural",
 ]
-
-_CATEGORY_IDX = {k: i for i, k in enumerate(CLUTTER_CATEGORIES)}
-_CLUTTER_LOSS_ARRAY = np.array([
-    CLUTTER_LOSS_DB["open"],
-    CLUTTER_LOSS_DB["rural"],
-    CLUTTER_LOSS_DB["vegetation"],
-    CLUTTER_LOSS_DB["suburban"],
-    CLUTTER_LOSS_DB["urban"],
-], dtype=np.float64)
-
-# Lookup table: ESA WorldCover class ID (0-255) -> legacy category index (0-4).
-# CAUTION: This LUT and _WORLDCOVER_ADVANCED_IDX in clutter_grid.py both
-# encode the WorldCover class mapping. They MUST stay consistent with
-# _WORLDCOVER_MAP in clutter_categories.py. When updating any one of them,
-# update all three and run the dual-mapping consistency test
-# (test_clutter_categories.py::test_simple_and_advanced_mappings_consistent).
-_WORLDCOVER_TO_CATEGORY = np.zeros(256, dtype=np.int32)
-_WORLDCOVER_TO_CATEGORY[10] = 2
-_WORLDCOVER_TO_CATEGORY[20] = 1
-_WORLDCOVER_TO_CATEGORY[95] = 2
-_WORLDCOVER_TO_CATEGORY[100] = 1
-_WORLDCOVER_TO_CATEGORY[30] = 1
-_WORLDCOVER_TO_CATEGORY[40] = 1
-_WORLDCOVER_TO_CATEGORY[50] = 4
-_WORLDCOVER_TO_CATEGORY[60] = 0
-_WORLDCOVER_TO_CATEGORY[70] = 0
-_WORLDCOVER_TO_CATEGORY[80] = 0
-_WORLDCOVER_TO_CATEGORY[90] = 0
 
 
 def worldcover_class_to_clutter_category(class_id) -> str:

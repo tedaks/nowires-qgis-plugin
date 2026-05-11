@@ -1,32 +1,10 @@
-# -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""
-/***************************************************************************
- NoWires
-                     A QGIS plugin
- Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                             -------------------
-        begin                : 2026-04-22
-        copyright            : (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-        email                : tedaks@gmail.com
- ***************************************************************************/
-
- /***************************************************************************
-  *                                                                         *
-  *   This program is free software; you can redistribute it and/or modify  *
-  *   it under the terms of the GNU General Public License as published by  *
-  *   the Free Software Foundation; either version 3 of the License, or     *
-  *   (at your option) any later version.                                   *
-  *                                                                         *
-  ***************************************************************************/
-
-
-Coverage Analysis Algorithm — heatmap prediction via ITM.
-"""
+"""Coverage Analysis Algorithm — heatmap prediction via ITM."""
 
 import contextlib
 import logging
+import math
 import os
 
 logger = logging.getLogger(__name__)
@@ -56,6 +34,142 @@ from .processing_utils import queue_layer_for_loading, register_destination_laye
 from .temp_manager import TempDirManager
 
 
+def _validate_dem_coverage(elev, south, north, west, east, feedback):
+    """Warn if the DEM does not fully cover the requested analysis bounds."""
+    dem_south = min(elev.min_lat, elev.max_lat)
+    dem_north = max(elev.min_lat, elev.max_lat)
+    dem_west = min(elev.min_lon, elev.max_lon)
+    dem_east = max(elev.min_lon, elev.max_lon)
+    uncovered_lat = (south < dem_south - 0.01) or (north > dem_north + 0.01)
+    uncovered_lon = (west < dem_west - 0.01) or (east > dem_east + 0.01)
+    if uncovered_lat or uncovered_lon:
+        logger.warning(
+            "DEM does not fully cover bounds. DEM: (%.4f,%.4f)-(%.4f,%.4f); "
+            "Analysis: (%.4f,%.4f)-(%.4f,%.4f). Edge data may be unreliable.",
+            dem_south, dem_west, dem_north, dem_east, south, west, north, east)
+        feedback.pushWarning(
+            "Downloaded DEM does not fully cover the analysis area. "
+            "Results near the edges may be unreliable.")
+
+
+def _build_clutter_context(p, clutter_grid, elev):
+    """Build ClutterLossContext and compute terminal clutter losses."""
+    from .clutter_context import ClutterLossContext
+    clutter_grid_resolved = clutter_grid
+    if clutter_grid_resolved is None and p.clutter_enabled:
+        pad_deg = max(DEGREE_PADDING, p.radius_km / 111320.0 * 0.1)
+        south, north, west, east = coverage_bounds(
+            p.tx_lat, p.tx_lon, p.radius_km, padding_deg=pad_deg)
+        clutter_grid_resolved = ensure_clutter_grid_for_area(
+            south=south, north=north, west=west, east=east)
+    clutter_source = clutter_source_label(
+        enabled=p.clutter_enabled, land_cover_grid=clutter_grid_resolved,
+        raster_path=p.clutter_raster_path,
+        tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override)
+    clutter_context = None
+    if p.clutter_enabled:
+        tx_ground = float(elev.sample(p.tx_lat, p.tx_lon))
+        if not math.isfinite(tx_ground):
+            tx_ground = 0.0
+        # Note: rx_ground_elevation_m is set to tx_ground here as a template.
+        # In coverage mode, each pixel gets its own RX ground elevation
+        # computed from the DEM during task building (coverage_tasks.py).
+        # The context created here is only used for TX-side clutter and
+        # the single-point report on the transmitter itself.
+        clutter_context = ClutterLossContext(
+            frequency_mhz=p.f_mhz, distance_m=0.0,
+            tx_height_m=p.tx_h, rx_height_m=p.rx_h,
+            rx_ground_elevation_m=tx_ground, tx_ground_elevation_m=tx_ground,
+            polarization=p.polarization, cch_override_m=p.cch_override_m,
+            model=p.clutter_model, percentile=p.clutter_percentile,
+            street_width_m=p.street_width_m, bel_enabled=p.bel_enabled,
+            bel_building_type=p.bel_building_type,
+            bel_elevation_angle_deg=p.bel_elevation_angle_deg)
+    tx_clutter_for_report = compute_terminal_clutter_losses(
+        tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.tx_lat, rx_lon=p.tx_lon,
+        frequency_mhz=p.f_mhz, enabled=p.clutter_enabled,
+        land_cover_grid=clutter_grid_resolved,
+        tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override,
+        context=clutter_context)
+    return clutter_grid_resolved, clutter_context, clutter_source, tx_clutter_for_report
+
+
+def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
+                            dem_path, clutter_source, tx_clutter_for_report):
+    """Write coverage raster, reports, and load QGIS layers."""
+    tif_path = algorithm.parameterAsOutputLayer(parameters, algorithm.OUTPUT_RASTER, context)
+    if not tif_path:
+        tif_path = os.path.join(
+            algorithm._tmp.make_dir("coverage_prx", persistent=True), "coverage_prx.tif")
+        algorithm._tmp.warn_persistent(feedback)
+    report_csv_path = algorithm.parameterAsFileOutput(
+        parameters, algorithm.OUTPUT_REPORT_CSV, context)
+    report_json_path = algorithm.parameterAsFileOutput(
+        parameters, algorithm.OUTPUT_REPORT_JSON, context)
+    report_html_path = algorithm.parameterAsFileOutput(
+        parameters, algorithm.OUTPUT_REPORT_HTML, context)
+
+    report_payload, raster_grid, valid, summary = (
+        build_coverage_report_payload_for_grid(
+            prx_grid=result.prx_grid, loss_grid=result.loss_grid,
+            itm_loss_grid=result.itm_loss_grid,
+            clutter_loss_grid=result.clutter_loss_grid,
+            clutter_rx_db_grid=result.clutter_rx_db_grid,
+            min_lat=result.min_lat, max_lat=result.max_lat,
+            min_lon=result.min_lon, max_lon=result.max_lon,
+            tx_lat=p.tx_lat, tx_lon=p.tx_lon, tx_h=p.tx_h, rx_h=p.rx_h,
+            f_mhz=p.f_mhz, radius_km=p.radius_km, grid_size=p.grid_size,
+            polarization=p.polarization, climate=p.climate,
+            time_pct=p.time_pct, location_pct=p.location_pct,
+            situation_pct=p.situation_pct, tx_power=p.tx_power,
+            tx_gain=p.tx_gain, rx_gain=p.rx_gain, cable_loss=p.cable_loss,
+            rx_sens=p.rx_sens, clutter_enabled=p.clutter_enabled,
+            clutter_model=p.clutter_model, antenna_preset=p.antenna_preset,
+            clutter_source=clutter_source,
+            tx_clutter_for_report=tx_clutter_for_report))
+
+    write_coverage_geotiff(result.prx_grid, result.min_lat, result.max_lat,
+                           result.min_lon, result.max_lon, tif_path)
+    layer_name = "Coverage ({:.0f} MHz, {:.0f} km, {}x{})".format(
+        p.f_mhz, p.radius_km, p.grid_size, p.grid_size)
+    raster_layer = QgsRasterLayer(tif_path, layer_name)
+    if raster_layer.isValid():
+        dem_layer = QgsRasterLayer(dem_path, "NoWires DEM (GLO-30)")
+        if dem_layer.isValid():
+            elev_props = dem_layer.elevationProperties()
+            elev_props.setEnabled(True)
+            elev_props.setMode(Qgis.RasterElevationMode.RepresentsElevationSurface)
+            elev_props.setBandNumber(1)
+            queue_layer_for_loading(context, dem_layer, "NoWires DEM (GLO-30)")
+            algorithm._raster_layer_ids.append(dem_layer.id())
+            algorithm._dem_layer_id = dem_layer.id()
+        pp = register_destination_layer(
+            context, tif_path, layer_name, styler=algorithm._on_coverage_loaded)
+        if pp is not None:
+            algorithm._coverage_post_processor = pp
+        else:
+            algorithm._on_coverage_loaded(raster_layer)
+            queue_layer_for_loading(context, raster_layer, layer_name)
+        show_coverage_legend(rx_sensitivity_dbm=p.rx_sens)
+    else:
+        feedback.pushWarning(
+            "Could not load coverage raster layer: {}".format(raster_layer.error().summary()))
+    report_coverage_results(feedback, report_payload, raster_grid, valid, p.rx_sens,
+                            summary=summary)
+    if report_csv_path:
+        write_report_csv(report_csv_path, report_payload)
+    if report_json_path:
+        write_report_json(report_json_path, report_payload)
+    if report_html_path:
+        write_report_html(report_html_path, report_payload, title="NoWires Coverage Report")
+    return {
+        algorithm.OUTPUT_RASTER: tif_path,
+        algorithm.OUTPUT_REPORT_CSV: report_csv_path,
+        algorithm.OUTPUT_REPORT_JSON: report_json_path,
+        algorithm.OUTPUT_REPORT_HTML: report_html_path,
+    }
+
+
 class CoverageAlgorithm(NoWiresAlgorithm):
     """Coverage analysis heatmap prediction."""
 
@@ -76,13 +190,11 @@ class CoverageAlgorithm(NoWiresAlgorithm):
 
         feedback.pushInfo(
             "TX: ({:.5f}, {:.5f}), F={:.1f} MHz, R={:.1f} km, Grid={}x{}".format(
-                p.tx_lat, p.tx_lon, p.f_mhz,
-                p.radius_km, p.grid_size, p.grid_size))
+                p.tx_lat, p.tx_lon, p.f_mhz, p.radius_km, p.grid_size, p.grid_size))
         feedback.pushInfo("Clutter correction: {}".format(
             CLUTTER_MODEL_OPTIONS[2] if p.clutter_enabled and p.clutter_model == "advanced"
             else CLUTTER_MODEL_OPTIONS[1] if p.clutter_enabled else CLUTTER_MODEL_OPTIONS[0]))
-        feedback.pushInfo("TX antenna preset: {}".format(
-            ANTENNA_PRESET_OPTIONS[p.antenna_preset]))
+        feedback.pushInfo("TX antenna preset: {}".format(ANTENNA_PRESET_OPTIONS[p.antenna_preset]))
 
         pad_deg = max(DEGREE_PADDING, p.radius_km / (111320.0 / 1000.0) * 0.1)
         south, north, west, east = coverage_bounds(
@@ -98,69 +210,13 @@ class CoverageAlgorithm(NoWiresAlgorithm):
         feedback.setProgress(15)
         try:
             with ElevationGrid(dem_path) as elev:
-                # Validate that the DEM actually covers the requested bounds.
-                # Partial DEM coverage causes edge pixels to be interpolated
-                # from distant valid cells, producing unreliable results.
-                dem_south = min(elev.min_lat, elev.max_lat)
-                dem_north = max(elev.min_lat, elev.max_lat)
-                dem_west = min(elev.min_lon, elev.max_lon)
-                dem_east = max(elev.min_lon, elev.max_lon)
-                uncovered_lat = (south < dem_south - 0.01) or (north > dem_north + 0.01)
-                uncovered_lon = (west < dem_west - 0.01) or (east > dem_east + 0.01)
-                if uncovered_lat or uncovered_lon:
-                    logger.warning(
-                        "DEM does not fully cover the analysis bounds. "
-                        "DEM: (%.4f, %.4f)-(%.4f, %.4f); "
-                        "Analysis: (%.4f, %.4f)-(%.4f, %.4f). "
-                        "Edge pixels may have unreliable terrain data.",
-                        dem_south, dem_west, dem_north, dem_east,
-                        south, west, north, east,
-                    )
-                    feedback.pushWarning(
-                        "Downloaded DEM does not fully cover the analysis area. "
-                        "Results near the edges may be unreliable."
-                    )
-                clutter_grid = p.clutter_grid
-                if clutter_grid is None and p.clutter_enabled:
-                    clutter_grid = ensure_clutter_grid_for_area(
-                        south=south, north=north, west=west, east=east, feedback=feedback)
-                clutter_source = clutter_source_label(
-                    enabled=p.clutter_enabled, land_cover_grid=clutter_grid,
-                    raster_path=p.clutter_raster_path,
-                    tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override)
-                clutter_context = None
-                if p.clutter_enabled:
-                    from .clutter_context import ClutterLossContext
-                    import math as _math
-                    _tx_ground = float(elev.sample(p.tx_lat, p.tx_lon))
-                    if not _math.isfinite(_tx_ground):
-                        _tx_ground = 0.0
-                    clutter_context = ClutterLossContext(
-                        frequency_mhz=p.f_mhz, distance_m=0.0,
-                        tx_height_m=p.tx_h, rx_height_m=p.rx_h,
-                        rx_ground_elevation_m=_tx_ground,
-                        tx_ground_elevation_m=_tx_ground,
-                        polarization=p.polarization,
-                        cch_override_m=p.cch_override_m, model=p.clutter_model,
-                        percentile=p.clutter_percentile,
-                        street_width_m=p.street_width_m,
-                        bel_enabled=p.bel_enabled,
-                        bel_building_type=p.bel_building_type,
-                        bel_elevation_angle_deg=p.bel_elevation_angle_deg,
-                    )
-                tx_clutter_for_report = compute_terminal_clutter_losses(
-                    tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.tx_lat,
-                    rx_lon=p.tx_lon, frequency_mhz=p.f_mhz,
-                    enabled=p.clutter_enabled, land_cover_grid=clutter_grid,
-                    tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override,
-                    context=clutter_context)
-
+                _validate_dem_coverage(elev, south, north, west, east, feedback)
+                clutter_grid, clutter_context, clutter_source, tx_clutter_for_report = \
+                    _build_clutter_context(p, p.clutter_grid, elev)
                 feedback.pushInfo("Computing coverage...")
                 feedback.setProgress(20)
-
                 result = compute_coverage(
-                    elev_grid=elev,
-                    tx_lat=p.tx_lat, tx_lon=p.tx_lon,
+                    elev_grid=elev, tx_lat=p.tx_lat, tx_lon=p.tx_lon,
                     tx_h_m=p.tx_h, rx_h_m=p.rx_h, f_mhz=p.f_mhz,
                     grid_size=p.grid_size, radius_km=p.radius_km,
                     profile_step_m=coverage_profile_step_m(p.f_mhz),
@@ -182,95 +238,19 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                     tx_clutter_override=p.tx_clutter_override,
                     rx_clutter_override=p.rx_clutter_override,
                     tx_clutter_loss_db=tx_clutter_for_report.tx_loss_db,
-                    clutter_model=p.clutter_model,
-                    cch_override_m=p.cch_override_m,
+                    clutter_model=p.clutter_model, cch_override_m=p.cch_override_m,
                     clutter_percentile=p.clutter_percentile,
-                    street_width_m=p.street_width_m,
-                    bel_enabled=p.bel_enabled,
+                    street_width_m=p.street_width_m, bel_enabled=p.bel_enabled,
                     bel_building_type=p.bel_building_type,
                     bel_elevation_angle_deg=p.bel_elevation_angle_deg,
                     feedback=feedback)
-
                 if result is None or result.prx_grid is None:
                     raise QgsProcessingException("Coverage computation was cancelled.")
-
-                report_payload, raster_grid, valid, summary = (
-                    build_coverage_report_payload_for_grid(
-                        prx_grid=result.prx_grid, loss_grid=result.loss_grid,
-                        itm_loss_grid=result.itm_loss_grid,
-                        clutter_loss_grid=result.clutter_loss_grid,
-                        clutter_rx_db_grid=result.clutter_rx_db_grid,
-                        min_lat=result.min_lat, max_lat=result.max_lat,
-                        min_lon=result.min_lon, max_lon=result.max_lon,
-                        tx_lat=p.tx_lat, tx_lon=p.tx_lon, tx_h=p.tx_h, rx_h=p.rx_h,
-                        f_mhz=p.f_mhz, radius_km=p.radius_km, grid_size=p.grid_size,
-                        polarization=p.polarization, climate=p.climate,
-                        time_pct=p.time_pct, location_pct=p.location_pct,
-                        situation_pct=p.situation_pct, tx_power=p.tx_power,
-                        tx_gain=p.tx_gain, rx_gain=p.rx_gain, cable_loss=p.cable_loss,
-                        rx_sens=p.rx_sens, clutter_enabled=p.clutter_enabled,
-                        clutter_model=p.clutter_model,
-                        antenna_preset=p.antenna_preset,
-                        clutter_source=clutter_source,
-                        tx_clutter_for_report=tx_clutter_for_report))
-
                 feedback.pushInfo("Writing coverage raster...")
                 feedback.setProgress(85)
-
-                tif_path = self.parameterAsOutputLayer(parameters, self.OUTPUT_RASTER, context)
-                if not tif_path:
-                    tif_path = os.path.join(
-                        self._tmp.make_dir("coverage_prx", persistent=True), "coverage_prx.tif")
-                    self._tmp.warn_persistent(feedback)
-                report_csv_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_CSV, context)
-                report_json_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_JSON, context)
-                report_html_path = self.parameterAsFileOutput(parameters, self.OUTPUT_REPORT_HTML, context)
-
-                write_coverage_geotiff(result.prx_grid, result.min_lat, result.max_lat, result.min_lon, result.max_lon, tif_path)
-
-                layer_name = "Coverage ({:.0f} MHz, {:.0f} km, {}x{})".format(
-                    p.f_mhz, p.radius_km, p.grid_size, p.grid_size)
-                raster_layer = QgsRasterLayer(tif_path, layer_name)
-                if raster_layer.isValid():
-                    dem_layer = QgsRasterLayer(dem_path, "NoWires DEM (GLO-30)")
-                    if dem_layer.isValid():
-                        elev_props = dem_layer.elevationProperties()
-                        elev_props.setEnabled(True)
-                        elev_props.setMode(Qgis.RasterElevationMode.RepresentsElevationSurface)
-                        elev_props.setBandNumber(1)
-                        queue_layer_for_loading(context, dem_layer, "NoWires DEM (GLO-30)")
-                        self._raster_layer_ids.append(dem_layer.id())
-                        self._dem_layer_id = dem_layer.id()
-                    pp = register_destination_layer(
-                        context, tif_path, layer_name, styler=self._on_coverage_loaded)
-                    if pp is not None:
-                        self._coverage_post_processor = pp
-                    else:
-                        self._on_coverage_loaded(raster_layer)
-                        queue_layer_for_loading(context, raster_layer, layer_name)
-                    show_coverage_legend(rx_sensitivity_dbm=p.rx_sens)
-                else:
-                    feedback.pushWarning("Could not load coverage raster layer: {}".format(raster_layer.error().summary()))
-
-                report_coverage_results(
-                    feedback, report_payload, raster_grid, valid, p.rx_sens,
-                    summary=summary)
-                if report_csv_path:
-                    write_report_csv(report_csv_path, report_payload)
-                if report_json_path:
-                    write_report_json(report_json_path, report_payload)
-                if report_html_path:
-                    write_report_html(
-                        report_html_path, report_payload,
-                        title="NoWires Coverage Report")
-
-                feedback.setProgress(100)
-                return {
-                    self.OUTPUT_RASTER: tif_path,
-                    self.OUTPUT_REPORT_CSV: report_csv_path,
-                    self.OUTPUT_REPORT_JSON: report_json_path,
-                    self.OUTPUT_REPORT_HTML: report_html_path,
-                }
+                return _write_coverage_outputs(
+                    self, parameters, context, feedback, p, result,
+                    dem_path, clutter_source, tx_clutter_for_report)
         finally:
             if clutter_grid is not None:
                 with contextlib.suppress(Exception):

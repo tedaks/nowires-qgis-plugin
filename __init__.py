@@ -45,7 +45,11 @@ class _NoOpPlugin:
         pass
 
     def __getattr__(self, name):
-        return None
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'. "
+            f"This is a NoOp plugin for subprocess isolation. "
+            f"The requested attribute '{name}' is not available."
+        )
 
 
 def classFactory(iface):

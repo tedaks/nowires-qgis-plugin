@@ -74,7 +74,9 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
     if dist_m < 1.0:
         return None
 
-    profile_points = params.elev.terrain_profile(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon, step_m=DEFAULT_PROFILE_STEP_M)
+    profile_points = params.elev.terrain_profile(
+        tx_def["lat"], tx_def["lon"], rx_lat, rx_lon,
+        step_m=DEFAULT_PROFILE_STEP_M)
     if len(profile_points) < 2:
         return None
     distances = [p[0] for p in profile_points]
@@ -129,8 +131,12 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
 
     tx_bearing = bearing_deg(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon)
     rx_bearing = bearing_deg(rx_lat, rx_lon, tx_def["lat"], tx_def["lon"])
+    tx_h_actual = tx_def["height"] if tx_def["height"] is not None else params.tx_h
     vertical_angle = math.degrees(
-        math.atan2((elevations[-1] + rx_h_eff) - (elevations[0] + (tx_def["height"] if tx_def["height"] is not None else params.tx_h)), max(dist_m, 1.0))
+        math.atan2(
+            (elevations[-1] + rx_h_eff) - (elevations[0] + tx_h_actual),
+            max(dist_m, 1.0),
+        )
     )
 
     tx_gain_eff = tx_def["gain_db"] if tx_def["gain_db"] is not None else params.tx_gain_default

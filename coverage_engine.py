@@ -241,7 +241,8 @@ def compute_coverage(
                             cancel_event.set()
                             break
                         pixels_failed += apply_batch_results(
-                            batch_results, loss_grid, prx_grid, itm_loss_grid, clutter_loss_grid, clutter_rx_db_grid)
+                            batch_results, loss_grid, prx_grid,
+                            itm_loss_grid, clutter_loss_grid, clutter_rx_db_grid)
                         pixels_done += len(batch_results)
                         if feedback and chunk_idx % 50 == 0:
                             feedback.setProgress(int(pixels_done / len(tasks) * 80))

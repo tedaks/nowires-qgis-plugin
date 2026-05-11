@@ -1,8 +1,6 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Core P2P analysis execution: DEM download, ITM prediction, Fresnel analysis,
-output writing, report generation, chart display, and feedback reporting.
-"""
+"""Core P2P analysis: DEM download, ITM prediction, Fresnel, output, reports."""
 
 import logging
 import math
@@ -16,15 +14,14 @@ from .constants import (
     CLIMATE_NAMES, DEFAULT_PROFILE_STEP_M, DEGREE_PADDING, METERS_PER_DEGREE_LAT,
     POLARIZATION_NAMES,
 )
+from .constants import ITM_LOSS_UPPER_BOUND
 from .temp_manager import TempDirManager
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid, bearing_deg, haversine_m
-from .fresnel import C_LIGHT
+from .fresnel import C_LIGHT, fresnel_profile_analysis
 from .geo_bounds import shortest_longitude_bounds
 from .p2p_analysis_params import P2PAnalysisParams
 from .radio import PROP_MODE_NAMES, build_pfl, itm_p2p_loss
-from .constants import ITM_LOSS_UPPER_BOUND
-from .fresnel import fresnel_profile_analysis
 from .report_export import write_report_csv, write_report_html, write_report_json
 from .report_payloads import build_p2p_report_payload
 from .report_markers import write_p2p_marker_layer
@@ -37,9 +34,7 @@ from .p2p_outputs import write_profile_line, write_fresnel_zone
 from .p2p_chart import show_profile_chart
 
 logger = logging.getLogger(__name__)
-
 __all__ = ["run_p2p_analysis"]
-
 _MIN_P2P_DISTANCE_M = 1.0
 
 
@@ -47,8 +42,7 @@ def _interpolate_nan_elevations(elevations):
     """Replace NaN values with linearly interpolated neighbours.
 
     Falls back to nearest valid value at edges. Returns unchanged if all NaN.
-
-    Delegates to the shared nan_utils module to avoid code duplication.
+    Delegates to shared nan_utils module to avoid code duplication.
     """
     from .nan_utils import interpolate_nan_elevations
     return interpolate_nan_elevations(elevations)
@@ -59,8 +53,7 @@ def _write_p2p_output_layers(srs, paths, tx_lat, tx_lon, rx_lat, rx_lon,
         tx_h, rx_h, tx_gain, rx_gain, tx_power, rx_sens):
     profile_path = (
         paths["profile_dest"] or os.path.join(paths["temp_dir"], "profile_line.shp"))
-    write_profile_line(
-        profile_path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result)
+    write_profile_line(profile_path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result)
     fresnel_poly_path = (
         paths["fresnel_dest"] or os.path.join(paths["temp_dir"], "fresnel_zone.shp"))
     markers_path = (
@@ -110,7 +103,7 @@ def _load_p2p_qgis_layers(context, profile_path, fresnel_poly_path,
         if styler is not None and layer.isValid():
             styler(layer)
         queue_layer_for_loading(context, layer, name)
-    # Fresnel lines is a derived sidecar, not a declared destination — queue manually.
+    # Fresnel lines is a derived sidecar — queue manually.
     fresnel_lines_layer = QgsVectorLayer(fresnel_lines_path, "Fresnel Zone Lines")
     if fresnel_lines_layer.isValid():
         apply_fresnel_lines_symbology(fresnel_lines_layer)
@@ -124,11 +117,12 @@ def run_p2p_analysis(params: P2PAnalysisParams):
     dist_m = haversine_m(p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon)
     if dist_m < _MIN_P2P_DISTANCE_M:
         raise QgsProcessingException(
-            "TX and RX points are too close ({:.2f} m); minimum path distance is {:.0f} m.".format(
-                dist_m, _MIN_P2P_DISTANCE_M))
+            "TX and RX points are too close ({:.2f} m); "
+            "minimum path distance is {:.0f} m.".format(dist_m, _MIN_P2P_DISTANCE_M))
     p.feedback.pushInfo("TX: ({:.5f}, {:.5f}), RX: ({:.5f}, {:.5f})".format(
         p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon))
-    p.feedback.pushInfo("Path distance: {:.1f} m ({:.2f} km)".format(dist_m, dist_m / 1000.0))
+    p.feedback.pushInfo("Path distance: {:.1f} m ({:.2f} km)".format(
+        dist_m, dist_m / 1000.0))
     pad = max(DEGREE_PADDING, dist_m / METERS_PER_DEGREE_LAT * 0.1)
     south, north = min(p.tx_lat, p.rx_lat) - pad, max(p.tx_lat, p.rx_lat) + pad
     west, east = shortest_longitude_bounds(p.tx_lon, p.rx_lon, padding_deg=pad)
@@ -140,13 +134,16 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         owns_clutter_grid = clutter_grid is not None
     p.feedback.pushInfo("Downloading DEM data for path...")
     p.feedback.setProgress(5)
-    dem_path = ensure_dem_for_area(south, north, west, east, feedback=p.feedback)
+    dem_path = ensure_dem_for_area(
+        south, north, west, east, feedback=p.feedback)
     if dem_path is None:
-        raise QgsProcessingException("Failed to obtain DEM data for the path area.")
+        raise QgsProcessingException(
+            "Failed to obtain DEM data for the path area.")
     p.feedback.setProgress(30)
     p.feedback.pushInfo("Building elevation grid...")
     with ElevationGrid(dem_path) as elev:
-        points = elev.terrain_profile(p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon, step_m=DEFAULT_PROFILE_STEP_M)
+        points = elev.terrain_profile(
+            p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon, step_m=DEFAULT_PROFILE_STEP_M)
     if len(points) < 2:
         raise QgsProcessingException("Terrain profile too short.")
     distances = [pt[0] for pt in points]
@@ -155,15 +152,17 @@ def run_p2p_analysis(params: P2PAnalysisParams):
     if nan_count > 0:
         if nan_count == len(elevations):
             raise QgsProcessingException(
-                "All {} elevation samples are NaN — DEM data is missing for this path.".format(nan_count))
+                "All {} elevation samples are NaN — "
+                "DEM data is missing for this path.".format(nan_count))
         p.feedback.pushInfo(
-            "Interpolating {} NaN elevation value(s) from nearest valid samples (missing DEM data)".format(nan_count))
+            "Interpolating {} NaN elevation value(s) from nearest "
+            "valid samples (missing DEM data)".format(nan_count))
         logger.warning(
-            "Interpolating %d NaN elevation value(s) from nearest valid samples (missing DEM data)", nan_count)
+            "Interpolating %d NaN elevation value(s) from nearest "
+            "valid samples (missing DEM data)", nan_count)
         elevations = _interpolate_nan_elevations(elevations)
     step_m_val = dist_m / max(len(distances) - 1, 1)
     pfl = build_pfl(elevations, step_m_val)
-    p.feedback.pushInfo("Running ITM prediction...")
     p.feedback.setProgress(50)
     result = itm_p2p_loss(h_tx__meter=p.tx_h, h_rx__meter=p.rx_h, profile=pfl,
         climate=p.climate, N0=p.n0, f__mhz=p.f_mhz, polarization=p.polarization,
@@ -171,10 +170,11 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         location_pct=p.location_pct, situation_pct=p.situation_pct)
     if result.failed or not math.isfinite(result.loss_db):
         raise QgsProcessingException(
-            "ITM prediction failed (loss_db={:.1f}, mode={}, warnings={}).".format(
-                result.loss_db, result.mode, result.warnings))
+            "ITM prediction failed (loss_db={:.1f}, mode={}, "
+            "warnings={}).".format(result.loss_db, result.mode, result.warnings))
     if result.loss_db > ITM_LOSS_UPPER_BOUND:
-        logger.debug("ITM loss %.1f dB exceeds cap (%.1f); capping", result.loss_db, ITM_LOSS_UPPER_BOUND)
+        logger.debug("ITM loss %.1f dB exceeds cap (%.1f); capping",
+                     result.loss_db, ITM_LOSS_UPPER_BOUND)
     loss_db = min(result.loss_db, ITM_LOSS_UPPER_BOUND)
     tx_elev, rx_elev = elevations[0], elevations[-1]
     tx_ant_h, rx_ant_h = tx_elev + p.tx_h, rx_elev + p.rx_h
@@ -182,46 +182,43 @@ def run_p2p_analysis(params: P2PAnalysisParams):
     dist_arr = np.asarray(distances, dtype=np.float64)
     elev_arr = np.asarray(elevations, dtype=np.float64)
     terrain_bulge, los_h, fresnel_r, obstructs, vf1, vf60 = (
-        fresnel_profile_analysis(dist_arr, elev_arr, tx_ant_h, rx_ant_h, dist_m, wavelength_m, p.k_factor))
-    los_blocked, f1_violated, f60_violated = bool(obstructs.any()), bool(vf1.any()), bool(vf60.any())
+        fresnel_profile_analysis(
+            dist_arr, elev_arr, tx_ant_h, rx_ant_h,
+            dist_m, wavelength_m, p.k_factor))
+    los_blocked = bool(obstructs.any())
+    f1_violated = bool(vf1.any())
+    f60_violated = bool(vf60.any())
     eirp_dbm = p.tx_power + p.tx_gain - p.cable_loss
     tx_bearing = bearing_deg(p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon)
     rx_bearing = bearing_deg(p.rx_lat, p.rx_lon, p.tx_lat, p.tx_lon)
-    vert_angle = math.degrees(math.atan2((rx_elev + p.rx_h) - (tx_elev + p.tx_h), max(dist_m, 1.0)))
-    ant_adj_total = (antenna_gain_adjustment_db(tx_bearing, vert_angle, p.tx_antenna_config)
-                     + antenna_gain_adjustment_db(rx_bearing, -vert_angle, p.rx_antenna_config))
+    vert_angle = math.degrees(math.atan2(
+        (rx_elev + p.rx_h) - (tx_elev + p.tx_h), max(dist_m, 1.0)))
+    ant_adj_total = (
+        antenna_gain_adjustment_db(tx_bearing, vert_angle, p.tx_antenna_config)
+        + antenna_gain_adjustment_db(rx_bearing, -vert_angle, p.rx_antenna_config))
     clutter_context = None
     if p.clutter_enabled:
         from .clutter_context import ClutterLossContext
         clutter_context = ClutterLossContext(
-            frequency_mhz=p.f_mhz,
-            distance_m=dist_m,
-            tx_height_m=p.tx_h,
-            rx_height_m=p.rx_h,
+            frequency_mhz=p.f_mhz, distance_m=dist_m,
+            tx_height_m=p.tx_h, rx_height_m=p.rx_h,
             rx_ground_elevation_m=float(rx_elev),
             tx_ground_elevation_m=float(tx_elev),
-            polarization=p.polarization,
-            cch_override_m=p.cch_override_m,
-            model=p.clutter_model,
-            percentile=p.clutter_percentile,
-            street_width_m=p.street_width_m,
-            bel_enabled=p.bel_enabled,
+            polarization=p.polarization, cch_override_m=p.cch_override_m,
+            model=p.clutter_model, percentile=p.clutter_percentile,
+            street_width_m=p.street_width_m, bel_enabled=p.bel_enabled,
             bel_building_type=p.bel_building_type,
-            bel_elevation_angle_deg=p.bel_elevation_angle_deg,
-        )
+            bel_elevation_angle_deg=p.bel_elevation_angle_deg)
     cl = compute_terminal_clutter_losses(
-        tx_lat=p.tx_lat, tx_lon=p.tx_lon,
-        rx_lat=p.rx_lat, rx_lon=p.rx_lon,
+        tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.rx_lat, rx_lon=p.rx_lon,
         frequency_mhz=p.f_mhz, enabled=p.clutter_enabled,
-        land_cover_grid=clutter_grid,
-        tx_override=p.tx_clutter_override,
-        rx_override=p.rx_clutter_override,
-        context=clutter_context,
-    )
+        land_cover_grid=clutter_grid, tx_override=p.tx_clutter_override,
+        rx_override=p.rx_clutter_override, context=clutter_context)
     total_path_loss_db = loss_db + cl.total_with_bel_db
     prx_dbm = eirp_dbm + p.rx_gain + ant_adj_total - total_path_loss_db
     margin_db = prx_dbm - p.rx_sens
-    fspl_db = (20.0 * math.log10(dist_m / 1000.0) + 20.0 * math.log10(p.f_mhz) + 32.45
+    fspl_db = (20.0 * math.log10(dist_m / 1000.0)
+               + 20.0 * math.log10(p.f_mhz) + 32.45
                if dist_m > 0 and p.f_mhz > 0 else 0.0)
     p.feedback.setProgress(70)
     srs = osr.SpatialReference()
@@ -266,7 +263,8 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             tx_cch_m=cl.tx_cch_m, rx_cch_m=cl.rx_cch_m,
             clutter_method=cl.method, clutter_percentile=cl.percentile,
             bel_rx_db=cl.rx_bel_db, total_bel_db=cl.rx_bel_db)
-        _write_p2p_reports(p.report_csv_path, p.report_json_path, p.report_html_path, report_payload)
+        _write_p2p_reports(p.report_csv_path, p.report_json_path,
+                           p.report_html_path, report_payload)
         p.feedback.setProgress(90)
         chart_kwargs = dict(distances=dist_arr, elevations=elev_arr,
             terrain_bulge=terrain_bulge, los_h=los_h, fresnel_r=fresnel_r,
@@ -279,8 +277,9 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             fresnel_lines_path, markers_path, p.show_chart, chart_kwargs,
             p.post_processor_sink)
         p.feedback.setProgress(100)
-        report_p2p_results(p.feedback, dist_m, p.f_mhz, result, report_payload, p.k_factor,
-            los_blocked, float(fresnel_r.max()))
+        report_p2p_results(p.feedback, dist_m, p.f_mhz, result,
+                           report_payload, p.k_factor, los_blocked,
+                           float(fresnel_r.max()))
         return {
             p.output_profile: profile_path,
             p.output_fresnel: fresnel_poly_path,

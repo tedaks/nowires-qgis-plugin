@@ -82,7 +82,9 @@ def reproject_and_export(contour_shp_path, project_crs, output_dest, temp_dir):
             ),
         )
         if result is None:
-            raise RuntimeError("Failed to reproject contour lines to {}".format(project_crs.authid()))
+            raise RuntimeError(
+                "Failed to reproject contour lines to {}".format(
+                    project_crs.authid()))
         result = None
         final_shp_path = reproj_shp
     else:

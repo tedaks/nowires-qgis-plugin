@@ -142,7 +142,8 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
                 "Please draw a rectangle directly using the extent tool."))
         geom = QgsGeometry.fromRect(aoi)
         if geom.isNull() or geom.isEmpty():
-            raise QgsProcessingException(self.tr("Could not create the area of interest geometry."))
+            raise QgsProcessingException(
+                self.tr("Could not create the area of interest geometry."))
         w, h = aoi.width(), aoi.height()
         if w > MAX_AOI_EXTENT_DEGREES or h > MAX_AOI_EXTENT_DEGREES:
             raise QgsProcessingException(self.tr(

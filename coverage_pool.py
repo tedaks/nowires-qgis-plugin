@@ -164,7 +164,8 @@ def _itm_worker(args, grid_data=None, grid_meta=None):
     nan_count = int(np.isnan(elevs).sum())
     if nan_count > 0:
         logger.warning(
-            "Interpolating %d NaN elevation value(s) from nearest valid samples (missing DEM data)",
+            "Interpolating %d NaN elevation value(s) from nearest valid "
+            "samples (missing DEM data)",
             nan_count,
         )
     elevs = _interpolate_nan_elevations(elevs)
@@ -231,13 +232,21 @@ def _itm_worker_batch(batch_and_event):
         try:
             results.append(_itm_worker(args))
         except Exception as exc:
-            logger.warning("Coverage pixel task failed: %s", exc)
+            logger.warning(
+                "Coverage pixel task failed: %s: %s",
+                type(exc).__name__, exc)
             results.append(None)
     return results
 
 
 def _dynamic_chunk_size(n_tasks):
-    """Choose chunk size based on task count: larger at start, smaller near end."""
+    """Choose chunk size based on task count.
+
+    Aims for at least target_chunks chunks (≥16) so that progress
+    reporting updates frequently enough.  Each chunk contains
+    chunk tasks, clamped to [_MIN_CHUNK_SIZE, _MAX_CHUNK_SIZE].
+    For example, with 1024 tasks the target is 16 chunks of 64 tasks each.
+    """
     if n_tasks <= _MIN_CHUNK_SIZE:
         return _MIN_CHUNK_SIZE
     target_chunks = max(16, n_tasks // _MIN_CHUNK_SIZE)

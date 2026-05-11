@@ -13,65 +13,21 @@ import logging
 import numpy as np
 from osgeo import gdal
 
+from .clutter_categories import (
+    LEGACY_CLUTTER_CATEGORIES,
+    _LEGACY_CLUTTER_LOSS_ARRAY,
+    _WORLDCOVER_TO_LEGACY_IDX,
+    ADVANCED_CLUTTER_CATEGORIES,
+    _WORLDCOVER_TO_ADVANCED_IDX,
+)
+
 logger = logging.getLogger(__name__)
 
-_LEGACY_CLUTTER_CATEGORIES = ("open", "rural", "vegetation", "suburban", "urban")
-_LEGACY_CLUTTER_LOSS_DB = {
-    "open": 0.0,
-    "rural": 2.0,
-    "vegetation": 6.0,
-    "suburban": 8.0,
-    "urban": 10.0,
-}
-_CATEGORY_IDX = {k: i for i, k in enumerate(_LEGACY_CLUTTER_CATEGORIES)}
-_CLUTTER_LOSS_ARRAY = np.array([
-    _LEGACY_CLUTTER_LOSS_DB["open"],
-    _LEGACY_CLUTTER_LOSS_DB["rural"],
-    _LEGACY_CLUTTER_LOSS_DB["vegetation"],
-    _LEGACY_CLUTTER_LOSS_DB["suburban"],
-    _LEGACY_CLUTTER_LOSS_DB["urban"],
-], dtype=np.float64)
-
-# Lookup table: ESA WorldCover class ID (0-255) -> legacy category index (0-4).
-# CAUTION: This LUT and _WORLDCOVER_ADVANCED_IDX in this file must stay consistent
-# with _WORLDCOVER_MAP in clutter_categories.py and _WORLDCOVER_TO_CATEGORY in
-# clutter.py. When updating any, update all and run the dual-mapping consistency
-# test in test_clutter_categories.py.
-_WORLDCOVER_TO_CATEGORY = np.zeros(256, dtype=np.int32)
-_WORLDCOVER_TO_CATEGORY[10] = 2
-_WORLDCOVER_TO_CATEGORY[20] = 1
-_WORLDCOVER_TO_CATEGORY[95] = 2
-_WORLDCOVER_TO_CATEGORY[100] = 1
-_WORLDCOVER_TO_CATEGORY[30] = 1
-_WORLDCOVER_TO_CATEGORY[40] = 1
-_WORLDCOVER_TO_CATEGORY[50] = 4
-_WORLDCOVER_TO_CATEGORY[60] = 0
-_WORLDCOVER_TO_CATEGORY[70] = 0
-_WORLDCOVER_TO_CATEGORY[80] = 0
-_WORLDCOVER_TO_CATEGORY[90] = 0
-
-_ADVANCED_CATEGORIES = (
-    "open",
-    "open_rural",
-    "dense_rural",
-    "vegetation",
-    "suburban",
-    "urban",
-)
-_ADVANCED_CAT_IDX = {k: i for i, k in enumerate(_ADVANCED_CATEGORIES)}
-
-_WORLDCOVER_TO_ADVANCED_IDX = np.zeros(256, dtype=np.int32)
-_WORLDCOVER_TO_ADVANCED_IDX[10] = _ADVANCED_CAT_IDX["vegetation"]
-_WORLDCOVER_TO_ADVANCED_IDX[20] = _ADVANCED_CAT_IDX["dense_rural"]
-_WORLDCOVER_TO_ADVANCED_IDX[30] = _ADVANCED_CAT_IDX["open_rural"]
-_WORLDCOVER_TO_ADVANCED_IDX[40] = _ADVANCED_CAT_IDX["open_rural"]
-_WORLDCOVER_TO_ADVANCED_IDX[50] = _ADVANCED_CAT_IDX["urban"]
-_WORLDCOVER_TO_ADVANCED_IDX[60] = _ADVANCED_CAT_IDX["open"]
-_WORLDCOVER_TO_ADVANCED_IDX[70] = _ADVANCED_CAT_IDX["open"]
-_WORLDCOVER_TO_ADVANCED_IDX[80] = _ADVANCED_CAT_IDX["open"]
-_WORLDCOVER_TO_ADVANCED_IDX[90] = _ADVANCED_CAT_IDX["open"]
-_WORLDCOVER_TO_ADVANCED_IDX[95] = _ADVANCED_CAT_IDX["vegetation"]
-_WORLDCOVER_TO_ADVANCED_IDX[100] = _ADVANCED_CAT_IDX["dense_rural"]
+_LEGACY_CLUTTER_CATEGORIES = LEGACY_CLUTTER_CATEGORIES
+_CLUTTER_LOSS_ARRAY = _LEGACY_CLUTTER_LOSS_ARRAY
+_WORLDCOVER_TO_CATEGORY = _WORLDCOVER_TO_LEGACY_IDX
+_ADVANCED_CATEGORIES = ADVANCED_CLUTTER_CATEGORIES
+_WORLDCOVER_TO_ADVANCED_IDX = _WORLDCOVER_TO_ADVANCED_IDX
 
 
 class LandCoverGrid:
@@ -107,17 +63,22 @@ class LandCoverGrid:
             min_lat = transform[3] + transform[5] * n_rows
             max_lat = transform[3]
             if min_lat > max_lat:
+                # South-up raster: flip rows to north-up order so that
+                # row 0 = northernmost latitude, matching our sampling logic.
                 logger.warning(
-                    "Land-cover raster %s appears to be south-up; row ordering may be "
-                    "inverted. All ESA WorldCover rasters are north-up. If using a custom "
-                    "land-cover raster, verify that latitude indexing is correct.",
+                    "Land-cover raster %s is south-up; flipping rows to "
+                    "north-up order. All ESA WorldCover rasters are north-up. "
+                    "If using a custom land-cover raster, verify that "
+                    "latitude indexing is correct after this flip.",
                     path,
                 )
+                data = data[::-1].copy()
                 min_lat, max_lat = max_lat, min_lat
             return cls(data, min_lat, max_lat, min_lon, max_lon, nodata, str(path))
         finally:
-            band = None
-            ds = None
+            # Release band before dataset per GDAL best practice.
+            del band
+            del ds
 
     def close(self):
         """Release land-cover data to free memory."""
@@ -227,6 +188,7 @@ class LandCoverGrid:
         safe_sampled = np.where(valid_class, sampled, 0).astype(np.int32, copy=False)
         cat_idx = _WORLDCOVER_TO_CATEGORY[safe_sampled]
         cat_idx = np.where(out_of_bounds, 0, cat_idx)
+        from .clutter_categories import _LEGACY_CAT_IDX
         if rx_override:
-            cat_idx[:] = _CATEGORY_IDX.get(rx_override, 0)
+            cat_idx[:] = _LEGACY_CAT_IDX.get(rx_override, 0)
         return _CLUTTER_LOSS_ARRAY[cat_idx]

@@ -39,9 +39,13 @@ def validate_panels(tx_point_a, tx_point_b, radius_km_a, radius_km_b):
     tx_lat_a, tx_lon_a = tx_point_a.y(), tx_point_a.x()
     tx_lat_b, tx_lon_b = tx_point_b.y(), tx_point_b.x()
     if abs(tx_lat_a - tx_lat_b) > 1e-5 or abs(tx_lon_a - tx_lon_b) > 1e-5:
-        raise QgsProcessingException("Panel A and B TX positions differ. Delta comparison requires co-located transmitters.")
+        raise QgsProcessingException(
+            "Panel A and B TX positions differ. "
+            "Delta comparison requires co-located transmitters.")
     if abs(radius_km_a - radius_km_b) > 1e-9:
-        raise QgsProcessingException("Panel A and B radii differ. Delta comparison requires identical analysis radii.")
+        raise QgsProcessingException(
+            "Panel A and B radii differ. "
+            "Delta comparison requires identical analysis radii.")
     return tx_lat_a, tx_lon_a, tx_lat_b, tx_lon_b
 
 

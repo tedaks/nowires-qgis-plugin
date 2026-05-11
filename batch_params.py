@@ -106,7 +106,10 @@ OUTPUT_MARKERS = "OUTPUT_MARKERS"
 OUTPUT_CSV = "OUTPUT_CSV"
 OUTPUT_JSON = "OUTPUT_JSON"
 
-BATCH_MODE_OPTIONS = ["One-to-Many (single TX → multiple RX)", "Many-to-One (multiple TX → single RX)"]
+BATCH_MODE_OPTIONS = [
+    "One-to-Many (single TX → multiple RX)",
+    "Many-to-One (multiple TX → single RX)",
+]
 RANK_BY_OPTIONS = ["Link margin (descending)", "Path loss (ascending)", "Clearance (descending)"]
 _BATCH_PARAM_NAMES = (
     "MODE", "TX_POINT", "RX_LAYER", "RX_POINT", "TX_LAYER",
@@ -186,7 +189,8 @@ def _add_antenna_params(algorithm, prefix):
     algorithm.addParameter(QgsProcessingParameterNumber(
         getattr(algorithm, prefix + "FRONT_BACK_DB"),
         label + " front-to-back ratio (dB)",
-        type=QgsProcessingParameterNumber.Type.Double, defaultValue=DEFAULT_FRONT_BACK_DB, minValue=0.0))
+        type=QgsProcessingParameterNumber.Type.Double,
+        defaultValue=DEFAULT_FRONT_BACK_DB, minValue=0.0))
 
 
 def _add_output_params(algorithm):
