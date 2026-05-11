@@ -198,7 +198,7 @@ def _saalos_vec_above(result, mask, pd, pdk, cch, htx, hrx, hrx_gnd, pol, wn):
     rsp = np.zeros_like(pd)
     tsp = np.zeros_like(pd)
 
-    ssnps_neg = mask & (np.cos(tic) >= np.sin(tic))
+    ssnps_neg = mask & (tic >= np.pi / 2)
     rsp = np.where(ssnps_neg, 0.997, rsp)
     tsp = np.where(ssnps_neg, 1.0 - 0.997, tsp)
     d1a_fallback = np.minimum(0.1 * pd, 600.0)

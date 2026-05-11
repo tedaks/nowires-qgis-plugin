@@ -121,3 +121,20 @@ def test_vec_monotone_in_rx_height():
     vec = clutter_loss_saalos_vec(200.0, 15.0, 30.0, h_rx_vals, 0.0, 0, 1000.0)
     for i in range(1, len(vec)):
         assert vec[i] <= vec[i - 1] + 1e-9
+
+
+def test_vec_matches_scalar_above_clutter_various_distances():
+    params = [
+        (100.0, 15.0, 30.0, 2.0, 0.0, 0, 1000.0),
+        (500.0, 15.0, 30.0, 2.0, 0.0, 0, 1000.0),
+        (1000.0, 15.0, 30.0, 2.0, 0.0, 0, 1000.0),
+        (5000.0, 15.0, 30.0, 2.0, 0.0, 0, 1000.0),
+        (200.0, 20.0, 40.0, 3.0, 0.0, 1, 2400.0),
+        (200.0, 20.0, 40.0, 3.0, 0.0, 2, 2400.0),
+    ]
+    for d, cch, htx, hrx, hgnd, pol, f in params:
+        scalar = clutter_loss_saalos(d, cch, htx, hrx, hgnd, pol, f)
+        vec = clutter_loss_saalos_vec(d, cch, htx, hrx, hgnd, pol, f)
+        assert float(vec) == pytest.approx(scalar, abs=1e-6), (
+            f"Mismatch at d={d}, cch={cch}, htx={htx}, hrx={hrx}, pol={pol}, f={f}"
+        )

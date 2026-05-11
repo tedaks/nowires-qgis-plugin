@@ -65,15 +65,15 @@ def clutter_loss_p2108_terrestrial_stat(d_km, f_ghz, p=50.0):
     result = -5.0 * math.log10(10.0 ** (-0.2 * L_l_val) + 10.0 ** (-0.2 * L_s_val))
     result -= sigma_cb * q_inv
     result = max(result, 0.0)
-    L_cap = _compute_capped(f_ghz)
+    L_cap = _compute_capped(f_ghz, p)
     return min(result, L_cap)
 
 
-def _compute_capped(f_ghz):
+def _compute_capped(f_ghz, p=50.0):
     L_l_val = _L_l(f_ghz)
     L_s_val = _L_s(_DIST_CAP_KM, f_ghz)
     sigma_cb = _sigma_cb(L_l_val, L_s_val)
-    q_inv = q_inv_complementary_normal(50.0)
+    q_inv = q_inv_complementary_normal(p)
     result = -5.0 * math.log10(10.0 ** (-0.2 * L_l_val) + 10.0 ** (-0.2 * L_s_val))
     result -= sigma_cb * q_inv
     return max(result, 0.0)
@@ -95,6 +95,6 @@ def clutter_loss_p2108_terrestrial_stat_vec(d_km_arr, f_ghz, p=50.0):
     q_inv = q_inv_complementary_normal(p)
     result = -5.0 * np.log10(w_l + w_s) - sigma_cb * q_inv
     result = np.maximum(result, 0.0)
-    L_cap = _compute_capped(f_ghz)
+    L_cap = _compute_capped(f_ghz, p)
     result = np.minimum(result, L_cap)
     return result

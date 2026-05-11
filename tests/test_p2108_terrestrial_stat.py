@@ -61,6 +61,14 @@ class TestClutterLossTerrestrialStat:
         loss_10km = clutter_loss_p2108_terrestrial_stat(10.0, 1.0, p=50.0)
         assert loss_10km == pytest.approx(loss_2km, abs=0.01)
 
+    def test_capped_at_2km_high_percentile(self):
+        loss_2km_p95 = clutter_loss_p2108_terrestrial_stat(2.0, 1.0, p=95.0)
+        loss_10km_p95 = clutter_loss_p2108_terrestrial_stat(10.0, 1.0, p=95.0)
+        assert loss_10km_p95 == pytest.approx(loss_2km_p95, abs=0.01)
+        loss_2km_p5 = clutter_loss_p2108_terrestrial_stat(2.0, 1.0, p=5.0)
+        loss_10km_p5 = clutter_loss_p2108_terrestrial_stat(10.0, 1.0, p=5.0)
+        assert loss_10km_p5 == pytest.approx(loss_2km_p5, abs=0.01)
+
     def test_frequency_clamped_low(self):
         result_low = clutter_loss_p2108_terrestrial_stat(1.0, 0.1)
         result_at_min = clutter_loss_p2108_terrestrial_stat(1.0, 0.5)
