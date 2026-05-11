@@ -329,6 +329,7 @@ def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypa
             itm_loss_grid=np.array([[100.0, 110.0]], dtype=np.float32),
             clutter_loss_grid=np.zeros((1, 2), dtype=np.float32),
             clutter_rx_db_grid=np.zeros((1, 2), dtype=np.float32),
+            bel_rx_db_grid=np.zeros((1, 2), dtype=np.float32),
         )
     monkeypatch.setattr(
         module,

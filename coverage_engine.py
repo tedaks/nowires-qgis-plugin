@@ -87,11 +87,11 @@ def compute_coverage(
     eirp_dbm = tx_power_dbm + tx_gain_dbi - cable_loss_db
     lats = _coverage_axis_centers(min_lat, max_lat, grid_size)
     lons = _coverage_axis_centers(min_lon, max_lon, grid_size)
-    prx_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
-    loss_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
-    itm_loss_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
-    clutter_loss_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
-    clutter_rx_db_grid = np.full((grid_size, grid_size), np.nan, dtype=np.float32)
+    gs, nan32 = (grid_size, grid_size), np.float32(np.nan)
+    prx_grid, loss_grid = np.full(gs, nan32, dtype=np.float32), np.full(gs, nan32, dtype=np.float32)
+    itm_loss_grid = np.full(gs, nan32, dtype=np.float32)
+    clutter_loss_grid, clutter_rx_db_grid = np.full(gs, nan32, dtype=np.float32), np.full(gs, nan32, dtype=np.float32)
+    bel_rx_db_grid = np.full(gs, nan32, dtype=np.float32)
 
     _sample_elev = getattr(elev_grid, "sample", None)
     if callable(_sample_elev):
@@ -123,7 +123,7 @@ def compute_coverage(
         clutter_context = ClutterLossContext(
             frequency_mhz=f_mhz, distance_m=0.0,
             tx_height_m=tx_h_m, rx_height_m=rx_h_m,
-            rx_ground_elevation_m=tx_ground_elev_m,
+            rx_ground_elevation_m=0.0,
             tx_ground_elevation_m=tx_ground_elev_m,
             polarization=polarization,
             cch_override_m=cch_override_m, model=clutter_model,
@@ -242,7 +242,8 @@ def compute_coverage(
                             break
                         pixels_failed += apply_batch_results(
                             batch_results, loss_grid, prx_grid,
-                            itm_loss_grid, clutter_loss_grid, clutter_rx_db_grid)
+                            itm_loss_grid, clutter_loss_grid, clutter_rx_db_grid,
+                            bel_rx_db_grid)
                         pixels_done += len(batch_results)
                         if feedback and chunk_idx % 50 == 0:
                             feedback.setProgress(int(pixels_done / len(tasks) * 80))
@@ -267,12 +268,11 @@ def compute_coverage(
                 break
             result = _itm_worker(task, grid_data=grid_data, grid_meta=grid_meta)
             if result is not None:
-                i, j, loss_db, prx, itm_loss_db, c_tx, c_rx = result
-                loss_grid[i, j] = loss_db
-                prx_grid[i, j] = prx
+                i, j, loss_db, prx, itm_loss_db, c_tx, c_rx, bel_rx = result
+                loss_grid[i, j], prx_grid[i, j] = loss_db, prx
                 itm_loss_grid[i, j] = itm_loss_db
                 clutter_loss_grid[i, j] = c_tx + c_rx
-                clutter_rx_db_grid[i, j] = c_rx
+                clutter_rx_db_grid[i, j], bel_rx_db_grid[i, j] = c_rx, bel_rx
             else:
                 pixels_failed += 1
             pixels_done += 1
@@ -283,7 +283,7 @@ def compute_coverage(
         return CoverageResult(
             prx_grid=None, loss_grid=None, min_lat=0.0, max_lat=0.0,
             min_lon=0.0, max_lon=0.0, itm_loss_grid=None,
-            clutter_loss_grid=None, clutter_rx_db_grid=None)
+            clutter_loss_grid=None, clutter_rx_db_grid=None, bel_rx_db_grid=None)
 
     total = len(tasks)
     if feedback:
@@ -296,4 +296,4 @@ def compute_coverage(
         prx_grid=prx_grid, loss_grid=loss_grid,
         min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,
         itm_loss_grid=itm_loss_grid, clutter_loss_grid=clutter_loss_grid,
-        clutter_rx_db_grid=clutter_rx_db_grid)
+        clutter_rx_db_grid=clutter_rx_db_grid, bel_rx_db_grid=bel_rx_db_grid)

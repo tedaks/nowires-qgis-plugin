@@ -71,15 +71,15 @@ def _build_clutter_context(p, clutter_grid, elev):
         tx_ground = float(elev.sample(p.tx_lat, p.tx_lon))
         if not math.isfinite(tx_ground):
             tx_ground = 0.0
-        # Note: rx_ground_elevation_m is set to tx_ground here as a template.
-        # In coverage mode, each pixel gets its own RX ground elevation
-        # computed from the DEM during task building (coverage_tasks.py).
-        # The context created here is only used for TX-side clutter and
-        # the single-point report on the transmitter itself.
+        # Note: rx_ground_elevation_m is a placeholder (0.0) here. In coverage
+        # mode, each pixel gets its own RX ground elevation computed from the
+        # DEM during task building (coverage_tasks.py). The context created here
+        # is only used for TX-side clutter and the single-point report.
         clutter_context = ClutterLossContext(
             frequency_mhz=p.f_mhz, distance_m=0.0,
             tx_height_m=p.tx_h, rx_height_m=p.rx_h,
-            rx_ground_elevation_m=tx_ground, tx_ground_elevation_m=tx_ground,
+            rx_ground_elevation_m=0.0,
+            tx_ground_elevation_m=tx_ground,
             polarization=p.polarization, cch_override_m=p.cch_override_m,
             model=p.clutter_model, percentile=p.clutter_percentile,
             street_width_m=p.street_width_m, bel_enabled=p.bel_enabled,
@@ -115,6 +115,7 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
             itm_loss_grid=result.itm_loss_grid,
             clutter_loss_grid=result.clutter_loss_grid,
             clutter_rx_db_grid=result.clutter_rx_db_grid,
+            bel_rx_db_grid=result.bel_rx_db_grid,
             min_lat=result.min_lat, max_lat=result.max_lat,
             min_lon=result.min_lon, max_lon=result.max_lon,
             tx_lat=p.tx_lat, tx_lon=p.tx_lon, tx_h=p.tx_h, rx_h=p.rx_h,

@@ -177,7 +177,7 @@ def compute_terminal_clutter_losses(
     from .clutter import clutter_loss_db, TerminalClutterLosses
     if not enabled:
         return TerminalClutterLosses("open", "open", 0.0, 0.0, 0.0, "off")
-    advanced = context is not None and context.model in ("advanced", "p2108_combined")
+    advanced = context is not None and context.model == "advanced"
     if not advanced:
         tx_cat, tx_src = _resolve_category(tx_lat, tx_lon, tx_override, land_cover_grid)
         rx_cat, rx_src = _resolve_category(rx_lat, rx_lon, rx_override, land_cover_grid)

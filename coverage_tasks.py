@@ -37,6 +37,13 @@ from .constants import EARTH_RADIUS_M
 from .coverage_pool import _CoverageTask
 
 _MIN_COVERAGE_DISTANCE_M = 1.0
+_DISTANCE_BUCKET_M = 1.0
+
+
+def _bucket_key(distance_m, rx_ground_m):
+    """Quantise continuous per-pixel parameters for LUT lookup."""
+    return (round(distance_m / _DISTANCE_BUCKET_M) * _DISTANCE_BUCKET_M,
+            round(rx_ground_m, 1))
 
 
 def _haversine_grid(tx_lat, tx_lon, lats, lons):
@@ -157,11 +164,12 @@ def build_coverage_tasks(
         rx_clutter_loss_grid = None
         rx_category_grid = None
 
-    # NOTE: This double loop is O(grid_size^2) in Python. For large grids
-    # (e.g. 1024x1024 = ~1M pixels) with clutter enabled, the per-pixel
-    # compute_terminal_clutter_loss calls in advanced mode dominate task
-    # generation time. A future optimization could vectorise the simple-mode
-    # paths with numpy and pre-compute advanced-mode parameters per cell.
+    # NOTE: This double loop is O(grid_size^2) in Python.  For large grids
+    # with clutter enabled, per-pixel compute_terminal_clutter_loss calls in
+    # advanced mode dominate task generation time.  A LUT keyed on
+    # (category, terminal, distance_bucket, ground_bucket) avoids redundant
+    # invocations for pixels sharing the same quantised parameters.
+    _clutter_lut = {}
     tasks = []
     for i in range(grid_size):
         for j in range(grid_size):
@@ -178,34 +186,50 @@ def build_coverage_tasks(
                 rx_ground_m = (
                     float(rx_ground_grid[i, j]) if rx_ground_grid is not None else 0.0
                 )
-                pixel_ctx = ClutterLossContext(
-                    frequency_mhz=f_mhz,
-                    distance_m=modeled_d_m,
-                    tx_height_m=tx_h_m,
-                    rx_height_m=rx_h_m,
-                    rx_ground_elevation_m=rx_ground_m,
-                    tx_ground_elevation_m=tx_ground_elev_m,
-                    polarization=polarization,
-                    cch_override_m=clutter_context.cch_override_m,
-                    model="advanced",
-                    percentile=clutter_context.percentile,
-                    street_width_m=clutter_context.street_width_m,
-                    bel_enabled=clutter_context.bel_enabled,
-                    bel_building_type=clutter_context.bel_building_type,
-                    bel_elevation_angle_deg=clutter_context.bel_elevation_angle_deg,
-                )
-                tx_clutter_db = compute_terminal_clutter_loss(
-                    tx_category, "tx", pixel_ctx)
-                rx_clutter_db = compute_terminal_clutter_loss(
-                    rx_category_grid[i, j], "rx", pixel_ctx)
-                if clutter_context.bel_enabled:
-                    rx_clutter_db += bel_db
+                bucket = _bucket_key(modeled_d_m, rx_ground_m)
+                tx_lut_key = ("tx", tx_category, bucket)
+                rx_cat = rx_category_grid[i, j]
+                rx_lut_key = ("rx", rx_cat, bucket)
+                tx_cached = _clutter_lut.get(tx_lut_key)
+                rx_cached = _clutter_lut.get(rx_lut_key)
+                if tx_cached is None or rx_cached is None:
+                    pixel_ctx = ClutterLossContext(
+                        frequency_mhz=f_mhz,
+                        distance_m=modeled_d_m,
+                        tx_height_m=tx_h_m,
+                        rx_height_m=rx_h_m,
+                        rx_ground_elevation_m=rx_ground_m,
+                        tx_ground_elevation_m=tx_ground_elev_m,
+                        polarization=polarization,
+                        cch_override_m=clutter_context.cch_override_m,
+                        model="advanced",
+                        percentile=clutter_context.percentile,
+                        street_width_m=clutter_context.street_width_m,
+                        bel_enabled=False,
+                        bel_building_type=clutter_context.bel_building_type,
+                        bel_elevation_angle_deg=clutter_context.bel_elevation_angle_deg,
+                    )
+                if tx_cached is None:
+                    tx_clutter_db = compute_terminal_clutter_loss(
+                        tx_category, "tx", pixel_ctx)
+                    _clutter_lut[tx_lut_key] = tx_clutter_db
+                else:
+                    tx_clutter_db = tx_cached
+                if rx_cached is None:
+                    rx_clutter_db = compute_terminal_clutter_loss(
+                        rx_cat, "rx", pixel_ctx)
+                    _clutter_lut[rx_lut_key] = rx_clutter_db
+                else:
+                    rx_clutter_db = rx_cached
+                pixel_bel_db = bel_db if clutter_context.bel_enabled else 0.0
             elif rx_clutter_loss_grid is not None:
                 tx_clutter_db = tx_clutter_loss_db
                 rx_clutter_db = float(rx_clutter_loss_grid[i, j])
+                pixel_bel_db = 0.0
             else:
                 tx_clutter_db = tx_clutter_loss_db
                 rx_clutter_db = 0.0
+                pixel_bel_db = 0.0
             tasks.append(
                 _CoverageTask(
                     i=i,
@@ -232,6 +256,7 @@ def build_coverage_tasks(
                     rx_gain_dbi=rx_gain_dbi,
                     clutter_tx_db=tx_clutter_db,
                     clutter_rx_db=rx_clutter_db,
+                    bel_rx_db=pixel_bel_db,
                 )
             )
     return tasks

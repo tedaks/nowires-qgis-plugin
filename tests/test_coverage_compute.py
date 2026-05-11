@@ -58,6 +58,7 @@ def test_compute_itm_p2p_uses_radio_bridge(monkeypatch):
         "itm_loss_db": 144.5,
         "clutter_tx_db": 2.0,
         "clutter_rx_db": 6.0,
+        "bel_rx_db": 0.0,
         "total_path_loss_db": 152.5,
         "antenna_gain_adjustment_db": 3.0,
         "received_power_dbm": -104.5,

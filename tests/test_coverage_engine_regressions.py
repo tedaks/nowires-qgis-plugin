@@ -57,7 +57,7 @@ def test_compute_coverage_runs_in_single_process_mode(monkeypatch):
     monkeypatch.setattr(
         coverage_engine,
         "_itm_worker",
-        lambda task, **_kw: (task[0], task[1], 123.0, -77.0, 120.0, 2.0, 1.0),
+        lambda task, **_kw: (task[0], task[1], 123.0, -77.0, 120.0, 2.0, 1.0, 0.0),
     )
 
     result = coverage_engine.compute_coverage(
@@ -190,7 +190,7 @@ def test_compute_coverage_falls_back_on_pool_error_and_cleans_shared_memory(monk
     monkeypatch.setattr(
         coverage_engine,
         "_itm_worker",
-        lambda task, **_kw: (task[0], task[1], 123.0, -77.0, 120.0, 2.0, 1.0),
+        lambda task, **_kw: (task[0], task[1], 123.0, -77.0, 120.0, 2.0, 1.0, 0.0),
     )
 
     # ValueError from the pool is now caught and triggers sequential fallback,

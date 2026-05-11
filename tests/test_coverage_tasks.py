@@ -94,7 +94,7 @@ class TestBuildCoverageTasks:
         )
         assert len(tasks) >= 1
         task = tasks[0]
-        assert len(task) == 24
+        assert len(task) == 25
         i, j = task[0], task[1]
         assert 0 <= i < 2
         assert 0 <= j < 2

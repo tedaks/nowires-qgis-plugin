@@ -50,6 +50,7 @@ class CoverageResult:
     itm_loss_grid: np.ndarray
     clutter_loss_grid: np.ndarray
     clutter_rx_db_grid: np.ndarray
+    bel_rx_db_grid: np.ndarray
 
 _CoverageTask = namedtuple(
     "_CoverageTask",
@@ -59,7 +60,7 @@ _CoverageTask = namedtuple(
         "f_mhz", "polarization", "epsilon", "sigma",
         "time_pct", "location_pct", "situation_pct",
         "eirp_dbm", "antenna_config", "rx_gain_dbi",
-        "clutter_tx_db", "clutter_rx_db",
+        "clutter_tx_db", "clutter_rx_db", "bel_rx_db",
     ],
 )
 
@@ -201,6 +202,7 @@ def _itm_worker(args, grid_data=None, grid_meta=None):
         rx_gain_dbi=task.rx_gain_dbi,
         clutter_tx_db=task.clutter_tx_db,
         clutter_rx_db=task.clutter_rx_db,
+        bel_rx_db=task.bel_rx_db,
     )
 
     if result is None:
@@ -214,6 +216,7 @@ def _itm_worker(args, grid_data=None, grid_meta=None):
         result["itm_loss_db"],
         result["clutter_tx_db"],
         result["clutter_rx_db"],
+        result["bel_rx_db"],
     )
 
 
@@ -265,16 +268,17 @@ def _release_shared_memory(shared_grid, unlink=True):
 
 
 def apply_batch_results(batch_results, loss_grid, prx_grid, itm_loss_grid,
-                        clutter_loss_grid, clutter_rx_db_grid):
+                        clutter_loss_grid, clutter_rx_db_grid, bel_rx_db_grid):
     pixels_failed = 0
     for result in batch_results:
         if result is not None:
-            i, j, loss_db, prx, itm_loss_db, c_tx, c_rx = result
+            i, j, loss_db, prx, itm_loss_db, c_tx, c_rx, bel_rx = result
             loss_grid[i, j] = loss_db
             prx_grid[i, j] = prx
             itm_loss_grid[i, j] = itm_loss_db
             clutter_loss_grid[i, j] = c_tx + c_rx
             clutter_rx_db_grid[i, j] = c_rx
+            bel_rx_db_grid[i, j] = bel_rx
         else:
             pixels_failed += 1
     return pixels_failed

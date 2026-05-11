@@ -165,7 +165,7 @@ def build_coverage_report_payload(
     pct_above_sensitivity, usable_cell_count, min_distance_km, max_distance_km,
     average_distance_km, clutter_model="Off", clutter_source="off",
     tx_antenna_preset="omni", itm_loss_db=None, clutter_tx_db=0.0,
-    clutter_rx_db=0.0, total_path_loss_db=None,
+    clutter_rx_db=0.0, bel_rx_db=0.0, total_path_loss_db=None,
 ):
     """Build the structured coverage report payload."""
     reliability = summarize_reliability(
@@ -193,6 +193,7 @@ def build_coverage_report_payload(
             "usable_cell_count": usable_cell_count,
             "min_distance_km": min_distance_km, "max_distance_km": max_distance_km,
             "average_distance_km": average_distance_km,
+            "bel_rx_db": bel_rx_db,
         },
     )
     return {
@@ -212,7 +213,7 @@ def build_empty_coverage_report_payload(
     tx_power, tx_gain, rx_gain, cable_loss, rx_sensitivity_dbm, pixel_count,
     clutter_model="Off", clutter_source="off", tx_antenna_preset="omni",
     itm_loss_db=None, clutter_tx_db=0.0, clutter_rx_db=0.0,
-    total_path_loss_db=None,
+    bel_rx_db=0.0, total_path_loss_db=None,
 ):
     """Build a coverage report payload for a grid with no valid modelled cells."""
     reliability = summarize_reliability(

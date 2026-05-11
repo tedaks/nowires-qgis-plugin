@@ -66,7 +66,7 @@ class TestComputeCoverageCancellation:
         monkeypatch.setattr(coverage_engine, "should_use_multiprocessing", lambda: False)
 
         def fake_itm_worker(task):
-            return (task[0], task[1], 100.0, -50.0, 80.0, 0.0, 0.0)
+            return (task[0], task[1], 100.0, -50.0, 80.0, 0.0, 0.0, 0.0)
 
         monkeypatch.setattr(coverage_pool, "_itm_worker", fake_itm_worker)
 
