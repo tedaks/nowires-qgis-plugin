@@ -22,7 +22,7 @@ from .shared_dem_grid import SharedDEMGrid
 
 logger = logging.getLogger(__name__)
 
-_MAX_WORKERS = min(os.cpu_count() or 1, 16)
+_MAX_WORKERS = min(os.cpu_count() or 1, int(os.environ.get("NOWIRES_MAX_WORKERS", "16")))
 _MIN_CHUNK_SIZE = 64
 _MAX_CHUNK_SIZE = 2048
 
@@ -235,10 +235,7 @@ def _itm_worker_batch(batch_and_event):
         try:
             results.append(_itm_worker(args))
         except Exception as exc:
-            logger.warning(
-                "Coverage pixel task failed: %s: %s",
-                type(exc).__name__, exc)
-            results.append(None)
+            results.append(("error", "{}: {}".format(type(exc).__name__, exc)))
     return results
 
 
@@ -271,7 +268,12 @@ def apply_batch_results(batch_results, loss_grid, prx_grid, itm_loss_grid,
                         clutter_loss_grid, clutter_rx_db_grid, bel_rx_db_grid):
     pixels_failed = 0
     for result in batch_results:
-        if result is not None:
+        if result is None:
+            pixels_failed += 1
+        elif isinstance(result, tuple) and len(result) == 2 and result[0] == "error":
+            pixels_failed += 1
+            logger.warning("Coverage pixel failed in worker: %s", result[1])
+        else:
             i, j, loss_db, prx, itm_loss_db, c_tx, c_rx, bel_rx = result
             loss_grid[i, j] = loss_db
             prx_grid[i, j] = prx
@@ -279,8 +281,6 @@ def apply_batch_results(batch_results, loss_grid, prx_grid, itm_loss_grid,
             clutter_loss_grid[i, j] = c_tx + c_rx
             clutter_rx_db_grid[i, j] = c_rx
             bel_rx_db_grid[i, j] = bel_rx
-        else:
-            pixels_failed += 1
     return pixels_failed
 
 

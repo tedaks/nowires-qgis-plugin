@@ -37,7 +37,7 @@ from .constants import EARTH_RADIUS_M
 from .coverage_pool import _CoverageTask
 
 _MIN_COVERAGE_DISTANCE_M = 1.0
-_DISTANCE_BUCKET_M = 1.0
+_DISTANCE_BUCKET_M = 10.0
 
 
 def _bucket_key(distance_m, rx_ground_m):

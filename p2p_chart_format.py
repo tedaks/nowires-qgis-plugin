@@ -62,16 +62,16 @@ def build_obstruction_data(d_km, terrain_bulge, los_h, fresnel_r):
     ]
 
 
-def build_chart_status_text(result, prx_dbm, margin_db):
+def build_chart_status_text(result, prx_dbm, margin_db, itm_loss_db=None):
     """Build the status annotation text for the P2P profile chart.
 
     Returns a multi-line string for placing in the chart area.
     """
+    loss = itm_loss_db if itm_loss_db is not None else result.loss_db
     if margin_db is not None:
         status = "VIABLE" if margin_db >= 0 else "NOT VIABLE"
         status_text = "Loss: {:.1f} dB\nPrx: {:.1f} dBm\nMargin: {:.1f} dB\nStatus: {}".format(
-            result.loss_db, prx_dbm, margin_db, status)
+            loss, prx_dbm, margin_db, status)
     else:
-        status_text = "Loss: {:.1f} dB\nPrx: {:.1f} dBm".format(
-            result.loss_db, prx_dbm)
+        status_text = "Loss: {:.1f} dB\nPrx: {:.1f} dBm".format(loss, prx_dbm)
     return status_text

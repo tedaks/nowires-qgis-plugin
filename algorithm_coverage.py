@@ -57,7 +57,7 @@ def _build_clutter_context(p, clutter_grid, elev):
     from .clutter_context import ClutterLossContext
     clutter_grid_resolved = clutter_grid
     if clutter_grid_resolved is None and p.clutter_enabled:
-        pad_deg = max(DEGREE_PADDING, p.radius_km / 111320.0 * 0.1)
+        pad_deg = max(DEGREE_PADDING, p.radius_km / (111320.0 / 1000.0) * 0.1)
         south, north, west, east = coverage_bounds(
             p.tx_lat, p.tx_lon, p.radius_km, padding_deg=pad_deg)
         clutter_grid_resolved = ensure_clutter_grid_for_area(
@@ -178,6 +178,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
         super().__init__()
         self._raster_layer_ids = []
         self._coverage_post_processor = None
+        self._coverage_layer_id = None
 
     def initAlgorithm(self, config):
         add_coverage_params(self)
@@ -239,6 +240,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                     tx_clutter_override=p.tx_clutter_override,
                     rx_clutter_override=p.rx_clutter_override,
                     tx_clutter_loss_db=tx_clutter_for_report.tx_loss_db,
+                    clutter_context=clutter_context,
                     clutter_model=p.clutter_model, cch_override_m=p.cch_override_m,
                     clutter_percentile=p.clutter_percentile,
                     street_width_m=p.street_width_m, bel_enabled=p.bel_enabled,

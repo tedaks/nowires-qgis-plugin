@@ -50,10 +50,11 @@ def _interpolate_nan_elevations(elevations):
 
 def _write_p2p_output_layers(srs, paths, tx_lat, tx_lon, rx_lat, rx_lon,
         dist_m, result, dist_arr, terrain_bulge, los_h, fresnel_r,
-        tx_h, rx_h, tx_gain, rx_gain, tx_power, rx_sens):
+        tx_h, rx_h, tx_gain, rx_gain, tx_power, rx_sens, itm_loss_db=None):
     profile_path = (
         paths["profile_dest"] or os.path.join(paths["temp_dir"], "profile_line.shp"))
-    write_profile_line(profile_path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result)
+    write_profile_line(profile_path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result,
+                       itm_loss_db=itm_loss_db)
     fresnel_poly_path = (
         paths["fresnel_dest"] or os.path.join(paths["temp_dir"], "fresnel_zone.shp"))
     markers_path = (
@@ -109,7 +110,10 @@ def _load_p2p_qgis_layers(context, profile_path, fresnel_poly_path,
         apply_fresnel_lines_symbology(fresnel_lines_layer)
     queue_layer_for_loading(context, fresnel_lines_layer, "Fresnel Zone Lines")
     if show_chart:
-        show_profile_chart(**chart_kwargs)
+        try:
+            show_profile_chart(**chart_kwargs)
+        except Exception:
+            logger.warning("P2P profile chart failed", exc_info=True)
 
 
 def run_p2p_analysis(params: P2PAnalysisParams):
@@ -217,9 +221,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
     total_path_loss_db = loss_db + cl.total_with_bel_db
     prx_dbm = eirp_dbm + p.rx_gain + ant_adj_total - total_path_loss_db
     margin_db = prx_dbm - p.rx_sens
-    fspl_db = (20.0 * math.log10(dist_m / 1000.0)
-               + 20.0 * math.log10(p.f_mhz) + 32.45
-               if dist_m > 0 and p.f_mhz > 0 else 0.0)
+    fspl_db = 20.0 * math.log10(dist_m / 1000.0) + 20.0 * math.log10(p.f_mhz) + 32.45
     p.feedback.setProgress(70)
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(4326)
@@ -229,7 +231,6 @@ def run_p2p_analysis(params: P2PAnalysisParams):
     try:
         if needs_temp_dir:
             temp_dir = tmp_mgr.make_dir("p2p", persistent=True)
-            tmp_mgr.warn_persistent(p.feedback)
         else:
             temp_dir = None
         profile_path, fresnel_poly_path, markers_path = _write_p2p_output_layers(
@@ -237,7 +238,8 @@ def run_p2p_analysis(params: P2PAnalysisParams):
                     markers_dest=p.markers_dest, temp_dir=temp_dir),
                 p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon, dist_m, result,
                 dist_arr, terrain_bulge, los_h, fresnel_r,
-                p.tx_h, p.rx_h, p.tx_gain, p.rx_gain, p.tx_power, p.rx_sens)
+                p.tx_h, p.rx_h, p.tx_gain, p.rx_gain, p.tx_power, p.rx_sens,
+                itm_loss_db=loss_db)
         _poly_root, _poly_ext = os.path.splitext(fresnel_poly_path)
         fresnel_lines_path = "{}_lines{}".format(_poly_root, _poly_ext)
         report_payload = build_p2p_report_payload(
@@ -262,7 +264,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             antenna_gain_adjustment_db=ant_adj_total,
             tx_cch_m=cl.tx_cch_m, rx_cch_m=cl.rx_cch_m,
             clutter_method=cl.method, clutter_percentile=cl.percentile,
-            bel_rx_db=cl.rx_bel_db, total_bel_db=cl.rx_bel_db)
+            bel_rx_db=cl.rx_bel_db)
         _write_p2p_reports(p.report_csv_path, p.report_json_path,
                            p.report_html_path, report_payload)
         p.feedback.setProgress(90)
@@ -272,7 +274,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             result=result, k_factor=p.k_factor,
             tx_power=p.tx_power, tx_gain=p.tx_gain, rx_gain=p.rx_gain,
             cable_loss=p.cable_loss, rx_sens=p.rx_sens,
-            prx_dbm=prx_dbm, margin_db=margin_db)
+            prx_dbm=prx_dbm, margin_db=margin_db, itm_loss_db=loss_db)
         _load_p2p_qgis_layers(p.context, profile_path, fresnel_poly_path,
             fresnel_lines_path, markers_path, p.show_chart, chart_kwargs,
             p.post_processor_sink)

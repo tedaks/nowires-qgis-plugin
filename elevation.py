@@ -222,6 +222,37 @@ class ElevationGrid:
         result[oob] = np.nan
         return result
 
+    def sample_grid(self, lats, lons) -> np.ndarray:
+        """Sample the DEM at every (lat, lon) grid intersection.
+
+        Returns a float32 array of shape (len(lats), len(lons)).
+        Out-of-bounds or no-data cells are NaN.
+        """
+        lats_arr = np.asarray(lats, dtype=np.float64)[:, np.newaxis]
+        lons_arr = np.asarray(lons, dtype=np.float64)[np.newaxis, :]
+        fy_raw = (self.max_lat - lats_arr) / self.d_lat - 0.5
+        fx_raw = (lons_arr - self.min_lon) / self.d_lon - 0.5
+        oob = (
+            (fy_raw < -0.5) | (fx_raw < -0.5)
+            | (fy_raw > self.n_rows - 0.5) | (fx_raw > self.n_cols - 0.5)
+        )
+        fy = np.clip(fy_raw, 0.0, self.n_rows - 1.0 - 1e-9)
+        fx = np.clip(fx_raw, 0.0, self.n_cols - 1.0 - 1e-9)
+        y0 = np.floor(fy).astype(np.int32)
+        x0 = np.floor(fx).astype(np.int32)
+        y1 = np.clip(y0 + 1, 0, self.n_rows - 1)
+        x1 = np.clip(x0 + 1, 0, self.n_cols - 1)
+        ty = (fy - y0).astype(np.float32)
+        tx_ = (fx - x0).astype(np.float32)
+        result = (
+            self.data[y0, x0] * (1 - tx_) * (1 - ty)
+            + self.data[y0, x1] * tx_ * (1 - ty)
+            + self.data[y1, x0] * (1 - tx_) * ty
+            + self.data[y1, x1] * tx_ * ty
+        ).astype(np.float32)
+        result[oob] = np.nan
+        return result
+
     def terrain_profile(self, lat1, lon1, lat2, lon2, step_m=30.0) -> list[tuple[float, float]]:
         dist = haversine_m(lat1, lon1, lat2, lon2)
         if dist < step_m:

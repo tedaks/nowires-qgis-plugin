@@ -404,3 +404,114 @@ class TestITMLossUpperBoundInConstants:
 
     def test_itm_loss_upper_bound_is_numeric(self):
         assert isinstance(ITM_LOSS_UPPER_BOUND, float)
+
+
+class TestP2PITMLossCapConsistency:
+    """Verify the ITM cap is visible consistently across vector layer, chart, and feedback."""
+
+    def _run_capped(self, monkeypatch, raw_loss=999.0):
+        p2p_compute = _load_p2p_compute_with_test_stubs(monkeypatch)
+        params = _make_p2p_params()
+        params.clutter_enabled = False
+        params.clutter_grid = None
+        monkeypatch.setattr(p2p_compute, "ElevationGrid", _ElevationGrid)
+        monkeypatch.setattr(
+            p2p_compute, "itm_p2p_loss",
+            lambda **_kw: ITMResult(loss_db=raw_loss, mode=2, warnings=0),
+        )
+        monkeypatch.setattr(p2p_compute, "antenna_gain_adjustment_db", lambda *a, **kw: 0.0)
+        monkeypatch.setattr(p2p_compute, "_load_p2p_qgis_layers", lambda *a, **kw: None)
+        monkeypatch.setattr(p2p_compute, "_write_p2p_reports", lambda *a, **kw: None)
+        captured = {}
+        monkeypatch.setattr(
+            p2p_compute, "build_p2p_report_payload",
+            lambda *a, **kw: (captured.update(kw) or {"results": {"itm_path_loss_db": kw["itm_loss_db"],
+                "free_space_loss_db": 100.0, "total_path_loss_db": kw["itm_loss_db"],
+                "eirp_dbm": 37.0, "clutter_tx_db": 0.0, "clutter_rx_db": 0.0,
+                "received_power_dbm": -63.0, "link_margin_db": 27.0,
+                "propagation_mode_name": "Diffraction", "antenna_gain_adjustment_db": 0.0,
+                "fade_margin_class": "good", "reliability_summary": "OK",
+                "availability_method": "n/a", "availability_estimate_pct": None,
+                "fresnel_1_violated": False, "fresnel_60_violated": False,
+                "max_fresnel_radius_m": 10.0, "tx_cch_m": 0.0, "rx_cch_m": 0.0,
+                "clutter_method": "", "clutter_percentile": 50.0, "bel_rx_db": 0.0},
+                "inputs": {"tx_lat": 0, "tx_lon": 0, "rx_lat": 0, "rx_lon": 0,
+                    "tx_height_m": 30.0, "rx_height_m": 10.0, "frequency_mhz": 900.0,
+                    "polarization": "H", "climate": "1", "k_factor": 1.333,
+                    "tx_power_dbm": 30.0, "tx_gain_dbi": 10.0, "rx_gain_dbi": 8.0,
+                    "cable_loss_db": 1.0, "rx_sensitivity_dbm": -90.0,
+                    "tx_antenna_preset": "omni", "rx_antenna_preset": "omni",
+                    "clutter_source": "off"},
+                "status": {"summary": "VIABLE", "viable": True}}),
+        )
+        write_args = {}
+        monkeypatch.setattr(
+            p2p_compute, "_write_p2p_output_layers",
+            lambda *a, **kw: (write_args.update(kw) or
+                              ("/tmp/p.gpkg", "/tmp/f.gpkg", "/tmp/m.gpkg")),
+        )
+
+        class _CapturingFeedback:
+            def __init__(self):
+                self.messages = []
+            def pushInfo(self, m):
+                self.messages.append(m)
+            def setProgress(self, _):
+                pass
+
+        fb = _CapturingFeedback()
+        params.feedback = fb
+        p2p_compute.run_p2p_analysis(params)
+        return captured, write_args, fb
+
+    def test_vector_layer_receives_capped_loss(self, monkeypatch):
+        _, write_args, _ = self._run_capped(monkeypatch)
+        assert write_args.get("itm_loss_db") == ITM_LOSS_UPPER_BOUND
+
+    def test_feedback_log_shows_capped_loss(self):
+        from NoWires.p2p_report_display import report_p2p_results
+
+        class _CapturingFeedback:
+            def __init__(self):
+                self.messages = []
+            def pushInfo(self, m):
+                self.messages.append(m)
+            def setProgress(self, _):
+                pass
+
+        fb = _CapturingFeedback()
+        result = SimpleNamespace(loss_db=999.0, mode=2)
+        payload = {
+            "inputs": {"tx_power_dbm": 30.0, "tx_gain_dbi": 10.0, "cable_loss_db": 1.0,
+                       "rx_gain_dbi": 8.0, "rx_sensitivity_dbm": -90.0},
+            "results": {"itm_path_loss_db": ITM_LOSS_UPPER_BOUND,
+                        "free_space_loss_db": 100.0, "total_path_loss_db": ITM_LOSS_UPPER_BOUND,
+                        "eirp_dbm": 37.0, "clutter_tx_db": 0.0, "clutter_rx_db": 0.0,
+                        "received_power_dbm": -63.0, "link_margin_db": 27.0,
+                        "propagation_mode_name": "Diffraction",
+                        "antenna_gain_adjustment_db": 0.0, "fade_margin_class": "good",
+                        "reliability_summary": "OK", "availability_method": "n/a",
+                        "availability_estimate_pct": None,
+                        "fresnel_1_violated": False, "fresnel_60_violated": False},
+        }
+        report_p2p_results(fb, dist_m=5000.0, f_mhz=900.0, result=result,
+                           report_payload=payload, k_factor=1.333,
+                           los_blocked=False, fresnel_r_max=25.0)
+        itm_lines = [m for m in fb.messages if "ITM Path Loss" in m]
+        assert itm_lines, "no 'ITM Path Loss' line in feedback"
+        assert "{:.2f}".format(ITM_LOSS_UPPER_BOUND) in itm_lines[0]
+        assert "999" not in itm_lines[0]
+
+    def test_chart_status_text_uses_capped_loss(self):
+        from NoWires.p2p_chart_format import build_chart_status_text
+        result = SimpleNamespace(loss_db=999.0)
+        text = build_chart_status_text(result, prx_dbm=-63.0, margin_db=27.0,
+                                       itm_loss_db=ITM_LOSS_UPPER_BOUND)
+        assert "{:.1f}".format(ITM_LOSS_UPPER_BOUND) in text
+        assert "999" not in text
+
+    def test_chart_status_text_falls_back_without_itm_loss_db(self):
+        from NoWires.p2p_chart_format import build_chart_status_text
+        result = SimpleNamespace(loss_db=150.0)
+        text = build_chart_status_text(result, prx_dbm=-80.0, margin_db=10.0)
+        assert "150.0" in text

@@ -150,7 +150,7 @@ def _make_export_csv(distances, terrain_bulge, los_h, fresnel_r, f_mhz, dist_m, 
 def show_profile_chart(
     distances, elevations, terrain_bulge, los_h, fresnel_r, dist_m,
     tx_h, rx_h, f_mhz, result, k_factor, tx_power, tx_gain, rx_gain,
-    cable_loss, rx_sens, prx_dbm=None, margin_db=None,
+    cable_loss, rx_sens, prx_dbm=None, margin_db=None, itm_loss_db=None,
 ):
     try:
         import matplotlib
@@ -198,7 +198,7 @@ def show_profile_chart(
     ax.grid(True, alpha=0.3)
 
     from .p2p_chart_format import build_chart_status_text
-    status_text = build_chart_status_text(result, prx_dbm, margin_db)
+    status_text = build_chart_status_text(result, prx_dbm, margin_db, itm_loss_db=itm_loss_db)
     ax.text(
         0.02, 0.98, status_text,
         transform=ax.transAxes, fontsize=9, verticalalignment="top",

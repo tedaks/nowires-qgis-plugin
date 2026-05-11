@@ -65,7 +65,7 @@ def build_p2p_report_payload(
     clutter_source="off", tx_antenna_preset="omni", rx_antenna_preset="omni",
     antenna_gain_adjustment_db=0.0, tx_cch_m=0.0, rx_cch_m=0.0,
     clutter_method="", clutter_percentile=50.0,
-    bel_rx_db=0.0, total_bel_db=0.0,
+    bel_rx_db=0.0,
 ):
     """Build the structured P2P report payload."""
     reliability = summarize_reliability(

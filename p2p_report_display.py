@@ -65,14 +65,15 @@ def report_p2p_results(feedback, dist_m, f_mhz, result, report_payload,
     feedback.pushInfo("  TX Gain:        {:.2f} dBi".format(tx_gain))
     feedback.pushInfo("  Cable Loss:     {:.2f} dB".format(cable_loss))
     feedback.pushInfo("  EIRP:           {:.2f} dBm".format(eirp_dbm))
+    itm_loss_db = results["itm_path_loss_db"]
     feedback.pushInfo("  Free Space Loss:{:.2f} dB".format(fspl_db))
-    feedback.pushInfo("  ITM Path Loss:  {:.2f} dB".format(result.loss_db))
+    feedback.pushInfo("  ITM Path Loss:  {:.2f} dB".format(itm_loss_db))
     feedback.pushInfo("  Clutter TX Loss:{:.2f} dB".format(clutter_tx_db))
     feedback.pushInfo("  Clutter RX Loss:{:.2f} dB".format(clutter_rx_db))
     feedback.pushInfo("  Total Path Loss:{:.2f} dB".format(total_path_loss_db))
     feedback.pushInfo("  Antenna Pattern:{:.2f} dB".format(antenna_gain_adjustment_db_total))
     feedback.pushInfo(
-        "  Excess Loss:    {:.2f} dB".format(result.loss_db - fspl_db)
+        "  Excess Loss:    {:.2f} dB".format(itm_loss_db - fspl_db)
     )
     feedback.pushInfo("  RX Gain:        {:.2f} dBi".format(rx_gain))
     feedback.pushInfo("  Received Power: {:.2f} dBm".format(prx_dbm))

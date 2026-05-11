@@ -75,6 +75,7 @@ def compute_coverage(
     tx_clutter_override=None,
     rx_clutter_override=None,
     tx_clutter_loss_db=None,
+    clutter_context=None,
     feedback=None,
     clutter_model="simple",
     cch_override_m=None,
@@ -101,13 +102,18 @@ def compute_coverage(
     else:
         tx_ground_elev_m = 0.0
     rx_ground_grid = None
-    if clutter_enabled and clutter_model == "advanced" and callable(_sample_elev):
-        rx_ground_grid = np.zeros((grid_size, grid_size), dtype=np.float32)
-        for i in range(grid_size):
-            lat_i = float(lats[i])
-            for j in range(grid_size):
-                v = _sample_elev(lat_i, float(lons[j]))
-                rx_ground_grid[i, j] = v if math.isfinite(v) else 0.0
+    if clutter_enabled and clutter_model == "advanced":
+        _sample_grid = getattr(elev_grid, "sample_grid", None)
+        if callable(_sample_grid):
+            raw = _sample_grid(lats, lons)
+            rx_ground_grid = np.where(np.isfinite(raw), raw, 0.0).astype(np.float32)
+        elif callable(_sample_elev):
+            rx_ground_grid = np.zeros((grid_size, grid_size), dtype=np.float32)
+            for i in range(grid_size):
+                lat_i = float(lats[i])
+                for j in range(grid_size):
+                    v = _sample_elev(lat_i, float(lons[j]))
+                    rx_ground_grid[i, j] = v if math.isfinite(v) else 0.0
 
     antenna_config = antenna_config_from_values(
         preset=antenna_preset,
@@ -119,7 +125,7 @@ def compute_coverage(
         vertical_pattern_path=antenna_vertical_pattern_path,
     )
     clutter_context = None
-    if clutter_enabled:
+    if clutter_enabled and clutter_context is None:
         clutter_context = ClutterLossContext(
             frequency_mhz=f_mhz, distance_m=0.0,
             tx_height_m=tx_h_m, rx_height_m=rx_h_m,
@@ -266,6 +272,9 @@ def compute_coverage(
             if feedback and feedback.isCanceled():
                 cancelled = True
                 break
+            if not np.isnan(prx_grid[task.i, task.j]):
+                pixels_done += 1
+                continue
             result = _itm_worker(task, grid_data=grid_data, grid_meta=grid_meta)
             if result is not None:
                 i, j, loss_db, prx, itm_loss_db, c_tx, c_rx, bel_rx = result

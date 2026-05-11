@@ -42,7 +42,8 @@ def _require_ogr_driver(path):
     return driver
 
 
-def write_profile_line(path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result):
+def write_profile_line(path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result,
+                       itm_loss_db=None):
     driver = _require_ogr_driver(path)
     remove_existing_ogr_dataset(driver, path)
     ds = None
@@ -60,7 +61,7 @@ def write_profile_line(path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result
         geom.AddPoint(rx_lon, rx_lat)
         feat.SetGeometry(geom)
         feat.SetField("distance", dist_m)
-        feat.SetField("loss_db", result.loss_db)
+        feat.SetField("loss_db", itm_loss_db if itm_loss_db is not None else result.loss_db)
         feat.SetField("mode", result.mode)
         feat.SetField("mode_name", PROP_MODE_NAMES.get(result.mode, "Unknown"))
         layer.CreateFeature(feat)
