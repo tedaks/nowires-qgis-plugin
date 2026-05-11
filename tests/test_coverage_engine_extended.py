@@ -8,6 +8,7 @@ import numpy as np
 
 from NoWires import coverage_engine
 from NoWires import coverage_pool
+from NoWires import _coverage_executor
 
 
 
@@ -63,12 +64,13 @@ class TestComputeCoverageEmptyTasks:
 
 class TestComputeCoverageCancellation:
     def test_cancel_returns_none_tuple_in_sequential_mode(self, monkeypatch):
-        monkeypatch.setattr(coverage_engine, "should_use_multiprocessing", lambda: False)
+        monkeypatch.setattr(_coverage_executor, "should_use_multiprocessing", lambda: False)
 
         def fake_itm_worker(task):
             return (task[0], task[1], 100.0, -50.0, 80.0, 0.0, 0.0, 0.0)
 
         monkeypatch.setattr(coverage_pool, "_itm_worker", fake_itm_worker)
+        monkeypatch.setattr(_coverage_executor, "_itm_worker", fake_itm_worker)
 
         fb = FakeFeedback(cancel_after=1)
         result = coverage_engine.compute_coverage(

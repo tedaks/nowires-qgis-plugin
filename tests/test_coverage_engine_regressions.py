@@ -32,7 +32,9 @@ def _import_coverage_engine():
     package.__name__ = "NoWires"
     sys.modules["NoWires"] = package
 
-    return importlib.import_module("NoWires.coverage_engine")
+    engine = importlib.import_module("NoWires.coverage_engine")
+    executor = importlib.import_module("NoWires._coverage_executor")
+    return engine, executor
 
 
 class _DummyGrid:
@@ -51,11 +53,11 @@ class _DummyGrid:
 
 
 def test_compute_coverage_runs_in_single_process_mode(monkeypatch):
-    coverage_engine = _import_coverage_engine()
+    coverage_engine, coverage_executor = _import_coverage_engine()
 
-    monkeypatch.setattr(coverage_engine, "should_use_multiprocessing", lambda: False)
+    monkeypatch.setattr(coverage_executor, "should_use_multiprocessing", lambda: False)
     monkeypatch.setattr(
-        coverage_engine,
+        coverage_executor,
         "_itm_worker",
         lambda task, **_kw: (task[0], task[1], 123.0, -77.0, 120.0, 2.0, 1.0, 0.0),
     )
@@ -78,7 +80,7 @@ def test_compute_coverage_runs_in_single_process_mode(monkeypatch):
 
 
 def test_compute_coverage_cleans_shared_memory_when_cancelled(monkeypatch):
-    coverage_engine = _import_coverage_engine()
+    coverage_engine, coverage_executor = _import_coverage_engine()
 
     class FakeSharedGrid:
         def __init__(self):
@@ -121,9 +123,9 @@ def test_compute_coverage_cleans_shared_memory_when_cancelled(monkeypatch):
             return True
 
     fake_grid = FakeSharedGrid()
-    monkeypatch.setattr(coverage_engine, "should_use_multiprocessing", lambda: True)
-    monkeypatch.setattr(coverage_engine, "_make_shared_grid", lambda grid: fake_grid)
-    monkeypatch.setattr(coverage_engine, "ProcessPoolExecutor", FakeExecutor)
+    monkeypatch.setattr(coverage_executor, "should_use_multiprocessing", lambda: True)
+    monkeypatch.setattr(coverage_executor, "_make_shared_grid", lambda grid: fake_grid)
+    monkeypatch.setattr(coverage_executor, "ProcessPoolExecutor", FakeExecutor)
 
     result = coverage_engine.compute_coverage(
         elev_grid=_DummyGrid(),
@@ -148,7 +150,7 @@ def test_compute_coverage_falls_back_on_pool_error_and_cleans_shared_memory(monk
     compute_coverage should fall back to sequential mode, clean up shared
     memory, and still produce a valid result.
     """
-    coverage_engine = _import_coverage_engine()
+    coverage_engine, coverage_executor = _import_coverage_engine()
 
     class FakeSharedGrid:
         def __init__(self):
@@ -184,11 +186,11 @@ def test_compute_coverage_falls_back_on_pool_error_and_cleans_shared_memory(monk
             raise ValueError("unexpected worker serialization failure")
 
     fake_grid = FakeSharedGrid()
-    monkeypatch.setattr(coverage_engine, "should_use_multiprocessing", lambda: True)
-    monkeypatch.setattr(coverage_engine, "_make_shared_grid", lambda grid: fake_grid)
-    monkeypatch.setattr(coverage_engine, "ProcessPoolExecutor", ExplodingExecutor)
+    monkeypatch.setattr(coverage_executor, "should_use_multiprocessing", lambda: True)
+    monkeypatch.setattr(coverage_executor, "_make_shared_grid", lambda grid: fake_grid)
+    monkeypatch.setattr(coverage_executor, "ProcessPoolExecutor", ExplodingExecutor)
     monkeypatch.setattr(
-        coverage_engine,
+        coverage_executor,
         "_itm_worker",
         lambda task, **_kw: (task[0], task[1], 123.0, -77.0, 120.0, 2.0, 1.0, 0.0),
     )

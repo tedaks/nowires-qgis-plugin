@@ -10,11 +10,12 @@ import os
 PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
 ENGINE_SOURCE = os.path.join(PLUGIN_DIR, "coverage_engine.py")
 POOL_SOURCE = os.path.join(PLUGIN_DIR, "coverage_pool.py")
+EXECUTOR_SOURCE = os.path.join(PLUGIN_DIR, "_coverage_executor.py")
 
 
 def _engine_source():
     parts = []
-    for path in (ENGINE_SOURCE, POOL_SOURCE):
+    for path in (ENGINE_SOURCE, POOL_SOURCE, EXECUTOR_SOURCE):
         with open(path, "r", encoding="utf-8") as handle:
             parts.append(handle.read())
     return "\n".join(parts)

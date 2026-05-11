@@ -16,7 +16,7 @@ import numpy as np
 
 from .antenna import antenna_gain_adjustment_db
 from .coverage_compute import compute_itm_p2p
-from .elevation import sample_line_from_grid
+from ._geo_utils import sample_line_from_grid
 from .macos_compat import find_macos_python_executable
 from .shared_dem_grid import SharedDEMGrid
 
