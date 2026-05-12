@@ -5,7 +5,6 @@
 import logging
 import math
 import os
-
 import numpy as np
 from osgeo import osr
 from qgis.core import QgsProcessingException
@@ -16,7 +15,7 @@ from .constants import (
 )
 from .constants import ITM_LOSS_UPPER_BOUND
 from .temp_manager import TempDirManager
-from .dem_downloader import ensure_dem_for_area
+from .dem_downloader import ensure_dem_for_area, get_temp_dir
 from .elevation import ElevationGrid, bearing_deg, haversine_m
 from .fresnel import C_LIGHT, fresnel_profile_analysis
 from .geo_bounds import shortest_longitude_bounds
@@ -230,7 +229,8 @@ def run_p2p_analysis(params: P2PAnalysisParams):
     tmp_mgr = TempDirManager()
     try:
         if needs_temp_dir:
-            temp_dir = tmp_mgr.make_dir("p2p", persistent=True)
+            temp_dir = os.path.join(get_temp_dir(), "p2p_outputs")
+            os.makedirs(temp_dir, exist_ok=True)
         else:
             temp_dir = None
         profile_path, fresnel_poly_path, markers_path = _write_p2p_output_layers(

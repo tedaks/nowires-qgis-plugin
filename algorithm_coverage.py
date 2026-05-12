@@ -1,7 +1,6 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Coverage Analysis Algorithm — heatmap prediction via ITM."""
-
 import contextlib
 import logging
 import math
@@ -11,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 from qgis.core import Qgis, QgsProcessingException, QgsRasterLayer
 from qgis.core import QgsVectorLayer
-
 from .base_algorithm import NoWiresAlgorithm, install_constants
 from .dem_downloader import ensure_dem_for_area, get_temp_dir
 from .elevation import ElevationGrid
@@ -190,6 +188,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
     def __init__(self):
         super().__init__()
         self._raster_layer_ids = []
+        self._vector_layer_ids = []
         self._coverage_post_processor = None
         self._coverage_layer_id = None
 
@@ -198,6 +197,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         self._raster_layer_ids = []
+        self._vector_layer_ids = []
         self._coverage_post_processor = None
         self._tmp = TempDirManager()
         clutter_grid = None

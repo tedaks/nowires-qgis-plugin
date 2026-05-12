@@ -170,6 +170,7 @@ def _load_p2p_compute_with_test_stubs(monkeypatch):
         qgis_core.QgsProcessingException = RuntimeError
     dem_stub = types.ModuleType("NoWires.dem_downloader")
     dem_stub.ensure_dem_for_area = lambda *args, **kwargs: "/tmp/dem.tif"
+    dem_stub.get_temp_dir = lambda: "/tmp/nowires_test"
     p2p_params_stub = types.ModuleType("NoWires.p2p_params")
     p2p_params_stub.report_p2p_results = lambda *args, **kwargs: None
     processing_utils_stub = types.ModuleType("NoWires.processing_utils")
