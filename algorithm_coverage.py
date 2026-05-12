@@ -13,7 +13,7 @@ from qgis.core import Qgis, QgsProcessingException, QgsRasterLayer
 from qgis.core import QgsVectorLayer
 
 from .base_algorithm import NoWiresAlgorithm, install_constants
-from .dem_downloader import ensure_dem_for_area
+from .dem_downloader import ensure_dem_for_area, get_temp_dir
 from .elevation import ElevationGrid
 from .coverage_legend import show_coverage_legend
 from .coverage_compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
@@ -156,7 +156,9 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
             algorithm._on_coverage_loaded(raster_layer)
             queue_layer_for_loading(context, raster_layer, layer_name)
         show_coverage_legend(rx_sensitivity_dbm=p.rx_sens)
-        markers_path = os.path.join(algorithm._tmp.make_dir("coverage_prx", persistent=True), "tx_marker.shp")
+        markers_dir = os.path.join(get_temp_dir(), "coverage_prx")
+        os.makedirs(markers_dir, exist_ok=True)
+        markers_path = os.path.join(markers_dir, "tx_marker.shp")
         write_single_marker(markers_path, lat=p.tx_lat, lon=p.tx_lon, height_m=p.tx_h,
                             gain_dbi=p.tx_gain, power_dbm=p.tx_power, label="TX")
         tx_layer = QgsVectorLayer(markers_path, "Coverage TX")
@@ -294,6 +296,5 @@ class CoverageAlgorithm(NoWiresAlgorithm):
 
     def createInstance(self):
         return CoverageAlgorithm()
-
 
 install_constants(CoverageAlgorithm, PARAM_CONSTANTS)
