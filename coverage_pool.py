@@ -65,15 +65,15 @@ _CoverageTask = namedtuple(
 )
 
 # Module-level shared-memory state for worker processes.
-# These globals are set per-pool by _init_cov_pool and read by _itm_worker.
-# They are safe because each worker process gets its own copy via the spawn
-# start method. However, if two CoverageAlgorithm instances run concurrently
-# in the same process (currently impossible because QGIS Processing enforces
-# NoThreading — see base_algorithm.py), the globals would conflict. A future
-# refactor could use a process-local dict keyed by pool ID for isolation.
+# Set per-pool by _init_cov_pool, read by _itm_worker. Safe under spawn
+# (each worker gets its own copy). NoThreading flag prevents concurrent
+# runs in the same process. _cov_pool_id + _cov_pools dict provide
+# future isolation for multi-pool scenarios if NoThreading is relaxed.
 _cov_shm: Optional[multiprocessing.shared_memory.SharedMemory] = None
 _cov_grid_data: Optional[np.ndarray] = None
 _cov_grid_meta: dict = {}
+_cov_pool_id: Optional[str] = None
+_cov_pools: dict[str, dict] = {}
 
 
 def should_use_multiprocessing(os_name=None):

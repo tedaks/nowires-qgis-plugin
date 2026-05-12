@@ -155,6 +155,12 @@ def build_coverage_report_payload_for_grid(
 
 
 def report_coverage_results(feedback, report_payload, raster_grid, valid, rx_sens, summary=None):
+    """Log coverage results to the processing feedback.
+
+    Reads precomputed statistics from *report_payload* (already calculated
+    by :func:`build_coverage_report_payload_for_grid`) to avoid redundant
+    numpy scans over large grids.
+    """
     feedback.pushInfo("")
     feedback.pushInfo("=" * 40)
     feedback.pushInfo("COVERAGE RESULTS")
@@ -165,17 +171,19 @@ def report_coverage_results(feedback, report_payload, raster_grid, valid, rx_sen
     if not valid.any():
         feedback.pushInfo("No valid coverage cells were computed.")
     else:
+        results = report_payload.get("results", {})
+        min_prx = results.get("min_prx_dbm", float("nan"))
+        max_prx = results.get("max_prx_dbm", float("nan"))
+        mean_prx = results.get("mean_prx_dbm", float("nan"))
+        pct_above = results.get("pct_above_sensitivity", 0.0)
         feedback.pushInfo(
-            "Min Prx: {:.1f} dBm".format(float(np.nanmin(raster_grid)))
+            "Min Prx: {:.1f} dBm".format(min_prx)
         )
         feedback.pushInfo(
-            "Max Prx: {:.1f} dBm".format(float(np.nanmax(raster_grid)))
+            "Max Prx: {:.1f} dBm".format(max_prx)
         )
         feedback.pushInfo(
-            "Mean Prx: {:.1f} dBm".format(float(np.nanmean(raster_grid)))
-        )
-        pct_above = (
-            float((raster_grid[valid] >= rx_sens).sum()) / max(valid.sum(), 1) * 100
+            "Mean Prx: {:.1f} dBm".format(mean_prx)
         )
         feedback.pushInfo(
             "Above sensitivity ({:.0f} dBm): {:.1f}%".format(rx_sens, pct_above)

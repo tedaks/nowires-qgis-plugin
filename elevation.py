@@ -30,6 +30,8 @@ and were originally distributed under the MIT License. See NOTICE.md for
 attribution details.
 """
 
+from __future__ import annotations
+
 import logging
 import math
 

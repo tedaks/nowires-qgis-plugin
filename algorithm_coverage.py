@@ -91,7 +91,9 @@ def _build_clutter_context(p, clutter_grid, elev):
         land_cover_grid=clutter_grid_resolved,
         tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override,
         context=clutter_context)
-    return clutter_grid_resolved, clutter_context, clutter_source, tx_clutter_for_report
+    owns_grid = (clutter_grid_resolved is not None
+                 and clutter_grid_resolved is not clutter_grid)
+    return clutter_grid_resolved, clutter_context, clutter_source, tx_clutter_for_report, owns_grid
 
 
 def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
@@ -213,8 +215,8 @@ class CoverageAlgorithm(NoWiresAlgorithm):
         try:
             with ElevationGrid(dem_path) as elev:
                 _validate_dem_coverage(elev, south, north, west, east, feedback)
-                clutter_grid, clutter_context, clutter_source, tx_clutter_for_report = \
-                    _build_clutter_context(p, p.clutter_grid, elev)
+                clutter_grid, clutter_context, clutter_source, tx_clutter_for_report, \
+                    _owns_clutter = _build_clutter_context(p, p.clutter_grid, elev)
                 feedback.pushInfo("Computing coverage...")
                 feedback.setProgress(20)
                 result = compute_coverage(
@@ -255,7 +257,11 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                     self, parameters, context, feedback, p, result,
                     dem_path, clutter_source, tx_clutter_for_report)
         finally:
-            if clutter_grid is not None:
+            # Only close clutter grids that were auto-downloaded by
+            # _build_clutter_context (tracked via _owns_clutter).
+            # User-provided grids (from p.clutter_grid) are owned by the
+            # caller and must not be closed here.
+            if _owns_clutter and clutter_grid is not None:
                 with contextlib.suppress(Exception):
                     clutter_grid.close()
             self._tmp.cleanup()

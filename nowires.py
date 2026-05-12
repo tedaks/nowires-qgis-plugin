@@ -37,6 +37,7 @@ from .coverage_legend import remove_coverage_legend
 from .coverage_opacity import find_latest_coverage_layer, CoverageOpacityDialog
 from .provider import NoWiresProvider
 from .three_d import SCENE_MODE_GLOBE, SCENE_MODE_LOCAL, open_nowires_3d_view
+from .cache_manager import clear_dem_cache
 
 cmd_folder = os.path.dirname(__file__)
 
@@ -168,6 +169,14 @@ class NoWiresPlugin:
         self._toolbar_actions.append(self.batch_action)
         self._menu_actions.append(self.batch_action)
 
+        # Clear DEM Cache action
+        self.clear_cache_action = QAction(
+            QIcon(icon), "Clear DEM Cache", self.iface.mainWindow()
+        )
+        self.clear_cache_action.triggered.connect(self.run_clear_cache)
+        self.iface.addPluginToMenu(_MENU_NAME, self.clear_cache_action)
+        self._menu_actions.append(self.clear_cache_action)
+
         for action in self._toolbar_actions:
             self.iface.addToolBarIcon(action)
 
@@ -183,6 +192,27 @@ class NoWiresPlugin:
                 "These are left for QGIS layer loading and can be "
                 "safely deleted when QGIS is closed.".format(stale, tempfile.gettempdir()),
                 "NoWires")
+
+    def run_clear_cache(self):
+        """Clear cached DEM and WorldCover tiles from the temp directory."""
+        from qgis.PyQt.QtWidgets import QMessageBox
+        try:
+            removed, freed_bytes = clear_dem_cache()
+            mb = freed_bytes / 1048576.0
+            if removed == 0:
+                self.iface.messageBar().pushInfo(
+                    "NoWires", "No cached tile files found."
+                )
+            else:
+                self.iface.messageBar().pushSuccess(
+                    "NoWires",
+                    "Removed {} cached tile(s) (~{:.1f} MB freed).".format(
+                        removed, mb)
+                )
+        except Exception as exc:
+            self.iface.messageBar().pushWarning(
+                "NoWires", "Cache cleanup failed: {}".format(exc)
+            )
 
     def unload(self):
         """Remove plugin elements."""

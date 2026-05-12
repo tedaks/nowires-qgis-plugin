@@ -199,13 +199,13 @@ class P2PAlgorithm(NoWiresAlgorithm):
         try:
             return run_p2p_analysis(p2p_params)
         finally:
-            if clutter_grid is not None:
-                try:
-                    clutter_grid.close()
-                except Exception:
-                    import logging as _logging
-                    _logging.getLogger(__name__).warning(
-                        'Failed to close clutter grid', exc_info=True)
+            # Clutter grid lifecycle: a user-provided grid (loaded from
+            # clutter_raster_path above) is owned by the caller and MUST NOT
+            # be closed here. Auto-downloaded grids are handled internally by
+            # run_p2p_analysis() which tracks owns_clutter_grid and cleans up
+            # in its own finally block. The algorithm-level clutter_grid is
+            # only non-None for user-provided rasters -- skip close entirely.
+            pass
 
     def name(self):
         return "p2p_analysis"
