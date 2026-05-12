@@ -8,7 +8,7 @@ import tempfile
 
 import pytest
 
-from nowires_qgis_plugin.cache_manager import clear_dem_cache
+from cache_manager import clear_dem_cache
 
 
 class _FeedbackStub:
@@ -28,14 +28,14 @@ def temp_cache_dir():
     # Monkey-patch dem_downloader.get_temp_dir — cache_manager imports this
     # via `from .dem_downloader import get_temp_dir`, creating a local binding.
     # Both the source module and cache_manager's reference must be patched.
-    import nowires_qgis_plugin.dem_downloader as ddl
-    import nowires_qgis_plugin.cache_manager as cm
+    import dem_downloader as ddl
+    import cache_manager as cm
     original_ddl = ddl.get_temp_dir
     original_cm = cm.get_temp_dir
     ddl.get_temp_dir = lambda: tmp
     cm.get_temp_dir = lambda: tmp
     # Also monkey-patch worldcover dir helpers
-    import nowires_qgis_plugin.worldcover_downloader as wcd
+    import worldcover_downloader as wcd
     original_wc = wcd.get_worldcover_dir
     wcd_dir = os.path.join(tmp, "worldcover")
     os.makedirs(wcd_dir, exist_ok=True)
@@ -60,13 +60,19 @@ class TestClearDemCache:
 
     def test_non_existent_directory(self):
         """Gracefully handles missing temp directory."""
-        import nowires_qgis_plugin.dem_downloader as ddl
-        import nowires_qgis_plugin.cache_manager as cm
-        ddl.get_temp_dir = lambda: "/nonexistent/path/nowires_test"
-        cm.get_temp_dir = lambda: "/nonexistent/path/nowires_test"
-        removed, freed = clear_dem_cache()
-        assert removed == 0
-        assert freed == 0
+        import dem_downloader as ddl
+        import cache_manager as cm
+        original_ddl = ddl.get_temp_dir
+        original_cm = cm.get_temp_dir
+        try:
+            ddl.get_temp_dir = lambda: "/nonexistent/path/nowires_test"
+            cm.get_temp_dir = lambda: "/nonexistent/path/nowires_test"
+            removed, freed = clear_dem_cache()
+            assert removed == 0
+            assert freed == 0
+        finally:
+            ddl.get_temp_dir = original_ddl
+            cm.get_temp_dir = original_cm
 
     def test_removes_glo30_tiles(self, temp_cache_dir):
         """GLO-30 tile files are removed."""
