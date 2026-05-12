@@ -233,6 +233,9 @@ def ensure_dem_for_area(south, north, west, east, feedback=None, proxy_opener=No
         feedback.pushInfo("Clipping and merging DEM tiles")
 
     merge_temp_dir = tempfile.mkdtemp(prefix="nowires_dem_", dir=temp_dir)
+    # temp_dir (from get_temp_dir()) is already TOCTOU-safe, so the
+    # subdirectory created by mkdtemp inside it inherits that safety.
+    os.chmod(merge_temp_dir, 0o700)
     if feedback:
         feedback.pushInfo(
             "Merged DEM outputs are kept in a per-run folder for QGIS layer loading: "

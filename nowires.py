@@ -43,7 +43,7 @@ cmd_folder = os.path.dirname(__file__)
 _MENU_NAME = "NoWires" if sys.platform == "darwin" else "&NoWires"
 
 
-def _stale_temp_dir_count():
+def _stale_temp_dir_count(max_entries=1000):
     temp_base = tempfile.gettempdir()
     prefixes = ("nowires_",)
     entries = []
@@ -53,6 +53,8 @@ def _stale_temp_dir_count():
                 e for e in os.listdir(base)
                 if any(e.startswith(p) for p in prefixes)
             )
+            if len(entries) >= max_entries:
+                return len(entries)
         except OSError:
             pass
     try:
@@ -61,6 +63,8 @@ def _stale_temp_dir_count():
         for e in os.listdir(user_dir):
             if any(e.startswith(p) for p in prefixes) and e not in entries:
                 entries.append(e)
+        if len(entries) >= max_entries:
+            return len(entries)
     except Exception:
         pass
     return len(entries)

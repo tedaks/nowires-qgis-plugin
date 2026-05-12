@@ -129,6 +129,10 @@ def _final_cov_pool():
 def _init_cov_pool(shm_name, shape, dtype_str, grid_meta):
     _ensure_path()
     global _cov_shm, _cov_grid_data, _cov_grid_meta
+    if _cov_grid_data is not None or _cov_shm is not None:
+        raise RuntimeError(
+            "Shared-memory pool already bound — concurrent coverage runs are not supported."
+        )
     # Reset stale state from a previous pool run before re-binding.
     if _cov_grid_data is not None:
         _cov_grid_data = None

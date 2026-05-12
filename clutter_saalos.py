@@ -6,7 +6,24 @@ import numpy as np
 
 from .clutter_constants import MAX_CLUTTER_LOSS
 
+# SAALOS polarization convention:
+#   1 = Horizontal, 2 = Vertical, 0 = Other/fallback
+# A translation function (_saalos_pol) maps from the ITM convention
+# (0=H, 1=V) used by the rest of the plugin.
+
 EARTH_RADIUS = 6378137.0
+
+
+def _saalos_pol(itm_pol):
+    """Translate ITM polarization convention to SAALOS convention.
+
+    ITM: 0=Horizontal, 1=Vertical. SAALOS: 1=Horizontal, 2=Vertical.
+    """
+    if itm_pol == 0:
+        return 1  # Horizontal
+    if itm_pol == 1:
+        return 2  # Vertical
+    return 0  # Unknown/fallback
 
 
 def clutter_loss_saalos(d__meter, cch__meter, h_tx__meter, h_rx__meter,
@@ -18,6 +35,7 @@ def clutter_loss_saalos(d__meter, cch__meter, h_tx__meter, h_rx__meter,
     if h_rx__meter > cch__meter:
         return 0.0
 
+    pol = _saalos_pol(pol)
     wn = f__mhz / 47.7
     pd = d__meter
     pdk = pd / 1000.0
@@ -134,6 +152,7 @@ def clutter_loss_saalos_vec(d_meter, cch_meter, h_tx_meter, h_rx_meter,
         np.ndim(d_meter) == 0 and np.ndim(cch_meter) == 0
         and np.ndim(h_tx_meter) == 0 and np.ndim(h_rx_meter) == 0
     )
+    pol = _saalos_pol(pol)
     shape = np.broadcast_shapes(d.shape, cch.shape, htx.shape, hrx.shape,
                                 hrx_gnd.shape, f.shape)
     d = np.broadcast_to(d, shape).copy()

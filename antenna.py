@@ -60,6 +60,24 @@ class AntennaConfig:
     horizontal_pattern_path: str | None = None
     vertical_pattern_path: str | None = None
 
+    def __reduce__(self):
+        # Explicit pickle support for cross-process transmission in
+        # coverage multiprocessing workers. Returns a reconstruction
+        # tuple that avoids any implicit state beyond the dataclass fields.
+        return (
+            AntennaConfig,
+            (
+                self.preset,
+                self.azimuth_deg,
+                self.horizontal_beamwidth_deg,
+                self.vertical_beamwidth_deg,
+                self.front_back_db,
+                self.downtilt_deg,
+                self.horizontal_pattern_path,
+                self.vertical_pattern_path,
+            ),
+        )
+
 
 ANTENNA_PRESETS = {
     "omni": AntennaPreset("omni", "Omni", 360.0, 360.0, 0.0),

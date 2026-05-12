@@ -73,7 +73,10 @@ def estimate_heuristic_availability_pct(margin_db, distance_km, frequency_mhz) -
     authoritative availability estimates are needed.
     """
     value = 90.0 + margin_db * 0.4 - distance_km * 0.3 - frequency_mhz / 100000.0
-    return max(0.0, min(100.0, round(value, 2)))
+    # Cap availability at 85% for marginal/weak links (margin < 5 dB)
+    # to avoid presenting overly optimistic numbers for unreliable paths.
+    cap = 85.0 if margin_db < 5.0 else 100.0
+    return max(0.0, min(cap, round(value, 2)))
 
 
 def summarize_reliability(margin_db, frequency_mhz, distance_km, los_blocked) -> dict:

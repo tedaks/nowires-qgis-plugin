@@ -6,7 +6,7 @@ import logging
 import multiprocessing
 import os
 import warnings
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor  # noqa: F401 re-exported for test mocking
 
 import numpy as np
 

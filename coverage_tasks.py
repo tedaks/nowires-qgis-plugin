@@ -192,23 +192,25 @@ def build_coverage_tasks(
                 rx_lut_key = ("rx", rx_cat, bucket)
                 tx_cached = _clutter_lut.get(tx_lut_key)
                 rx_cached = _clutter_lut.get(rx_lut_key)
-                if tx_cached is None or rx_cached is None:
-                    pixel_ctx = ClutterLossContext(
-                        frequency_mhz=f_mhz,
-                        distance_m=modeled_d_m,
-                        tx_height_m=tx_h_m,
-                        rx_height_m=rx_h_m,
-                        rx_ground_elevation_m=rx_ground_m,
-                        tx_ground_elevation_m=tx_ground_elev_m,
-                        polarization=polarization,
-                        cch_override_m=clutter_context.cch_override_m,
-                        model="advanced",
-                        percentile=clutter_context.percentile,
-                        street_width_m=clutter_context.street_width_m,
-                        bel_enabled=False,
-                        bel_building_type=clutter_context.bel_building_type,
-                        bel_elevation_angle_deg=clutter_context.bel_elevation_angle_deg,
-                    )
+                # Always build the per-pixel context for clarity; the LUT
+                # avoids redundant compute_terminal_clutter_loss calls even
+                # though the context object is re-created each iteration.
+                pixel_ctx = ClutterLossContext(
+                    frequency_mhz=f_mhz,
+                    distance_m=modeled_d_m,
+                    tx_height_m=tx_h_m,
+                    rx_height_m=rx_h_m,
+                    rx_ground_elevation_m=rx_ground_m,
+                    tx_ground_elevation_m=tx_ground_elev_m,
+                    polarization=polarization,
+                    cch_override_m=clutter_context.cch_override_m,
+                    model="advanced",
+                    percentile=clutter_context.percentile,
+                    street_width_m=clutter_context.street_width_m,
+                    bel_enabled=False,
+                    bel_building_type=clutter_context.bel_building_type,
+                    bel_elevation_angle_deg=clutter_context.bel_elevation_angle_deg,
+                )
                 if tx_cached is None:
                     tx_clutter_db = compute_terminal_clutter_loss(
                         tx_category, "tx", pixel_ctx)

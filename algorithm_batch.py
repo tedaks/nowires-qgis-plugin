@@ -30,7 +30,7 @@ from .base_algorithm import NoWiresAlgorithm, install_constants
 from .constants import DEGREE_PADDING
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
-from .geo_bounds import shortest_longitude_bounds_for
+from .geo_bounds import shortest_longitude_bounds_for, validate_coordinates
 from .radio import K_FACTOR_PRESETS, resolve_k_factor, validate_itm_input_ranges
 from .antenna import antenna_preset_key
 from .clutter import LandCoverGrid, clutter_override_value, ensure_clutter_grid_for_area
@@ -149,6 +149,9 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
         if not rx_points:
             raise QgsProcessingException("No valid RX points found.")
         feedback.pushInfo("One-to-Many: {} RX points".format(len(rx_points)))
+        validate_coordinates(tx_pt.y(), tx_pt.x(), "TX")
+        for pt in rx_points:
+            validate_coordinates(pt["lat"], pt["lon"], "RX")
     else:
         tx_src = algorithm.parameterAsFeatureSource(parameters, algorithm.TX_LAYER, context)
         if tx_src is None:
@@ -163,6 +166,9 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
         if rx_pt is None:
             raise QgsProcessingException("RX point is required for Many-to-One mode.")
         rx_points = [{"id": 0, "lat": rx_pt.y(), "lon": rx_pt.x(), "height": None, "is_tx": False}]
+        validate_coordinates(rx_pt.y(), rx_pt.x(), "RX")
+        for tx in candidate_tx:
+            validate_coordinates(tx["lat"], tx["lon"], "TX")
         feedback.pushInfo("Many-to-One: {} TX sites".format(len(candidate_tx)))
     rp = _extract_batch_radio_params(algorithm, parameters, context)
     lats = [pt["lat"] for pt in candidate_tx] + [pt["lat"] for pt in rx_points]

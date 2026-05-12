@@ -8,6 +8,12 @@ ENTRY_KEY_LAST_COVERAGE = "last_coverage_layer_id"
 
 
 def install_constants(cls, names_or_dict):
+    """Install string constants as class attributes for QgsProcessingAlgorithm.
+
+    QGIS processing algorithms expose parameter/output names as class
+    attributes (e.g. ``self.OUTPUT_RASTER``). This helper installs them
+    from a dict or iterable of names, avoiding repetitive manual declarations.
+    """
     if isinstance(names_or_dict, dict):
         items = names_or_dict.items()
     else:

@@ -78,6 +78,10 @@ class P2PAlgorithm(NoWiresAlgorithm):
         rx_lat = rx_point.y()
         rx_lon = rx_point.x()
 
+        from .geo_bounds import validate_coordinates
+        validate_coordinates(tx_lat, tx_lon, "TX")
+        validate_coordinates(rx_lat, rx_lon, "RX")
+
         tx_h = self.parameterAsDouble(parameters, self.TX_HEIGHT, context)
         rx_h = self.parameterAsDouble(parameters, self.RX_HEIGHT, context)
         f_mhz = self.parameterAsDouble(parameters, self.FREQ_MHZ, context)

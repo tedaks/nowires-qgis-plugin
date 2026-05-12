@@ -44,7 +44,11 @@ def _iter_rows(payload):
 
 
 def _csv_safe(value):
+    """Sanitize a CSV cell value to prevent formula injection and multi-line issues."""
     s = str(value)
+    # Strip newlines that could break row structure
+    s = s.replace("\r", " ").replace("\n", " ")
+    # Prefix dangerous formula-triggering characters with a single quote
     if s and s[0] in ('=', '+', '@', '\t', '\r'):
         return "'" + s
     if s.startswith('-') and len(s) > 1:

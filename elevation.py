@@ -150,8 +150,6 @@ class ElevationGrid:
             # The numpy array (self.data) is an independent copy, so
             # closing the dataset does not affect subsequent sampling.
             del ds
-            self._ds = None
-
 
         logger.info(
             "ElevationGrid: %s shape=%s bounds=(%.4f,%.4f)-(%.4f,%.4f) %.1f MB",
@@ -274,7 +272,6 @@ class ElevationGrid:
     def close(self) -> None:
         """Release the DEM data array and GDAL dataset handle to free memory."""
         self.data = None
-        self._ds = None
 
     def __enter__(self):
         return self
@@ -284,7 +281,7 @@ class ElevationGrid:
         return False
 
     def __del__(self):
-        if self.data is not None or getattr(self, "_ds", None) is not None:
+        if self.data is not None:
             self.close()
 
 

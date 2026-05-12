@@ -24,6 +24,16 @@ def coverage_bounds(tx_lat, tx_lon, radius_km, padding_deg=0.0):
     )
 
 
+def validate_coordinates(lat, lon, label="point"):
+    """Validate geographic coordinates are within valid ranges."""
+    if lat < -90.0 or lat > 90.0:
+        raise ValueError(
+            "{} latitude {:.4f} is out of range [-90, 90].".format(label, lat))
+    if lon < -180.0 or lon > 180.0:
+        raise ValueError(
+            "{} longitude {:.4f} is out of range [-180, 180].".format(label, lon))
+
+
 def normalize_longitude(lon):
     """Return longitude normalized to [-180, 180)."""
     return ((float(lon) + 180.0) % 360.0) - 180.0

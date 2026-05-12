@@ -176,6 +176,8 @@ def extract_coverage_params(alg, parameters, context):
     )
     if tx_point is None:
         raise QgsProcessingException("TX point is required.")
+    from .geo_bounds import validate_coordinates
+    validate_coordinates(tx_point.y(), tx_point.x(), "TX")
     doubles = {}
     for key, attr in (
         ("tx_h", "TX_HEIGHT"), ("rx_h", "RX_HEIGHT"), ("f_mhz", "FREQ_MHZ"),

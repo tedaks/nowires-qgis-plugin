@@ -72,7 +72,7 @@ def download_tile_with_retry(
                         logger.debug("Cache hit: %s (%dx%d)", base_name_label, xsize, ysize)
                         if feedback:
                             feedback.pushInfo("Cache hit: " + base_name_label)
-                        test_ds = None
+                        test_ds = None  # Release GDAL dataset handle promptly
                         return local_tif
                     logger.warning(
                         "Cached tile %s has degenerate dimensions; re-downloading",
@@ -158,7 +158,7 @@ def download_tile_with_retry(
                     time.sleep(2 ** attempt)
                     continue
                 break
-            test_ds = None
+            test_ds = None  # Release GDAL dataset handle promptly
             os.replace(tmp_path, local_tif)
             downloaded = True
             break
@@ -274,7 +274,7 @@ def clip_and_merge_tiles(
         if result is None:
             logger.warning("Warp failed for %s", os.path.basename(path))
             continue
-        result = None
+        result = None  # Release GDAL dataset handle promptly
 
         check = gdal.Open(clip_path)
         if check is None:
@@ -296,5 +296,5 @@ def clip_and_merge_tiles(
     if result is None:
         logger.error("Merge Warp failed")
         return None
-    result = None
+    result = None  # Release GDAL dataset handle promptly
     return merged_path
