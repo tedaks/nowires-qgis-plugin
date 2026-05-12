@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-05-12
+
+### Added
+
+- Added "Clear DEM Cache" menu action to remove stale downloaded DEM and WorldCover tiles from the temp directory
+- Added `cache_manager.py` module with size-aware cache cleanup
+- Added test coverage for `cache_manager.py` (9 tests)
+
+### Fixed
+
+- Fix clutter grid ownership: user-provided land-cover rasters are no longer closed by the algorithm after use (auto-downloaded grids are still cleaned up)
+- Fix duplicated numpy scans in coverage report display — statistics are now read from the precomputed report payload
+- Fix missing `from __future__ import annotations` in `elevation.py` for Python 3.9 compatibility
+- Fix coverage pool module-level globals: removed unused `_cov_pool_id`/`_cov_pools` dead code, replaced with concise comment
+- Fix unused `rx_sens` parameter in `write_coverage_raster()` — parameter removed from signature and call sites
+- Fix duplicate imports in `clear_dem_cache()` function body
+- Fix unused `QMessageBox` import in `nowires.py`
+- Fix `algorithm_contour.py`: added fallback when `get_temp_dir()` returns None
+- Fix `comparison_add_params.py`: extracted `_add_panel_advanced_params()` helper to keep file under 300-line limit
+- Fix `coverage_pool.py`: made `_MAX_WORKERS` computation lazy via `_get_max_workers()` function
+- Fix misleading test name `test_handles_broken_symlinks` renamed to `test_handles_readonly_files`
+
+### Changed
+
+- `.gitignore`: added `.coverage` to tracked patterns
+
+
 ## [1.5.0] - 2026-05-07
 
 ### Added

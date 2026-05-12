@@ -37,6 +37,7 @@ attribution details.
 import errno
 import os
 import shutil
+import tempfile
 
 from qgis.core import (
     QgsCoordinateReferenceSystem,
@@ -92,7 +93,8 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
 
     def __init__(self):
         super().__init__()
-        self.temp_dir = get_temp_dir()  # persistent DEM cache dir (never cleaned)
+        self.temp_dir = get_temp_dir() or tempfile.mkdtemp(
+            prefix="nowires_contour_")  # persistent DEM cache dir (never cleaned)
         self.status_total = 0.0
         self.progress = 0.0
         self._raster_layer_ids = []

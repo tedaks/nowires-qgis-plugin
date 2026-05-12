@@ -130,6 +130,7 @@ You should then see:
   - `Coverage Comparison`
   - `Batch P2P Analysis`
   - `Coverage Opacity`
+  - `Clear DEM Cache`
   - `Open 3D View`
 
 ## Where to Find the Tools

@@ -20,7 +20,7 @@ All Python source files in this project must strictly adhere to a maximum of **3
 - If a module grows beyond 300 lines, refactor it by extracting responsibilities into new modules.
 - Prefer composition and delegation over inheritance — split large classes into focused helper modules.
 - Ruff line-length is set to 99; use it consistently to keep lines compact.
-- Before committing, verify: `find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' -exec wc -l {} + | awk '$1 > 300'` — must return zero files.
+- Before committing, verify: `find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '$1 > 300'` — must return zero files.
 
 ## Local Checks
 
@@ -39,7 +39,7 @@ ruff check .
 Optionally check for file-size violations:
 
 ```bash
-find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' -exec wc -l {} + | awk '$1 > 300'
+find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '$1 > 300'
 ```
 
 ## Manual Testing

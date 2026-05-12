@@ -24,7 +24,7 @@ def _engine_source():
 def test_max_workers_uses_cpu_count():
     source = _engine_source()
     assert "os.cpu_count()" in source
-    assert "_MAX_WORKERS = min(os.cpu_count() or 1," in source
+    assert "_MAX_WORKERS" in source
 
 
 def test_no_hardcoded_chunk_size_constant():

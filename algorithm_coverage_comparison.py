@@ -198,10 +198,10 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
 
                 write_coverage_raster(
                     output_a_path, prx_grid_a,
-                    min_lat_a, max_lat_a, min_lon_a, max_lon_a, panel_a["rx_sens"])
+                    min_lat_a, max_lat_a, min_lon_a, max_lon_a)
                 write_coverage_raster(
                     output_b_path, prx_grid_b,
-                    min_lat_b, max_lat_b, min_lon_b, max_lon_b, panel_b["rx_sens"])
+                    min_lat_b, max_lat_b, min_lon_b, max_lon_b)
                 write_delta_raster(
                     output_delta_path, loss_delta_grid,
                     min_lat_a, max_lat_a, min_lon_a, max_lon_a)

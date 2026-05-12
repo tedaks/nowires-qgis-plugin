@@ -93,6 +93,8 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   Shared clutter constants (simple loss table, limits)
 - [clutter_context.py](clutter_context.py)
   ClutterLossContext dataclass
+- [cache_manager.py](cache_manager.py)
+  DEM and WorldCover tile cache cleanup utilities
 - [clutter_p2108.py](clutter_p2108.py)
   Deprecation shim delegating to `p2108_terrestrial_stat`
 - [p2108_common.py](p2108_common.py)
@@ -239,6 +241,8 @@ In addition to Processing algorithms, the plugin exposes post-run helper actions
   Launches the coverage comparison algorithm dialog
 - `Batch P2P Analysis`
   Launches the batch P2P algorithm dialog
+- `Clear DEM Cache`
+  Removes stale downloaded DEM and WorldCover tiles from the local cache
 
 ## Point-to-Point Analysis
 
@@ -754,7 +758,7 @@ The coverage support code is split by responsibility:
 
 Important constants:
 
-- `_MAX_WORKERS = min(os.cpu_count() or 1, 16)` (capped at 16 workers)
+- `_get_max_workers()` returns `min(os.cpu_count() or 1, 16)` with lazy env-var lookup (capped at 16 workers via `NOWIRES_MAX_WORKERS`)
 - Dynamic chunk size via `_dynamic_chunk_size()`
 - `_MIN_COVERAGE_DISTANCE_M = 1.0`
 - `METERS_PER_DEGREE_LAT = 111320.0`

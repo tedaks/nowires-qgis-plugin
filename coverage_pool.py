@@ -22,7 +22,11 @@ from .shared_dem_grid import SharedDEMGrid
 
 logger = logging.getLogger(__name__)
 
-_MAX_WORKERS = min(os.cpu_count() or 1, int(os.environ.get("NOWIRES_MAX_WORKERS", "16")))
+def _get_max_workers():
+    """Return the maximum number of worker processes (lazy env-var lookup)."""
+    return min(os.cpu_count() or 1, int(os.environ.get("NOWIRES_MAX_WORKERS", "16")))
+
+_MAX_WORKERS = _get_max_workers()
 _MIN_CHUNK_SIZE = 64
 _MAX_CHUNK_SIZE = 2048
 
@@ -67,13 +71,11 @@ _CoverageTask = namedtuple(
 # Module-level shared-memory state for worker processes.
 # Set per-pool by _init_cov_pool, read by _itm_worker. Safe under spawn
 # (each worker gets its own copy). NoThreading flag prevents concurrent
-# runs in the same process. _cov_pool_id + _cov_pools dict provide
-# future isolation for multi-pool scenarios if NoThreading is relaxed.
+# runs in the same process. Future multi-pool isolation: replace these
+# plain globals with a dict keyed by pool ID.
 _cov_shm: Optional[multiprocessing.shared_memory.SharedMemory] = None
 _cov_grid_data: Optional[np.ndarray] = None
 _cov_grid_meta: dict = {}
-_cov_pool_id: Optional[str] = None
-_cov_pools: dict[str, dict] = {}
 
 
 def should_use_multiprocessing(os_name=None):

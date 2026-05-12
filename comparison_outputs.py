@@ -47,7 +47,7 @@ __all__ = [
 ]
 
 
-def write_coverage_raster(tif_path, prx_grid, min_lat, max_lat, min_lon, max_lon, rx_sens):
+def write_coverage_raster(tif_path, prx_grid, min_lat, max_lat, min_lon, max_lon):
     """Write a coverage raster to GeoTIFF."""
     write_geotiff(tif_path, prx_grid, min_lat, max_lat, min_lon, max_lon)
 

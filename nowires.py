@@ -195,7 +195,6 @@ class NoWiresPlugin:
 
     def run_clear_cache(self):
         """Clear cached DEM and WorldCover tiles from the temp directory."""
-        from qgis.PyQt.QtWidgets import QMessageBox
         try:
             removed, freed_bytes = clear_dem_cache()
             mb = freed_bytes / 1048576.0

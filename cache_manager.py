@@ -18,9 +18,6 @@ def clear_dem_cache(feedback=None):
 
     Returns a tuple of (removed_file_count, freed_bytes_approx).
     """
-    import glob as _glob
-    import shutil
-
     temp_dir = get_temp_dir()
     if not os.path.isdir(temp_dir):
         return 0, 0

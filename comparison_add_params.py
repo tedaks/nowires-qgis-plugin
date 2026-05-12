@@ -69,6 +69,23 @@ from .shared_params import add_clutter_params
 __all__ = ["add_panel_params", "add_comparison_params"]
 
 
+def _add_panel_advanced_params(algorithm, prefix, config, panel_label):
+    """Add N0, epsilon, and sigma advanced parameters for a comparison panel."""
+    specs = [
+        ("n0_param", "N0", "Surface refractivity N0 (N-units)", DEFAULT_N0),
+        ("epsilon_param", "EPSILON", "Earth permittivity (epsilon)", DEFAULT_EPSILON),
+        ("sigma_param", "SIGMA", "Earth conductivity (sigma, S/m)", DEFAULT_SIGMA),
+    ]
+    for ckey, pname, desc, default in specs:
+        param = config[ckey](
+            f"{prefix}_{pname}",
+            f"Panel {panel_label} {desc}",
+            defaultValue=default,
+        )
+        param.setFlags(param.flags() | QgsProcessingParameterNumber.Flag.FlagAdvanced)
+        algorithm.addParameter(param)
+
+
 def add_panel_params(algorithm, prefix, config):
     panel_label = prefix.split("_")[1]
     algorithm.addParameter(
@@ -224,28 +241,7 @@ def add_panel_params(algorithm, prefix, config):
         )
     )
     add_clutter_params(algorithm, attr_getter=lambda name: f"{prefix}_{name}")
-    n0_param = config["n0_param"](
-        f"{prefix}_N0", f"Panel {panel_label} Surface refractivity N0 (N-units)",
-        defaultValue=DEFAULT_N0,
-    )
-    n0_param.setFlags(n0_param.flags() | QgsProcessingParameterNumber.Flag.FlagAdvanced)
-    algorithm.addParameter(n0_param)
-
-    epsilon_param = config["epsilon_param"](
-        f"{prefix}_EPSILON",
-        f"Panel {panel_label} Earth permittivity (epsilon)",
-        defaultValue=DEFAULT_EPSILON,
-    )
-    epsilon_param.setFlags(epsilon_param.flags() | QgsProcessingParameterNumber.Flag.FlagAdvanced)
-    algorithm.addParameter(epsilon_param)
-
-    sigma_param = config["sigma_param"](
-        f"{prefix}_SIGMA",
-        f"Panel {panel_label} Earth conductivity (sigma, S/m)",
-        defaultValue=DEFAULT_SIGMA,
-    )
-    sigma_param.setFlags(sigma_param.flags() | QgsProcessingParameterNumber.Flag.FlagAdvanced)
-    algorithm.addParameter(sigma_param)
+    _add_panel_advanced_params(algorithm, prefix, config, panel_label)
 
 
 def add_comparison_params(algorithm):

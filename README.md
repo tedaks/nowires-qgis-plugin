@@ -4,7 +4,7 @@ Radio propagation analysis and terrain tools powered by NTIA's Irregular Terrain
 
 ## Status
 
-This repository contains the QGIS 4 plugin source for **NoWires** version 1.5.0.
+This repository contains the QGIS 4 plugin source for **NoWires** version 1.5.1.
 
 Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 SPDX-License-Identifier: GPL-3.0-or-later
@@ -71,6 +71,7 @@ This plugin also adapts code from [tedaks/nowires](https://github.com/tedaks/now
 - `clutter_categories.py`: clutter category definitions, WorldCover class mapping, P.2108 model dispatch params
 - `clutter_constants.py`: shared clutter constants (simple loss table, limits)
 - `clutter_context.py`: ClutterLossContext dataclass definition
+- `cache_manager.py`: DEM and WorldCover tile cache cleanup utilities
 - `clutter_p2108.py`: deprecation shim for legacy P.2108 callers
 - `p2108_common.py`: shared inverse-normal CDF helpers and validation for P.2108/P.2109
 - `p2108_height_gain.py`: ITU-R P.2108-1 §3.1 height-gain terminal correction
