@@ -109,6 +109,17 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
     clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
     cch_raw = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_CCH_OVERRIDE", context)
     cch_override_m = cch_raw if cch_raw > 0.0 else None
+    clutter_percentile = algorithm_instance.parameterAsDouble(
+        parameters, f"{prefix}_CLUTTER_PERCENTILE", context)
+    street_width_m = algorithm_instance.parameterAsDouble(
+        parameters, f"{prefix}_STREET_WIDTH_M", context)
+    bel_enabled = algorithm_instance.parameterAsBool(
+        parameters, f"{prefix}_BEL_ENABLED", context)
+    bel_building_type_idx = algorithm_instance.parameterAsEnum(
+        parameters, f"{prefix}_BEL_BUILDING_TYPE", context)
+    bel_building_type = "traditional" if bel_building_type_idx == 0 else "thermally_efficient"
+    bel_elevation_angle = algorithm_instance.parameterAsDouble(
+        parameters, f"{prefix}_BEL_ELEVATION_ANGLE", context)
     clutter_raster_path = algorithm_instance.parameterAsFile(
         parameters, f"{prefix}_CLUTTER_RASTER", context)
     if shared_clutter_grid is not None:
@@ -176,6 +187,11 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
             tx_height_m=tx_h, rx_height_m=rx_h,
             rx_ground_elevation_m=0.0, polarization=polarization,
             cch_override_m=cch_override_m, model=clutter_model,
+            percentile=clutter_percentile,
+            street_width_m=street_width_m,
+            bel_enabled=bel_enabled,
+            bel_building_type=bel_building_type,
+            bel_elevation_angle_deg=bel_elevation_angle,
         )
     tx_clutter_for_report = compute_terminal_clutter_losses(
         tx_lat=tx_lat,
@@ -229,6 +245,11 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
             tx_clutter_loss_db=tx_clutter_for_report.tx_loss_db,
             clutter_model=clutter_model,
             cch_override_m=cch_override_m,
+            clutter_percentile=clutter_percentile,
+            street_width_m=street_width_m,
+            bel_enabled=bel_enabled,
+            bel_building_type=bel_building_type,
+            bel_elevation_angle=bel_elevation_angle,
             feedback=feedback,
         )
     finally:

@@ -84,7 +84,12 @@ def write_fresnel_zone(
         for i in range(n):
             t = distances[i] / dist_m if dist_m > 0 else 0
             lat = tx_lat + t * (rx_lat - tx_lat)
-            lon = tx_lon + t * (rx_lon - tx_lon)
+            dlon = rx_lon - tx_lon
+            if dlon > 180:
+                dlon -= 360
+            elif dlon < -180:
+                dlon += 360
+            lon = tx_lon + t * dlon
             pts.append((float(lon), float(lat), float(heights[i])))
         return pts
 

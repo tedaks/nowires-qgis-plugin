@@ -166,3 +166,40 @@ def write_p2p_marker_layer(
 
     ds = None
     return str(path)
+
+def write_single_marker(path, lat, lon, height_m, gain_dbi, power_dbm, label="TX"):
+    """Write a single point marker (TX or RX) to an OGR dataset.
+
+    Used by coverage analysis (TX‑only) and other single-point outputs.
+    The layer file survives QGIS sessions when written to a persistent
+    directory.
+    """
+    path = Path(path)
+    driver = ogr.GetDriverByName(ogr_driver_for_path(path))
+    remove_existing_ogr_dataset(driver, path)
+    ds = driver.CreateDataSource(str(path))
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(4326)
+    srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    layer = ds.CreateLayer("marker", srs=srs, geom_type=ogr.wkbPoint)
+    layer.CreateField(ogr.FieldDefn("label", ogr.OFTString))
+    layer.CreateField(ogr.FieldDefn("lat", ogr.OFTReal))
+    layer.CreateField(ogr.FieldDefn("lon", ogr.OFTReal))
+    layer.CreateField(ogr.FieldDefn("h_m", ogr.OFTReal))
+    layer.CreateField(ogr.FieldDefn("gain_dbi", ogr.OFTReal))
+    layer.CreateField(ogr.FieldDefn("pwr_dbm", ogr.OFTReal))
+    feature = ogr.Feature(layer.GetLayerDefn())
+    geom = ogr.Geometry(ogr.wkbPoint)
+    geom.AddPoint(lon, lat)
+    feature.SetGeometry(geom)
+    feature.SetField("label", label)
+    feature.SetField("lat", lat)
+    feature.SetField("lon", lon)
+    feature.SetField("h_m", height_m)
+    feature.SetField("gain_dbi", gain_dbi)
+    if power_dbm is not None:
+        feature.SetField("pwr_dbm", power_dbm)
+    layer.CreateFeature(feature)
+    ds = None
+    return str(path)
+

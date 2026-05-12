@@ -25,6 +25,7 @@
 Profile chart display for P2P analysis using matplotlib.
 """
 
+import contextlib
 import logging
 
 import numpy as np
@@ -212,35 +213,35 @@ def show_profile_chart(
                     "violation_band": True, "antennas": True, "obstructions": True}
 
     def _set_obstructions_visible(visible):
-        # Remove/recreate instead of set_visible: toggling visibility on an
-        # Annotation with arrowprops crashes the QtAgg backend on QGIS 4 (Qt6)
-        # when the FancyArrowPatch is hidden mid-redraw.
+        # Qt6 workaround: defer annotation removal so the paint cycle finishes.
         if visible and not obstruction_annotations:
             obstruction_annotations.extend(_add_obstruction_annotations(
                 ax, d_km, terrain_bulge, los_h, fresnel_r))
-        elif not visible:
-            while obstruction_annotations:
-                try:
-                    obstruction_annotations.pop().remove()
-                except (ValueError, NotImplementedError):
-                    pass
+            fig.canvas.draw_idle()
+        elif not visible and obstruction_annotations:
+            pending = list(obstruction_annotations)
+            obstruction_annotations.clear()
+            from qgis.PyQt.QtCore import QTimer
+            def _rm():
+                for ann in pending:
+                    ann.remove()
+                fig.canvas.draw_idle()
+            Qt_rm = QTimer
+            Qt_rm.singleShot(0, _rm)
 
     def update_visibility():
-        try:
-            terrain_fill.set_visible(toggle_state["terrain"])
-            los_line.set_visible(toggle_state["los"])
-            f1_upper.set_visible(toggle_state["fresnel"])
-            f1_lower.set_visible(toggle_state["fresnel"])
-            f1_fill.set_visible(toggle_state["fresnel"])
-            f60_upper.set_visible(toggle_state["violation_band"])
-            f60_fill.set_visible(toggle_state["violation_band"])
-            tx_marker.set_visible(toggle_state["antennas"])
-            rx_marker.set_visible(toggle_state["antennas"])
-            _set_obstructions_visible(toggle_state["obstructions"])
-            fig.canvas.draw_idle()
-        except Exception:
-            # PyQt6 may abort the process on an unraisable exception in a slot.
-            logger.exception("P2P chart visibility update failed")
+        from qgis.PyQt.QtCore import QTimer
+        def _a():
+            try:
+                for art, k in [(terrain_fill,"terrain"),(los_line,"los"),
+                    (f1_upper,"fresnel"),(f1_lower,"fresnel"),(f1_fill,"fresnel"),
+                    (f60_upper,"violation_band"),(f60_fill,"violation_band"),
+                    (tx_marker,"antennas"),(rx_marker,"antennas")]:
+                    art.set_visible(toggle_state[k])
+                _set_obstructions_visible(toggle_state["obstructions"])
+            except Exception:
+                logger.exception("P2P chart visibility update failed")
+        QTimer.singleShot(0, _a)
 
     from qgis.utils import iface as qgis_iface
     dock = QDockWidget("P2P Profile Chart", qgis_iface.mainWindow())
@@ -282,8 +283,10 @@ def show_profile_chart(
     class _ChartCanvas(FigureCanvasQTAgg):
         def closeEvent(self, event):
             _on_close_event(event)
+            for cb in [w for w in toolbar.findChildren(QCheckBox) if isinstance(w, QCheckBox)]:
+                with contextlib.suppress(RuntimeError):
+                    cb.blockSignals(True)
             super().closeEvent(event)
-
     canvas = _ChartCanvas(fig)
     tooltip_cid = _setup_tooltip(ax, fig, d_km, distances, terrain_bulge, los_h, fresnel_r)
     _tooltip_cid[0] = tooltip_cid

@@ -10,6 +10,7 @@ import os
 logger = logging.getLogger(__name__)
 
 from qgis.core import Qgis, QgsProcessingException, QgsRasterLayer
+from qgis.core import QgsVectorLayer
 
 from .base_algorithm import NoWiresAlgorithm, install_constants
 from .dem_downloader import ensure_dem_for_area
@@ -22,6 +23,7 @@ from .clutter import (
     ensure_clutter_grid_for_area,
 )
 from .report_export import write_report_csv, write_report_html, write_report_json
+from .report_markers import write_single_marker
 from .coverage_params import PARAM_CONSTANTS, add_coverage_params, extract_coverage_params
 from .antenna import ANTENNA_PRESET_OPTIONS
 from .constants import DEGREE_PADDING
@@ -154,6 +156,13 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
             algorithm._on_coverage_loaded(raster_layer)
             queue_layer_for_loading(context, raster_layer, layer_name)
         show_coverage_legend(rx_sensitivity_dbm=p.rx_sens)
+        markers_path = os.path.join(algorithm._tmp.make_dir("coverage_prx", persistent=True), "tx_marker.shp")
+        write_single_marker(markers_path, lat=p.tx_lat, lon=p.tx_lon, height_m=p.tx_h,
+                            gain_dbi=p.tx_gain, power_dbm=p.tx_power, label="TX")
+        tx_layer = QgsVectorLayer(markers_path, "Coverage TX")
+        if tx_layer.isValid():
+            queue_layer_for_loading(context, tx_layer, "Coverage TX")
+            algorithm._vector_layer_ids.append(tx_layer.id())
     else:
         feedback.pushWarning(
             "Could not load coverage raster layer: {}".format(raster_layer.error().summary()))
@@ -212,6 +221,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
 
         feedback.pushInfo("Building elevation grid...")
         feedback.setProgress(15)
+        _owns_clutter = False
         try:
             with ElevationGrid(dem_path) as elev:
                 _validate_dem_coverage(elev, south, north, west, east, feedback)

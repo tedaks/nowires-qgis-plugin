@@ -49,7 +49,7 @@ class NoWiresAlgorithm(QgsProcessingAlgorithm):
                     if parent is not None:
                         idx = parent.children().index(node)
                         parent.takeChildNode(node)
-                        parent.insertChildNode(min(idx, parent.children().count()), node)
+                        parent.insertChildNode(min(idx, len(parent.children())), node)
         for attr_name, entry_key in [
             ("_dem_layer_id", ENTRY_KEY_LAST_DEM),
             ("_coverage_layer_id", ENTRY_KEY_LAST_COVERAGE),
