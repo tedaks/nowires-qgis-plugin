@@ -31,9 +31,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix `coverage_pool.py`: made `_MAX_WORKERS` computation lazy via `_get_max_workers()` function
 - Fix misleading test name `test_handles_broken_symlinks` renamed to `test_handles_readonly_files`
 
+- Fix Qt6 crash when toggling obstruction visibility in P2P chart (Windows access violation)
+- Fix Coverage Comparison silently ignoring advanced clutter controls (percentile, street width, BEL, building type, elevation angle)
+- Fix P2P output geometries drawn wrong across the antimeridian (±180°)
+- Fix `_owns_clutter` UnboundLocalError masking real DEM errors in coverage algorithm
+- Fix coverage TX marker not persisting across QGIS sessions — now uses fixed path under user temp dir
+- Fix P2P output layers (profile, fresnel, markers) not persisting across QGIS sessions
+- Add `_vector_layer_ids` initialization to CoverageAlgorithm for proper layer reordering
+- Add `get_temp_dir` stub to P2P compute test for dem_downloader mock
+- Defensive `len()` for QGIS layer tree children in base_algorithm
+
 ### Changed
 
 - `.gitignore`: added `.coverage` to tracked patterns
+- Persistent output paths: coverage and P2P layers now write to fixed directory under user temp dir
 
 
 ## [1.5.0] - 2026-05-07

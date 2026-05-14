@@ -264,11 +264,11 @@ In addition to Processing algorithms, the plugin exposes post-run helper actions
 
 ### P2P Outputs
 
-Point-to-point analysis now produces:
+Point-to-point analysis now produces (all layers persist across QGIS sessions):
 
 - profile line output
 - Fresnel zone output
-- TX/RX marker output
+- TX/RX marker output (persistent)
 - optional interactive profile chart (hover callouts, Fresnel toggle, export)
 - optional `CSV`, `JSON`, and `HTML` reports
 
@@ -717,6 +717,14 @@ Both P2P and coverage reports expose clutter loss breakdown:
 For coverage reports, `itm_loss_db` and `total_path_loss_db` are grid-wide means over valid pixels, `clutter_tx_db` is the TX terminal loss at the transmitter location, and `clutter_rx_db` is derived as `clutter_total_mean - clutter_tx_db`.
 
 For P2P reports, clutter losses are computed per terminal using `compute_terminal_clutter_losses()` and included directly.
+
+### Output Persistence
+
+Coverage analysis writes a persistent TX marker layer ("Coverage TX") to the user's
+NoWires data directory, alongside the coverage raster. Both layers stay in the map
+project between QGIS sessions. The marker shapefile is written to
+`NoWires-<user>/coverage_prx/tx_marker.shp`. P2P outputs are similarly written to
+`NoWires-<user>/p2p_outputs/` and remain available across sessions.
 
 ### Multiprocessing Note
 
