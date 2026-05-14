@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 from qgis.core import Qgis, QgsProcessingException, QgsRasterLayer
 from qgis.core import QgsVectorLayer
 from .base_algorithm import NoWiresAlgorithm, install_constants
-from .dem_downloader import ensure_dem_for_area, get_temp_dir
+from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
 from .coverage_legend import show_coverage_legend
 from .coverage_compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
@@ -100,9 +100,10 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
                             dem_path, clutter_source, tx_clutter_for_report):
     """Write coverage raster, reports, and load QGIS layers."""
     tif_path = algorithm.parameterAsOutputLayer(parameters, algorithm.OUTPUT_RASTER, context)
+    coverage_dir = None
     if not tif_path:
-        tif_path = os.path.join(
-            algorithm._tmp.make_dir("coverage_prx", persistent=True), "coverage_prx.tif")
+        coverage_dir = algorithm._tmp.make_dir("coverage_prx", persistent=True)
+        tif_path = os.path.join(coverage_dir, "coverage_prx.tif")
         algorithm._tmp.warn_persistent(feedback)
     report_csv_path = algorithm.parameterAsFileOutput(
         parameters, algorithm.OUTPUT_REPORT_CSV, context)
@@ -154,9 +155,8 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
             algorithm._on_coverage_loaded(raster_layer)
             queue_layer_for_loading(context, raster_layer, layer_name)
         show_coverage_legend(rx_sensitivity_dbm=p.rx_sens)
-        markers_dir = os.path.join(get_temp_dir(), "coverage_prx")
-        os.makedirs(markers_dir, exist_ok=True)
-        markers_path = os.path.join(markers_dir, "tx_marker.shp")
+        marker_dir = coverage_dir or algorithm._tmp.make_dir("coverage_prx", persistent=True)
+        markers_path = os.path.join(marker_dir, "tx_marker.gpkg")
         write_single_marker(markers_path, lat=p.tx_lat, lon=p.tx_lon, height_m=p.tx_h,
                             gain_dbi=p.tx_gain, power_dbm=p.tx_power, label="TX")
         tx_layer = QgsVectorLayer(markers_path, "Coverage TX")
