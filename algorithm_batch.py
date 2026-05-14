@@ -141,7 +141,7 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
         if tx_pt is None:
             raise QgsProcessingException("TX point is required for One-to-Many mode.")
         candidate_tx = [{"lat": tx_pt.y(), "lon": tx_pt.x(), "height": None, "is_tx": True}]
-        rx_src = algorithm.parameterAsFeatureSource(parameters, algorithm.RX_LAYER, context)
+        rx_src = algorithm.parameterAsSource(parameters, algorithm.RX_LAYER, context)
         if rx_src is None:
             raise QgsProcessingException("RX layer is required for One-to-Many mode.")
         rx_pts = list(rx_src.getFeatures())
@@ -153,7 +153,7 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
         for pt in rx_points:
             validate_coordinates(pt["lat"], pt["lon"], "RX")
     else:
-        tx_src = algorithm.parameterAsFeatureSource(parameters, algorithm.TX_LAYER, context)
+        tx_src = algorithm.parameterAsSource(parameters, algorithm.TX_LAYER, context)
         if tx_src is None:
             raise QgsProcessingException("TX layer is required for Many-to-One mode.")
         tx_feats = list(tx_src.getFeatures())

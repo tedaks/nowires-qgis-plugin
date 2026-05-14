@@ -16,10 +16,13 @@ from .clutter_categories import (
 )
 from .clutter_advanced import (  # noqa: F401
     compute_terminal_clutter_loss, _category_height_m,
-    _resolve_category_advanced, _legacy_to_advanced_override,
-    compute_terminal_clutter_losses, _resolve_category,
+    compute_terminal_clutter_losses,
     compute_path_clutter_loss, _ClutterComponents,
     _compute_advanced_loss,
+)
+from .clutter_resolve import (  # noqa: F401
+    _resolve_category_advanced, _legacy_to_advanced_override,
+    _resolve_category,
 )
 from .clutter_grid import LandCoverGrid  # noqa: F401
 

@@ -29,9 +29,11 @@ import numpy as np
 from .clutter import CLUTTER_LOSS_DB
 from .clutter_advanced import (
     _compute_advanced_loss,
+    compute_path_clutter_loss,
+)
+from .clutter_resolve import (
     _legacy_to_advanced_override,
     _resolve_category_advanced,
-    compute_path_clutter_loss,
 )
 from .clutter_context import ClutterLossContext
 from .constants import EARTH_RADIUS_M

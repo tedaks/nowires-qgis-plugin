@@ -42,6 +42,16 @@ if not _HAS_REAL_QGIS:
     except ImportError:
         pass
 
+# Detect whether real GDAL/OGR is available separately from QGIS.
+# When GDAL is importable, we should NOT mock osgeo — let the real one load
+# so that GDAL-dependent tests (clip_and_merge_tiles, raster_calc, etc.)
+# can run in the unit-test suite without Docker.
+_HAS_REAL_GDAL = True
+try:
+    from osgeo import gdal as _test_gdal  # noqa: F401
+except ImportError:
+    _HAS_REAL_GDAL = False
+
 
 @pytest.fixture(scope="session")
 def qgis_app():
@@ -86,10 +96,11 @@ _mock_qslider_factory.TickPosition.NoTicks = 2
 # tests use the real QGIS classes.
 if not _HAS_REAL_QGIS:
 
-    sys.modules["osgeo"] = MagicMock()
-    sys.modules["osgeo.gdal"] = MagicMock()
-    sys.modules["osgeo.osr"] = MagicMock()
-    sys.modules["osgeo.ogr"] = MagicMock()
+    if not _HAS_REAL_GDAL:
+        sys.modules["osgeo"] = MagicMock()
+        sys.modules["osgeo.gdal"] = MagicMock()
+        sys.modules["osgeo.osr"] = MagicMock()
+        sys.modules["osgeo.ogr"] = MagicMock()
 
     _qgis = types.ModuleType("qgis")
     _qgis_core = types.ModuleType("qgis.core")
@@ -154,45 +165,112 @@ if not _HAS_REAL_QGIS:
     _qgis_core.QgsRasterDemTerrainProvider = MagicMock
 
     # --- Processing parameter stubs with enum-like attributes ---
+    class _ParamNumberType:
+        Double = 0
+        Integer = 1
+    class _ParamFlag:
+        FlagAdvanced = 2
+
+    def _make_param_number(*a, **kw):
+        m = MagicMock()
+        m.name = a[0] if a else ""
+        m.description = a[1] if len(a) > 1 else ""
+        m.type = _ParamNumberType
+        m.defaultValue = kw.get("defaultValue", 0)
+        m.minValue = kw.get("minValue", None)
+        m.maxValue = kw.get("maxValue", None)
+        m.flags = MagicMock(return_value=0)
+        m.setFlags = MagicMock()
+        return m
+
     class _ParamNumber:
-        class Type:
-            Double = 0
-            Integer = 1
-        class Flag:
-            FlagAdvanced = 2
+        Type = _ParamNumberType
+        Flag = _ParamFlag
         Double = 0
         Integer = 1
         FlagAdvanced = 2
-        def __call__(self, *a, **kw):
-            return MagicMock()
+        def __new__(cls, *a, **kw):
+            return _make_param_number(*a, **kw)
+
+    def _make_param_point(*a, **kw):
+        m = MagicMock()
+        m.name = a[0] if a else ""
+        m.description = a[1] if len(a) > 1 else ""
+        m.flags = MagicMock(return_value=0)
+        m.setFlags = MagicMock()
+        return m
 
     class _ParamPoint:
-        def __call__(self, *a, **kw):
-            return MagicMock()
+        def __new__(cls, *a, **kw):
+            return _make_param_point(*a, **kw)
+
+    def _make_param_bool(*a, **kw):
+        m = MagicMock()
+        m.name = a[0] if a else ""
+        m.description = a[1] if len(a) > 1 else ""
+        m.flags = MagicMock(return_value=0)
+        m.setFlags = MagicMock()
+        return m
 
     class _ParamBoolean:
-        def __call__(self, *a, **kw):
-            return MagicMock()
+        def __new__(cls, *a, **kw):
+            return _make_param_bool(*a, **kw)
+
+    def _make_param_enum(*a, **kw):
+        m = MagicMock()
+        m.name = a[0] if a else ""
+        m.description = a[1] if len(a) > 1 else ""
+        m.options = kw.get("options", [])
+        m.defaultValue = kw.get("defaultValue", 0)
+        m.flags = MagicMock(return_value=0)
+        m.setFlags = MagicMock()
+        return m
 
     class _ParamEnum:
-        def __call__(self, *a, **kw):
-            return MagicMock()
+        def __new__(cls, *a, **kw):
+            return _make_param_enum(*a, **kw)
+
+    def _make_param_file(*a, **kw):
+        m = MagicMock()
+        m.name = a[0] if a else ""
+        m.description = a[1] if len(a) > 1 else ""
+        m.flags = MagicMock(return_value=0)
+        m.setFlags = MagicMock()
+        return m
 
     class _ParamFile:
-        def __call__(self, *a, **kw):
-            return MagicMock()
+        def __new__(cls, *a, **kw):
+            return _make_param_file(*a, **kw)
+
+    def _make_param_fd(*a, **kw):
+        m = MagicMock()
+        m.name = a[0] if a else ""
+        m.description = a[1] if len(a) > 1 else ""
+        return m
 
     class _ParamFileDest:
-        def __call__(self, *a, **kw):
-            return MagicMock()
+        def __new__(cls, *a, **kw):
+            return _make_param_fd(*a, **kw)
+
+    def _make_param_str(*a, **kw):
+        m = MagicMock()
+        m.name = a[0] if a else ""
+        m.description = a[1] if len(a) > 1 else ""
+        return m
 
     class _ParamString:
-        def __call__(self, *a, **kw):
-            return MagicMock()
+        def __new__(cls, *a, **kw):
+            return _make_param_str(*a, **kw)
+
+    def _make_param_field(*a, **kw):
+        m = MagicMock()
+        m.name = a[0] if a else ""
+        m.description = a[1] if len(a) > 1 else ""
+        return m
 
     class _ParamField:
-        def __call__(self, *a, **kw):
-            return MagicMock()
+        def __new__(cls, *a, **kw):
+            return _make_param_field(*a, **kw)
 
     _qgis_core.QgsProcessingParameterNumber = _ParamNumber
     _qgis_core.QgsProcessingParameterPoint = _ParamPoint
@@ -339,7 +417,6 @@ for _submodule_name in (
     "reliability",
     "p2p_report_display",
     "comparison_reporting",
-    "contour_smoothing",
     "report_markers",
     "report_export",
     "overlay_raster",
@@ -366,6 +443,7 @@ for _pkg_sub in (
     "clutter_constants",
     "clutter_context",
     "clutter_advanced",
+    "clutter_resolve",
     "p2108_common",
     "p2108_terrestrial_stat",
     "p2108_height_gain",
@@ -378,6 +456,7 @@ for _pkg_sub in (
     "coverage_tasks",
     "contour_overlay",
     "contour_generation",
+    "contour_smoothing",
     "comparison_outputs",
     "coverage_opacity",
     "coverage_legend",
@@ -388,6 +467,8 @@ for _pkg_sub in (
     "benchmarks.coverage_runtime",
     "benchmarks.p2p_runtime",
     "benchmarks.reference_cases",
+    "_coverage_executor",
+    "comparison_panel",
 ):
     _mod = __import__(f"NoWires.{_pkg_sub}", fromlist=[""])
     _leaf = _pkg_sub.split(".")[-1]

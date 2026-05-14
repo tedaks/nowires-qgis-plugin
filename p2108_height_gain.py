@@ -72,7 +72,7 @@ def height_gain_loss(h_m, f_ghz, category, w_s_m=_DEFAULT_STREET_WIDTH_M):
         return 0.0
     R = params["R_m"]
     method = params["method"]
-    if h_m >= R:
+    if h_m <= 0.0 or h_m >= R:
         return 0.0
     h_dif = R - h_m
     theta_clut = math.degrees(math.atan(h_dif / w_s_m))
@@ -81,6 +81,8 @@ def height_gain_loss(h_m, f_ghz, category, w_s_m=_DEFAULT_STREET_WIDTH_M):
     if method == "2a":
         J = _J_nu(nu)
         return max(0.0, J - 6.03)
+    if h_m <= 0.0 or R <= 0.0:
+        return 0.0
     Kh2 = 21.8 + 6.2 * math.log10(f_ghz)
     Ah = -Kh2 * math.log10(h_m / R)
     return max(0.0, Ah)
@@ -111,7 +113,7 @@ def height_gain_loss_vec(h_m_arr, f_ghz, categories, w_s_m=_DEFAULT_STREET_WIDTH
             continue
         R = params["R_m"]
         method = params["method"]
-        mask = (cats == cat_name) & (h < R)
+        mask = (cats == cat_name) & (h > 0) & (h < R)
         if not mask.any():
             continue
         h_dif = R - h[mask]
@@ -123,6 +125,7 @@ def height_gain_loss_vec(h_m_arr, f_ghz, categories, w_s_m=_DEFAULT_STREET_WIDTH
             out[mask] = np.maximum(0.0, Ah)
         else:
             Kh2 = 21.8 + 6.2 * math.log10(f_ghz)
-            Ah = -Kh2 * np.log10(h[mask] / R)
+            safe_h = np.maximum(h[mask], 1e-30)
+            Ah = -Kh2 * np.log10(safe_h / R)
             out[mask] = np.maximum(0.0, Ah)
     return out

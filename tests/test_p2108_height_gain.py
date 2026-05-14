@@ -83,6 +83,27 @@ class TestHeightGainLoss:
         result_min = height_gain_loss(2.0, 0.03, "urban")
         assert result_low == pytest.approx(result_min, abs=0.01)
 
+    def test_zero_height_returns_zero_method_2b(self):
+        assert height_gain_loss(0.0, 1.0, "open_rural") == 0.0
+
+    def test_zero_height_returns_zero_method_2a(self):
+        assert height_gain_loss(0.0, 1.0, "urban") == 0.0
+
+    def test_negative_height_returns_zero(self):
+        assert height_gain_loss(-5.0, 1.0, "urban") == 0.0
+
+    def test_zero_height_method_2b_no_log10_crash(self):
+        assert height_gain_loss(0.0, 1.0, "open_rural") == 0.0
+
+    def test_very_small_height_method_2b_finite_result(self):
+        result = height_gain_loss(1e-6, 1.0, "open_rural")
+        assert math.isfinite(result)
+        assert result > 0.0
+
+    def test_negative_height_method_2b_finite_result(self):
+        result = height_gain_loss(-0.001, 1.0, "open_rural")
+        assert result == 0.0
+
 
 class TestHeightGainLossVec:
     def test_vectorized_matches_scalar(self):
@@ -98,3 +119,25 @@ class TestHeightGainLossVec:
         cats = ["open", "open"]
         result = height_gain_loss_vec(h, 1.0, cats)
         np.testing.assert_array_equal(result, [0.0, 0.0])
+
+    def test_vectorized_zero_height_returns_zero(self):
+        h = [0.0, 2.0, 0.0, 5.0]
+        cats = ["open_rural", "urban", "dense_rural", "suburban"]
+        result = height_gain_loss_vec(h, 1.0, cats)
+        assert result[0] == 0.0
+        assert result[2] == 0.0
+
+    def test_vectorized_zero_and_negative_height_no_crash(self):
+        h = [0.0, -1.0, 1e-6, 2.0]
+        cats = ["open_rural", "dense_rural", "urban", "suburban"]
+        result = height_gain_loss_vec(h, 1.0, cats)
+        assert result[0] == 0.0
+        assert result[1] == 0.0
+        assert np.isfinite(result).all()
+
+    def test_vectorized_method_2b_matches_scalar(self):
+        h = [1.0, 3.0, 5.0, 8.0]
+        cats = ["open_rural", "open_rural", "dense_rural", "dense_rural"]
+        vec = height_gain_loss_vec(h, 1.0, cats)
+        for i, (hi, ci) in enumerate(zip(h, cats)):
+            assert vec[i] == pytest.approx(height_gain_loss(hi, 1.0, ci), abs=0.001)

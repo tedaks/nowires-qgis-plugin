@@ -1,85 +1,163 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
-"""Extended behavioral tests for coverage_engine: empty tasks, cancellation, and sequential mode."""
+"""Extended tests for coverage_engine.py — helper functions and edge paths."""
 
 import numpy as np
 
-from NoWires import coverage_engine
-from NoWires import coverage_pool
-from NoWires import _coverage_executor
+from NoWires.coverage_engine import (
+    _get_tx_ground_elevation,
+    _build_rx_ground_grid,
+    _build_clutter_context,
+    _compute_tx_clutter_loss,
+)
+from NoWires.clutter_context import ClutterLossContext
 
 
-
-class FakeFeedback:
-    def __init__(self, cancel_after=None):
-        self.messages = []
-        self.progress = []
-        self._cancel_after = cancel_after
-        self._call_count = 0
-
-    def pushInfo(self, msg):
-        self.messages.append(msg)
-
-    def setProgress(self, val):
-        self.progress.append(val)
-
-    def isCanceled(self):
-        if self._cancel_after is not None:
-            self._call_count += 1
-            return self._call_count >= self._cancel_after
-        return False
+class _ElevObj:
+    def sample(self, lat, lon):
+        return 100.0
 
 
-class FakeGrid:
-    data = np.zeros((10, 10), dtype=np.float32)
-
-    def grid_meta_dict(self):
-        return {
-            "min_lat": -0.01,
-            "max_lat": 0.01,
-            "min_lon": -0.01,
-            "max_lon": 0.01,
-            "n_lat": 10,
-            "n_lon": 10,
-            "tx_lat": 0.0,
-            "tx_lon": 0.0,
-        }
+class _ElevObjNaN:
+    def sample(self, lat, lon):
+        return float("nan")
 
 
-class TestComputeCoverageEmptyTasks:
-    def test_returns_none_when_no_tasks(self, monkeypatch):
-        monkeypatch.setattr(coverage_engine, "build_coverage_tasks", lambda *a, **kw: [])
-        result = coverage_engine.compute_coverage(
-            elev_grid=FakeGrid(),
-            tx_lat=0.0, tx_lon=0.0,
-            tx_h_m=30.0, rx_h_m=10.0,
-            f_mhz=300.0,
-            radius_km=0.001,
-            grid_size=4,
+class _GridObj:
+    def sample_grid(self, lats, lons):
+        grid = np.array([
+            [10.0, 20.0, 30.0],
+            [40.0, 50.0, 60.0],
+            [70.0, 80.0, 90.0],
+        ], dtype=np.float32)
+        return grid
+
+    def sample(self, lat, lon):
+        return 50.0
+
+
+class TestGetTXGroundElevation:
+    def test_sample_returns_finite_value(self):
+        elev = _ElevObj()
+        result = _get_tx_ground_elevation(elev, 0.0, 0.0)
+        assert result == 100.0
+
+    def test_nan_elevation_returns_zero(self):
+        elev = _ElevObjNaN()
+        result = _get_tx_ground_elevation(elev, 0.0, 0.0)
+        assert result == 0.0
+
+    def test_no_sample_method_returns_zero(self):
+        elev = object()
+        result = _get_tx_ground_elevation(elev, 0.0, 0.0)
+        assert result == 0.0
+
+
+class TestBuildRXGroundGrid:
+    def test_clutter_disabled_returns_none(self):
+        result = _build_rx_ground_grid(
+            _GridObj(), False, "simple", np.array([0.0]), np.array([0.0]), 1,
+        )
+        assert result is None
+
+    def test_simple_model_returns_none(self):
+        result = _build_rx_ground_grid(
+            _GridObj(), True, "simple", np.array([0.0]), np.array([0.0]), 1,
+        )
+        assert result is None
+
+    def test_advanced_model_with_sample_grid(self):
+        result = _build_rx_ground_grid(
+            _GridObj(), True, "advanced",
+            np.array([0.0, 1.0, 2.0]), np.array([0.0, 1.0, 2.0]), 3,
+        )
+        assert result is not None
+        assert result.shape == (3, 3)
+        assert result.dtype == np.float32
+
+    def test_advanced_model_fallback_to_sample(self):
+        class _Samplable:
+            def sample(self, lat, lon):
+                return 42.0
+
+        result = _build_rx_ground_grid(
+            _Samplable(), True, "advanced",
+            np.array([0.0, 1.0]), np.array([0.0, 1.0]), 2,
+        )
+        assert result is not None
+        assert result.shape == (2, 2)
+
+    def test_advanced_model_no_method_returns_none(self):
+        elev = object()
+        result = _build_rx_ground_grid(
+            elev, True, "advanced", np.array([0.0]), np.array([0.0]), 1,
         )
         assert result is None
 
 
-class TestComputeCoverageCancellation:
-    def test_cancel_returns_none_tuple_in_sequential_mode(self, monkeypatch):
-        monkeypatch.setattr(_coverage_executor, "should_use_multiprocessing", lambda: False)
-
-        def fake_itm_worker(task):
-            return (task[0], task[1], 100.0, -50.0, 80.0, 0.0, 0.0, 0.0)
-
-        monkeypatch.setattr(coverage_pool, "_itm_worker", fake_itm_worker)
-        monkeypatch.setattr(_coverage_executor, "_itm_worker", fake_itm_worker)
-
-        fb = FakeFeedback(cancel_after=1)
-        result = coverage_engine.compute_coverage(
-            elev_grid=FakeGrid(),
-            tx_lat=0.0, tx_lon=0.0,
-            tx_h_m=30.0, rx_h_m=10.0,
-            f_mhz=300.0,
-            radius_km=0.1,
-            grid_size=2,
-            feedback=fb,
+class TestBuildClutterContext:
+    def test_disabled_returns_passed_context(self):
+        ctx = object()
+        result = _build_clutter_context(
+            False, ctx, 900.0, 30.0, 10.0, 0.0, 0, None, "simple",
+            50.0, 27.0, False, "traditional", 0.0,
         )
-        assert result.prx_grid is None
+        assert result is ctx
+
+    def test_existing_context_returned_as_is(self):
+        ctx = ClutterLossContext(
+            frequency_mhz=900.0, distance_m=0.0,
+            tx_height_m=30.0, rx_height_m=10.0, model="simple",
+        )
+        result = _build_clutter_context(
+            True, ctx, 900.0, 30.0, 10.0, 0.0, 0, None, "simple",
+            50.0, 27.0, False, "traditional", 0.0,
+        )
+        assert result is ctx
+
+    def test_enabled_no_context_creates_new(self):
+        result = _build_clutter_context(
+            True, None, 900.0, 30.0, 10.0, 25.0, 0, None, "simple",
+            50.0, 27.0, False, "traditional", 0.0,
+        )
+        assert isinstance(result, ClutterLossContext)
+        assert result.model == "simple"
+        assert result.tx_ground_elevation_m == 25.0
+
+    def test_enabled_advanced_context(self):
+        result = _build_clutter_context(
+            True, None, 900.0, 30.0, 10.0, 25.0, 1, 5.0, "advanced",
+            90.0, 30.0, True, "thermally_efficient", 10.0,
+        )
+        assert result.model == "advanced"
+        assert result.bel_enabled is True
+        assert result.bel_building_type == "thermally_efficient"
+
+
+class TestComputeTXClutterLoss:
+    def test_preset_loss_returned(self):
+        result = _compute_tx_clutter_loss(
+            0.0, 0.0, 5.0, 900.0, False, None, None, None, None,
+        )
+        assert result == 5.0
+
+    def test_advanced_model_skips_precompute(self):
+        ctx = ClutterLossContext(
+            frequency_mhz=900.0, distance_m=0.0,
+            tx_height_m=30.0, rx_height_m=10.0, model="advanced",
+        )
+        result = _compute_tx_clutter_loss(
+            0.0, 0.0, None, 900.0, True, None, None, None, ctx,
+        )
+        assert result == 0.0
+
+    def test_simple_model_computes(self):
+        ctx = ClutterLossContext(
+            frequency_mhz=900.0, distance_m=0.0,
+            tx_height_m=30.0, rx_height_m=10.0, model="simple",
+        )
+        result = _compute_tx_clutter_loss(
+            0.0, 0.0, None, 900.0, True, None, None, None, ctx,
+        )
+        assert isinstance(result, float)

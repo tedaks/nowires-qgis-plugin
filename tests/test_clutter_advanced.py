@@ -4,18 +4,21 @@
 # This program is free software under GPLv3 or later. See LICENSE.
 """Tests for clutter_advanced pure-logic functions."""
 
+import pytest
 from unittest.mock import MagicMock, patch
 
 from clutter_advanced import (
     _ClutterComponents,
     _category_height_m,
     _compute_advanced_loss,
-    _legacy_to_advanced_override,
-    _resolve_category,
-    _resolve_category_advanced,
     _terminal_height_m,
     compute_terminal_clutter_loss,
     compute_path_clutter_loss,
+)
+from clutter_resolve import (
+    _legacy_to_advanced_override,
+    _resolve_category,
+    _resolve_category_advanced,
 )
 from clutter_categories import CLUTTER_CATEGORY_PARAMS
 from clutter_context import ClutterLossContext
@@ -179,8 +182,8 @@ class TestComputeAdvancedLoss:
     def test_p2108_combined_low_band_warns_once(self, caplog):
         import logging as _logging
         # Reset the module-level latch so this test is independent of order.
-        import clutter_advanced
-        clutter_advanced._warned_low_vhf_p2108_combined = False
+        import clutter_resolve
+        clutter_resolve._warned_low_vhf_p2108_combined = False
         with caplog.at_level(_logging.WARNING, logger="clutter_advanced"):
             _compute_advanced_loss("urban", "rx", _ctx(frequency_mhz=47.0))
             _compute_advanced_loss("suburban", "rx", _ctx(frequency_mhz=47.0))
@@ -307,6 +310,49 @@ class TestComputePathClutterLoss:
         rx = _ClutterComponents(0.0, 15.0, "§3.2")
         result = compute_path_clutter_loss(tx, rx)
         assert result == 15.0, "path stat should be max of both, not sum"
+
+
+class TestDualSaalosAttribution:
+    """Per-terminal loss attribution when both terminals use saalos.
+
+    When both terminals are saalos, compute_path_clutter_loss returns
+    max(tx_term, rx_term). The attribution in compute_terminal_clutter_losses
+    must proportionally split total loss based on each terminal's contribution.
+    """
+
+    def test_both_saalos_proportional_split(self):
+        tx = _ClutterComponents(18.0, 0.0, "saalos")
+        rx = _ClutterComponents(12.0, 0.0, "saalos")
+        total = compute_path_clutter_loss(tx, rx)
+        assert total == 18.0
+        term_sum = tx.terminal_loss_db + rx.terminal_loss_db
+        tx_attr = total * (tx.terminal_loss_db / term_sum)
+        rx_attr = total * (rx.terminal_loss_db / term_sum)
+        assert tx_attr == pytest.approx(10.8, abs=0.1)
+        assert rx_attr == pytest.approx(7.2, abs=0.1)
+        assert tx_attr + rx_attr == pytest.approx(total, abs=0.01)
+
+    def test_both_saalos_one_zero_gives_all_to_other(self):
+        tx = _ClutterComponents(18.0, 0.0, "saalos")
+        rx = _ClutterComponents(0.0, 0.0, "saalos")
+        total = compute_path_clutter_loss(tx, rx)
+        assert total == 18.0
+        term_sum = 18.0
+        tx_attr = total * (18.0 / term_sum)
+        rx_attr = total * (0.0 / term_sum)
+        assert tx_attr == 18.0
+        assert rx_attr == 0.0
+
+    def test_both_saalos_equal_split(self):
+        tx = _ClutterComponents(10.0, 0.0, "saalos")
+        rx = _ClutterComponents(10.0, 0.0, "saalos")
+        total = compute_path_clutter_loss(tx, rx)
+        assert total == 10.0
+        term_sum = 20.0
+        tx_attr = total * (10.0 / term_sum)
+        rx_attr = total * (10.0 / term_sum)
+        assert tx_attr == pytest.approx(5.0, abs=0.01)
+        assert rx_attr == pytest.approx(5.0, abs=0.01)
 
 
 class TestLegacyToAdvancedOverride:
