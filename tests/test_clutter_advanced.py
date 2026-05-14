@@ -7,6 +7,7 @@
 from unittest.mock import MagicMock, patch
 
 from clutter_advanced import (
+    _ClutterComponents,
     _category_height_m,
     _compute_advanced_loss,
     _legacy_to_advanced_override,
@@ -14,6 +15,7 @@ from clutter_advanced import (
     _resolve_category_advanced,
     _terminal_height_m,
     compute_terminal_clutter_loss,
+    compute_path_clutter_loss,
 )
 from clutter_categories import CLUTTER_CATEGORY_PARAMS
 from clutter_context import ClutterLossContext
@@ -67,114 +69,139 @@ class TestTerminalHeightM:
 class TestComputeAdvancedLoss:
     def test_model_none_returns_zero(self):
         ctx = _ctx()
-        loss, method = _compute_advanced_loss("open", "rx", ctx)
-        assert loss == 0.0
-        assert method == "none"
+        comp = _compute_advanced_loss("open", "rx", ctx)
+        assert comp.terminal_loss_db == 0.0
+        assert comp.path_loss_db == 0.0
+        assert comp.model == "none"
 
     def test_category_open_returns_zero(self):
         ctx = _ctx()
-        loss, method = _compute_advanced_loss("open", "rx", ctx)
-        assert loss == 0.0
-        assert method == "none"
+        comp = _compute_advanced_loss("open", "rx", ctx)
+        assert comp.terminal_loss_db == 0.0
+        assert comp.path_loss_db == 0.0
+        assert comp.model == "none"
 
     def test_cch_override_zero_falls_back_to_category_height(self):
         ctx = _ctx(cch_override_m=0.0)
-        loss, method = _compute_advanced_loss("urban", "rx", ctx)
-        assert loss > 0.0
-        assert method != "none"
+        comp = _compute_advanced_loss("urban", "rx", ctx)
+        assert comp.terminal_loss_db > 0.0 or comp.path_loss_db > 0.0
+        assert comp.model != "none"
 
     def test_cch_override_negative_falls_back_to_category_height(self):
         ctx = _ctx(cch_override_m=-5.0)
-        loss, method = _compute_advanced_loss("urban", "rx", ctx)
-        assert loss > 0.0
-        assert method != "none"
+        comp = _compute_advanced_loss("urban", "rx", ctx)
+        assert comp.terminal_loss_db > 0.0 or comp.path_loss_db > 0.0
+        assert comp.model != "none"
 
     def test_open_category_cch_zero_returns_zero(self):
         ctx = _ctx(rx_height_m=0.0)
-        loss, method = _compute_advanced_loss("open", "rx", ctx)
-        assert loss == 0.0
-        assert method == "none"
+        comp = _compute_advanced_loss("open", "rx", ctx)
+        assert comp.terminal_loss_db == 0.0
+        assert comp.path_loss_db == 0.0
+        assert comp.model == "none"
 
     def test_antenna_at_clutter_height_returns_zero(self):
         ctx = _ctx(rx_height_m=15.0)
-        loss, method = _compute_advanced_loss("urban", "rx", ctx)
-        assert loss == 0.0
-        assert method == "p2108_combined"
+        comp = _compute_advanced_loss("urban", "rx", ctx)
+        assert comp.terminal_loss_db == 0.0
+        assert comp.path_loss_db == 0.0
+        assert comp.model == "p2108_combined"
 
     def test_antenna_above_clutter_height_returns_zero(self):
         ctx = _ctx(rx_height_m=20.0)
-        loss, method = _compute_advanced_loss("urban", "rx", ctx)
-        assert loss == 0.0
-        assert method == "p2108_combined"
+        comp = _compute_advanced_loss("urban", "rx", ctx)
+        assert comp.terminal_loss_db == 0.0
+        assert comp.path_loss_db == 0.0
+        assert comp.model == "p2108_combined"
 
     @patch("clutter_advanced.clutter_loss_saalos", return_value=8.5)
     def test_model_saalos_calls_saalos(self, mock_saalos):
         ctx = _ctx(frequency_mhz=900.0)
-        loss, method = _compute_advanced_loss("vegetation", "rx", ctx)
-        assert loss == 8.5
-        assert method == "saalos"
+        comp = _compute_advanced_loss("vegetation", "rx", ctx)
+        assert comp.terminal_loss_db == 8.5
+        assert comp.path_loss_db == 0.0
+        assert comp.model == "saalos"
         mock_saalos.assert_called_once()
 
     @patch("clutter_advanced.height_gain_loss", return_value=3.2)
     def test_model_p2108_height_gain_calls_height_gain(self, mock_hg):
         ctx = _ctx(frequency_mhz=1000.0, rx_height_m=1.0)
-        loss, method = _compute_advanced_loss("open_rural", "rx", ctx)
-        assert loss == 3.2
-        assert method == "p2108_height_gain"
+        comp = _compute_advanced_loss("open_rural", "rx", ctx)
+        assert comp.terminal_loss_db == 3.2
+        assert comp.path_loss_db == 0.0
+        assert comp.model == "p2108_height_gain"
         mock_hg.assert_called_once()
 
     @patch("clutter_advanced.clutter_loss_p2108_terrestrial_stat", return_value=5.0)
     @patch("clutter_advanced.height_gain_loss", return_value=3.0)
     def test_p2108_combined_mid_band_dispatches_hg_and_stat(self, mock_hg, mock_stat):
         ctx = _ctx(frequency_mhz=1500.0)
-        loss, method = _compute_advanced_loss("suburban", "rx", ctx)
-        assert loss > 0.0
-        assert "3.1" in method
-        assert "3.2" in method
+        comp = _compute_advanced_loss("suburban", "rx", ctx)
+        assert comp.terminal_loss_db == 3.0
+        assert comp.path_loss_db == 5.0
+        assert "§3.1" in comp.model
+        assert "§3.2" in comp.model
 
     @patch("clutter_advanced.clutter_loss_p2108_terrestrial_stat", return_value=5.0)
     @patch("clutter_advanced.height_gain_loss", return_value=0.0)
     def test_p2108_combined_mid_band_hg_zero_skips_31(self, mock_hg, mock_stat):
         ctx = _ctx(frequency_mhz=1500.0)
-        loss, method = _compute_advanced_loss("suburban", "rx", ctx)
-        assert "3.1" not in method
-        assert "3.2" in method
-        assert loss == 5.0
+        comp = _compute_advanced_loss("suburban", "rx", ctx)
+        assert "§3.1" not in comp.model
+        assert "§3.2" in comp.model
+        assert comp.path_loss_db == 5.0
 
     @patch("clutter_advanced.clutter_loss_p2108_terrestrial_stat", return_value=0.0)
     @patch("clutter_advanced.height_gain_loss", return_value=0.0)
     def test_p2108_combined_mid_band_both_zero_returns_zero(self, mock_hg, mock_stat):
         ctx = _ctx(frequency_mhz=1500.0)
-        loss, method = _compute_advanced_loss("suburban", "rx", ctx)
-        assert loss == 0.0
-        assert method == "p2108_combined(0)"
+        comp = _compute_advanced_loss("suburban", "rx", ctx)
+        assert comp.terminal_loss_db == 0.0
+        assert comp.path_loss_db == 0.0
+        assert comp.model == "p2108_combined(0)"
 
     @patch("clutter_advanced.clutter_loss_p2108_terrestrial_stat", return_value=6.0)
     def test_p2108_combined_high_band_uses_stat_only(self, mock_stat):
         ctx = _ctx(frequency_mhz=10000.0)
-        loss, method = _compute_advanced_loss("urban", "rx", ctx)
-        assert loss == 6.0
-        assert method == "§3.2"
+        comp = _compute_advanced_loss("urban", "rx", ctx)
+        assert comp.terminal_loss_db == 0.0
+        assert comp.path_loss_db == 6.0
+        assert comp.model == "§3.2"
 
     @patch("clutter_advanced.clutter_loss_p2108_terrestrial_stat", return_value=4.0)
     def test_p2108_combined_very_high_band_clamps_frequency(self, mock_stat):
         ctx = _ctx(frequency_mhz=100000.0)
-        loss, method = _compute_advanced_loss("urban", "rx", ctx)
-        assert loss == 4.0
-        assert "3.2" in method
-        assert "clamped" in method
+        comp = _compute_advanced_loss("urban", "rx", ctx)
+        assert comp.path_loss_db == 4.0
+        assert "3.2" in comp.model
+        assert "clamped" in comp.model
+
+    def test_p2108_combined_low_band_warns_once(self, caplog):
+        import logging as _logging
+        # Reset the module-level latch so this test is independent of order.
+        import clutter_advanced
+        clutter_advanced._warned_low_vhf_p2108_combined = False
+        with caplog.at_level(_logging.WARNING, logger="clutter_advanced"):
+            _compute_advanced_loss("urban", "rx", _ctx(frequency_mhz=47.0))
+            _compute_advanced_loss("suburban", "rx", _ctx(frequency_mhz=47.0))
+        # Exactly one warning even after two below-band calls.
+        warns = [r for r in caplog.records if "P.2108 §3.2 invalid below" in r.getMessage()]
+        assert len(warns) == 1
 
     def test_p2108_combined_low_band_no_loss(self):
         ctx = _ctx(frequency_mhz=400.0)
-        loss, method = _compute_advanced_loss("suburban", "rx", ctx)
-        assert loss == 0.0
-        assert method == "p2108_combined(0)"
+        comp = _compute_advanced_loss("suburban", "rx", ctx)
+        assert comp.terminal_loss_db == 0.0
+        assert comp.path_loss_db == 0.0
+        assert comp.model == "p2108_combined(0)"
 
     @patch("clutter_advanced.height_gain_loss", return_value=2.0)
     def test_p2108_combined_s32_not_applicable(self, mock_hg):
-        ctx = _ctx(frequency_mhz=1500.0)
-        loss, method = _compute_advanced_loss("open_rural", "rx", ctx)
-        assert "3.2" not in method
+        ctx = _ctx(frequency_mhz=1500.0, rx_height_m=1.0)
+        comp = _compute_advanced_loss("open_rural", "rx", ctx)
+        assert comp.terminal_loss_db == 2.0
+        assert comp.path_loss_db == 0.0
+        assert "§3.2" not in comp.model
 
     def test_unknown_model_returns_zero_unknown(self):
         with patch.dict(
@@ -182,17 +209,19 @@ class TestComputeAdvancedLoss:
             {"fake_cat": {"height_m": 10.0, "model": "bad_model", "p2108_3_2_applicable": False}},
         ):
             ctx = _ctx(rx_height_m=2.0)
-            loss, method = _compute_advanced_loss("fake_cat", "rx", ctx)
-            assert loss == 0.0
-            assert method == "unknown"
+            comp = _compute_advanced_loss("fake_cat", "rx", ctx)
+            assert comp.terminal_loss_db == 0.0
+            assert comp.path_loss_db == 0.0
+            assert comp.model == "unknown"
 
 
 class TestComputeTerminalClutterLoss:
-    @patch("clutter_advanced._compute_advanced_loss", return_value=(7.5, "p2108_combined"))
+    @patch("clutter_advanced._compute_advanced_loss",
+           return_value=_ClutterComponents(5.0, 2.5, "p2108_combined"))
     def test_delegates_to_compute_advanced_loss_for_p2108(self, mock_adv):
         ctx = _ctx()
         result = compute_terminal_clutter_loss("suburban", "rx", ctx)
-        assert result == 7.5
+        assert result == 5.0
         mock_adv.assert_called_once_with("suburban", "rx", ctx)
 
     def test_model_none_returns_zero(self):
@@ -213,6 +242,71 @@ class TestComputeTerminalClutterLoss:
         result = compute_terminal_clutter_loss("vegetation", "rx", ctx)
         assert result == 5.0
         mock_saalos.assert_called_once()
+
+
+class TestComputePathClutterLoss:
+    def test_both_none_returns_zero(self):
+        tx = _ClutterComponents(0.0, 0.0, "none")
+        rx = _ClutterComponents(0.0, 0.0, "none")
+        assert compute_path_clutter_loss(tx, rx) == 0.0
+
+    def test_p2108_height_gain_additive(self):
+        tx = _ClutterComponents(3.0, 0.0, "p2108_height_gain")
+        rx = _ClutterComponents(2.0, 0.0, "p2108_height_gain")
+        assert compute_path_clutter_loss(tx, rx) == 5.0
+
+    def test_p2108_combined_stat_not_double_counted(self):
+        tx = _ClutterComponents(2.0, 10.0, "§3.1+§3.2")
+        rx = _ClutterComponents(3.0, 10.0, "§3.1+§3.2")
+        result = compute_path_clutter_loss(tx, rx)
+        assert result == 10.0, "§3.2 path loss should be counted once, not summed"
+
+    def test_p2108_combined_hg_sum_dominates(self):
+        tx = _ClutterComponents(8.0, 10.0, "§3.1+§3.2")
+        rx = _ClutterComponents(7.0, 10.0, "§3.1+§3.2")
+        result = compute_path_clutter_loss(tx, rx)
+        assert result == 15.0, "when hg_tx+hg_rx > stat, use hg sum"
+
+    def test_p2108_combined_mixed_height_gain_only(self):
+        tx = _ClutterComponents(3.0, 0.0, "p2108_height_gain")
+        rx = _ClutterComponents(0.0, 10.0, "§3.2")
+        result = compute_path_clutter_loss(tx, rx)
+        assert result == max(3.0, 10.0) == 10.0
+
+    def test_saalos_both_endpoints_takes_max(self):
+        tx = _ClutterComponents(18.0, 0.0, "saalos")
+        rx = _ClutterComponents(12.0, 0.0, "saalos")
+        result = compute_path_clutter_loss(tx, rx)
+        assert result == 18.0, "SAALOS on both endpoints: take max, not sum"
+
+    def test_saalos_mixed_with_height_gain(self):
+        tx = _ClutterComponents(18.0, 0.0, "saalos")
+        rx = _ClutterComponents(3.0, 0.0, "p2108_height_gain")
+        result = compute_path_clutter_loss(tx, rx)
+        assert result == 21.0
+
+    def test_saalos_mixed_with_stat(self):
+        tx = _ClutterComponents(18.0, 0.0, "saalos")
+        rx = _ClutterComponents(0.0, 10.0, "§3.2")
+        result = compute_path_clutter_loss(tx, rx)
+        assert result == max(18.0, 10.0) == 18.0
+
+    def test_one_endpoint_none(self):
+        tx = _ClutterComponents(0.0, 0.0, "none")
+        rx = _ClutterComponents(3.0, 0.0, "p2108_height_gain")
+        assert compute_path_clutter_loss(tx, rx) == 3.0
+
+    def test_stat_path_dominates(self):
+        tx = _ClutterComponents(1.0, 20.0, "§3.1+§3.2")
+        rx = _ClutterComponents(1.0, 20.0, "§3.1+§3.2")
+        result = compute_path_clutter_loss(tx, rx)
+        assert result == 20.0
+
+    def test_path_stat_takes_max_not_sum(self):
+        tx = _ClutterComponents(0.0, 15.0, "§3.2")
+        rx = _ClutterComponents(0.0, 15.0, "§3.2")
+        result = compute_path_clutter_loss(tx, rx)
+        assert result == 15.0, "path stat should be max of both, not sum"
 
 
 class TestLegacyToAdvancedOverride:

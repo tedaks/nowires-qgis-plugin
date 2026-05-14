@@ -28,9 +28,10 @@ import numpy as np
 
 from .clutter import CLUTTER_LOSS_DB
 from .clutter_advanced import (
+    _compute_advanced_loss,
     _legacy_to_advanced_override,
     _resolve_category_advanced,
-    compute_terminal_clutter_loss,
+    compute_path_clutter_loss,
 )
 from .clutter_context import ClutterLossContext
 from .constants import EARTH_RADIUS_M
@@ -165,7 +166,7 @@ def build_coverage_tasks(
         rx_category_grid = None
 
     # NOTE: This double loop is O(grid_size^2) in Python.  For large grids
-    # with clutter enabled, per-pixel compute_terminal_clutter_loss calls in
+    # with clutter enabled, per-pixel _compute_advanced_loss calls in
     # advanced mode dominate task generation time.  A LUT keyed on
     # (category, terminal, distance_bucket, ground_bucket) avoids redundant
     # invocations for pixels sharing the same quantised parameters.
@@ -192,9 +193,6 @@ def build_coverage_tasks(
                 rx_lut_key = ("rx", rx_cat, bucket)
                 tx_cached = _clutter_lut.get(tx_lut_key)
                 rx_cached = _clutter_lut.get(rx_lut_key)
-                # Always build the per-pixel context for clarity; the LUT
-                # avoids redundant compute_terminal_clutter_loss calls even
-                # though the context object is re-created each iteration.
                 pixel_ctx = ClutterLossContext(
                     frequency_mhz=f_mhz,
                     distance_m=modeled_d_m,
@@ -212,17 +210,31 @@ def build_coverage_tasks(
                     bel_elevation_angle_deg=clutter_context.bel_elevation_angle_deg,
                 )
                 if tx_cached is None:
-                    tx_clutter_db = compute_terminal_clutter_loss(
-                        tx_category, "tx", pixel_ctx)
-                    _clutter_lut[tx_lut_key] = tx_clutter_db
+                    tx_comp = _compute_advanced_loss(tx_category, "tx", pixel_ctx)
+                    _clutter_lut[tx_lut_key] = tx_comp
                 else:
-                    tx_clutter_db = tx_cached
+                    tx_comp = tx_cached
                 if rx_cached is None:
-                    rx_clutter_db = compute_terminal_clutter_loss(
-                        rx_cat, "rx", pixel_ctx)
-                    _clutter_lut[rx_lut_key] = rx_clutter_db
+                    rx_comp = _compute_advanced_loss(rx_cat, "rx", pixel_ctx)
+                    _clutter_lut[rx_lut_key] = rx_comp
                 else:
-                    rx_clutter_db = rx_cached
+                    rx_comp = rx_cached
+                # Combine terminal-level and path-level clutter correctly.
+                # §3.2 stat_loss must be applied once per path, not summed.
+                # SAALOS applied to both endpoints must use the larger
+                # value, not be summed.
+                path_total = compute_path_clutter_loss(tx_comp, rx_comp)
+                # Split total across tx/rx proportional to per-terminal
+                # contributions so clutter_tx_db + clutter_rx_db ==
+                # path_total and downstream sum remains correct.
+                term_sum = tx_comp.terminal_loss_db + rx_comp.terminal_loss_db
+                if term_sum > 0.0:
+                    tx_clutter_db = path_total * (tx_comp.terminal_loss_db / term_sum)
+                    rx_clutter_db = path_total * (rx_comp.terminal_loss_db / term_sum)
+                else:
+                    # Both terminals zero: split evenly (both will be 0.0).
+                    tx_clutter_db = path_total * 0.5
+                    rx_clutter_db = path_total * 0.5
                 pixel_bel_db = bel_db if clutter_context.bel_enabled else 0.0
             elif rx_clutter_loss_grid is not None:
                 tx_clutter_db = tx_clutter_loss_db

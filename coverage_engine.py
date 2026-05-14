@@ -76,6 +76,10 @@ def _compute_tx_clutter_loss(tx_lat, tx_lon, tx_clutter_loss_db, f_mhz,
                              rx_clutter_override, clutter_context):
     if tx_clutter_loss_db is not None:
         return tx_clutter_loss_db
+    # Advanced mode recomputes TX clutter per pixel (saalos / §3.2 depend on
+    # path distance), so the distance=0 precompute would be discarded. Skip it.
+    if clutter_context is not None and clutter_context.model == "advanced":
+        return 0.0
     tx_clutter = compute_terminal_clutter_losses(
         tx_lat=tx_lat, tx_lon=tx_lon, rx_lat=tx_lat, rx_lon=tx_lon,
         frequency_mhz=f_mhz, enabled=clutter_enabled,

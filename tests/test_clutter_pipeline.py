@@ -83,6 +83,34 @@ def test_disabled_returns_zero_in_advanced_mode():
     assert r.total_loss_db == 0.0
 
 
+def test_terminal_split_preserves_total_invariant_urban_pair():
+    """tx_loss + rx_loss must equal total_loss across all advanced cases.
+
+    Previously the §3.2-dominant path left the residual unaccounted for
+    in the per-terminal split, producing tx_loss + rx_loss < total.
+    """
+    grid = LandCoverGrid(
+        data=np.full((4, 4), 50, dtype=np.int16),
+        min_lat=0.0, max_lat=1.0, min_lon=0.0, max_lon=1.0,
+        nodata=None, source="memory",
+    )
+    for d_m in (1000.0, 3000.0, 10_000.0):
+        for f_mhz in (900.0, 1800.0, 3500.0):
+            ctx = ClutterLossContext(
+                frequency_mhz=f_mhz, distance_m=d_m,
+                tx_height_m=5.0, rx_height_m=1.5, model="advanced",
+            )
+            r = compute_terminal_clutter_losses(
+                tx_lat=0.5, tx_lon=0.5, rx_lat=0.5, rx_lon=0.5,
+                frequency_mhz=f_mhz, enabled=True, land_cover_grid=grid,
+                context=ctx,
+            )
+            assert abs(r.tx_loss_db + r.rx_loss_db - r.total_loss_db) < 1e-6, (
+                f"split invariant violated: f={f_mhz} d={d_m} "
+                f"tx={r.tx_loss_db} rx={r.rx_loss_db} total={r.total_loss_db}"
+            )
+
+
 def test_advanced_per_pixel_is_bounded_for_small_grid():
     start = time.perf_counter()
     for d in range(1, 626):

@@ -18,6 +18,8 @@ from .clutter_advanced import (  # noqa: F401
     compute_terminal_clutter_loss, _category_height_m,
     _resolve_category_advanced, _legacy_to_advanced_override,
     compute_terminal_clutter_losses, _resolve_category,
+    compute_path_clutter_loss, _ClutterComponents,
+    _compute_advanced_loss,
 )
 from .clutter_grid import LandCoverGrid  # noqa: F401
 
@@ -63,7 +65,8 @@ def clutter_override_value(index_or_category) -> str | None:
     idx = int(index_or_category)
     if idx < 0 or idx >= len(CLUTTER_OVERRIDE_OPTIONS):
         return None
-    return CLUTTER_OVERRIDE_OPTIONS[idx]
+    value = CLUTTER_OVERRIDE_OPTIONS[idx]
+    return None if value == "Auto" else value
 
 
 def clutter_source_label(
