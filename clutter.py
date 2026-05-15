@@ -30,8 +30,8 @@ from .clutter_grid import LandCoverGrid  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
-CLUTTER_CATEGORIES = LEGACY_CLUTTER_CATEGORIES
-CLUTTER_LOSS_DB = LEGACY_CLUTTER_LOSS_DB
+CLUTTER_CATEGORIES: tuple[str, ...] = LEGACY_CLUTTER_CATEGORIES
+CLUTTER_LOSS_DB: dict[str, float] = LEGACY_CLUTTER_LOSS_DB
 # Re-export the canonical lookup table from clutter_categories for use
 # by clutter_grid.py and any other consumer that needs vectorised lookups.
 _WORLDCOVER_TO_CATEGORY = _WORLDCOVER_TO_LEGACY_IDX
@@ -54,12 +54,12 @@ def worldcover_class_to_clutter_category(class_id) -> str:
     raw = int(class_id)
     if raw < 0 or raw > 255:
         logger.warning("Unexpected WorldCover class ID %d (outside 0-255 range)", raw)
-    return CLUTTER_CATEGORIES[_WORLDCOVER_TO_CATEGORY[raw % 256]]  # type: ignore[no-any-return]
+    return CLUTTER_CATEGORIES[int(_WORLDCOVER_TO_CATEGORY[raw % 256])]
 
 
 def clutter_loss_db(category, frequency_mhz) -> float:
     del frequency_mhz
-    return CLUTTER_LOSS_DB.get(category, 0.0)  # type: ignore[no-any-return]
+    return CLUTTER_LOSS_DB.get(category, 0.0)
 
 
 def clutter_override_value(index_or_category) -> str | None:

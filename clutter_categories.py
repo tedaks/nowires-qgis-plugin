@@ -110,8 +110,8 @@ def legacy_to_advanced_override(name):
 
 
 # Legacy (simple-mode) category names and loss table.
-LEGACY_CLUTTER_CATEGORIES = ("open", "rural", "vegetation", "suburban", "urban")
-LEGACY_CLUTTER_LOSS_DB = {
+LEGACY_CLUTTER_CATEGORIES: tuple[str, ...] = ("open", "rural", "vegetation", "suburban", "urban")
+LEGACY_CLUTTER_LOSS_DB: dict[str, float] = {
     "open": 0.0, "rural": 2.0, "vegetation": 6.0,
     "suburban": 8.0, "urban": 10.0,
 }

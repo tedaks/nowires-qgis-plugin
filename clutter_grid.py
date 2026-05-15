@@ -25,7 +25,7 @@ from .clutter_categories import (
 
 logger = logging.getLogger(__name__)
 
-_LEGACY_CLUTTER_CATEGORIES = LEGACY_CLUTTER_CATEGORIES
+_LEGACY_CLUTTER_CATEGORIES: tuple[str, ...] = LEGACY_CLUTTER_CATEGORIES
 _CLUTTER_LOSS_ARRAY = _LEGACY_CLUTTER_LOSS_ARRAY
 _WORLDCOVER_TO_CATEGORY = _WORLDCOVER_TO_LEGACY_IDX
 _ADVANCED_CATEGORIES = ADVANCED_CLUTTER_CATEGORIES
@@ -119,7 +119,7 @@ class LandCoverGrid:
         class_id = self.sample_class(lat, lon)
         if class_id is None:
             return None
-        return _LEGACY_CLUTTER_CATEGORIES[_WORLDCOVER_TO_CATEGORY[class_id % 256]]  # type: ignore[no-any-return]
+        return _LEGACY_CLUTTER_CATEGORIES[int(_WORLDCOVER_TO_CATEGORY[class_id % 256])]
 
     def sample_category_grid(self, lats, lons, rx_override=None, context=None):
         """Vectorised category-grid sampling returning losses or category arrays.
