@@ -32,7 +32,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install test dependencies
-        run: pip install --break-system-packages -r requirements-ci.txt
+        # The qgis/qgis container ships pytest/numpy/defusedxml via apt with
+        # no RECORD files, so pip cannot uninstall them. --ignore-installed
+        # lets pip install the pinned versions alongside; the pip-installed
+        # copy in /usr/local wins on PATH.
+        run: pip install --break-system-packages --ignore-installed -r requirements-ci.txt
 
       # Coverage is informational only in integration (subset of suite);
       # the unit-test job in tests.yml enforces the project threshold.
