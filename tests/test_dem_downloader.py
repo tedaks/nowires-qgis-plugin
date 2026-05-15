@@ -172,6 +172,11 @@ def test_dem_cache_directory_uses_fallback_path_when_rename_fails(
     )
     monkeypatch.setattr(
         dd.os,
+        "makedirs",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("makedirs failed")),
+    )
+    monkeypatch.setattr(
+        dd.os,
         "rename",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("rename failed")),
     )

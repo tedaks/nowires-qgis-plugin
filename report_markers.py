@@ -64,10 +64,22 @@ def remove_existing_ogr_dataset(driver, path):
         try:
             driver.DeleteDataSource(str_path)
         except RuntimeError:
+            _remove_shapefile_sidecars(str_path)
             try:
                 os.remove(str_path)
             except OSError:
                 pass
+
+
+def _remove_shapefile_sidecars(path):
+    base = os.path.splitext(path)[0]
+    for ext in (".shx", ".dbf", ".prj", ".cpg", ".qpj", ".qix", ".fix", ".sbn", ".sbx"):
+        sidecar = base + ext
+        try:
+            if os.path.exists(sidecar):
+                os.remove(sidecar)
+        except OSError:
+            pass
 
 
 def build_p2p_marker_records(
@@ -124,6 +136,8 @@ def write_p2p_marker_layer(
     remove_existing_ogr_dataset(driver, path)
 
     ds = driver.CreateDataSource(str(path))
+    if ds is None:
+        raise RuntimeError("Failed to create dataset at {}".format(path))
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(4326)
     srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
@@ -178,6 +192,8 @@ def write_single_marker(path, lat, lon, height_m, gain_dbi, power_dbm, label="TX
     driver = ogr.GetDriverByName(ogr_driver_for_path(path))
     remove_existing_ogr_dataset(driver, path)
     ds = driver.CreateDataSource(str(path))
+    if ds is None:
+        raise RuntimeError("Failed to create dataset at {}".format(path))
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(4326)
     srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)

@@ -42,6 +42,7 @@ import time
 import tempfile
 import urllib.request
 import getpass
+from typing import Any
 
 
 from qgis.core import (
@@ -91,16 +92,19 @@ def get_temp_dir():
     except OSError:
         pass
     if not os.path.isdir(target):
-        tmp = tempfile.mkdtemp(prefix="NoWires-", dir=base)
         try:
-            os.chmod(tmp, 0o700)
+            os.makedirs(target, mode=0o700, exist_ok=True)
         except OSError:
-            pass
-        try:
-            os.rename(tmp, target)
-        except OSError:
-            logger.debug("Could not rename %s to %s; using temp path", tmp, target)
-            target = tmp
+            tmp = tempfile.mkdtemp(prefix="NoWires-", dir=base)
+            try:
+                os.chmod(tmp, 0o700)
+            except OSError:
+                pass
+            try:
+                os.rename(tmp, target)
+            except OSError:
+                logger.debug("Could not rename %s to %s; using temp path", tmp, target)
+                target = tmp
     try:
         st = os.stat(target)
         if st.st_mode & 0o777 != 0o700:
@@ -151,7 +155,8 @@ def required_tiles(south, north, west, east, feedback=None, max_tiles=_MAX_TILES
     return tiles
 
 
-def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
+def download_tiles(tile_list: list[str], temp_dir: str | None = None,
+                   feedback: Any | None = None, proxy_opener: Any | None = None) -> list[str]:
     if temp_dir is None:
         temp_dir = get_temp_dir()
 
@@ -159,7 +164,7 @@ def download_tiles(tile_list, temp_dir=None, feedback=None, proxy_opener=None):
     default_opener = urllib.request.build_opener(
         urllib.request.HTTPSHandler(context=ctx)
     )
-    available = []
+    available: list[str] = []
     deadline = time.monotonic() + _WALL_CLOCK_TIMEOUT
 
     for tile_name in tile_list:

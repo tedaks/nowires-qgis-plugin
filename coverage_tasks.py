@@ -28,6 +28,7 @@ import numpy as np
 
 from .clutter import CLUTTER_LOSS_DB
 from .clutter_advanced import (
+    _ClutterComponents,
     _compute_advanced_loss,
     compute_path_clutter_loss,
 )
@@ -172,8 +173,8 @@ def build_coverage_tasks(
     # advanced mode dominate task generation time.  A LUT keyed on
     # (category, terminal, distance_bucket, ground_bucket) avoids redundant
     # invocations for pixels sharing the same quantised parameters.
-    _clutter_lut = {}
-    tasks = []
+    _clutter_lut: dict[tuple[str, ...], _ClutterComponents] = {}
+    tasks: list[_CoverageTask] = []
     for i in range(grid_size):
         for j in range(grid_size):
             d_m = float(dist_grid[i, j])

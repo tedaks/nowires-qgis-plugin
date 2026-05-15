@@ -249,7 +249,7 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
             street_width_m=street_width_m,
             bel_enabled=bel_enabled,
             bel_building_type=bel_building_type,
-            bel_elevation_angle=bel_elevation_angle,
+            bel_elevation_angle_deg=bel_elevation_angle,
             feedback=feedback,
         )
     finally:

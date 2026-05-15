@@ -144,7 +144,8 @@ def antenna_config_from_values(
 @lru_cache(maxsize=32)
 def _read_pattern_points(path):
     """Read a CSV pattern file. Results are cached by path for the session;
-    editing a pattern file requires a QGIS restart to take effect."""
+    editing a pattern file requires calling clear_pattern_cache() or a QGIS
+    restart to take effect."""
     points = []
     with open(path, "r", encoding="utf-8") as handle:
         reader = csv.reader(handle)
@@ -160,6 +161,14 @@ def _read_pattern_points(path):
     if len(points) < 2:
         raise ValueError("Pattern file must contain at least two numeric rows.")
     return sorted(points)
+
+
+def clear_pattern_cache():
+    """Clear the LRU cache for antenna pattern files.
+
+    Call this after editing a pattern CSV on disk to force re-reading
+    on the next analysis run without requiring a QGIS restart."""
+    _read_pattern_points.cache_clear()
 
 
 def _interpolate_pattern_db(angle_deg, path, wrap):

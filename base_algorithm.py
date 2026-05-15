@@ -15,9 +15,9 @@ def install_constants(cls, names_or_dict):
     from a dict or iterable of names, avoiding repetitive manual declarations.
     """
     if isinstance(names_or_dict, dict):
-        items = names_or_dict.items()
+        items: list[tuple[str, str]] = list(names_or_dict.items())
     else:
-        items = ((n, n) for n in names_or_dict)
+        items = [(n, n) for n in names_or_dict]
     for key, value in items:
         setattr(cls, key, value)
 

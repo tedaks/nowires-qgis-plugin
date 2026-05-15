@@ -195,6 +195,10 @@ def extract_coverage_params(alg, parameters, context):
         from qgis.core import QgsProcessingException
         raise QgsProcessingException(
             "Grid size {} exceeds maximum (1024). Choose a smaller grid size.".format(grid_size))
+    if doubles["radius_km"] <= 0.0:
+        raise QgsProcessingException("Radius must be greater than 0 km.")
+    if doubles["f_mhz"] <= 0.0:
+        raise QgsProcessingException("Frequency must be greater than 0 MHz.")
     polarization = _enum(parameters, alg.POLARIZATION, context)
     climate = _enum(parameters, alg.CLIMATE, context)
     antenna_az = None

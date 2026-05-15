@@ -39,21 +39,21 @@ class SharedDEMGrid:
     process exits before ``release()`` is called.
     """
 
-    def __init__(self, grid_data):
-        self._shm = None
-        self._name = None
+    def __init__(self, grid_data: np.ndarray) -> None:
+        self._shm: multiprocessing.shared_memory.SharedMemory | None = None
+        self._name: str | None = None
         self._unlinked = False
         self._create(grid_data)
 
-    def _create(self, grid_data):
-        name = uuid.uuid4().hex[:20]
+    def _create(self, grid_data: np.ndarray) -> None:
+        name = "nowires_dem_" + uuid.uuid4().hex[:20]
         shm = multiprocessing.shared_memory.SharedMemory(
             create=True,
             name=name,
             size=grid_data.nbytes,
         )
         try:
-            shared_arr = np.ndarray(grid_data.shape, dtype=grid_data.dtype, buffer=shm.buf)
+            shared_arr: np.ndarray = np.ndarray(grid_data.shape, dtype=grid_data.dtype, buffer=shm.buf)
             shared_arr[:] = grid_data[:]
         except Exception:
             try:

@@ -77,6 +77,11 @@ class TempDirManager:
             except Exception:
                 pass
         path = tempfile.mkdtemp(prefix="nowires_{}-".format(prefix), dir=base_dir)
+        if sys.platform != "win32":
+            try:
+                os.chmod(path, 0o700)
+            except OSError:
+                pass
         if persistent:
             self._persistent_dirs.append(path)
         else:

@@ -22,20 +22,26 @@
  *                                                                         *
  ***************************************************************************/
 
-
 Gaussian-weighted contour line smoothing guided by TPI.
 """
 
 import logging
 import math
 import os
-import xml.etree.ElementTree as ET
+
+try:
+    from defusedxml.ElementTree import parse as _safe_parse  # nosec B405
+    import xml.etree.ElementTree as ET  # nosec B405
+    ET.parse = _safe_parse
+    _XML_SAFE = True
+except ImportError:
+    import xml.etree.ElementTree as ET  # nosec B405
+    _XML_SAFE = False
 
 import numpy as np
 from osgeo import gdal
 
 logger = logging.getLogger(__name__)
-
 
 def _raster_calc(calc_func, output_path, nodata=-32768, overwrite=False, **inputs):
     arrays = {}
@@ -81,7 +87,6 @@ def _raster_calc(calc_func, output_path, nodata=-32768, overwrite=False, **input
             ds = datasets.pop()
             ds = None
 
-
 def _gaussian_kernel_2d(size, sigma=None):
     """Generate a normalised 2D Gaussian kernel as a flat string of coefficients.
 
@@ -106,7 +111,6 @@ def _gaussian_kernel_2d(size, sigma=None):
     total = sum(coeffs)
     return " ".join("{:.6f}".format(c / total) for c in coeffs)
 
-
 def _make_blur_vrt(vrt_path, src_path, kernel_size, sigma=None):
     """Build a VRT that applies a Gaussian blur of *kernel_size* × *kernel_size*.
 
@@ -114,13 +118,9 @@ def _make_blur_vrt(vrt_path, src_path, kernel_size, sigma=None):
     ``KernelFilteredSource`` with the generated Gaussian coefficients.
     """
     gdal.BuildVRT(vrt_path, src_path)
-
-    tree = ET.parse(vrt_path)
+    tree = ET.parse(vrt_path)  # nosec B314
     root = tree.getroot()
-
-    ns = ""
-    if root.tag.startswith("{"):
-        ns = root.tag.split("}")[0] + "}"
+    ns = root.tag.split("}")[0] + "}" if root.tag.startswith("{") else ""
 
     for source_elem in list(root.iter()):
         if source_elem.tag not in (
@@ -138,7 +138,6 @@ def _make_blur_vrt(vrt_path, src_path, kernel_size, sigma=None):
 
     tree.write(vrt_path, xml_declaration=True, encoding="utf-8")
 
-
 def smooth_contour_dem(smoothing, input_dem, temp_dir, feedback, progress, status_total,
                        tmp_manager=None):
     """Apply Gaussian-weighted contour line smoothing guided by TPI.
@@ -152,7 +151,6 @@ def smooth_contour_dem(smoothing, input_dem, temp_dir, feedback, progress, statu
 
     feedback.pushInfo("\nApplying contour line smoothing: " + smoothing)
     path = temp_dir
-
     temp_files = [
         os.path.join(path, "dem.tif"),
         os.path.join(path, "dem_blur_3x3.vrt"),

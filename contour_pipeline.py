@@ -75,6 +75,8 @@ def write_aoi_shapefile(aoi_geometry, aoi_shp_path):
     shp_driver = ogr.GetDriverByName("ESRI Shapefile")
     remove_existing_ogr_dataset(shp_driver, aoi_shp_path)
     aoi_datasource = shp_driver.CreateDataSource(aoi_shp_path)
+    if aoi_datasource is None:
+        raise RuntimeError("Failed to create dataset at {}".format(aoi_shp_path))
     aoi_layer = aoi_datasource.CreateLayer("layer", geom_type=ogr.wkbPolygon)
     feat_defn = aoi_layer.GetLayerDefn()
     feature = ogr.Feature(feat_defn)

@@ -25,7 +25,7 @@ def write_geotiff(path, grid, min_lat, max_lat, min_lon, max_lon, nodata=COVERAG
     driver = gdal.GetDriverByName("GTiff")
     ds = driver.Create(path, n_cols, n_rows, 1, gdal.GDT_Float32)
     if ds is None:
-        raise QgsProcessingException("Failed to create GeoTIFF: {}".format(path))
+        raise QgsProcessingException("GDAL failed to create GeoTIFF: {}".format(path))
     band = None
     try:
         ds.SetGeoTransform([

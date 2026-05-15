@@ -42,6 +42,7 @@ import time
 import tempfile
 import urllib.request
 import getpass
+from typing import Any
 
 
 
@@ -163,7 +164,8 @@ def required_worldcover_tiles(south, north, west, east, max_tiles=_MAX_TILES):
     return tiles
 
 
-def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
+def download_worldcover_tiles(tile_list: list[str], temp_dir: str | None = None,
+                             feedback: Any | None = None) -> list[str]:
     if temp_dir is None:
         temp_dir = get_worldcover_dir()
 
@@ -171,7 +173,7 @@ def download_worldcover_tiles(tile_list, temp_dir=None, feedback=None):
     default_opener = urllib.request.build_opener(
         urllib.request.HTTPSHandler(context=ctx)
     )
-    available = []
+    available: list[str] = []
     deadline = time.monotonic() + _WALL_CLOCK_TIMEOUT
 
     for tile_id in tile_list:

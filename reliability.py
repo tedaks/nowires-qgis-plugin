@@ -63,7 +63,7 @@ def classify_fade_margin(margin_db) -> dict:
     return {"fade_margin_class": "Weak", "reliability_summary": "Unreliable"}
 
 
-def estimate_heuristic_availability_pct(margin_db, distance_km, frequency_mhz) -> float:
+def estimate_heuristic_availability_pct(margin_db: float, distance_km: float, frequency_mhz: float) -> float:
     """Return a bounded heuristic availability percentage in [0, 100].
 
     **Disclaimer:** This is a rough heuristic, NOT an ITU-R P.530 calculation.

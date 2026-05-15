@@ -28,7 +28,7 @@ P2P analysis parameter object for run_p2p_analysis.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .antenna import AntennaConfig
@@ -62,8 +62,8 @@ class P2PAnalysisParams:
     rx_antenna_config: AntennaConfig | None = field(default=None)
     clutter_enabled: bool = False
     clutter_grid: LandCoverGrid | None = None
-    tx_clutter_override: str = "open"
-    rx_clutter_override: str = "open"
+    tx_clutter_override: str | None = "open"
+    rx_clutter_override: str | None = "open"
     clutter_model: str = "simple"
     cch_override_m: float | None = None
     clutter_percentile: float = 50.0
@@ -78,12 +78,12 @@ class P2PAnalysisParams:
     report_json_path: str = ""
     report_html_path: str = ""
     show_chart: bool = True
-    context: object = field(default=None)
-    feedback: object = field(default=None)
+    context: Any = field(default=None)
+    feedback: Any = field(default=None)
     output_profile: str = ""
     output_fresnel: str = ""
     output_markers: str = ""
     output_report_csv: str = ""
     output_report_json: str = ""
     output_report_html: str = ""
-    post_processor_sink: list = field(default_factory=list)
+    post_processor_sink: list[str] = field(default_factory=list)

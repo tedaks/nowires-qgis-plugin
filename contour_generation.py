@@ -41,6 +41,8 @@ def generate_contour_lines(merged_path, interval, temp_dir, gdal_callback):
     tmp_shp_dir = tempfile.mkdtemp(dir=temp_dir, prefix="contourlines_")
     contour_shp_path = os.path.join(tmp_shp_dir, "contourlines.shp")
     shp_ds = shp_driver.CreateDataSource(contour_shp_path)
+    if shp_ds is None:
+        raise RuntimeError("Failed to create dataset at {}".format(contour_shp_path))
     srs_4326 = osr.SpatialReference()
     srs_4326.ImportFromEPSG(4326)
     srs_4326.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)

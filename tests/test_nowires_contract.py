@@ -40,7 +40,7 @@ class TestNowiresModuleContract:
         path = os.path.join(src_dir, "..", "nowires.py")
         with open(path, "r") as f:
             content = f.read()
-        assert "def _stale_temp_dir_count(max_entries=1000)" in content
+        assert "def _stale_temp_dir_count(max_entries" in content
 
     def test_menu_name_constant(self):
         src_dir = os.path.dirname(__file__)

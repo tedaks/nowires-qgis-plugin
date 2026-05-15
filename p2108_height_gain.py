@@ -22,7 +22,7 @@ _FREQ_MIN_GHZ = 0.03
 _FREQ_MAX_GHZ = 3.0
 _DEFAULT_STREET_WIDTH_M = 27.0
 
-_CATEGORY_PARAMS = {
+_CATEGORY_PARAMS: dict[str, dict[str, int | float | str]] = {
     "open": {"R_m": 10, "method": "2b"},
     "open_rural": {"R_m": 10, "method": "2b"},
     "dense_rural": {"R_m": 10, "method": "2b"},
@@ -32,7 +32,7 @@ _CATEGORY_PARAMS = {
 }
 
 
-def _J_nu(nu):
+def _J_nu(nu: float) -> float:
     if nu <= -0.78:
         return 0.0
     return 6.9 + 20.0 * math.log10(
@@ -50,7 +50,8 @@ def _J_nu_vec(nu_arr):
     return out
 
 
-def height_gain_loss(h_m, f_ghz, category, w_s_m=_DEFAULT_STREET_WIDTH_M):
+def height_gain_loss(h_m: float, f_ghz: float, category: str,
+                    w_s_m: float = _DEFAULT_STREET_WIDTH_M) -> float:
     """P.2108-1 §3.1 height-gain terminal correction (dB).
 
     Args:
@@ -70,8 +71,8 @@ def height_gain_loss(h_m, f_ghz, category, w_s_m=_DEFAULT_STREET_WIDTH_M):
     params = _CATEGORY_PARAMS.get(category)
     if params is None or category == "open":
         return 0.0
-    R = params["R_m"]
-    method = params["method"]
+    R = float(params["R_m"])
+    method = str(params["method"])
     if h_m <= 0.0 or h_m >= R:
         return 0.0
     h_dif = R - h_m
@@ -111,7 +112,7 @@ def height_gain_loss_vec(h_m_arr, f_ghz, categories, w_s_m=_DEFAULT_STREET_WIDTH
         params = _CATEGORY_PARAMS.get(cat_name)
         if params is None or cat_name == "open":
             continue
-        R = params["R_m"]
+        R = float(params["R_m"])
         method = params["method"]
         mask = (cats == cat_name) & (h > 0) & (h < R)
         if not mask.any():

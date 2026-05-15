@@ -68,6 +68,8 @@ def classFactory(iface):
         return _NoOpPlugin(iface)
 
     _ensure_gdal_env()
+    from osgeo import gdal
+    gdal.UseExceptions()
     from .nowires import NoWiresPlugin
     return NoWiresPlugin(iface)
 

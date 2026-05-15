@@ -56,7 +56,7 @@ from qgis.core import (
 )
 
 from .base_algorithm import NoWiresAlgorithm
-from .constants import MAX_AOI_EXTENT_DEGREES, METERS_PER_FOOT
+from .constants import MAX_AOI_EXTENT_DEGREES, FEET_PER_METER
 
 from .contour_generation import generate_contour_lines, reproject_and_export
 from .contour_pipeline import (
@@ -210,7 +210,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
                 merged_metres = os.path.join(self.temp_dir, "merged_metres.tif")
                 self._tmp.add_file(merged_metres)
                 os.replace(merged_path, merged_metres)
-                _raster_calc(lambda A: A * METERS_PER_FOOT,
+                _raster_calc(lambda A: A * FEET_PER_METER,
                              output_path=merged_path, nodata=-32768,
                              overwrite=True, A=merged_metres)
 
@@ -227,9 +227,11 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             feedback.setProgress(int(self.progress * self.status_total))
 
             output_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
+            project = context.project()
+            target_crs = project.crs() if project is not None else QgsCoordinateReferenceSystem("EPSG:4326")
             try:
                 final_output_path, reproj_dir = reproject_and_export(
-                    contour_shp_path, context.project().crs(), output_dest,
+                    contour_shp_path, target_crs, output_dest,
                     self.temp_dir)
             except OSError as exc:
                 if exc.errno == errno.ENOSPC:

@@ -139,8 +139,7 @@ def test_compute_coverage_cleans_shared_memory_when_cancelled(monkeypatch):
         feedback=CancelledFeedback(),
     )
 
-    assert result.prx_grid is None
-    assert result.loss_grid is None
+    assert result is None
     assert fake_grid._closed is True
     assert fake_grid._unlinked is True
 

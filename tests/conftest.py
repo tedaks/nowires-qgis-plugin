@@ -171,26 +171,35 @@ if not _HAS_REAL_QGIS:
     class _ParamFlag:
         FlagAdvanced = 2
 
-    def _make_param_number(*a, **kw):
-        m = MagicMock()
-        m.name = a[0] if a else ""
-        m.description = a[1] if len(a) > 1 else ""
-        m.type = _ParamNumberType
-        m.defaultValue = kw.get("defaultValue", 0)
-        m.minValue = kw.get("minValue", None)
-        m.maxValue = kw.get("maxValue", None)
-        m.flags = MagicMock(return_value=0)
-        m.setFlags = MagicMock()
-        return m
-
     class _ParamNumber:
         Type = _ParamNumberType
         Flag = _ParamFlag
         Double = 0
         Integer = 1
         FlagAdvanced = 2
-        def __new__(cls, *a, **kw):
-            return _make_param_number(*a, **kw)
+
+        def __init__(self, *a, **kw):
+            self._name = a[0] if a else ""
+            self._description = a[1] if len(a) > 1 else ""
+            self.type = _ParamNumberType
+            self.defaultValue = kw.get("defaultValue", 0)
+            self.minValue = kw.get("minValue", None)
+            self.maxValue = kw.get("maxValue", None)
+            self.flags = MagicMock(return_value=0)
+            self.setFlags = MagicMock()
+
+        def name(self):
+            return self._name
+
+        @property
+        def description(self):
+            return self._description
+
+        def minimum(self):
+            return self.minValue
+
+        def maximum(self):
+            return self.maxValue
 
     def _make_param_point(*a, **kw):
         m = MagicMock()

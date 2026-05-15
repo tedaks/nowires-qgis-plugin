@@ -140,9 +140,9 @@ def configure_contours_for_3d(layer, elevation_field="ELEV"):
     return layer
 
 
-def _next_3d_view_name(iface):
+def _next_3d_view_name(iface: object) -> str:
     """Generate a unique 3D view name for the current QGIS session."""
-    existing = []
+    existing: list[str] = []
     if hasattr(iface, "mapCanvases3D"):
         existing = iface.mapCanvases3D() or []
     return "{} {}".format(VIEW_NAME_PREFIX, len(existing) + 1)

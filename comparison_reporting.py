@@ -25,7 +25,10 @@
 Coverage comparison reporting and validation helpers.
 """
 
+from __future__ import annotations
+
 import os
+from typing import Any
 
 import numpy as np
 from qgis.core import QgsProcessingException
@@ -49,22 +52,29 @@ def validate_panels(tx_point_a, tx_point_b, radius_km_a, radius_km_b):
     return tx_lat_a, tx_lon_a, tx_lat_b, tx_lon_b
 
 
-def resolve_output_paths(output_dir, out_a, out_b, out_delta, out_report, tmp_mgr):
+def resolve_output_paths(
+    output_dir: str | None,
+    out_a: str | None,
+    out_b: str | None,
+    out_delta: str | None,
+    out_report: str | None,
+    tmp_mgr: Any,
+) -> tuple[str, str, str, str | None, str | None]:
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
         out_a = out_a or os.path.join(output_dir, "coverage_a.tif")
         out_b = out_b or os.path.join(output_dir, "coverage_b.tif")
         out_delta = out_delta or os.path.join(output_dir, "coverage_delta.tif")
         out_report = out_report or os.path.join(output_dir, "comparison_report.html")
-    tmpdir = None
+    tmpdir: str | None = None
     if not out_a or not out_b or not out_delta:
         tmpdir = tmp_mgr.make_dir("comp", persistent=True)
     if not out_a:
-        out_a = os.path.join(tmpdir, "coverage_a.tif")
+        out_a = os.path.join(tmpdir, "coverage_a.tif")  # type: ignore[arg-type]
     if not out_b:
-        out_b = os.path.join(tmpdir, "coverage_b.tif")
+        out_b = os.path.join(tmpdir, "coverage_b.tif")  # type: ignore[arg-type]
     if not out_delta:
-        out_delta = os.path.join(tmpdir, "coverage_delta.tif")
+        out_delta = os.path.join(tmpdir, "coverage_delta.tif")  # type: ignore[arg-type]
     return out_a, out_b, out_delta, out_report, tmpdir
 
 

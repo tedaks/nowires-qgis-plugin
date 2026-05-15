@@ -111,12 +111,13 @@ class TerminalClutterLosses:
     percentile: float = 50.0
 
 
-def ensure_clutter_grid_for_area(south, north, west, east, feedback=None) -> LandCoverGrid | None:
+def ensure_clutter_grid_for_area(south: float, north: float, west: float, east: float,
+                                 feedback: object | None = None) -> LandCoverGrid | None:
     raster_path = ensure_worldcover_for_area(south, north, west, east, feedback=feedback)
     if raster_path is None:
         return None
     try:
-        return LandCoverGrid.from_raster(raster_path)
+        return LandCoverGrid.from_raster(raster_path)  # type: ignore[no-any-return]
     except RuntimeError:
         logger.warning("Failed to load downloaded WorldCover raster")
         return None

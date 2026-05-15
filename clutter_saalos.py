@@ -62,11 +62,11 @@ def clutter_loss_saalos(d__meter, cch__meter, h_tx__meter, h_rx__meter,
             hc = (cch__meter + EARTH_RADIUS) * (1.0 - math.cos(tde))
             dx = (cch__meter + EARTH_RADIUS) * math.sin(tde)
             ucrpc = math.sqrt((hone - cch__meter + hc) ** 2 + dx * dx)
-            ctip = (hone - cch__meter + hc) / ucrpc
+            ctip = max(-1.0, min(1.0, (hone - cch__meter + hc) / ucrpc))
             tip = math.acos(ctip)
             tic = max(0.0, tip + tde)
             stic = math.sin(tic)
-            sta = (ensa / encca) * stic
+            sta = max(-1.0, min(1.0, (ensa / encca) * stic))
             ttc = math.asin(sta)
             cttc = math.sqrt(1.0 - math.sin(ttc) ** 2)
             crpc = (cch__meter - h_rx__meter) / cttc
@@ -126,7 +126,7 @@ def clutter_loss_saalos(d__meter, cch__meter, h_tx__meter, h_rx__meter,
             2.06943 - 1.56184 * math.exp(1.0 / cch__meter - h_tx__meter))
         q2 = (17.98 - 0.84224 * (cch__meter - h_tx__meter)) * math.exp(-0.00000061 * pd)
         arte = q1 + q2 + 1.34795 * 20.0 * math.log10(pd + 1.0)
-        arte -= max(0.01, math.log10(wn * 47.7) - 2.0) * (h_rx__meter / h_tx__meter)
+        arte -= max(0.01, math.log10(wn * 47.7) - 2.0) * (h_rx__meter / max(h_tx__meter, 1e-10))
 
     if arte < 0.0:
         return 0.0

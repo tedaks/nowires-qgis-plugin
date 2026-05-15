@@ -5,13 +5,13 @@
 import numpy as np
 
 
-def _interpolate_longitudes_shortest(lon1, lon2, ts) -> np.ndarray:
+def _interpolate_longitudes_shortest(lon1: float, lon2: float, ts: np.ndarray) -> np.ndarray:
     delta = ((lon2 - lon1 + 540.0) % 360.0) - 180.0
     lons = lon1 + ts * delta
     return ((lons + 180.0) % 360.0) - 180.0
 
 
-def sample_line_from_grid(gd, gm, lat1, lon1, lat2, lon2, n_pts):
+def sample_line_from_grid(gd: np.ndarray, gm: dict[str, float], lat1: float, lon1: float, lat2: float, lon2: float, n_pts: int) -> np.ndarray:
     min_lat = gm["min_lat"]
     max_lat = gm["max_lat"]
     min_lon = gm["min_lon"]
@@ -45,4 +45,4 @@ def sample_line_from_grid(gd, gm, lat1, lon1, lat2, lon2, n_pts):
         + gd[y1, x1] * tx_ * ty
     )
     result[oob] = np.nan
-    return result
+    return result  # type: ignore[no-any-return]

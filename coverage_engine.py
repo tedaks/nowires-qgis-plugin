@@ -174,10 +174,7 @@ def compute_coverage(
     )
 
     if cancelled:
-        return CoverageResult(
-            prx_grid=None, loss_grid=None, min_lat=0.0, max_lat=0.0,
-            min_lon=0.0, max_lon=0.0, itm_loss_grid=None,
-            clutter_loss_grid=None, clutter_rx_db_grid=None, bel_rx_db_grid=None)
+        return None
 
     total = len(tasks)
     if feedback:

@@ -17,7 +17,7 @@ from constants import (
     K_FACTOR_PRESETS_OPTIONS,
     MAX_AOI_EXTENT_DEGREES,
     METERS_PER_DEGREE_LAT,
-    METERS_PER_FOOT,
+    FEET_PER_METER,
     POLARIZATION_NAMES,
 )
 from defaults import (
@@ -55,8 +55,8 @@ def test_meters_per_degree_lat_reasonable():
     assert 110_000 <= METERS_PER_DEGREE_LAT <= 112_000
 
 
-def test_meters_per_foot_greater_than_one():
-    assert METERS_PER_FOOT > 1.0
+def test_feet_per_meter_greater_than_one():
+    assert FEET_PER_METER > 1.0
 
 
 def test_bytes_per_mebibyte():

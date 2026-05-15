@@ -22,9 +22,7 @@
  ***************************************************************************/
 
 
-Shared tile download logic with retry, validation, and caching.
-
-Provides download_tile_with_retry for use by DEM and WorldCover downloaders.
+Shared tile download logic with retry, validation, and caching for DEM and WorldCover downloaders.
 """
 
 import logging
@@ -240,6 +238,8 @@ def clip_and_merge_tiles(
     shp_driver = ogr.GetDriverByName("ESRI Shapefile")
     remove_existing_ogr_dataset(shp_driver, aoi_shp)
     ds = shp_driver.CreateDataSource(aoi_shp)
+    if ds is None:
+        raise RuntimeError("Failed to create dataset at {}".format(aoi_shp))
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(4326)
     srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)

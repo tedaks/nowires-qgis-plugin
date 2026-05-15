@@ -1,9 +1,12 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
 
 from .clutter_categories import CLUTTER_CATEGORY_PARAMS
+from .clutter_context import ClutterLossContext
 from .clutter_resolve import (
     _maybe_warn_low_vhf_p2108_combined,
     _resolve_category,
@@ -26,11 +29,11 @@ class _ClutterComponents:
     model: str = "none"
 
 
-def _category_height_m(category, override_m):
+def _category_height_m(category: str, override_m: float | None) -> float:
     if override_m is not None and override_m > 0.0:
-        return float(override_m)
+        return override_m
     params = CLUTTER_CATEGORY_PARAMS.get(category, CLUTTER_CATEGORY_PARAMS["open"])
-    return float(params["height_m"])
+    return float(params["height_m"])  # type: ignore[arg-type]
 
 
 def _terminal_height_m(terminal, context):
@@ -41,9 +44,9 @@ def _terminal_ground_elev_m(terminal, context):
     return context.tx_ground_elevation_m if terminal == "tx" else context.rx_ground_elevation_m
 
 
-def _compute_advanced_loss(category, terminal, context):
+def _compute_advanced_loss(category: str, terminal: str, context: ClutterLossContext) -> _ClutterComponents:
     params = CLUTTER_CATEGORY_PARAMS.get(category, CLUTTER_CATEGORY_PARAMS["open"])
-    model = params["model"]
+    model: str = str(params["model"])
     cch_m = _category_height_m(category, context.cch_override_m)
     ant_h_m = _terminal_height_m(terminal, context)
     if model == "none" or cch_m <= 0.0:

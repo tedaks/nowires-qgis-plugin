@@ -39,6 +39,8 @@ def write_batch_marker_layer(path, results, feedback, mode):
     driver = ogr.GetDriverByName(ogr_driver_for_path(path))
     remove_existing_ogr_dataset(driver, path)
     ds = driver.CreateDataSource(str(path))
+    if ds is None:
+        raise RuntimeError("Failed to create dataset at {}".format(path))
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(4326)
     srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)

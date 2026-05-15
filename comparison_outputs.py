@@ -264,8 +264,8 @@ def _load_one(context, path, name, styler, raster_layer_ids, feedback):
     return None
 
 
-def load_comparison_layers(context, output_a, output_b, output_delta,
-                           threshold_db, delta_style, feedback):
+def load_comparison_layers(context: object, output_a: str, output_b: str, output_delta: str,
+                           threshold_db: float, delta_style: str, feedback: object) -> tuple[list[str], list[object]]:
     """Register the three comparison rasters for load-on-completion.
 
     Returns ``(raster_layer_ids, post_processors)``. The id list is populated
@@ -276,7 +276,7 @@ def load_comparison_layers(context, output_a, output_b, output_delta,
     """
     from .coverage_palette import apply_coverage_style
 
-    raster_layer_ids = []
+    raster_layer_ids: list[str] = []
     post_processors = []
     targets = [
         (output_delta, "Coverage Delta (A - B dB)",

@@ -31,7 +31,6 @@ from qgis.PyQt.QtGui import QAction, QIcon, QPixmap
 from qgis.PyQt.QtWidgets import QInputDialog
 
 from qgis.core import QgsApplication
-import processing
 
 from .coverage_legend import remove_coverage_legend
 from .coverage_opacity import find_latest_coverage_layer, CoverageOpacityDialog
@@ -44,10 +43,10 @@ cmd_folder = os.path.dirname(__file__)
 _MENU_NAME = "NoWires" if sys.platform == "darwin" else "&NoWires"
 
 
-def _stale_temp_dir_count(max_entries=1000):
+def _stale_temp_dir_count(max_entries: int = 1000) -> int:
     temp_base = tempfile.gettempdir()
     prefixes = ("nowires_",)
-    entries = []
+    entries: list[str] = []
     for base in (temp_base,):
         try:
             entries.extend(
@@ -181,6 +180,7 @@ class NoWiresPlugin:
             self.iface.addToolBarIcon(action)
 
         QTimer.singleShot(5000, self._warn_stale_temp_dirs)
+        QTimer.singleShot(5000, self._cleanup_stale_shared_memory)
 
     def _warn_stale_temp_dirs(self):
         """Log a warning about stale temporary directories (deferred from initGui)."""
@@ -192,6 +192,22 @@ class NoWiresPlugin:
                 "These are left for QGIS layer loading and can be "
                 "safely deleted when QGIS is closed.".format(stale, tempfile.gettempdir()),
                 "NoWires")
+
+    @staticmethod
+    def _cleanup_stale_shared_memory():
+        prefix = "nowires_dem_"
+        try:
+            import glob as _glob
+            import os as _os
+            dev_shm = _os.path.join(_os.sep, "dev", "shm")
+            if _os.path.isdir(dev_shm):
+                for entry in _glob.iglob(_os.path.join(dev_shm, prefix + "*")):
+                    try:
+                        _os.unlink(entry)
+                    except OSError:
+                        pass
+        except Exception:
+            pass
 
     def run_clear_cache(self):
         """Clear cached DEM and WorldCover tiles from the temp directory."""
@@ -228,12 +244,15 @@ class NoWiresPlugin:
             self.iface.removeToolBarIcon(action)
 
     def run_p2p(self):
+        import processing
         processing.execAlgorithmDialog("nowires:p2p_analysis")
 
     def run_coverage(self):
+        import processing
         processing.execAlgorithmDialog("nowires:coverage_analysis")
 
     def run_contour(self):
+        import processing
         processing.execAlgorithmDialog("nowires:contour_lines")
 
     def run_coverage_opacity(self):
@@ -246,14 +265,16 @@ class NoWiresPlugin:
             return
         if self._opacity_dialog is not None:
             self._opacity_dialog.close()
+        parent = self.iface.mainWindow()
         self._opacity_dialog = CoverageOpacityDialog(
-            layer, parent=self.iface.mainWindow()
+            layer, parent=parent
         )
         self._opacity_dialog.show()
 
     def run_open_3d_view(self):
+        parent = self.iface.mainWindow()
         mode_label, ok = QInputDialog.getItem(
-            self.iface.mainWindow(),
+            parent,
             "NoWires 3D View",
             "Scene mode",
             ["Local terrain", "Globe"],
@@ -269,7 +290,9 @@ class NoWiresPlugin:
         )
 
     def run_comparison(self):
+        import processing
         processing.execAlgorithmDialog("nowires:coverage_comparison")
 
     def run_batch(self):
+        import processing
         processing.execAlgorithmDialog("nowires:batch_p2p_analysis")

@@ -25,6 +25,7 @@ Portions adapted from tedaks/nowires (MIT). See NOTICE.md.
 """
 
 import logging
+from typing import Any
 from qgis.core import QgsProcessingException
 from .base_algorithm import NoWiresAlgorithm, install_constants
 from .constants import DEGREE_PADDING
@@ -50,6 +51,8 @@ def _features_to_points(features, source_crs, transform_fn, default_height):
     for feat in features:
         geom = feat.geometry()
         if geom is None or geom.isEmpty() or geom.isMultipart():
+            if geom is not None and geom.isMultipart():
+                logger.debug("Skipping multipart feature %s", feat.id())
             continue
         pt = transform_fn(geom.asPoint(), source_crs)
         pdef = {"id": feat.id(), "lat": pt.y(), "lon": pt.x(),
@@ -128,7 +131,7 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
     from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform
     mode = algorithm.parameterAsEnum(parameters, algorithm.MODE, context)
     wgs84 = QgsCoordinateReferenceSystem("EPSG:4326")
-    cache = {}
+    cache: dict[str, Any] = {}
     def _xform(point, src_crs):
         if src_crs is None or not src_crs.isValid() or src_crs.authid().upper() == "EPSG:4326":
             return point

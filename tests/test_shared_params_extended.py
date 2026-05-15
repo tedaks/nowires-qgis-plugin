@@ -12,6 +12,10 @@ from NoWires.shared_params import (
 )
 
 
+def _param_name(p):
+    return p.name() if callable(p.name) else p.name
+
+
 class _Alg:
     def __init__(self):
         self.params = []
@@ -49,11 +53,11 @@ class TestAddLinkBudgetParams:
     def test_adds_parameters_with_expected_order(self):
         alg = _Alg()
         add_link_budget_params(alg)
-        assert alg.params[0].name == "TX_POWER"
-        assert alg.params[1].name == "TX_GAIN"
-        assert alg.params[2].name == "RX_GAIN"
-        assert alg.params[3].name == "CABLE_LOSS"
-        assert alg.params[4].name == "RX_SENSITIVITY"
+        assert _param_name(alg.params[0]) == "TX_POWER"
+        assert _param_name(alg.params[1]) == "TX_GAIN"
+        assert _param_name(alg.params[2]) == "RX_GAIN"
+        assert _param_name(alg.params[3]) == "CABLE_LOSS"
+        assert _param_name(alg.params[4]) == "RX_SENSITIVITY"
 
 
 class TestAddClutterParams:
@@ -65,13 +69,13 @@ class TestAddClutterParams:
     def test_first_param_is_clutter_model(self):
         alg = _Alg()
         add_clutter_params(alg)
-        assert alg.params[0].name == "CLUTTER_MODEL"
+        assert _param_name(alg.params[0]) == "CLUTTER_MODEL"
         assert alg.params[0].defaultValue == 0
 
     def test_bel_params_are_present(self):
         alg = _Alg()
         add_clutter_params(alg)
-        names = [p.name for p in alg.params]
+        names = [_param_name(p) for p in alg.params]
         assert "BEL_ENABLED" in names
         assert "BEL_BUILDING_TYPE" in names
         assert "BEL_ELEVATION_ANGLE" in names
@@ -79,7 +83,7 @@ class TestAddClutterParams:
     def test_street_width_has_bounds(self):
         alg = _Alg()
         add_clutter_params(alg)
-        sw = [p for p in alg.params if p.name == "STREET_WIDTH"][0]
+        sw = [p for p in alg.params if _param_name(p) == "STREET_WIDTH"][0]
         assert sw.minValue == 5.0
         assert sw.maxValue == 100.0
 
@@ -88,21 +92,21 @@ class TestAddAdvancedITMParams:
     def test_adds_k_factor_by_default(self):
         alg = _Alg()
         add_advanced_itm_params(alg)
-        names = [p.name for p in alg.params]
+        names = [_param_name(p) for p in alg.params]
         assert "K_FACTOR_PRESET" in names
         assert "K_FACTOR" in names
 
     def test_can_exclude_k_factor(self):
         alg = _Alg()
         add_advanced_itm_params(alg, include_k_factor=False)
-        names = [p.name for p in alg.params]
+        names = [_param_name(p) for p in alg.params]
         assert "K_FACTOR_PRESET" not in names
         assert "K_FACTOR" not in names
 
     def test_always_adds_n0_epsilon_sigma(self):
         alg = _Alg()
         add_advanced_itm_params(alg, include_k_factor=False)
-        names = [p.name for p in alg.params]
+        names = [_param_name(p) for p in alg.params]
         assert "N0" in names
         assert "EPSILON" in names
         assert "SIGMA" in names
@@ -110,8 +114,8 @@ class TestAddAdvancedITMParams:
     def test_adds_prefix_labels(self):
         alg = _Alg()
         add_advanced_itm_params(alg, prefix="Panel A")
-        labels = [p.description for p in alg.params]
-        assert any("Panel A" in label for label in labels)
+        descs = [p.description if isinstance(p.description, str) else p.description() for p in alg.params]
+        assert any("Panel A" in d for d in descs)
 
 
 class TestAddAdvancedParam:

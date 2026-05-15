@@ -30,7 +30,6 @@ _MAX_WORKERS = _get_max_workers()
 _MIN_CHUNK_SIZE = 64
 _MAX_CHUNK_SIZE = 2048
 
-
 def _interpolate_nan_elevations(elevs):
     """Replace NaN elevation values with linearly interpolated neighbours.
 
@@ -41,7 +40,6 @@ def _interpolate_nan_elevations(elevs):
     """
     from .nan_utils import interpolate_nan_array
     return interpolate_nan_array(elevs)
-
 
 @dataclass
 class CoverageResult:
@@ -150,12 +148,15 @@ def _init_cov_pool(shm_name, shape, dtype_str, grid_meta):
     atexit.register(_final_cov_pool)
 
 
-
 def _itm_worker(args, grid_data=None, grid_meta=None):
     task = _CoverageTask(*args)
 
     gd = grid_data if grid_data is not None else _cov_grid_data
     gm = grid_meta if grid_meta is not None else _cov_grid_meta
+    if gd is None:
+        raise RuntimeError("No DEM grid data available for coverage worker")
+    if not gm:
+        raise RuntimeError("No DEM grid metadata available for coverage worker")
 
     elevs = sample_line_from_grid(
         gd,

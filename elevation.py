@@ -96,7 +96,7 @@ class ElevationGrid:
             val = eg.sample(lat, lon)
     """
 
-    def __init__(self, dem_path):
+    def __init__(self, dem_path: str) -> None:
         ds = gdal.Open(dem_path)
         if ds is None:
             raise RuntimeError("Cannot open DEM: {}".format(dem_path))
@@ -114,7 +114,7 @@ class ElevationGrid:
             )
             if data is None:
                 raise RuntimeError("Failed to read DEM band: {}".format(dem_path))
-            self.data = np.asarray(data, dtype=np.float32)
+            self.data: np.ndarray | None = np.asarray(data, dtype=np.float32)
             if nodata is not None:
                 self.data[self.data == nodata] = np.nan
 
@@ -164,7 +164,8 @@ class ElevationGrid:
             self.data.nbytes / BYTES_PER_MEBIBYTE,
         )
 
-    def sample(self, lat, lon) -> float:
+    def sample(self, lat: float, lon: float) -> float:
+        assert self.data is not None, "ElevationGrid closed"
         # max_lat is the top-edge latitude (geotransform origin), not cell center.
         # The -0.5 shift maps from cell edge to cell center for bilinear lookup.
         fy = (self.max_lat - lat) / self.d_lat - 0.5
@@ -183,7 +184,7 @@ class ElevationGrid:
         v01 = self.data[y0, x1]
         v10 = self.data[y1, x0]
         v11 = self.data[y1, x1]
-        return (
+        return (  # type: ignore[no-any-return]
             v00 * (1 - tx) * (1 - ty)
             + v01 * tx * (1 - ty)
             + v10 * (1 - tx) * ty
@@ -191,6 +192,7 @@ class ElevationGrid:
         )
 
     def sample_line(self, lat1, lon1, lat2, lon2, n_points):
+        assert self.data is not None, "ElevationGrid closed"
         ts = np.linspace(0.0, 1.0, n_points)
         lats = lat1 + ts * (lat2 - lat1)
         lons = _interpolate_longitudes_shortest(lon1, lon2, ts)
@@ -217,7 +219,8 @@ class ElevationGrid:
         result[oob] = np.nan
         return result
 
-    def sample_grid(self, lats, lons) -> np.ndarray:
+    def sample_grid(self, lats: np.ndarray, lons: np.ndarray) -> np.ndarray:
+        assert self.data is not None, "ElevationGrid closed"
         """Sample the DEM at every (lat, lon) grid intersection.
 
         Returns a float32 array of shape (len(lats), len(lons)).
@@ -246,7 +249,7 @@ class ElevationGrid:
             + self.data[y1, x1] * tx_ * ty
         ).astype(np.float32)
         result[oob] = np.nan
-        return result
+        return result  # type: ignore[no-any-return]
 
     def terrain_profile(self, lat1, lon1, lat2, lon2, step_m=30.0) -> list[tuple[float, float]]:
         dist = haversine_m(lat1, lon1, lat2, lon2)
@@ -273,7 +276,7 @@ class ElevationGrid:
 
     def close(self) -> None:
         """Release the DEM data array and GDAL dataset handle to free memory."""
-        self.data = None
+        self.data = None  # type: ignore[assignment]
 
     def __enter__(self):
         return self

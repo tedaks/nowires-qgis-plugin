@@ -21,7 +21,6 @@
  *                                                                         *
  ***************************************************************************/
 
-
 Batch P2P computation and output helpers.
 """
 
@@ -29,7 +28,6 @@ import logging
 import math
 
 import numpy as np
-
 from qgis.core import QgsProcessingException
 
 try:
@@ -64,7 +62,6 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-
 def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength_m):
     rx_lat = rx_def["lat"]
     rx_lon = rx_def["lon"]
@@ -74,6 +71,8 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
     if dist_m < 1.0:
         return None
 
+    if params.elev is None:
+        return None
     profile_points = params.elev.terrain_profile(
         tx_def["lat"], tx_def["lon"], rx_lat, rx_lon,
         step_m=DEFAULT_PROFILE_STEP_M)
@@ -81,7 +80,15 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
         return None
     distances = [p[0] for p in profile_points]
     elevations = [p[1] for p in profile_points]
-    elevations = [0.0 if math.isnan(e) else e for e in elevations]
+    nan_count = sum(1 for e in elevations if math.isnan(e))
+    if nan_count == len(elevations):
+        return None
+    if nan_count > 0:
+        from .nan_utils import interpolate_nan_elevations
+        elevations = interpolate_nan_elevations(np.array(elevations, dtype=np.float64))
+        if np.all(np.isnan(elevations)):
+            return None
+        elevations = elevations.tolist()
     step_m_val = dist_m / max(len(distances) - 1, 1)
     pfl = build_pfl(elevations, step_m_val)
 
@@ -127,7 +134,8 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
         context=clutter_context,
     )
 
-    total_loss_db = itm_result.loss_db + clutter_losses.total_with_bel_db
+    from .constants import ITM_LOSS_UPPER_BOUND
+    total_loss_db = min(itm_result.loss_db, ITM_LOSS_UPPER_BOUND) + clutter_losses.total_with_bel_db
 
     tx_bearing = bearing_deg(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon)
     rx_bearing = bearing_deg(rx_lat, rx_lon, tx_def["lat"], tx_def["lon"])
@@ -169,7 +177,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
     prx_dbm = eirp_eff + rx_gain_eff + ant_gain_adj_total - total_loss_db
     margin_db = prx_dbm - params.rx_sens
 
-    fresnel_r_arr = []
+    fresnel_r_arr: list[float] = []
     for i in range(len(distances)):
         d1 = distances[i]
         d2 = dist_m - d1
@@ -179,7 +187,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
         else:
             fresnel_r_arr.append(0.0)
 
-    fresnel_r_arr = np.array(fresnel_r_arr, dtype=np.float64)
+    fresnel_r = np.array(fresnel_r_arr, dtype=np.float64)
     elev_arr = np.array(elevations, dtype=np.float64)
     dist_arr = np.array(distances, dtype=np.float64)
 
@@ -191,7 +199,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
     bulge = (dist_arr * (dist_m - dist_arr)) / (2.0 * a_eff)
     los_h = tx_antenna_h + t * (rx_antenna_h - tx_antenna_h)
     terrain_bulge = elev_arr + bulge
-    fresnel_clearance = (los_h - fresnel_r_arr) - terrain_bulge
+    fresnel_clearance = (los_h - fresnel_r) - terrain_bulge
     clearance_pct = float(
         np.sum(fresnel_clearance > 0) / max(len(fresnel_clearance), 1) * 100
     )
@@ -212,7 +220,6 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
         "tx_height": tx_h_eff_actual,
         "rx_height": rx_h_eff,
     }
-
 
 def compute_batch_links(params: BatchAnalysisParams, feedback):
     wavelength_m = C_LIGHT / (params.f_mhz * 1e6)
@@ -237,7 +244,6 @@ def compute_batch_links(params: BatchAnalysisParams, feedback):
                 feedback.setProgress(20 + int(60 * count / max(total, 1)))
 
     return results
-
 
 def rank_batch_results(results, rank_by):
     if rank_by == 0:
