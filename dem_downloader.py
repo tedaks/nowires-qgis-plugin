@@ -32,6 +32,8 @@ Downloads Cloud-Optimized GeoTIFF tiles on demand, caches them locally,
 and provides utilities to clip/merge for a given area of interest.
 """
 
+from __future__ import annotations
+
 import logging
 import math
 import os

@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Terminal clutter correction helpers for NoWires."""
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
 

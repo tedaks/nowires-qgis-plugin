@@ -32,6 +32,8 @@ ESA WorldCover 2020 data is provided under the ESA WorldCover licence.
 See NOTICE.md for full attribution and licence details.
 """
 
+from __future__ import annotations
+
 import logging
 import math
 import os

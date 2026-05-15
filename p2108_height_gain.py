@@ -9,6 +9,8 @@ Per-category from P.2108-1 Table 3.
 Not a function of distance or percentile — only h, f, R, w_s.
 """
 
+from __future__ import annotations
+
 import logging
 import math
 

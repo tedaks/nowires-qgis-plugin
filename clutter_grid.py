@@ -8,6 +8,8 @@ provide a vectorised advanced-mode category lookup that avoids a Python-level
 per-pixel loop over the raster.
 """
 
+from __future__ import annotations
+
 import logging
 
 import numpy as np

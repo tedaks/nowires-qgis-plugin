@@ -22,9 +22,12 @@
   ***************************************************************************/
 """
 
+from __future__ import annotations
+
 import atexit
 import multiprocessing
 import multiprocessing.shared_memory
+
 import uuid
 
 import numpy as np
