@@ -4,6 +4,7 @@
 """Integration tests for raster_io.py with real GDAL runtime."""
 
 import os
+import sys
 import tempfile
 
 import numpy as np
@@ -11,11 +12,13 @@ import pytest
 
 try:
     from osgeo import gdal
-    _HAS_GDAL = True
-except ImportError:
-    _HAS_GDAL = False
+    from unittest.mock import MagicMock
+    _HAS_REAL_GDAL = not isinstance(sys.modules.get("osgeo.gdal", gdal), MagicMock)
+except (ImportError, AttributeError):
+    _HAS_REAL_GDAL = False
+    gdal = None
 
-pytestmark = pytest.mark.skipif(not _HAS_GDAL, reason="Requires GDAL")
+pytestmark = pytest.mark.skipif(not _HAS_REAL_GDAL, reason="Requires GDAL")
 
 
 class TestWriteGeotiffIntegration:
