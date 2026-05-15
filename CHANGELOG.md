@@ -15,12 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `clear_pattern_cache()` API for reloading antenna pattern CSV files without QGIS restart
 - Added GDAL `UseExceptions()` at plugin startup for consistent error handling across all GDAL operations
-- Added `from __future__ import annotations` across 14 modules for Python 3.9 compatibility
 - Added batch algorithm multipart geometry handling with debug logging
 - Added contour CRS fallback to EPSG:4326 when context project is unavailable
 - Added NaN-aware elevation interpolation in batch P2P computation using `nan_utils`
 - Added 8 new test suites: algorithm execution integration, base algorithm integration, raster I/O integration, hypothesis property-based tests for antenna, coverage compute, Fresnel, and radio
-- Added CI pipeline: `pytest` matrix for Python 3.9 and 3.12, `pip-audit` dependency scanning, `ruff` lint in integration job, `timeout-minutes` on benchmarks, version/changelog enforcement workflow
+- Added CI pipeline: `pytest` on Python 3.12, `pip-audit` dependency scanning, `ruff` lint in integration job, `timeout-minutes` on benchmarks, version/changelog enforcement workflow
 - Added concurrency groups with `cancel-in-progress` to all GitHub Actions workflows
 - Added two-step pytest isolation in CI: sensitive tests run separately to avoid module state pollution
 
@@ -38,7 +37,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Raised unit test coverage floor from 61% to 61% (steady) with reporting improvements
 - Integration tests now collect coverage data alongside unit tests for combined analysis
 - Updated CONTRIBUTING.md with CI pipeline documentation and local check instructions
 

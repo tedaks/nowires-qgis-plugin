@@ -38,6 +38,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ## Requirements
 
+### Runtime (end users)
+
 - QGIS 4.0 or later
 - Qt 6 / PyQt 6 as bundled with QGIS 4
 - Internet connection (for DEM tile downloads)
@@ -48,6 +50,18 @@ NoWires does not maintain a Qt 5 compatibility layer. Source code uses QGIS 4 / 
 
 No additional Python packages need to be installed. The ITM library ([tedaks/pyitm](https://github.com/tedaks/pyitm)) is bundled with this plugin.
 This plugin also adapts code from [tedaks/nowires](https://github.com/tedaks/nowires) and [tedaks/ContourLines](https://github.com/tedaks/ContourLines); see [NOTICE.md](NOTICE.md) for third-party attribution and license details.
+
+### Developer requirements
+
+Only needed when running the test/lint/typecheck suite outside QGIS:
+
+```bash
+pip install -r requirements-test.txt       # pytest, pytest-cov, hypothesis, numpy, defusedxml
+pip install -r requirements-typecheck.txt  # mypy, numpy
+pip install -r requirements-lint.txt       # ruff
+```
+
+CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — install with `pip install -c constraints-ci.txt -r requirements-test.txt` for parity.
 
 ## Installation
 

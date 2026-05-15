@@ -27,7 +27,7 @@ Use the official QGIS download page:
 - Main download page: https://qgis.org/download/
 - Installation guide: https://version.qgis.org/resources/installation-guide/
 
-As of April 22, 2026, the official QGIS website lists QGIS 4.x as the current release line. Always check the official QGIS page for the latest 4.x installer and platform-specific notes.
+Always check the official QGIS page for the latest 4.x installer and platform-specific notes.
 
 ### Windows
 
@@ -75,7 +75,7 @@ Important:
 ### Option 2: Clone with Git
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/tedaks/nowires-qgis-plugin.git
 ```
 
 If needed, rename the cloned folder to `NoWires` before installing it into QGIS.

@@ -99,6 +99,38 @@ jobs:
           echo "--- size ---"
           ls -lh "$zip_name"
 
+      - name: Verify zip contains required plugin files
+        run: |
+          verify_dir="$RUNNER_TEMP/verify"
+          rm -rf "$verify_dir" && mkdir -p "$verify_dir"
+          unzip -q "${{ steps.build.outputs.zip }}" -d "$verify_dir"
+
+          required=(
+            NoWires/__init__.py
+            NoWires/metadata.txt
+            NoWires/logo.png
+            NoWires/nowires.py
+            NoWires/provider.py
+            NoWires/itm
+          )
+          missing=0
+          for path in "${required[@]}"; do
+            if [ ! -e "$verify_dir/$path" ]; then
+              echo "ERROR: missing from zip: $path"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+          zip_version=$(grep -oP '^version=\K.*' "$verify_dir/NoWires/metadata.txt" | tr -d '[:space:]')
+          if [ "$zip_version" != "${{ steps.tag.outputs.version }}" ]; then
+            echo "ERROR: zipped metadata.txt version ($zip_version) != tag ${{ steps.tag.outputs.version }}"
+            exit 1
+          fi
+          echo "Zip smoke check OK (metadata.txt version: $zip_version)"
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

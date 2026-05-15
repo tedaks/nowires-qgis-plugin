@@ -3,6 +3,8 @@ name: Version and Changelog Check
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -22,7 +24,57 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Determine whether to enforce
+        id: gate
+        if: github.event_name == 'pull_request'
+        env:
+          PR_ACTOR: ${{ github.event.pull_request.user.login }}
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          if [ "$PR_ACTOR" = "dependabot[bot]" ]; then
+            echo "Skipping: PR opened by dependabot[bot]"
+            echo "enforce=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if echo "$LABELS" | grep -q '"no-version-bump"'; then
+            echo "Skipping: 'no-version-bump' label present"
+            echo "enforce=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch --quiet origin "${{ github.base_ref }}"
+          changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          if [ -z "$changed" ]; then
+            echo "No changed files detected; enforcing by default"
+            echo "enforce=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          docs_only=true
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            case "$f" in
+              CHANGELOG.md|metadata.txt)
+                docs_only=false; break ;;
+              docs/*|*.md)
+                ;;
+              *)
+                docs_only=false; break ;;
+            esac
+          done <<< "$changed"
+
+          if [ "$docs_only" = "true" ]; then
+            echo "Skipping: docs-only diff"
+            echo "Changed files:"
+            echo "$changed" | sed 's/^/  /'
+            echo "enforce=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "enforce=true" >> "$GITHUB_OUTPUT"
+
       - name: Check metadata version differs from base
+        if: github.event_name == 'pull_request' && steps.gate.outputs.enforce == 'true'
         run: |
           # tr strip protects against CRLF / trailing whitespace differences.
           pr_version=$(grep -oP '^version=\K.*' metadata.txt | tr -d '[:space:]')
@@ -39,6 +91,7 @@ jobs:
           echo "Version bump OK: $base_version -> $pr_version"
 
       - name: Check changelog has unreleased entries
+        if: github.event_name == 'pull_request' && steps.gate.outputs.enforce == 'true'
         run: |
           unreleased_start=$(grep -n '## \[Unreleased\]' CHANGELOG.md | head -1 | cut -d: -f1)
           if [ -z "$unreleased_start" ]; then
@@ -63,3 +116,24 @@ jobs:
             exit 1
           fi
           echo "Changelog OK: $entries entries under [Unreleased]"
+
+      - name: Check metadata.txt and CHANGELOG.md latest versions align
+        run: |
+          # Always runs (no gate) — catches drift even on Dependabot/docs PRs.
+          meta_version=$(grep -oP '^version=\K.*' metadata.txt | tr -d '[:space:]')
+          meta_top_block=$(grep -oP '^\s*Version \K[0-9]+\.[0-9]+\.[0-9]+' metadata.txt | head -1)
+          changelog_top=$(grep -oP '^## \[\K[0-9]+\.[0-9]+\.[0-9]+(?=\])' CHANGELOG.md | head -1)
+
+          echo "metadata.txt version=:        $meta_version"
+          echo "metadata.txt changelog top:   $meta_top_block"
+          echo "CHANGELOG.md top release:     $changelog_top"
+
+          if [ "$meta_version" != "$meta_top_block" ]; then
+            echo "ERROR: metadata.txt version= ($meta_version) does not match its own changelog top entry ($meta_top_block)"
+            exit 1
+          fi
+          if [ "$meta_version" != "$changelog_top" ]; then
+            echo "ERROR: metadata.txt version ($meta_version) does not match CHANGELOG.md top release ($changelog_top)"
+            exit 1
+          fi
+          echo "Version alignment OK: $meta_version"
