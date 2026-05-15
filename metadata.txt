@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.5.1
+version=1.5.2
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,7 +14,7 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
-    Version 1.5.1
+    Version 1.5.2
     - Add advanced clutter correction mode with saalos vegetation and ITU-R P.2108 site-general clutter loss
     - Add canopy/clutter height override for advanced mode
     - Add tx_cch_m and rx_cch_m to P2P report payload
