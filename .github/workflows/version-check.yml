@@ -7,23 +7,29 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
 jobs:
   version-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Check out PR head
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           fetch-depth: 0
 
       - name: Check metadata version differs from base
         run: |
-          pr_version=$(grep -oP '^version=\K.*' metadata.txt)
+          # tr strip protects against CRLF / trailing whitespace differences.
+          pr_version=$(grep -oP '^version=\K.*' metadata.txt | tr -d '[:space:]')
           echo "PR version: $pr_version"
 
           git fetch origin "${{ github.base_ref }}"
-          base_version=$(git show "origin/${{ github.base_ref }}:metadata.txt" | grep -oP '^version=\K.*')
+          base_version=$(git show "origin/${{ github.base_ref }}:metadata.txt" | grep -oP '^version=\K.*' | tr -d '[:space:]')
           echo "Base version: $base_version"
 
           if [ "$pr_version" = "$base_version" ]; then
@@ -50,7 +56,7 @@ jobs:
           fi
 
           start=$((unreleased_start + 1))
-          entries=$(sed -n "${start},${end}p" CHANGELOG.md | grep -c '^[[:space:]]*- ')
+          entries=$(sed -n "${start},${end}p" CHANGELOG.md | grep -c '^[[:space:]]*- ' || true)
 
           if [ "$entries" -eq 0 ]; then
             echo "ERROR: CHANGELOG.md [Unreleased] section has no entries"

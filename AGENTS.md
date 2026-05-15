@@ -4,16 +4,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ## CI Pipeline
 
-Four GitHub Actions workflows run on every push and pull request:
+Five GitHub Actions workflows run on every push and pull request:
 
 | Workflow | Triggers | Jobs |
 |----------|----------|------|
 | `tests.yml` | push, PR | ruff lint, pip-audit, mypy type-check, pytest (Python 3.12, cov ≥59%) |
-| `integration.yml` | push, PR, workflow_dispatch | QGIS 4.0 Docker integration tests with coverage |
+| `integration.yml` | push, PR, workflow_dispatch | QGIS 4.0 Docker integration tests (digest-pinned) with coverage |
 | `benchmark.yml` | push, PR, workflow_dispatch | Benchmark smoke tests (15 min timeout) |
+| `codeql.yml` | push/PR to main, weekly cron | CodeQL Python static analysis |
 | `version-check.yml` | PR to main | Fails if metadata.txt version not bumped or CHANGELOG.md empty |
 
-Tool versions used by CI are pinned in `requirements-ci.txt`. The single coverage threshold lives in `pyproject.toml` (`[tool.coverage.report] fail_under`); CI invokes `pytest --cov` without a CLI override so the project file is the source of truth.
+Tool versions are pinned in `constraints-ci.txt`. Each job installs only what it needs via role-specific files (`requirements-lint.txt`, `requirements-typecheck.txt`, `requirements-test.txt`) using `pip install -c constraints-ci.txt -r requirements-<role>.txt`. The single coverage threshold lives in `pyproject.toml` (`[tool.coverage.report] fail_under`); CI invokes `pytest --cov` without a CLI override so the project file is the source of truth.
+
+All third-party actions are SHA-pinned. Dependabot manages bumps for both `pip` and `github-actions` ecosystems (see `.github/dependabot.yml`).
 
 All tests must pass locally before committing. See CONTRIBUTING.md for commands.
 

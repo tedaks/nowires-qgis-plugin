@@ -12,9 +12,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
 jobs:
   qgis-integration:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     strategy:
       matrix:
@@ -22,21 +27,24 @@ jobs:
       fail-fast: false
 
     container:
-      image: qgis/qgis:${{ matrix.qgis_version }}
+      # Pinned to digest so upstream point releases of qgis/qgis:4.0
+      # cannot silently change CI behavior. Bump intentionally when
+      # validating a newer image.
+      image: qgis/qgis:${{ matrix.qgis_version }}@sha256:6f33d932b56305a550d9e079d64daeabca71fcc97101bba1ca578c55c0e1439b
       env:
         QGIS_PREFIX_PATH: /usr
         QT_QPA_PLATFORM: offscreen
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
       - name: Install test dependencies
         # The qgis/qgis container ships pytest/numpy/defusedxml via apt with
         # no RECORD files, so pip cannot uninstall them. --ignore-installed
         # lets pip install the pinned versions alongside; the pip-installed
         # copy in /usr/local wins on PATH.
-        run: pip install --break-system-packages --ignore-installed -r requirements-ci.txt
+        run: pip install --break-system-packages --ignore-installed -c constraints-ci.txt -r requirements-test.txt
 
       # Coverage is informational only in integration (subset of suite);
       # the unit-test job in tests.yml enforces the project threshold.
@@ -51,8 +59,8 @@ jobs:
 
       - name: Upload coverage artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
-          name: coverage-integration
+          name: coverage-integration-${{ matrix.qgis_version }}
           path: .coverage
           if-no-files-found: ignore

@@ -35,7 +35,7 @@ The project uses three GitHub Actions workflows run on every push and pull reque
 | `mypy` | Runs `mypy . --config-file mypy.ini` for static type checking |
 | `pytest` | Runs `pytest -m "not benchmark and not qgis_integration" --cov` on Python 3.12. Coverage threshold lives in `pyproject.toml` (currently 59%). |
 
-Tool versions are pinned in `requirements-ci.txt`.
+Tool versions are pinned in `constraints-ci.txt`. Each job installs only its role's deps via `requirements-{lint,typecheck,test}.txt` using `pip install -c constraints-ci.txt -r requirements-<role>.txt`.
 
 ### integration.yml — QGIS Integration Tests (Docker)
 

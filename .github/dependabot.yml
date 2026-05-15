@@ -1,0 +1,32 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      ci-tooling:
+        patterns:
+          - "ruff"
+          - "mypy"
+          - "pip-audit"
+        update-types:
+          - "minor"
+          - "patch"
+      test-stack:
+        patterns:
+          - "pytest"
+          - "pytest-cov"
+          - "hypothesis"
+          - "defusedxml"
+          - "numpy"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
