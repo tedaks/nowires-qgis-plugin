@@ -10,6 +10,9 @@ authors = [
 
 [project.optional-dependencies]
 dev = [
+    "defusedxml>=0.7",
+    "hypothesis>=6.0",
+    "mypy>=1.0",
     "pytest>=7.0",
     "numpy>=1.20",
 ]
@@ -26,6 +29,7 @@ source = ["NoWires"]
 
 [tool.coverage.report]
 show_missing = true
+fail_under = 61
 
 [tool.bumpversion]
 current_version = "1.5.1"

@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -33,9 +37,8 @@ jobs:
             exit 1
           fi
 
-  pytest:
+  audit:
     runs-on: ubuntu-latest
-    needs: lint
 
     steps:
       - name: Check out repository
@@ -47,12 +50,51 @@ jobs:
           python-version: "3.12"
           cache: pip
 
+      - name: Install dependencies and pip-audit
+        run: pip install --break-system-packages pip-audit numpy hypothesis defusedxml pytest
+
+      - name: Audit dependencies
+        run: pip-audit
+
+  mypy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install mypy
+        run: pip install --break-system-packages mypy numpy
+
+      - name: Run mypy
+        run: mypy . --config-file mypy.ini
+
+  pytest:
+    runs-on: ubuntu-latest
+    needs: [lint, mypy]
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12"]
+      fail-fast: false
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
       - name: Install test dependencies
-        run: pip install --break-system-packages pytest pytest-cov numpy
+        run: pip install --break-system-packages pytest pytest-cov hypothesis numpy defusedxml
 
-      - name: Run unit and contract tests
-        run: pytest -q -m "not benchmark and not qgis_integration" --cov=NoWires --cov-report=term-missing
-
-      - name: Check coverage threshold
-        run: |
-          pytest -q -m "not benchmark and not qgis_integration" --cov=NoWires --cov-fail-under=60 --cov-report= /dev/null 2>&1 || echo "Note: coverage threshold is informational and does not block CI"
+      - name: Run unit and contract tests with coverage
+        run: pytest -q -m "not benchmark and not qgis_integration" --cov=NoWires --cov-fail-under=61 --cov-report=term-missing

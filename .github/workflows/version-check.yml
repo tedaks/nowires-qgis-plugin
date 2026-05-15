@@ -1,0 +1,53 @@
+name: Version and Changelog Check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check metadata version differs from base
+        run: |
+          pr_version=$(grep -oP '^version=\K.*' metadata.txt)
+          echo "PR version: $pr_version"
+
+          git fetch origin "${{ github.base_ref }}"
+          base_version=$(git show "origin/${{ github.base_ref }}:metadata.txt" | grep -oP '^version=\K.*')
+          echo "Base version: $base_version"
+
+          if [ "$pr_version" = "$base_version" ]; then
+            echo "ERROR: metadata.txt version ($pr_version) has not been bumped from base ($base_version)"
+            exit 1
+          fi
+          echo "Version bump OK: $base_version -> $pr_version"
+
+      - name: Check changelog has unreleased entries
+        run: |
+          unreleased_start=$(grep -n '## \[Unreleased\]' CHANGELOG.md | head -1 | cut -d: -f1)
+          if [ -z "$unreleased_start" ]; then
+            echo "ERROR: CHANGELOG.md missing [Unreleased] section"
+            exit 1
+          fi
+
+          next_header=$(awk -v start="$unreleased_start" 'NR > start && /^## \[/ {print NR; exit}' CHANGELOG.md)
+          if [ -z "$next_header" ]; then
+            next_header=$(wc -l < CHANGELOG.md)
+          fi
+
+          start=$((unreleased_start + 1))
+          end=$((next_header - 1))
+          entries=$(sed -n "${start},${end}p" CHANGELOG.md | grep -c '^[[:space:]]*- ')
+
+          if [ "$entries" -eq 0 ]; then
+            echo "ERROR: CHANGELOG.md [Unreleased] section has no entries"
+            exit 1
+          fi
+          echo "Changelog OK: $entries entries under [Unreleased]"
