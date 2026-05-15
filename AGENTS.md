@@ -2,6 +2,19 @@
 
 SPDX-License-Identifier: GPL-3.0-or-later
 
+## CI Pipeline
+
+Three GitHub Actions workflows run on every push and pull request:
+
+| Workflow | Triggers | Jobs |
+|----------|----------|------|
+| `tests.yml` | push, PR | ruff lint, pip-audit, mypy type-check, pytest (Python 3.9 + 3.12, cov ≥61%) |
+| `integration.yml` | push/PR to main, workflow_dispatch | QGIS 4.0 Docker integration tests with coverage |
+| `benchmark.yml` | push/PR to main, workflow_dispatch | Benchmark smoke tests (15 min timeout) |
+| `version-check.yml` | PR to main | Fails if metadata.txt version not bumped or CHANGELOG.md empty |
+
+All tests must pass locally before committing. See CONTRIBUTING.md for commands.
+
 ## Source File Size Constraint
 
 All Python source files in this project must strictly adhere to a maximum of **300 lines** per file.

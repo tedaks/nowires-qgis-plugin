@@ -22,24 +22,57 @@ All Python source files in this project must strictly adhere to a maximum of **3
 - Ruff line-length is set to 99; use it consistently to keep lines compact.
 - Before committing, verify: `find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '$1 > 300'` — must return zero files.
 
+## CI Pipeline
+
+The project uses three GitHub Actions workflows run on every push and pull request:
+
+### tests.yml — Lint, Type-Check, Audit, Unit Tests
+
+| Job | Description |
+|-----|-------------|
+| `lint` | Runs `ruff check .` and enforces the 300-line file limit |
+| `audit` | Runs `pip-audit` on dev dependencies (numpy, hypothesis, defusedxml, pytest) |
+| `mypy` | Runs `mypy . --config-file mypy.ini` for static type checking |
+| `pytest` | Runs `pytest -m "not benchmark and not qgis_integration" --cov=NoWires --cov-fail-under=61` on Python 3.9 and 3.12 |
+
+### integration.yml — QGIS Integration Tests (Docker)
+
+Runs inside `qgis/qgis:4.0` container. Includes `ruff check`, QGIS integration tests with coverage, GDAL compatibility tests, and raster I/O integration tests. Blocking — failures prevent merge.
+
+### benchmark.yml — Benchmark Smoke Tests
+
+Runs `pytest -m benchmark` with a 15-minute timeout. Triggered on push/PR to `main` and `workflow_dispatch`.
+
+### version-check.yml — Version and Changelog Gate
+
+Runs on PRs to `main`. Fails if `metadata.txt` version was not bumped or `CHANGELOG.md` `[Unreleased]` section has no entries.
+
 ## Local Checks
 
 Run the repository test suite before opening a pull request:
 
 ```bash
-pytest -q
-```
-
-Optionally run the linter:
-
-```bash
+# Lint
 ruff check .
+
+# Type check
+mypy . --config-file mypy.ini
+
+# Unit and contract tests with coverage
+pytest -q -m "not benchmark and not qgis_integration" --cov=NoWires --cov-fail-under=61
+
+# File-size enforcement
+find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}'
 ```
 
-Optionally check for file-size violations:
+## Integration Testing (Docker)
 
 ```bash
-find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '$1 > 300'
+docker run --rm \
+  -v $(pwd):/plugin -w /plugin \
+  -e QGIS_PREFIX_PATH=/usr -e QT_QPA_PLATFORM=offscreen \
+  qgis/qgis:4.0 \
+  bash -c 'pip install --break-system-packages pytest pytest-cov numpy defusedxml hypothesis && pytest -m qgis_integration -v'
 ```
 
 ## Manual Testing
@@ -50,6 +83,7 @@ For UI and Processing integration checks, copy the `NoWires` folder into your QG
 
 - Keep changes focused.
 - Update user-facing docs when behavior changes.
+- Bump `metadata.txt` version and add entries to `CHANGELOG.md` `[Unreleased]`.
 - Preserve third-party attribution in `NOTICE.md`.
 - Avoid committing generated caches or temporary analysis outputs.
 - Do not add comments unless they explain non-obvious logic.
