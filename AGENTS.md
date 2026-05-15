@@ -4,7 +4,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ## CI Pipeline
 
-Five GitHub Actions workflows run on every push and pull request:
+Six GitHub Actions workflows guard the project:
 
 | Workflow | Triggers | Jobs |
 |----------|----------|------|
@@ -13,6 +13,7 @@ Five GitHub Actions workflows run on every push and pull request:
 | `benchmark.yml` | push, PR, workflow_dispatch | Benchmark smoke tests (15 min timeout) |
 | `codeql.yml` | push/PR to main, weekly cron | CodeQL Python static analysis |
 | `version-check.yml` | PR to main | Fails if metadata.txt version not bumped or CHANGELOG.md empty |
+| `release.yml` | push of `v*.*.*` tag, workflow_dispatch | Verifies tag matches metadata.txt, builds the `NoWires-X.Y.Z.zip` plugin bundle, extracts the matching CHANGELOG section, and publishes a GitHub Release |
 
 Tool versions are pinned in `constraints-ci.txt`. Each job installs only what it needs via role-specific files (`requirements-lint.txt`, `requirements-typecheck.txt`, `requirements-test.txt`) using `pip install -c constraints-ci.txt -r requirements-<role>.txt`. The single coverage threshold lives in `pyproject.toml` (`[tool.coverage.report] fail_under`); CI invokes `pytest --cov` without a CLI override so the project file is the source of truth.
 

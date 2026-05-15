@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v1.5.3). Must already exist."
+        required: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Resolve tag and version
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${GITHUB_REF##refs/tags/}"
+          fi
+          case "$tag" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "ERROR: tag '$tag' does not match vX.Y.Z"; exit 1 ;;
+          esac
+          version="${tag#v}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the tag
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Verify metadata.txt matches tag
+        run: |
+          meta_version=$(grep -oP '^version=\K.*' metadata.txt | tr -d '[:space:]')
+          if [ "$meta_version" != "${{ steps.tag.outputs.version }}" ]; then
+            echo "ERROR: metadata.txt version ($meta_version) != tag ${{ steps.tag.outputs.version }}"
+            exit 1
+          fi
+          echo "metadata.txt version matches tag: $meta_version"
+
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          version="${{ steps.tag.outputs.version }}"
+          notes=$(awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { in_section=1; next }
+            in_section && /^## \[/ { exit }
+            in_section { print }
+          ' CHANGELOG.md)
+          if [ -z "$(echo "$notes" | tr -d '[:space:]')" ]; then
+            echo "ERROR: CHANGELOG.md has no entries under ## [$version]"
+            exit 1
+          fi
+          {
+            echo "## NoWires v$version"
+            echo
+            echo "$notes"
+          } > RELEASE_NOTES.md
+          echo "--- RELEASE_NOTES.md ---"
+          cat RELEASE_NOTES.md
+
+      - name: Build plugin zip
+        id: build
+        run: |
+          version="${{ steps.tag.outputs.version }}"
+          stage="$RUNNER_TEMP/stage"
+          mkdir -p "$stage/NoWires"
+
+          # Tracked files only, minus dev/CI/repo-management artifacts.
+          # The plugin ships as a NoWires/ folder per QGIS plugin convention.
+          git ls-files -z | tr '\0' '\n' | grep -vE '^(tests/|benchmarks/|\.github/|\.gitattributes$|\.gitignore$|pyproject\.toml$|mypy\.ini$|requirements-.*\.txt$|constraints-ci\.txt$|AGENTS\.md$|CONTRIBUTING\.md$)' > "$RUNNER_TEMP/manifest.txt"
+
+          tar -cf - --files-from="$RUNNER_TEMP/manifest.txt" | tar -xf - -C "$stage/NoWires"
+
+          zip_name="NoWires-$version.zip"
+          (cd "$stage" && zip -rq "$GITHUB_WORKSPACE/$zip_name" NoWires)
+
+          echo "zip=$zip_name" >> "$GITHUB_OUTPUT"
+          echo "--- zip contents (first 40) ---"
+          unzip -l "$zip_name" | head -40
+          echo "--- size ---"
+          ls -lh "$zip_name"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.tag.outputs.tag }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "NoWires v${{ steps.tag.outputs.version }}" \
+            --notes-file RELEASE_NOTES.md \
+            --verify-tag \
+            "${{ steps.build.outputs.zip }}"
