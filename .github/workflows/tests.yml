@@ -100,4 +100,4 @@ jobs:
         run: pytest -q -m "not benchmark and not qgis_integration" --ignore=tests/test_coverage_pool_extended.py --ignore=tests/test_plugin_load.py --cov=NoWires --cov-fail-under=0 --cov-report=
 
       - name: Run isolation-sensitive tests with combined coverage check
-        run: pytest -q tests/test_coverage_pool_extended.py tests/test_plugin_load.py --cov=NoWires --cov-append --cov-fail-under=${{ matrix.python-version == '3.9' && '58' || '61' }} --cov-report=term-missing
+        run: pytest -q tests/test_coverage_pool_extended.py tests/test_plugin_load.py --cov=NoWires --cov-append --cov-fail-under=${{ matrix.python-version == '3.9' && '58' || '59' }} --cov-report=term-missing

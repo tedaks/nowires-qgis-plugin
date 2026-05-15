@@ -29,7 +29,7 @@ source = ["NoWires"]
 
 [tool.coverage.report]
 show_missing = true
-fail_under = 58
+fail_under = 59
 
 [tool.bumpversion]
 current_version = "1.5.2"
