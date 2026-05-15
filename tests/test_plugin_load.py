@@ -79,7 +79,6 @@ def _restore_qgis_mocks():
 
     # 4. Ensure NoWires.nowires exists for subsequent patch targets.
     if "NoWires.nowires" not in sys.modules:
-        import NoWires as _nw_pkg
         try:
             from NoWires import nowires as _nowires_mod
             sys.modules.setdefault("NoWires.nowires", _nowires_mod)

@@ -27,7 +27,7 @@ jobs:
           cache: pip
 
       - name: Install test dependencies
-        run: pip install --break-system-packages pytest numpy
+        run: pip install --break-system-packages pytest numpy hypothesis
 
       - name: Run benchmark smoke tests
         run: pytest -m benchmark --tb=short

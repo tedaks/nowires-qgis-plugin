@@ -51,7 +51,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies and pip-audit
-        run: pip install --break-system-packages pip-audit numpy hypothesis defusedxml pytest
+        run: pip install --break-system-packages --upgrade pip pip-audit numpy hypothesis defusedxml pytest
 
       - name: Audit dependencies
         run: pip-audit
