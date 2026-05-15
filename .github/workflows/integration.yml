@@ -57,6 +57,11 @@ jobs:
       - name: Run raster_io integration tests
         run: pytest tests/test_raster_io_integration.py -v --tb=short --cov --cov-append --cov-fail-under=0 --cov-report=term-missing
 
+      - name: Run coverage perf benchmark
+        # Needs GDAL, which is bundled in the qgis/qgis container but not on
+        # the benchmark workflow's ubuntu-latest runner. Stdout is informational.
+        run: python3 benchmarks/coverage_runtime.py
+
       - name: Upload coverage artifact
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2

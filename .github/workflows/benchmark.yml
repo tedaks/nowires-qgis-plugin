@@ -39,16 +39,14 @@ jobs:
       - name: Run benchmark smoke tests
         run: pytest -m benchmark --tb=short -s | tee benchmark-output.txt
 
-      - name: Run perf benchmark scripts
+      - name: Run p2p perf benchmark
         run: |
-          # These standalone scripts measure real runtime; pytest -m benchmark only runs
-          # structural smoke tests. Output goes into the same artifact for trend visibility.
+          # pytest -m benchmark only runs structural smoke tests; this script measures
+          # real runtime. coverage_runtime.py needs GDAL and runs in integration.yml
+          # where the qgis/qgis container provides it.
           {
             echo "=== benchmarks/p2p_runtime.py ==="
             python3 benchmarks/p2p_runtime.py
-            echo
-            echo "=== benchmarks/coverage_runtime.py ==="
-            python3 benchmarks/coverage_runtime.py
           } | tee -a benchmark-output.txt
 
       - name: Upload benchmark output
