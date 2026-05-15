@@ -34,14 +34,16 @@ jobs:
       - name: Install test dependencies
         run: pip install --break-system-packages -r requirements-ci.txt
 
+      # Coverage is informational only in integration (subset of suite);
+      # the unit-test job in tests.yml enforces the project threshold.
       - name: Run QGIS integration tests with coverage
-        run: pytest -m qgis_integration -v --tb=short --cov --cov-fail-under=0 --cov-report=term-missing
+        run: pytest -m qgis_integration -v --tb=short --cov --cov-fail-under=0 --cov-report=
 
       - name: Run GDAL compatibility tests
-        run: pytest tests/test_gdal_compat.py -v --tb=short --cov --cov-append --cov-report=
+        run: pytest tests/test_gdal_compat.py -v --tb=short --cov --cov-append --cov-fail-under=0 --cov-report=
 
-      - name: Run raster_io integration tests with combined coverage check
-        run: pytest tests/test_raster_io_integration.py -v --tb=short --cov --cov-append --cov-report=term-missing
+      - name: Run raster_io integration tests
+        run: pytest tests/test_raster_io_integration.py -v --tb=short --cov --cov-append --cov-fail-under=0 --cov-report=term-missing
 
       - name: Upload coverage artifact
         if: always()

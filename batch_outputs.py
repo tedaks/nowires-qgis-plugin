@@ -88,7 +88,6 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
         elevations = interpolate_nan_elevations(np.array(elevations, dtype=np.float64))
         if np.all(np.isnan(elevations)):
             return None
-        elevations = elevations.tolist()
     step_m_val = dist_m / max(len(distances) - 1, 1)
     pfl = build_pfl(elevations, step_m_val)
 
