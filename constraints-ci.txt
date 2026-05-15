@@ -1,8 +1,8 @@
-ruff==0.9.10
+ruff==0.15.13
 mypy==2.1.0
 pytest==9.0.3
 pytest-cov==7.1.0
 hypothesis==6.152.7
 numpy==2.4.4
 defusedxml==0.7.1
-pip-audit==2.9.0
+pip-audit==2.10.0
