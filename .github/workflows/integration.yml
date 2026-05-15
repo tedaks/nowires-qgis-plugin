@@ -2,14 +2,15 @@ name: QGIS Integration Tests
 
 on:
   push:
-    branches: [main]
   pull_request:
-    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   qgis-integration:
@@ -31,16 +32,21 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install test dependencies
-        run: pip install --break-system-packages pytest pytest-cov numpy defusedxml hypothesis ruff
+        run: pip install --break-system-packages -r requirements-ci.txt
 
-      - name: Run ruff check
-        run: ruff check .
-
-      - name: Run all QGIS integration tests with coverage
-        run: pytest -m qgis_integration -v --tb=short --cov=NoWires --cov-fail-under=0 --cov-report=term-missing
+      - name: Run QGIS integration tests with coverage
+        run: pytest -m qgis_integration -v --tb=short --cov --cov-fail-under=0 --cov-report=term-missing
 
       - name: Run GDAL compatibility tests
-        run: pytest tests/test_gdal_compat.py -v --tb=short
+        run: pytest tests/test_gdal_compat.py -v --tb=short --cov --cov-append --cov-report=
 
-      - name: Run raster_io integration tests
-        run: pytest tests/test_raster_io_integration.py -v --tb=short --cov=NoWires --cov-append --cov-fail-under=0 --cov-report=term-missing
+      - name: Run raster_io integration tests with combined coverage check
+        run: pytest tests/test_raster_io_integration.py -v --tb=short --cov --cov-append --cov-report=term-missing
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integration
+          path: .coverage
+          if-no-files-found: ignore

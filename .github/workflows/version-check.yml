@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   version-check:
     runs-on: ubuntu-latest
@@ -37,13 +40,16 @@ jobs:
             exit 1
           fi
 
+          total_lines=$(wc -l < CHANGELOG.md)
           next_header=$(awk -v start="$unreleased_start" 'NR > start && /^## \[/ {print NR; exit}' CHANGELOG.md)
           if [ -z "$next_header" ]; then
-            next_header=$(wc -l < CHANGELOG.md)
+            # [Unreleased] is the last section — include the final line.
+            end="$total_lines"
+          else
+            end=$((next_header - 1))
           fi
 
           start=$((unreleased_start + 1))
-          end=$((next_header - 1))
           entries=$(sed -n "${start},${end}p" CHANGELOG.md | grep -c '^[[:space:]]*- ')
 
           if [ "$entries" -eq 0 ]; then

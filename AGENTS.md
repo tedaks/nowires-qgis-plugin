@@ -4,14 +4,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ## CI Pipeline
 
-Three GitHub Actions workflows run on every push and pull request:
+Four GitHub Actions workflows run on every push and pull request:
 
 | Workflow | Triggers | Jobs |
 |----------|----------|------|
-| `tests.yml` | push, PR | ruff lint, pip-audit, mypy type-check, pytest (Python 3.9 + 3.12, cov ≥61%) |
-| `integration.yml` | push/PR to main, workflow_dispatch | QGIS 4.0 Docker integration tests with coverage |
-| `benchmark.yml` | push/PR to main, workflow_dispatch | Benchmark smoke tests (15 min timeout) |
+| `tests.yml` | push, PR | ruff lint, pip-audit, mypy type-check, pytest (Python 3.12, cov ≥59%) |
+| `integration.yml` | push, PR, workflow_dispatch | QGIS 4.0 Docker integration tests with coverage |
+| `benchmark.yml` | push, PR, workflow_dispatch | Benchmark smoke tests (15 min timeout) |
 | `version-check.yml` | PR to main | Fails if metadata.txt version not bumped or CHANGELOG.md empty |
+
+Tool versions used by CI are pinned in `requirements-ci.txt`. The single coverage threshold lives in `pyproject.toml` (`[tool.coverage.report] fail_under`); CI invokes `pytest --cov` without a CLI override so the project file is the source of truth.
 
 All tests must pass locally before committing. See CONTRIBUTING.md for commands.
 

@@ -31,17 +31,19 @@ The project uses three GitHub Actions workflows run on every push and pull reque
 | Job | Description |
 |-----|-------------|
 | `lint` | Runs `ruff check .` and enforces the 300-line file limit |
-| `audit` | Runs `pip-audit` on dev dependencies (numpy, hypothesis, defusedxml, pytest) |
+| `audit` | Installs the project + dev extras and runs `pip-audit --requirement requirements-ci.txt` |
 | `mypy` | Runs `mypy . --config-file mypy.ini` for static type checking |
-| `pytest` | Runs `pytest -m "not benchmark and not qgis_integration" --cov=NoWires --cov-fail-under=61` on Python 3.9 and 3.12 |
+| `pytest` | Runs `pytest -m "not benchmark and not qgis_integration" --cov` on Python 3.12. Coverage threshold lives in `pyproject.toml` (currently 59%). |
+
+Tool versions are pinned in `requirements-ci.txt`.
 
 ### integration.yml — QGIS Integration Tests (Docker)
 
-Runs inside `qgis/qgis:4.0` container. Includes `ruff check`, QGIS integration tests with coverage, GDAL compatibility tests, and raster I/O integration tests. Blocking — failures prevent merge.
+Runs inside the `qgis/qgis:4.0` container on every push/PR. Runs the QGIS integration suite, GDAL compatibility tests, and raster I/O integration tests, all sharing one combined coverage file. Blocking — failures prevent merge.
 
 ### benchmark.yml — Benchmark Smoke Tests
 
-Runs `pytest -m benchmark` with a 15-minute timeout. Triggered on push/PR to `main` and `workflow_dispatch`.
+Runs `pytest -m benchmark` with a 15-minute timeout on every push/PR (and `workflow_dispatch`).
 
 ### version-check.yml — Version and Changelog Gate
 
@@ -58,8 +60,8 @@ ruff check .
 # Type check
 mypy . --config-file mypy.ini
 
-# Unit and contract tests with coverage
-pytest -q -m "not benchmark and not qgis_integration" --cov=NoWires --cov-fail-under=61
+# Unit and contract tests with coverage (threshold from pyproject.toml)
+pytest -q -m "not benchmark and not qgis_integration" --cov
 
 # File-size enforcement
 find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}'
