@@ -15,6 +15,21 @@ hasProcessingProvider=yes
 
 changelog=
     Version 1.5.2
+    - Add clear_pattern_cache() API for reloading antenna pattern CSV files
+    - Add GDAL UseExceptions() at plugin startup for consistent error handling
+    - Add from __future__ import annotations across 14 modules for Python 3.9 compatibility
+    - Add NaN-aware elevation interpolation in batch P2P using nan_utils
+    - Add contour CRS fallback when context project is unavailable
+    - Add batch algorithm multipart geometry handling with debug logging
+    - Add 8 new integration and hypothesis property-based test suites
+    - Add hardened CI pipeline: Python 3.9+3.12 matrix, pip-audit, concurrency groups, version/changelog enforcement
+    - Add coverage collection in integration tests with two-step pytest isolation
+    - Fix METERS_PER_FOOT constant incorrectly used as feet-to-meter multiplier in contour generation
+    - Fix mypy compliance with type annotations across 20+ modules
+    - Fix CI: track missing mypy.ini, remove continue-on-error, drop QGIS 3.34 from integration matrix
+    - Fix missing trailing newlines, import ordering, and dead code across modules
+    - Updated CONTRIBUTING.md and AGENTS.md with CI pipeline documentation
+    Version 1.5.1
     - Add advanced clutter correction mode with saalos vegetation and ITU-R P.2108 site-general clutter loss
     - Add canopy/clutter height override for advanced mode
     - Add tx_cch_m and rx_cch_m to P2P report payload
