@@ -54,12 +54,12 @@ def worldcover_class_to_clutter_category(class_id) -> str:
     raw = int(class_id)
     if raw < 0 or raw > 255:
         logger.warning("Unexpected WorldCover class ID %d (outside 0-255 range)", raw)
-    return CLUTTER_CATEGORIES[_WORLDCOVER_TO_CATEGORY[raw % 256]]
+    return CLUTTER_CATEGORIES[_WORLDCOVER_TO_CATEGORY[raw % 256]]  # type: ignore[no-any-return]
 
 
 def clutter_loss_db(category, frequency_mhz) -> float:
     del frequency_mhz
-    return CLUTTER_LOSS_DB.get(category, 0.0)
+    return CLUTTER_LOSS_DB.get(category, 0.0)  # type: ignore[no-any-return]
 
 
 def clutter_override_value(index_or_category) -> str | None:

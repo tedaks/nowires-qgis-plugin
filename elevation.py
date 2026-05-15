@@ -55,7 +55,7 @@ def haversine_m(lat1, lon1, lat2, lon2) -> float:
         + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
     )
     a = max(0.0, min(1.0, a))
-    return 2 * R * math.asin(math.sqrt(a))
+    return 2 * R * math.asin(math.sqrt(a))  # type: ignore[no-any-return]
 
 
 def bearing_deg(lat1, lon1, lat2, lon2) -> float:

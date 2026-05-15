@@ -119,7 +119,7 @@ class LandCoverGrid:
         class_id = self.sample_class(lat, lon)
         if class_id is None:
             return None
-        return _LEGACY_CLUTTER_CATEGORIES[_WORLDCOVER_TO_CATEGORY[class_id % 256]]
+        return _LEGACY_CLUTTER_CATEGORIES[_WORLDCOVER_TO_CATEGORY[class_id % 256]]  # type: ignore[no-any-return]
 
     def sample_category_grid(self, lats, lons, rx_override=None, context=None):
         """Vectorised category-grid sampling returning losses or category arrays.
