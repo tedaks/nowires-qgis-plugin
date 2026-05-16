@@ -263,28 +263,18 @@ class TestITMWorkerBatch:
         with patch("NoWires.coverage_pool.sample_line_from_grid",
                    return_value=np.array([np.nan, np.nan, np.nan])):
             batch = [tuple(task1), tuple(task2)]
-            cancel_event = MagicMock()
-            cancel_event.is_set.return_value = False
-            results = _itm_worker_batch((batch, cancel_event))
+            # v1.5.5+: _itm_worker_batch takes a plain batch list (no
+            # cross-process cancel event — see test_coverage_executor_spawn_safety).
+            results = _itm_worker_batch(batch)
             assert len(results) == 2
 
-    def test_cancel_event_stops_early(self):
-        task = _CoverageTask(
-            0, 0, 50.0, 10.0, 5000.0, 90.0,
-            30.0, 50, 30.0, 10.0, 1, 301.0,
-            300.0, 0, 15.0, 0.005,
-            50.0, 50.0, 50.0,
-            36.0, "omni", 2.0,
-            0.0, 0.0, 0.0,
-        )
+    def test_takes_plain_batch_argument(self):
+        """The function signature must accept a plain list of task tuples.
 
-        batch = [tuple(task)] * 10
-        cancel_event = MagicMock()
-        cancel_event.is_set.return_value = True
-        results = _itm_worker_batch((batch, cancel_event))
-        assert len(results) < 10
-
-    def test_no_cancel_event(self):
+        Earlier versions of v1.5.5 took a (batch, cancel_event) tuple under
+        Manager().Event(); both that and the prior plain Event() approach
+        failed on macOS QGIS, so the cancel-event arg was removed entirely.
+        """
         task = _CoverageTask(
             0, 0, 50.0, 10.0, 5000.0, 90.0,
             30.0, 50, 30.0, 10.0, 1, 301.0,
@@ -297,7 +287,7 @@ class TestITMWorkerBatch:
 
         with patch("NoWires.coverage_pool.sample_line_from_grid",
                    return_value=np.array([np.nan, np.nan, np.nan])):
-            results = _itm_worker_batch((batch, None))
+            results = _itm_worker_batch(batch)
             assert len(results) == 2
 
 

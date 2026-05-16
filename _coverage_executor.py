@@ -21,6 +21,7 @@ from .coverage_pool import (
     should_use_multiprocessing,
 )
 from .macos_compat import configure_macos_multiprocessing, ensure_spawn_start_method
+from .windows_compat import configure_windows_multiprocessing
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,7 @@ def execute_coverage_tasks(
     if use_mp:
         ensure_spawn_start_method()
         configure_macos_multiprocessing()
+        configure_windows_multiprocessing()
         if feedback:
             feedback.pushInfo(
                 "Computing {} pixels with {} workers...".format(
