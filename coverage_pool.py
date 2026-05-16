@@ -227,15 +227,14 @@ def _itm_worker(args, grid_data=None, grid_meta=None):
     )
 
 
-def _itm_worker_batch(batch_and_event):
+def _itm_worker_batch(batch):
     """Process a batch of coverage pixel tasks.
 
-    Cancellation is checked once at batch start — ``cancel_event.is_set()`` is
-    an IPC round-trip under Manager-backed Events (required for spawn safety).
+    No cross-process cancel signal — earlier attempts to share one via
+    multiprocessing.Event() / Manager().Event() failed on macOS QGIS.
+    Cancel responsiveness comes from breaking out of ``pool.map`` between
+    batches in the executor (~320 ms worst-case wait at default chunk size).
     """
-    batch, cancel_event = batch_and_event
-    if cancel_event is not None and cancel_event.is_set():
-        return []
     results = []
     for args in batch:
         try:
