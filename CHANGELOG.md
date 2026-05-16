@@ -20,9 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed coverage multiprocessing silently falling back to sequential mode on macOS (and inside Linux containers). Plain `multiprocessing.Event()` cannot be shared between processes via pickle under the `spawn` start method — the error is `RuntimeError: Condition objects should only be shared between processes through inheritance`. The `_coverage_executor.execute_coverage_tasks` flow caught this in its broad `except Exception`, logged a warning, and quietly fell back to single-threaded execution. macOS (which defaults to `spawn`) and the digest-pinned `qgis/qgis:4.0` Docker integration container were both affected; Linux `fork` was not.
-  - Switched to `multiprocessing.Manager().Event()`. The Manager spawns a tiny server process; the `Event` proxy is what gets pickled to workers and survives spawn-mode transport.
-  - Measured speedup on the in-container `benchmarks/coverage_runtime.py`: small grid 6840 → **26480 px/s** (3.9×), medium grid 7318 → **39102 px/s** (5.3×), large grid 7416 → **43192 px/s** (5.8×). macOS users will see equivalent gains.
+- Fixed coverage multiprocessing silently falling back to sequential mode on macOS via **two distinct bugs** that both surfaced as `feedback.pushInfo("Multiprocessing unavailable, using single-threaded mode...")` with the actual exception logged only via Python `logger.warning` (often invisible in the QGIS UI).
+
+  **(1) macOS POSIX shared-memory name too long.** `shared_dem_grid.SharedDEMGrid._create()` was generating names of the form `nowires_dem_<20 hex>` (32 chars). macOS XNU defines `PSHMNAMLEN = 31` as the maximum length including the leading `/` that `multiprocessing.shared_memory.SharedMemory` prepends, so the actual limit after the slash is 30 chars. Names of 32 chars + leading slash = 33 chars triggered `OSError: [Errno 63] File name too long` at `SharedMemory(create=True, name=...)`. Linux's `NAME_MAX = 255` hid this. Fix: truncate the UUID hex suffix from 20 to 16 chars (28 chars total, 29 with slash; comfortably under the macOS limit).
+
+  **(2) Spawn-mode `multiprocessing.Event()` cannot be pickled.** Even with the shm name fix, the next step in the pipeline used a plain `multiprocessing.Event()` in `_coverage_executor.execute_coverage_tasks`. Under the `spawn` start method (macOS default, Windows, containers), the Event's internal Condition raises `RuntimeError: Condition objects should only be shared between processes through inheritance` when `pool.map` tries to pickle it. Linux `fork` inherited the Event via fd sharing and worked. Fix: switched to `multiprocessing.Manager().Event()` — the Manager spawns a tiny server process; the `Event` proxy is what gets pickled to workers and survives spawn-mode transport.
+
+  Measured speedup on the in-container `benchmarks/coverage_runtime.py`: small grid 6840 → **26480 px/s** (3.9×), medium grid 7318 → **39102 px/s** (5.3×), large grid 7416 → **43192 px/s** (5.8×). macOS users will see equivalent gains.
 
 ### Changed
 
@@ -31,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `tests/test_coverage_executor_spawn_safety.py` — 3 source-level contract tests asserting the executor uses `Manager().Event()` (not the plain constructor) and that the worker checks cancel at batch start. Catches regression to the spawn-unsafe pattern without needing a fork/spawn test harness.
+- Added `tests/test_shared_dem_grid_name_length.py` — contract test that parses the literal name template in `shared_dem_grid.py` and asserts the total length (`/<prefix><N hex>`) stays under `PSHMNAMLEN = 31`. Future edits that lengthen the prefix or extend the hex suffix will fail loudly.
 
 ## [1.5.4] - 2026-05-16
 
