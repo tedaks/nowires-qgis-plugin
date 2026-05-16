@@ -83,7 +83,9 @@ def should_use_multiprocessing(os_name=None):
     if os_name is None:
         os_name = os.name
     if os_name == "nt":
-        return False
+        # Off by default; opt-in via NOWIRES_WINDOWS_MP=1 once spawn-mode
+        # behavior has been validated in the target environment.
+        return os.environ.get("NOWIRES_WINDOWS_MP", "").lower() in {"1", "true", "yes"}
     if sys.platform == "darwin":
         python_exe = find_macos_python_executable()
         if python_exe is None:
@@ -129,11 +131,9 @@ def _final_cov_pool():
 def _init_cov_pool(shm_name, shape, dtype_str, grid_meta):
     _ensure_path()
     global _cov_shm, _cov_grid_data, _cov_grid_meta
-    if _cov_grid_data is not None or _cov_shm is not None:
-        raise RuntimeError(
-            "Shared-memory pool already bound — concurrent coverage runs are not supported."
-        )
-    # Reset stale state from a previous pool run before re-binding.
+    # Reset stale state when a worker is reused across runs (rare under
+    # ProcessPoolExecutor; possible when threading is enabled). Previously
+    # this branch raised RuntimeError — friendlier to just rebind.
     if _cov_grid_data is not None:
         _cov_grid_data = None
     if _cov_shm is not None:

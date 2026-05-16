@@ -74,13 +74,14 @@ def test_provider_registers_comparison_algorithm():
 
 def test_plugin_menu_has_batch_action():
     source = _text(PLUGIN_SOURCE)
-    assert "comparison_action" in source
-    assert "batch_action" in source
+    # The action_specs list registers both comparison and batch menu actions.
+    assert '"Coverage Comparison"' in source
+    assert '"Batch P2P Analysis"' in source
 
 
 def test_plugin_toolbar_includes_batch_and_comparison():
     source = _text(PLUGIN_SOURCE)
     assert "_toolbar_actions" in source
-    assert "comparison_action" in source
-    assert "batch_action" in source
+    assert '"Coverage Comparison"' in source
+    assert '"Batch P2P Analysis"' in source
     assert "addToolBarIcon" in source

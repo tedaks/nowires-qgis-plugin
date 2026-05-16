@@ -55,13 +55,15 @@ from .radio import (
     validate_itm_input_ranges,
 )
 from .antenna import ANTENNA_PRESET_OPTIONS, CUSTOM_ANTENNA_PRESET_INDEX
-from .clutter import LandCoverGrid, clutter_override_value
 from .constants import (
     CLIMATE_OPTIONS,
     GRID_SIZE_PRESETS,
     GRID_SIZE_OPTIONS,
 )
-from .shared_params import add_link_budget_params, add_clutter_params, add_advanced_itm_params
+from .shared_params import (
+    add_advanced_itm_params, add_clutter_params, add_link_budget_params,
+    extract_clutter_params,
+)
 
 _PARAM_NAMES = (
     "TX_POINT", "AREA", "TX_HEIGHT", "RX_HEIGHT", "FREQ_MHZ", "RADIUS_KM",
@@ -75,6 +77,7 @@ _PARAM_NAMES = (
     "BEL_ELEVATION_ANGLE",
     "N0", "EPSILON", "SIGMA", "OUTPUT_RASTER",
     "OUTPUT_REPORT_CSV", "OUTPUT_REPORT_JSON", "OUTPUT_REPORT_HTML",
+    "OUTPUT_REPORT_PDF",
 )
 PARAM_CONSTANTS = {k: k for k in _PARAM_NAMES}
 
@@ -152,6 +155,9 @@ def _add_output_params(alg):
     alg.addParameter(QgsProcessingParameterFileDestination(
         alg.OUTPUT_REPORT_HTML, "Coverage report HTML",
         "HTML files (*.html)", optional=True))
+    alg.addParameter(QgsProcessingParameterFileDestination(
+        alg.OUTPUT_REPORT_PDF, "Coverage report PDF",
+        "PDF files (*.pdf)", optional=True))
 
 
 def add_coverage_params(algorithm):
@@ -169,7 +175,6 @@ def extract_coverage_params(alg, parameters, context):
     from .coverage_analysis_params import CoverageAnalysisParams
     _dbl = alg.parameterAsDouble
     _enum = alg.parameterAsEnum
-    _bool = alg.parameterAsBool
     tx_point = alg.parameterAsPoint(
         parameters, alg.TX_POINT, context,
         crs=QgsCoordinateReferenceSystem("EPSG:4326"),
@@ -207,30 +212,7 @@ def extract_coverage_params(alg, parameters, context):
     antenna_preset = _enum(parameters, alg.ANTENNA_PRESET, context)
     h_pattern = alg.parameterAsFile(parameters, alg.H_PATTERN, context)
     v_pattern = alg.parameterAsFile(parameters, alg.V_PATTERN, context)
-    clutter_model_idx = _enum(parameters, alg.CLUTTER_MODEL, context)
-    clutter_enabled = clutter_model_idx > 0
-    clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
-    cch_raw = _dbl(parameters, alg.CCH_OVERRIDE, context)
-    cch_override_m = cch_raw if cch_raw > 0.0 else None
-    clutter_raster_path = alg.parameterAsFile(
-        parameters, alg.CLUTTER_RASTER, context
-    )
-    clutter_grid = (
-        LandCoverGrid.from_raster(clutter_raster_path)
-        if clutter_raster_path else None
-    )
-    tx_clutter_override = clutter_override_value(
-        _enum(parameters, alg.TX_CLUTTER_OVERRIDE, context)
-    )
-    rx_clutter_override = clutter_override_value(
-        _enum(parameters, alg.RX_CLUTTER_OVERRIDE, context)
-    )
-    clutter_percentile = _dbl(parameters, alg.CLUTTER_PERCENTILE, context)
-    street_width_m = _dbl(parameters, alg.STREET_WIDTH, context)
-    bel_enabled = _bool(parameters, alg.BEL_ENABLED, context)
-    bel_building_type_idx = _enum(parameters, alg.BEL_BUILDING_TYPE, context)
-    bel_building_type = "traditional" if bel_building_type_idx == 0 else "thermally_efficient"
-    bel_elevation_angle = _dbl(parameters, alg.BEL_ELEVATION_ANGLE, context)
+    c = extract_clutter_params(alg, parameters, context)
     antenna_bw_override = (
         None if antenna_preset != CUSTOM_ANTENNA_PRESET_INDEX and doubles["antenna_bw"] == 360.0
         else doubles["antenna_bw"]
@@ -256,16 +238,16 @@ def extract_coverage_params(alg, parameters, context):
         antenna_az=antenna_az, antenna_bw_override=antenna_bw_override,
         antenna_preset=antenna_preset, front_back_db=doubles["front_back_db"],
         downtilt_deg=doubles["downtilt_deg"], h_pattern=h_pattern,
-        v_pattern=v_pattern, clutter_enabled=clutter_enabled,
-        clutter_raster_path=clutter_raster_path, clutter_grid=clutter_grid,
-        tx_clutter_override=tx_clutter_override,
-        rx_clutter_override=rx_clutter_override,
-        clutter_model=clutter_model,
-        cch_override_m=cch_override_m,
-        clutter_percentile=clutter_percentile,
-        street_width_m=street_width_m,
-        bel_enabled=bel_enabled,
-        bel_building_type=bel_building_type,
-        bel_elevation_angle_deg=bel_elevation_angle,
+        v_pattern=v_pattern, clutter_enabled=c.enabled,
+        clutter_raster_path=c.raster_path, clutter_grid=c.grid,
+        tx_clutter_override=c.tx_override,
+        rx_clutter_override=c.rx_override,
+        clutter_model=c.model,
+        cch_override_m=c.cch_override_m,
+        clutter_percentile=c.percentile,
+        street_width_m=c.street_width_m,
+        bel_enabled=c.bel_enabled,
+        bel_building_type=c.bel_building_type,
+        bel_elevation_angle_deg=c.bel_elevation_angle_deg,
         n0=doubles["n0"], epsilon=doubles["epsilon"], sigma=doubles["sigma"],
     )

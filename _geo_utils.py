@@ -45,4 +45,4 @@ def sample_line_from_grid(gd: np.ndarray, gm: dict[str, float], lat1: float, lon
         + gd[y1, x1] * tx_ * ty
     )
     result[oob] = np.nan
-    return result  # type: ignore[no-any-return]
+    return result  # type: ignore[no-any-return]  # numpy bilinear-blend result types as Any

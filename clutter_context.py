@@ -29,3 +29,26 @@ class ClutterLossContext:
             raise ValueError(
                 f"ClutterLossContext.model must be one of {_VALID_MODELS}, got {self.model!r}"
             )
+
+
+def build_initial_clutter_context(
+    *, frequency_mhz: float, tx_height_m: float, rx_height_m: float,
+    tx_ground_elevation_m: float, polarization: int, cch_override_m: float | None,
+    model: str, percentile: float, street_width_m: float,
+    bel_enabled: bool, bel_building_type: str, bel_elevation_angle_deg: float,
+) -> ClutterLossContext:
+    """Build a ClutterLossContext with distance=0 and rx_ground=0 placeholders.
+
+    Per-pixel rx_ground and distance are filled in later during task building
+    (coverage) or per-link recomputation (P2P/batch). The single factory keeps
+    the placeholder semantics consistent between algorithm and engine callers.
+    """
+    return ClutterLossContext(
+        frequency_mhz=frequency_mhz, distance_m=0.0,
+        tx_height_m=tx_height_m, rx_height_m=rx_height_m,
+        rx_ground_elevation_m=0.0, tx_ground_elevation_m=tx_ground_elevation_m,
+        polarization=polarization, cch_override_m=cch_override_m, model=model,
+        percentile=percentile, street_width_m=street_width_m,
+        bel_enabled=bel_enabled, bel_building_type=bel_building_type,
+        bel_elevation_angle_deg=bel_elevation_angle_deg,
+    )

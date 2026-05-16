@@ -26,8 +26,17 @@ class NoWiresAlgorithm(QgsProcessingAlgorithm):
     GROUP_NAME = "Radio Propagation"
     GROUP_ID = "radio_propagation"
 
+    # Subclasses override to True to opt their processAlgorithm() into running
+    # off the main thread via QgsProcessingAlgRunnerTask. Heavy-compute
+    # algorithms (coverage, batch, comparison) opt in so the QGIS UI stays
+    # responsive; quick algorithms keep NoThreading for simplicity.
+    ALLOW_THREADING = False
+
     def flags(self):
-        return super().flags() | Qgis.ProcessingAlgorithmFlag.NoThreading
+        f = super().flags()
+        if not self.ALLOW_THREADING:
+            f |= Qgis.ProcessingAlgorithmFlag.NoThreading
+        return f
 
     def tr(self, string):
         return QCoreApplication.translate("Processing", string)

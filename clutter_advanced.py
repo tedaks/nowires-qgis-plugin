@@ -33,7 +33,7 @@ def _category_height_m(category: str, override_m: float | None) -> float:
     if override_m is not None and override_m > 0.0:
         return override_m
     params = CLUTTER_CATEGORY_PARAMS.get(category, CLUTTER_CATEGORY_PARAMS["open"])
-    return float(params["height_m"])  # type: ignore[arg-type]
+    return float(params["height_m"])  # type: ignore[arg-type]  # heterogeneous params dict; height_m is always numeric by construction
 
 
 def _terminal_height_m(terminal, context):
