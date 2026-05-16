@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.5.3
+version=1.5.4
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,6 +14,9 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
+    Version 1.5.4
+    - Fix macOS SIGABRT crash when running Coverage Analysis with ALLOW_THREADING enabled: defer show_coverage_legend() from processAlgorithm (worker thread) to postProcessAlgorithm (main thread). Cocoa rejects QWidget creation off the main thread.
+    - Extract _validate_dem_coverage to coverage_dem_validate.py
     Version 1.5.3
     - Add ALLOW_THREADING opt-in on base algorithm; Coverage, Batch P2P, and Coverage Comparison now run off the main thread so the QGIS UI stays responsive during heavy computation
     - Add per-tile wall-clock budget (180s default) in tile_download_base to cap slow trickles where socket_timeout alone never fires

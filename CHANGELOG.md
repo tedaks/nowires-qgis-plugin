@@ -9,12 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v1.5.4
+### Planned for v1.5.5
 
 - Extend PDF report output (`OUTPUT_REPORT_PDF`) from Coverage Analysis to Point-to-Point Analysis and Coverage Comparison. The shared `report_pdf.write_report_pdf()` writer is already in place; remaining work is parameter registration and `_write_*_outputs` wiring in `algorithm_p2p` and `algorithm_coverage_comparison`.
 - Promote the standalone "Preview Antenna Pattern" dialog into an inline `QgsProcessingParameterWidgetFactoryInterface` so the polar plot renders directly in the Coverage / P2P parameter dialog next to the pattern-file picker.
 - Investigate whether `should_use_multiprocessing(os_name="nt")` can be enabled by default on Windows once `NOWIRES_WINDOWS_MP=1` has been validated by users; remove the env-var opt-in once safe.
 - Audit `report_pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks.
+
+## [1.5.4] - 2026-05-16
+
+### Fixed
+
+- Fixed macOS `SIGABRT` crash when running Coverage Analysis with `ALLOW_THREADING` enabled. Previously `processAlgorithm` called `show_coverage_legend()` (which constructs and `.show()`s a `QFrame`) inline; with the v1.5.3 threading opt-in this ran on a `QThreadPool` worker, and Cocoa rejects `QWidget` creation off the main thread (`abort()` from `_initWithContentRect:`). The legend now stashes its `rx_sensitivity_dbm` on the algorithm instance during `processAlgorithm` and is shown from `postProcessAlgorithm`, which the QGIS Processing framework guarantees runs on the main thread. Linux/Xlib tolerated this pattern; macOS did not.
+
+### Changed
+
+- Extracted `_validate_dem_coverage` from `algorithm_coverage.py` to a new `coverage_dem_validate.py` helper module to keep `algorithm_coverage.py` within the 300-line cap after the new `postProcessAlgorithm` override.
+
+### Added
+
+- Added `tests/test_coverage_legend_deferred.py` — source-level contract tests asserting the legend show is deferred to `postProcessAlgorithm`. Catches regressions that would re-introduce the macOS crash without needing a real QGIS UI run.
 
 ## [1.5.3] - 2026-05-16
 
