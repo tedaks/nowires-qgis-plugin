@@ -65,3 +65,20 @@ def test_executor_calls_configure_windows():
 def test_should_use_multiprocessing_consults_windows_helper():
     src = _source("coverage_pool.py")
     assert "find_windows_python_executable" in src
+
+
+def test_windows_compat_prefers_pythonw_over_python_exe():
+    """python.exe is a console binary and spawning it pops a stray cmd window
+    for each worker. pythonw.exe is the windowless interpreter — same binary
+    semantics over pipes, no console.
+    """
+    src = _source("windows_compat.py")
+    # Both must appear; pythonw.exe must appear FIRST in the source (earlier
+    # in the candidate-building code path).
+    py_idx = src.find('"python.exe"')
+    pyw_idx = src.find('"pythonw.exe"')
+    assert pyw_idx > 0, "windows_compat.py must reference pythonw.exe"
+    assert py_idx > 0, "windows_compat.py must still fall back to python.exe"
+    assert pyw_idx < py_idx, (
+        "pythonw.exe must be tried before python.exe to avoid stray cmd "
+        "windows on Windows")

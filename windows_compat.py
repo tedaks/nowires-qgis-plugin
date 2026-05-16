@@ -61,25 +61,31 @@ def find_windows_python_executable():
     if override:
         candidates.append(override)
 
-    if sys.executable.lower().endswith("python.exe"):
-        candidates.append(sys.executable)
-
-    base = getattr(sys, "_base_executable", None)
-    if base and base != sys.executable and base.lower().endswith("python.exe"):
-        candidates.append(base)
-
+    # Prefer pythonw.exe (windowless) over python.exe — python.exe is a
+    # console subsystem binary and each spawned worker pops a stray cmd
+    # window. pythonw.exe is the same interpreter without a console; stdin/
+    # stdout/stderr still work over pipes, which is all multiprocessing uses.
     qgis_dir = os.path.dirname(os.path.abspath(sys.executable))
     py_major = sys.version_info.major
     py_minor = sys.version_info.minor
     py_xy = "Python{}{}".format(py_major, py_minor)
     py_x = "Python{}".format(py_major)
-    candidates.extend([
-        os.path.join(qgis_dir, "python.exe"),
-        os.path.join(qgis_dir, "..", "apps", py_xy, "python.exe"),
-        os.path.join(qgis_dir, "..", "apps", py_x, "python.exe"),
-        os.path.join(qgis_dir, "..", py_xy, "python.exe"),
-        os.path.join(qgis_dir, "bin", "python.exe"),
-    ])
+    bundle_dirs = [
+        qgis_dir,
+        os.path.join(qgis_dir, "..", "apps", py_xy),
+        os.path.join(qgis_dir, "..", "apps", py_x),
+        os.path.join(qgis_dir, "..", py_xy),
+        os.path.join(qgis_dir, "bin"),
+    ]
+    for d in bundle_dirs:
+        candidates.append(os.path.join(d, "pythonw.exe"))
+    # Then sys.executable / _base_executable if they're already python(w).exe.
+    for path in (sys.executable, getattr(sys, "_base_executable", None)):
+        if path and path.lower().endswith(("pythonw.exe", "python.exe")):
+            candidates.append(path)
+    # Finally fall back to console python.exe in the same bundle dirs.
+    for d in bundle_dirs:
+        candidates.append(os.path.join(d, "python.exe"))
 
     for candidate in candidates:
         candidate = os.path.normpath(candidate)
