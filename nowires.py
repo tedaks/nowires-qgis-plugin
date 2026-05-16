@@ -36,7 +36,7 @@ from .coverage_legend import remove_coverage_legend
 from .coverage_opacity import find_latest_coverage_layer, CoverageOpacityDialog
 from .provider import NoWiresProvider
 from .three_d import SCENE_MODE_GLOBE, SCENE_MODE_LOCAL, open_nowires_3d_view
-from .cache_manager import clear_dem_cache
+from .cache_manager import clear_dem_cache, format_cache_size, get_cache_size
 
 cmd_folder = os.path.dirname(__file__)
 
@@ -210,24 +210,26 @@ class NoWiresPlugin:
             pass
 
     def run_clear_cache(self):
-        """Clear cached DEM and WorldCover tiles from the temp directory."""
+        """Show current cache size and clear DEM/WorldCover tiles on confirmation."""
         try:
-            removed, freed_bytes = clear_dem_cache()
-            mb = freed_bytes / 1048576.0
-            if removed == 0:
-                self.iface.messageBar().pushInfo(
-                    "NoWires", "No cached tile files found."
-                )
-            else:
-                self.iface.messageBar().pushSuccess(
-                    "NoWires",
-                    "Removed {} cached tile(s) (~{:.1f} MB freed).".format(
-                        removed, mb)
-                )
+            count, size_bytes = get_cache_size()
+            if count == 0:
+                self.iface.messageBar().pushInfo("NoWires", "Cache is empty.")
+                return
+            from qgis.PyQt.QtWidgets import QMessageBox
+            sb = QMessageBox.StandardButton
+            msg = format_cache_size(count, size_bytes) + "\n\nDelete all cached tiles?"
+            if QMessageBox.question(
+                self.iface.mainWindow(), "NoWires — Clear cache",
+                msg, sb.Yes | sb.No, sb.No) != sb.Yes:
+                return
+            removed, freed = clear_dem_cache()
+            self.iface.messageBar().pushSuccess(
+                "NoWires", "Removed {} cached tile(s) (~{:.1f} MB freed).".format(
+                    removed, freed / 1048576.0))
         except Exception as exc:
             self.iface.messageBar().pushWarning(
-                "NoWires", "Cache cleanup failed: {}".format(exc)
-            )
+                "NoWires", "Cache cleanup failed: {}".format(exc))
 
     def unload(self):
         """Remove plugin elements."""

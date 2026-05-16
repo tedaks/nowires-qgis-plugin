@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.5.2
+version=1.5.3
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,6 +14,12 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
+    Version 1.5.3
+    - Add ALLOW_THREADING opt-in on base algorithm; Coverage, Batch P2P, and Coverage Comparison now run off the main thread so the QGIS UI stays responsive during heavy computation
+    - Add per-tile wall-clock budget (180s default) in tile_download_base to cap slow trickles where socket_timeout alone never fires
+    - Add cache size confirmation dialog before clearing DEM/WorldCover tiles, with new get_cache_size() and format_cache_size() helpers
+    - Add ClutterParamBundle plus extract_clutter_params() in shared_params; deduplicates clutter/BEL parameter extraction across coverage, batch, and P2P algorithms
+    - Improve coverage multiprocessing progress updates from every 50 chunks to every 5 chunks for finer UI feedback
     Version 1.5.2
     - Add clear_pattern_cache() API for reloading antenna pattern CSV files
     - Add GDAL UseExceptions() at plugin startup for consistent error handling

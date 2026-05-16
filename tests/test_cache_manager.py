@@ -8,7 +8,7 @@ import tempfile
 
 import pytest
 
-from cache_manager import clear_dem_cache
+from cache_manager import clear_dem_cache, format_cache_size, get_cache_size
 
 
 class _FeedbackStub:
@@ -151,3 +151,41 @@ class TestClearDemCache:
         removed, freed = clear_dem_cache()
         assert removed >= 0
         assert freed >= 0
+
+
+class TestGetCacheSize:
+    """Tests for get_cache_size() and format_cache_size()."""
+
+    def test_empty_cache_returns_zero(self, temp_cache_dir):
+        count, total = get_cache_size()
+        assert count == 0
+        assert total == 0
+
+    def test_counts_dem_and_worldcover(self, temp_cache_dir):
+        tile = os.path.join(
+            temp_cache_dir, "Copernicus_DSM_COG_10_N00_00_E000_00_DEM.tif")
+        with open(tile, "w") as f:
+            f.write("d" * 1234)
+        wc_dir = os.path.join(temp_cache_dir, "worldcover")
+        os.makedirs(wc_dir, exist_ok=True)
+        wc_tile = os.path.join(wc_dir, "ESA_WorldCover_10m_2020_v100_N00E000_Map.tif")
+        with open(wc_tile, "w") as f:
+            f.write("w" * 4321)
+        count, total = get_cache_size()
+        assert count == 2
+        assert total == 1234 + 4321
+
+    def test_format_empty(self):
+        assert format_cache_size(0, 0) == "Cache is empty."
+
+    def test_format_nonempty(self):
+        msg = format_cache_size(3, 2 * 1048576)
+        assert "3 file" in msg
+        assert "2.0 MB" in msg
+
+    def test_does_not_remove_files(self, temp_cache_dir):
+        tile = os.path.join(temp_cache_dir, "merged_dem.tif")
+        with open(tile, "w") as f:
+            f.write("data")
+        get_cache_size()
+        assert os.path.exists(tile)
