@@ -4,7 +4,7 @@ Radio propagation analysis and terrain tools powered by NTIA's Irregular Terrain
 
 ## Status
 
-This repository contains the QGIS 4 plugin source for **NoWires** version 1.5.2.
+This repository contains the QGIS 4 plugin source for **NoWires** version 1.5.5.
 
 Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 SPDX-License-Identifier: GPL-3.0-or-later
@@ -103,6 +103,7 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 - `coverage_legend.py`: coverage legend support in QGIS
 - `coverage_opacity.py`: live coverage opacity dialog
 - `coverage_reporting.py`: coverage report output helpers
+- `coverage_dem_validate.py`: DEM coverage bounds validation helper for the coverage algorithm
 - `comparison_add_params.py`: comparison algorithm parameter registration
 - `comparison_panel.py`: single-panel comparison computation
 - `comparison_params.py`: comparison parameter definitions
@@ -130,6 +131,7 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 - `elevation.py`: DEM sampling, terrain profiles, ElevationGrid class
 - `reliability.py`: formal-or-fallback availability and reliability helpers
 - `report_export.py`: shared CSV/JSON/HTML report writers
+- `report_pdf.py`: Qt-based PDF report writer (`QTextDocument` + `QPrinter`) used by Coverage Analysis
 - `report_payloads.py`: pure-Python report payload and marker helpers
 - `report_markers.py`: TX/RX marker output helpers
 - `shared_params.py`: shared parameter registration helpers (including clutter/BEL params)
@@ -144,7 +146,9 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 - `geo_bounds.py`: geographic bounds and padding helpers
 - `nan_utils.py`: NaN-safe array utilities
 - `temp_manager.py`: temporary directory management with cleanup
-- `macos_compat.py`: macOS multiprocessing compatibility guards
+- `macos_compat.py`: macOS multiprocessing compatibility (find a real Python, set `PYTHONHOME` for spawned workers, validate via `_can_spawn`)
+- `windows_compat.py`: Windows mirror of `macos_compat` — locates `pythonw.exe` (preferred) or `python.exe` in QGIS bundle layouts, validates each candidate, sets `PYTHONHOME` for spawned workers
+- `antenna_pattern_preview.py`: standalone polar-plot dialog for previewing antenna pattern CSV files
 - `overlay_raster.py`: overlay raster sizing helpers
 - `three_d.py`: 3D layer tracking and scene helpers
 - `provider.py`: NoWires Processing provider registration

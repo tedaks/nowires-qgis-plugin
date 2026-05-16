@@ -49,7 +49,11 @@ class SharedDEMGrid:
         self._create(grid_data)
 
     def _create(self, grid_data: np.ndarray) -> None:
-        name = "nowires_dem_" + uuid.uuid4().hex[:20]
+        # macOS limits POSIX shm names to 31 chars total (including the leading
+        # '/' that SharedMemory prepends). 12-char prefix + 16 hex chars = 28,
+        # plus '/' = 29. Linux NAME_MAX (255) is far more permissive but the
+        # 16-hex namespace (2^64) is still ample for uniqueness.
+        name = "nowires_dem_" + uuid.uuid4().hex[:16]
         shm = multiprocessing.shared_memory.SharedMemory(
             create=True,
             name=name,

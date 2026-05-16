@@ -117,23 +117,43 @@ jobs:
           fi
           echo "Changelog OK: $entries entries under [Unreleased]"
 
-      - name: Check metadata.txt and CHANGELOG.md latest versions align
+      - name: Check all version-bearing locations align
         run: |
           # Always runs (no gate) — catches drift even on Dependabot/docs PRs.
+          # All six locations must agree. itm/__init__.py __version__ is the
+          # bundled ITM library version and is intentionally independent.
           meta_version=$(grep -oP '^version=\K.*' metadata.txt | tr -d '[:space:]')
           meta_top_block=$(grep -oP '^\s*Version \K[0-9]+\.[0-9]+\.[0-9]+' metadata.txt | head -1)
           changelog_top=$(grep -oP '^## \[\K[0-9]+\.[0-9]+\.[0-9]+(?=\])' CHANGELOG.md | head -1)
+          pyproject_version=$(grep -oP '^version = "\K[0-9]+\.[0-9]+\.[0-9]+' pyproject.toml | head -1)
+          pyproject_bumpversion=$(grep -oP '^current_version = "\K[0-9]+\.[0-9]+\.[0-9]+' pyproject.toml | head -1)
+          readme_version=$(grep -oP 'plugin source for \*\*NoWires\*\* version \K[0-9]+\.[0-9]+\.[0-9]+' README.md | head -1)
 
-          echo "metadata.txt version=:        $meta_version"
-          echo "metadata.txt changelog top:   $meta_top_block"
-          echo "CHANGELOG.md top release:     $changelog_top"
+          echo "metadata.txt version=:             $meta_version"
+          echo "metadata.txt embedded changelog:   $meta_top_block"
+          echo "CHANGELOG.md top release:          $changelog_top"
+          echo "pyproject.toml [project].version:  $pyproject_version"
+          echo "pyproject.toml bumpversion:        $pyproject_bumpversion"
+          echo "README.md intro line:              $readme_version"
 
-          if [ "$meta_version" != "$meta_top_block" ]; then
-            echo "ERROR: metadata.txt version= ($meta_version) does not match its own changelog top entry ($meta_top_block)"
+          fail=0
+          check() {
+            local name="$1" got="$2" expected="$3"
+            if [ -z "$got" ]; then
+              echo "ERROR: $name — could not parse a version (regex matched nothing)"
+              fail=1
+            elif [ "$got" != "$expected" ]; then
+              echo "ERROR: $name ($got) does not match metadata.txt version ($expected)"
+              fail=1
+            fi
+          }
+          check "metadata.txt embedded changelog top" "$meta_top_block" "$meta_version"
+          check "CHANGELOG.md top release header"     "$changelog_top"  "$meta_version"
+          check "pyproject.toml [project].version"    "$pyproject_version" "$meta_version"
+          check "pyproject.toml bumpversion"          "$pyproject_bumpversion" "$meta_version"
+          check "README.md intro line"                "$readme_version" "$meta_version"
+
+          if [ "$fail" -ne 0 ]; then
             exit 1
           fi
-          if [ "$meta_version" != "$changelog_top" ]; then
-            echo "ERROR: metadata.txt version ($meta_version) does not match CHANGELOG.md top release ($changelog_top)"
-            exit 1
-          fi
-          echo "Version alignment OK: $meta_version"
+          echo "Version alignment OK across all locations: $meta_version"

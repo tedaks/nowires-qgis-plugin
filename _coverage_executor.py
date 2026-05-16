@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import logging
-import multiprocessing
 import os
 import warnings
 from concurrent.futures import ProcessPoolExecutor  # noqa: F401 re-exported for test mocking
@@ -22,6 +21,7 @@ from .coverage_pool import (
     should_use_multiprocessing,
 )
 from .macos_compat import configure_macos_multiprocessing, ensure_spawn_start_method
+from .windows_compat import configure_windows_multiprocessing
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,7 @@ def execute_coverage_tasks(
     if use_mp:
         ensure_spawn_start_method()
         configure_macos_multiprocessing()
+        configure_windows_multiprocessing()
         if feedback:
             feedback.pushInfo(
                 "Computing {} pixels with {} workers...".format(
@@ -79,8 +80,13 @@ def execute_coverage_tasks(
         shared_grid = None
         try:
             shared_grid = _make_shared_grid(grid_data)
-            cancel_event = multiprocessing.Event()
             n_workers = max(1, min(os.cpu_count() or 1, _MAX_WORKERS))
+            # No cancel_event between processes — earlier attempts (plain
+            # multiprocessing.Event, then Manager().Event()) both failed on
+            # macOS QGIS (the latter with EOFError when the Manager subprocess
+            # died). Cancel responsiveness comes from breaking out of pool.map
+            # between batches; in-flight batches finish (~64 tasks × ~5ms ≈
+            # 320ms worst case at default chunk size).
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", message="resource_tracker", category=UserWarning)
                 with ProcessPoolExecutor(
@@ -89,15 +95,10 @@ def execute_coverage_tasks(
                     initargs=(shared_grid.name, grid_data.shape, str(grid_data.dtype), grid_meta),
                 ) as pool:
                     for chunk_idx, batch_results in enumerate(
-                        pool.map(
-                            _itm_worker_batch,
-                            [(c, cancel_event) for c in chunks],
-                            chunksize=1,
-                        )
+                        pool.map(_itm_worker_batch, chunks, chunksize=1)
                     ):
                         if feedback and feedback.isCanceled():
                             cancelled = True
-                            cancel_event.set()
                             break
                         pixels_failed += apply_batch_results(
                             batch_results, loss_grid, prx_grid,
