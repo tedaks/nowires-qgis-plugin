@@ -3,16 +3,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Regression tests for spawn-mode safety of the coverage pool.
 
-Plain ``multiprocessing.Event()`` cannot be shared between processes via
-pickle under the 'spawn' start method (macOS default + Windows + containers).
-The error is ``RuntimeError: Condition objects should only be shared between
-processes through inheritance``. Under fork (Linux default before Python 3.14)
-it worked silently; on macOS QGIS coverage runs fell back to sequential mode
-without indication.
+History of attempted cross-process cancel signals:
 
-The fix uses ``multiprocessing.Manager().Event()``, whose proxy survives
-pickling. These source-level contract checks catch a regression to the plain
-Event without needing a fork/spawn test harness.
+  1. Plain ``multiprocessing.Event()`` — fails under spawn (macOS default,
+     Windows, containers) with ``RuntimeError: Condition objects should only
+     be shared between processes through inheritance``. Linux fork worked.
+
+  2. ``multiprocessing.Manager().Event()`` — Manager subprocess died on
+     macOS QGIS, surfacing as ``EOFError`` on the first ``mgr.Event()`` call.
+
+Current design: no cross-process cancel signal. Cancellation comes from the
+main thread breaking out of ``pool.map`` between batches; in-flight batches
+finish (~64 tasks × ~5 ms ≈ 320 ms worst-case at default chunk size). These
+source-level contract checks guard the pool against regressing to either of
+the broken patterns above.
 """
 
 import os
@@ -26,33 +30,31 @@ def _source(name):
         return f.read()
 
 
-def test_executor_uses_manager_backed_event():
-    src = _source("_coverage_executor.py")
-    # Manager().Event() is the spawn-safe shape — the proxy is what gets
-    # pickled to workers, not the synchronization primitive itself.
-    assert "multiprocessing.Manager() as mgr" in src
-    assert "mgr.Event()" in src
+def _code_only(name):
+    """Return source with comment lines stripped (substring checks vs. code)."""
+    return "\n".join(
+        line for line in _source(name).splitlines()
+        if not line.lstrip().startswith("#")
+    )
 
 
 def test_executor_does_not_use_plain_multiprocessing_event():
-    src = _source("_coverage_executor.py")
-    # The plain constructor-pattern form raises under spawn — must stay out
-    # of the executor. (The substring may appear in explanatory comments.)
-    code_lines = [
-        line for line in src.splitlines()
-        if not line.lstrip().startswith("#")
-    ]
-    code_only = "\n".join(code_lines)
-    assert "= multiprocessing.Event()" not in code_only
+    code = _code_only("_coverage_executor.py")
+    assert "= multiprocessing.Event()" not in code
 
 
-def test_worker_batch_checks_cancel_at_batch_start():
-    """Cancel check moved from per-task to per-batch.
+def test_executor_does_not_use_manager_event():
+    """Manager().Event() died on macOS QGIS with EOFError."""
+    code = _code_only("_coverage_executor.py")
+    assert "multiprocessing.Manager()" not in code
+    assert ".Event()" not in code or "multiprocessing.Event" in code, \
+        "no .Event() call should remain in the executor"
 
-    Each ``cancel_event.is_set()`` is an IPC round-trip under Manager-backed
-    Events; checking per-task would cost ~36k IPC calls on a 192² coverage.
-    """
-    src = _source("coverage_pool.py")
-    # The early-return cancel guard at batch start.
-    assert "if cancel_event is not None and cancel_event.is_set():" in src
-    assert "return []" in src
+
+def test_worker_batch_takes_plain_chunk_argument():
+    """_itm_worker_batch must accept a plain batch arg, not a (batch, event) tuple."""
+    code = _code_only("coverage_pool.py")
+    # The function signature is now `def _itm_worker_batch(batch):`
+    assert "def _itm_worker_batch(batch):" in code
+    # And the cancel-event check is gone.
+    assert "cancel_event.is_set()" not in code
