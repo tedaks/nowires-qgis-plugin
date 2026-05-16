@@ -65,50 +65,94 @@ def ensure_spawn_start_method():
             pass
 
 
+def _can_spawn(py_exe, env):
+    """Verify the given interpreter can actually launch and import stdlib.
+
+    Some QGIS-bundled python binaries (e.g. macOS QGIS-final 4.0.2) have
+    ``sys.prefix`` baked to a CI builder path that doesn't exist on the
+    user's machine. Invoked without a corrective ``PYTHONHOME``, they
+    immediately abort with ``ModuleNotFoundError: No module named 'encodings'``.
+    """
+    import subprocess
+    try:
+        result = subprocess.run(
+            [py_exe, "-c", "import encodings"],
+            capture_output=True, text=True, timeout=5, env=env,
+        )
+        return result.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
 def find_macos_python_executable():
     """Return a path to a real Python interpreter on macOS, or None.
 
     On macOS, QGIS sets ``sys.executable`` to the QGIS app launcher binary
-    (e.g. ``/Applications/QGIS.app/Contents/MacOS/QGIS``).  The launcher
-    ignores ``-c`` and similar Python flags and instead opens a full
-    QGIS GUI window.  When ``multiprocessing`` spawns workers, it runs
-    ``sys.executable``, so each worker boots a duplicate QGIS instance
-    instead of a Python interpreter.
+    (e.g. ``/Applications/QGIS.app/Contents/MacOS/QGIS``). When ``multiprocessing``
+    spawns workers, it runs ``sys.executable``, so each worker boots a
+    duplicate QGIS instance instead of a Python interpreter.
 
-    This function locates a real Python interpreter so the caller can
-    pass it to :func:`multiprocessing.set_executable`.
+    This function locates a real Python interpreter so the caller can pass
+    it to :func:`multiprocessing.set_executable`. Each candidate is validated
+    with :func:`_can_spawn` so we don't return a binary that can't actually
+    boot — common on macOS QGIS-final builds where ``python3.12`` has its
+    ``sys.prefix`` baked to a CI builder path.
+
+    The ``NOWIRES_PYTHON_EXE`` env var overrides the default search.
     """
     import sys
 
     if sys.platform != "darwin":
         return None
 
+    # Build spawn-time env the workers will inherit. Setting PYTHONHOME
+    # to the running interpreter's prefix lets a QGIS-bundled Python find
+    # its stdlib regardless of whatever the binary has baked in.
+    spawn_env = dict(os.environ)
+    if "PYTHONHOME" not in spawn_env:
+        spawn_env["PYTHONHOME"] = sys.prefix
+
+    candidates: list[str] = []
+    override = os.environ.get("NOWIRES_PYTHON_EXE")
+    if override:
+        candidates.append(override)
+
     base = getattr(sys, "_base_executable", None)
-    if base and base != sys.executable and os.path.exists(base):
-        return base
+    if base and base != sys.executable:
+        candidates.append(base)
 
     qgis_macos_dir = os.path.dirname(os.path.abspath(sys.executable))
     py_major = sys.version_info.major
     py_minor = sys.version_info.minor
-    candidates = [
+    candidates.extend([
         os.path.join(qgis_macos_dir, "bin", "python{}.{}".format(py_major, py_minor)),
         os.path.join(qgis_macos_dir, "bin", "python{}".format(py_major)),
         os.path.join(qgis_macos_dir, "bin", "python"),
         os.path.join(qgis_macos_dir, "python{}.{}".format(py_major, py_minor)),
         os.path.join(qgis_macos_dir, "python{}".format(py_major)),
-    ]
+    ])
+
     for candidate in candidates:
-        if os.path.exists(candidate) and os.access(candidate, os.X_OK):
-            return candidate
+        if not (os.path.exists(candidate) and os.access(candidate, os.X_OK)):
+            continue
+        if not _can_spawn(candidate, spawn_env):
+            logger.info(
+                "macOS: %s exists but fails to spawn even with PYTHONHOME=%s; "
+                "trying next candidate.", candidate, spawn_env["PYTHONHOME"])
+            continue
+        return candidate
     return None
 
 
 def configure_macos_multiprocessing():
     """Point multiprocessing at a real Python interpreter on macOS.
 
-    No-op on non-macOS platforms.  See
-    :func:`find_macos_python_executable` for context on why this is
-    needed.
+    Also sets ``PYTHONHOME`` in the process env so spawned workers inherit
+    a working stdlib pointer. The macOS QGIS-final python3.12 binary has
+    ``sys.prefix`` baked to a CI builder path (``/Users/runner/work/...``)
+    and aborts immediately on start without this override.
+
+    No-op on non-macOS platforms.
     """
     import sys
 
@@ -117,8 +161,10 @@ def configure_macos_multiprocessing():
     python_exe = find_macos_python_executable()
     if python_exe is None:
         logger.warning(
-            "Could not locate a Python interpreter for multiprocessing on macOS; "
-            "spawn workers may relaunch the QGIS GUI."
-        )
+            "macOS: no usable Python interpreter for multiprocessing. "
+            "Coverage will run sequentially. Set NOWIRES_PYTHON_EXE to a "
+            "working Python 3 to opt in.")
         return
     multiprocessing.set_executable(python_exe)
+    if "PYTHONHOME" not in os.environ:
+        os.environ["PYTHONHOME"] = sys.prefix
