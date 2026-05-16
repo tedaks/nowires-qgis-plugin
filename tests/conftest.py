@@ -478,6 +478,7 @@ for _pkg_sub in (
     "benchmarks.reference_cases",
     "_coverage_executor",
     "comparison_panel",
+    "report_pdf",
 ):
     _mod = __import__(f"NoWires.{_pkg_sub}", fromlist=[""])
     _leaf = _pkg_sub.split(".")[-1]

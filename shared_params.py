@@ -1,5 +1,8 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
+from dataclasses import dataclass
+from typing import Any
+
 from qgis.core import (
     QgsProcessingParameterBoolean,
     QgsProcessingParameterEnum,
@@ -7,7 +10,10 @@ from qgis.core import (
     QgsProcessingParameterNumber,
 )
 
-from .clutter import CLUTTER_MODEL_OPTIONS, CLUTTER_OVERRIDE_OPTIONS
+from .clutter import (
+    CLUTTER_MODEL_OPTIONS, CLUTTER_OVERRIDE_OPTIONS,
+    LandCoverGrid, clutter_override_value,
+)
 from .constants import K_FACTOR_PRESETS_OPTIONS
 from .defaults import (
     DEFAULT_BEL_ELEVATION_ANGLE_DEG,
@@ -111,6 +117,79 @@ def add_link_budget_params(algorithm, attr_getter=None, prefix=""):
     algorithm.addParameter(QgsProcessingParameterNumber(
         ag("RX_SENSITIVITY"), f"{p}RX sensitivity (dBm)",
         type=_DBL, defaultValue=DEFAULT_RX_SENSITIVITY_DBM))
+
+
+@dataclass(frozen=True)
+class LinkBudgetBundle:
+    """Resolved link-budget parameter values from ``add_link_budget_params``."""
+    tx_power_dbm: float
+    tx_gain_dbi: float
+    rx_gain_dbi: float
+    cable_loss_db: float
+    rx_sensitivity_dbm: float
+
+
+def extract_link_budget_params(alg, parameters, context, attr_getter=None) -> LinkBudgetBundle:
+    ag = attr_getter or (lambda name: getattr(alg, name))
+    p_dbl = alg.parameterAsDouble
+    return LinkBudgetBundle(
+        tx_power_dbm=p_dbl(parameters, ag("TX_POWER"), context),
+        tx_gain_dbi=p_dbl(parameters, ag("TX_GAIN"), context),
+        rx_gain_dbi=p_dbl(parameters, ag("RX_GAIN"), context),
+        cable_loss_db=p_dbl(parameters, ag("CABLE_LOSS"), context),
+        rx_sensitivity_dbm=p_dbl(parameters, ag("RX_SENSITIVITY"), context),
+    )
+
+
+@dataclass(frozen=True)
+class ClutterParamBundle:
+    """Resolved clutter/BEL parameter values extracted from an algorithm.
+
+    Built by :func:`extract_clutter_params`. Each consuming algorithm maps
+    these fields into its own ``*AnalysisParams`` dataclass (field names vary
+    across coverage / p2p / batch for historical reasons).
+    """
+    enabled: bool
+    model: str  # "simple" or "advanced"
+    raster_path: str
+    grid: Any   # LandCoverGrid | None
+    tx_override: Any
+    rx_override: Any
+    cch_override_m: float | None
+    percentile: float
+    street_width_m: float
+    bel_enabled: bool
+    bel_building_type: str  # "traditional" or "thermally_efficient"
+    bel_elevation_angle_deg: float
+
+
+def extract_clutter_params(alg, parameters, context, attr_getter=None) -> ClutterParamBundle:
+    """Extract all clutter/BEL parameters registered by ``add_clutter_params``."""
+    ag = attr_getter or (lambda name: getattr(alg, name))
+    p_dbl = alg.parameterAsDouble
+    p_enum = alg.parameterAsEnum
+    model_idx = p_enum(parameters, ag("CLUTTER_MODEL"), context)
+    cch_raw = p_dbl(parameters, ag("CCH_OVERRIDE"), context)
+    raster_path = alg.parameterAsFile(parameters, ag("CLUTTER_RASTER"), context)
+    bel_type_idx = p_enum(parameters, ag("BEL_BUILDING_TYPE"), context)
+    return ClutterParamBundle(
+        enabled=model_idx > 0,
+        model="advanced" if model_idx == 2 else "simple",
+        raster_path=raster_path,
+        grid=LandCoverGrid.from_raster(raster_path) if raster_path else None,
+        tx_override=clutter_override_value(
+            p_enum(parameters, ag("TX_CLUTTER_OVERRIDE"), context)),
+        rx_override=clutter_override_value(
+            p_enum(parameters, ag("RX_CLUTTER_OVERRIDE"), context)),
+        cch_override_m=(cch_raw if cch_raw > 0.0 else None),
+        percentile=p_dbl(parameters, ag("CLUTTER_PERCENTILE"), context),
+        street_width_m=p_dbl(parameters, ag("STREET_WIDTH"), context),
+        bel_enabled=alg.parameterAsBool(parameters, ag("BEL_ENABLED"), context),
+        bel_building_type=(
+            "traditional" if bel_type_idx == 0 else "thermally_efficient"),
+        bel_elevation_angle_deg=p_dbl(
+            parameters, ag("BEL_ELEVATION_ANGLE"), context),
+    )
 
 
 def add_advanced_itm_params(algorithm, attr_getter=None, include_k_factor=True, prefix=""):

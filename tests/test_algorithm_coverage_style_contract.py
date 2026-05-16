@@ -70,7 +70,8 @@ def test_palette_function_uses_discrete_palette():
 
 def test_coverage_algorithm_sets_full_opacity_on_layer():
     source = _algorithm_source()
-    assert "raster_layer.setOpacity(1.0)" in source
+    assert ("raster_layer.setOpacity(1.0)" in source
+            or "layer.setOpacity(1.0)" in source)
 
 
 def test_coverage_algorithm_has_no_transparency_slider():

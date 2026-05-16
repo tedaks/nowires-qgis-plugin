@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.5.2
+version=1.5.3
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,6 +14,23 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
+    Version 1.5.3
+    - Add ALLOW_THREADING opt-in on base algorithm; Coverage, Batch P2P, and Coverage Comparison now run off the main thread so the QGIS UI stays responsive during heavy computation
+    - Add per-tile wall-clock budget (180s default) in tile_download_base to cap slow trickles where socket_timeout alone never fires
+    - Add cache size confirmation dialog before clearing DEM/WorldCover tiles, with new get_cache_size() and format_cache_size() helpers
+    - Add ClutterParamBundle plus extract_clutter_params() and LinkBudgetBundle plus extract_link_budget_params() in shared_params; deduplicates parameter extraction across coverage, batch, and P2P algorithms
+    - Add PDF report output for Coverage Analysis (OUTPUT_REPORT_PDF), rendered via Qt QTextDocument + QPrinter
+    - Add Preview Antenna Pattern plugin menu action; new AntennaPatternPreviewDialog renders a polar plot of any pattern CSV
+    - Add build_initial_clutter_context() factory; deduplicates ClutterLossContext construction between algorithm_coverage and coverage_engine
+    - Add NOWIRES_WINDOWS_MP env var to opt Windows into multiprocessing (off by default)
+    - Add golden-file regression tests for CSV/JSON/HTML report export and a PDF writer test
+    - Change contour_smoothing to use defusedxml _safe_parse via an explicit wrapper; removes a global ET.parse monkey-patch
+    - Change elevation sampling fallback in coverage_engine to vectorize row-by-row via sample_line (192x fewer Python calls at default grid size for mocked grids)
+    - Change tile_download_base HTTP failures to surface status code and retry timing through feedback.pushInfo/pushWarning
+    - Change _init_cov_pool to reset stale state instead of raising RuntimeError when a worker is reused across runs
+    - Change nowires.py menu registration to a single action_specs table; net 50 fewer lines
+    - Improve sequential coverage progress reporting from 100 buckets to 200 and multiprocessing progress from every 50 chunks to every 5
+    - Annotate all 9 previously-unexplained # type: ignore directives with brief reasons
     Version 1.5.2
     - Add clear_pattern_cache() API for reloading antenna pattern CSV files
     - Add GDAL UseExceptions() at plugin startup for consistent error handling

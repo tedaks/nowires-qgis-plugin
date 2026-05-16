@@ -136,7 +136,8 @@ def test_coverage_algorithm_wires_profile_step_helper():
 
 def test_coverage_algorithm_sets_full_opacity():
     source = _coverage_source()
-    assert "raster_layer.setOpacity(1.0)" in source
+    assert ("raster_layer.setOpacity(1.0)" in source
+            or "layer.setOpacity(1.0)" in source)
 
 
 def test_coverage_algorithm_has_no_transparency_parameter():

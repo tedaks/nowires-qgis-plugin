@@ -24,7 +24,7 @@ class TestCoverageParamsConstants:
             "H_PATTERN", "V_PATTERN", "CLUTTER_MODEL", "CLUTTER_RASTER",
             "TX_CLUTTER_OVERRIDE", "RX_CLUTTER_OVERRIDE", "CCH_OVERRIDE",
             "OUTPUT_RASTER", "OUTPUT_REPORT_CSV", "OUTPUT_REPORT_JSON",
-            "OUTPUT_REPORT_HTML",
+            "OUTPUT_REPORT_HTML", "OUTPUT_REPORT_PDF",
         }
         assert expected.issubset(set(PARAM_CONSTANTS.keys()))
 

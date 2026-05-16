@@ -82,5 +82,10 @@ def test_raster_calc_explicitly_closes_gdal_datasets():
 def test_blur_vrt_buildvrt_releases_before_xml_parse():
     source = _source_text()
     assert "gdal.BuildVRT(vrt_path, src_path)" in source
-    assert "ET.parse(vrt_path)" in source
-    assert source.index("gdal.BuildVRT(vrt_path, src_path)") < source.index("ET.parse(vrt_path)")
+    # Accept both the legacy ET.parse(vrt_path) call site and the new
+    # _parse_xml(vrt_path) wrapper that prefers defusedxml.
+    parse_marker = ("_parse_xml(vrt_path)" if "_parse_xml(vrt_path)" in source
+                    else "ET.parse(vrt_path)")
+    assert parse_marker in source
+    assert (source.index("gdal.BuildVRT(vrt_path, src_path)")
+            < source.index(parse_marker))

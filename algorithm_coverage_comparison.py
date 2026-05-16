@@ -59,6 +59,8 @@ logger = logging.getLogger(__name__)
 class CoverageComparisonAlgorithm(NoWiresAlgorithm):
     """Dual-panel coverage comparison with delta raster output."""
 
+    ALLOW_THREADING = True
+
     def __init__(self):
         super().__init__()
         self._raster_layer_ids = []
