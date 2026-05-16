@@ -131,6 +131,7 @@ You should then see:
   - `Batch P2P Analysis`
   - `Coverage Opacity`
   - `Clear DEM Cache`
+  - `Preview Antenna Pattern`
   - `Open 3D View`
 
 ## Where to Find the Tools
@@ -404,6 +405,7 @@ Coverage analysis can also write:
 - `CSV`
 - `JSON`
 - `HTML`
+- `PDF` — rendered from the HTML template via Qt's `QTextDocument` + `QPrinter`. Falls back silently when Qt print support isn't available in the host install.
 
 These exports contain the key coverage inputs plus the derived summary values, including usable distance metrics and received-signal statistics.
 
@@ -423,6 +425,10 @@ Coverage can fall back more often than P2P because not every raster cell is a go
 After a coverage run, you can open `NoWires -> Coverage Opacity` to adjust the most recent coverage raster without rerunning the algorithm.
 
 If no coverage layer has been created yet, the plugin will warn you and ask you to run `Coverage Analysis` first.
+
+### Previewing an Antenna Pattern
+
+To sanity-check an antenna pattern CSV before referencing it from a P2P or Coverage run, open `NoWires -> Preview Antenna Pattern`. Click *Load pattern CSV…*, pick the file, and the dialog renders a polar plot (normalised so 0 dB is the peak) with 30° azimuth gridlines. Useful for catching swapped columns, wrong units, or files that don't wrap to 360°.
 
 ### Reading the Result
 
@@ -572,7 +578,9 @@ Check:
 
 ### Coverage analysis is slow
 
-Try:
+NoWires uses multiprocessing on all three desktop platforms (Linux, macOS, Windows) by default. If the Processing dialog shows `Computing N pixels with K workers...`, multiprocessing is on. If instead it shows `Using single-threaded mode...`, the plugin couldn't validate a bootable Python interpreter for spawning — see [Multiprocessing falls back to sequential](#multiprocessing-falls-back-to-sequential) below.
+
+Even with multiprocessing on, you can speed up runs further by:
 
 - reducing max analysis distance
 - using a smaller grid size
@@ -583,6 +591,17 @@ For repeatable development-side checks, the repository also includes a synthetic
 ```bash
 python3 benchmarks/coverage_runtime.py
 ```
+
+### Multiprocessing falls back to sequential
+
+NoWires probes a real Python interpreter under the QGIS app and validates it before enabling the worker pool. If the validation fails, you'll see `Using single-threaded mode...` in the Processing dialog log and `macOS:` / `Windows: no usable Python interpreter found for multiprocessing` in the QGIS **Log Messages Panel → NoWires** tab.
+
+Workarounds:
+
+- **`NOWIRES_PYTHON_EXE`** — explicitly point at a working Python 3 you have installed. Set the env var before launching QGIS:
+  - macOS: `export NOWIRES_PYTHON_EXE=/opt/homebrew/bin/python3.12` then launch QGIS from the same shell.
+  - Windows: set the env var in System Properties → Environment Variables, then restart QGIS. e.g. `NOWIRES_PYTHON_EXE=C:\Python312\pythonw.exe`.
+- **`NOWIRES_MAX_WORKERS`** — caps worker count (default `min(os.cpu_count(), 16)`). Reduce if your machine is memory-constrained.
 
 ### DEM download problems
 
