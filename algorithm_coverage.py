@@ -2,11 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Coverage Analysis Algorithm — heatmap prediction via ITM."""
 import contextlib
-import logging
 import math
 import os
-
-logger = logging.getLogger(__name__)
 
 from qgis.core import Qgis, QgsProcessingException, QgsRasterLayer
 from qgis.core import QgsVectorLayer
@@ -15,6 +12,7 @@ from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
 from .coverage_legend import show_coverage_legend
 from .coverage_compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
+from .coverage_dem_validate import validate_dem_coverage
 from .coverage_engine import compute_coverage
 from .clutter import (
     CLUTTER_MODEL_OPTIONS, clutter_source_label, compute_terminal_clutter_losses,
@@ -32,24 +30,6 @@ from .coverage_reporting import (
 )
 from .processing_utils import queue_layer_for_loading, register_destination_layer
 from .temp_manager import TempDirManager
-
-
-def _validate_dem_coverage(elev, south, north, west, east, feedback):
-    """Warn if the DEM does not fully cover the requested analysis bounds."""
-    dem_south = min(elev.min_lat, elev.max_lat)
-    dem_north = max(elev.min_lat, elev.max_lat)
-    dem_west = min(elev.min_lon, elev.max_lon)
-    dem_east = max(elev.min_lon, elev.max_lon)
-    uncovered_lat = (south < dem_south - 0.01) or (north > dem_north + 0.01)
-    uncovered_lon = (west < dem_west - 0.01) or (east > dem_east + 0.01)
-    if uncovered_lat or uncovered_lon:
-        logger.warning(
-            "DEM does not fully cover bounds. DEM: (%.4f,%.4f)-(%.4f,%.4f); "
-            "Analysis: (%.4f,%.4f)-(%.4f,%.4f). Edge data may be unreliable.",
-            dem_south, dem_west, dem_north, dem_east, south, west, north, east)
-        feedback.pushWarning(
-            "Downloaded DEM does not fully cover the analysis area. "
-            "Results near the edges may be unreliable.")
 
 
 def _build_clutter_context(p, clutter_grid, elev):
@@ -150,7 +130,8 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
         else:
             algorithm._on_coverage_loaded(raster_layer)
             queue_layer_for_loading(context, raster_layer, layer_name)
-        show_coverage_legend(rx_sensitivity_dbm=p.rx_sens)
+        # Defer legend.show() — Cocoa rejects QWidget creation off main thread.
+        algorithm._pending_legend_rx_sens = p.rx_sens
         marker_dir = coverage_dir or algorithm._tmp.make_dir("coverage_prx", persistent=True)
         markers_path = os.path.join(marker_dir, "tx_marker.gpkg")
         write_single_marker(markers_path, lat=p.tx_lat, lon=p.tx_lon, height_m=p.tx_h,
@@ -198,10 +179,18 @@ class CoverageAlgorithm(NoWiresAlgorithm):
     def initAlgorithm(self, config):
         add_coverage_params(self)
 
+    def postProcessAlgorithm(self, context, feedback):
+        rx = getattr(self, "_pending_legend_rx_sens", None)
+        if rx is not None:  # main thread — safe to .show() (Cocoa-required)
+            show_coverage_legend(rx_sensitivity_dbm=rx)
+            self._pending_legend_rx_sens = None
+        return super().postProcessAlgorithm(context, feedback)
+
     def processAlgorithm(self, parameters, context, feedback):
         self._raster_layer_ids = []
         self._vector_layer_ids = []
         self._coverage_post_processor = None
+        self._pending_legend_rx_sens = None
         self._tmp = TempDirManager()
         clutter_grid = None
         p = extract_coverage_params(self, parameters, context)
@@ -229,7 +218,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
         _owns_clutter = False
         try:
             with ElevationGrid(dem_path) as elev:
-                _validate_dem_coverage(elev, south, north, west, east, feedback)
+                validate_dem_coverage(elev, south, north, west, east, feedback)
                 clutter_grid, clutter_context, clutter_source, tx_clutter_for_report, \
                     _owns_clutter = _build_clutter_context(p, p.clutter_grid, elev)
                 feedback.pushInfo("Computing coverage...")
