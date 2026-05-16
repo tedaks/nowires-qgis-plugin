@@ -35,7 +35,7 @@ from .geo_bounds import shortest_longitude_bounds_for, validate_coordinates
 from .radio import K_FACTOR_PRESETS, resolve_k_factor, validate_itm_input_ranges
 from .antenna import antenna_preset_key
 from .clutter import ensure_clutter_grid_for_area
-from .shared_params import extract_clutter_params
+from .shared_params import extract_clutter_params, extract_link_budget_params
 from .batch_params import BATCH_PARAM_CONSTANTS, add_batch_params
 from .batch_outputs import (
     _feat_attr, compute_batch_links, rank_batch_results,
@@ -81,11 +81,10 @@ def _extract_batch_radio_params(algorithm, parameters, context):
     time_pct = _pD(p, algorithm.TIME_PCT, context)
     location_pct = _pD(p, algorithm.LOCATION_PCT, context)
     situation_pct = _pD(p, algorithm.SITUATION_PCT, context)
-    tx_power = _pD(p, algorithm.TX_POWER, context)
-    tx_gain_d = _pD(p, algorithm.TX_GAIN, context)
-    rx_gain_d = _pD(p, algorithm.RX_GAIN, context)
-    cable_loss = _pD(p, algorithm.CABLE_LOSS, context)
-    rx_sens = _pD(p, algorithm.RX_SENSITIVITY, context)
+    lb = extract_link_budget_params(algorithm, parameters, context)
+    tx_power, tx_gain_d, rx_gain_d, cable_loss, rx_sens = (
+        lb.tx_power_dbm, lb.tx_gain_dbi, lb.rx_gain_dbi,
+        lb.cable_loss_db, lb.rx_sensitivity_dbm)
     tx_pk = antenna_preset_key(_pE(p, algorithm.TX_ANTENNA_PRESET, context))
     rx_pk = antenna_preset_key(_pE(p, algorithm.RX_ANTENNA_PRESET, context))
     tx_az = _pD(p, algorithm.TX_ANTENNA_AZ, context)

@@ -30,7 +30,9 @@ def _run_sequential(tasks, grid_data, grid_meta, feedback, prx_grid, loss_grid,
                     itm_loss_grid, clutter_loss_grid, clutter_rx_db_grid, bel_rx_db_grid):
     if feedback:
         feedback.pushInfo("Using single-threaded mode...")
-    progress_interval = max(1, len(tasks) // 100)
+    # 200 progress buckets for the whole run — finer than 100 without
+    # adding measurable overhead.
+    progress_interval = max(1, len(tasks) // 200)
     pixels_failed = 0
     pixels_done = 0
     cancelled = False

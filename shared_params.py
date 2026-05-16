@@ -120,6 +120,28 @@ def add_link_budget_params(algorithm, attr_getter=None, prefix=""):
 
 
 @dataclass(frozen=True)
+class LinkBudgetBundle:
+    """Resolved link-budget parameter values from ``add_link_budget_params``."""
+    tx_power_dbm: float
+    tx_gain_dbi: float
+    rx_gain_dbi: float
+    cable_loss_db: float
+    rx_sensitivity_dbm: float
+
+
+def extract_link_budget_params(alg, parameters, context, attr_getter=None) -> LinkBudgetBundle:
+    ag = attr_getter or (lambda name: getattr(alg, name))
+    p_dbl = alg.parameterAsDouble
+    return LinkBudgetBundle(
+        tx_power_dbm=p_dbl(parameters, ag("TX_POWER"), context),
+        tx_gain_dbi=p_dbl(parameters, ag("TX_GAIN"), context),
+        rx_gain_dbi=p_dbl(parameters, ag("RX_GAIN"), context),
+        cable_loss_db=p_dbl(parameters, ag("CABLE_LOSS"), context),
+        rx_sensitivity_dbm=p_dbl(parameters, ag("RX_SENSITIVITY"), context),
+    )
+
+
+@dataclass(frozen=True)
 class ClutterParamBundle:
     """Resolved clutter/BEL parameter values extracted from an algorithm.
 

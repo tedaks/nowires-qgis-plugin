@@ -185,7 +185,7 @@ class ElevationGrid:
         v01 = self.data[y0, x1]
         v10 = self.data[y1, x0]
         v11 = self.data[y1, x1]
-        return (  # type: ignore[no-any-return]
+        return (  # type: ignore[no-any-return]  # numpy bilinear-blend result types as Any
             v00 * (1 - tx) * (1 - ty)
             + v01 * tx * (1 - ty)
             + v10 * (1 - tx) * ty
@@ -250,7 +250,7 @@ class ElevationGrid:
             + self.data[y1, x1] * tx_ * ty
         ).astype(np.float32)
         result[oob] = np.nan
-        return result  # type: ignore[no-any-return]
+        return result  # type: ignore[no-any-return]  # numpy bilinear-blend result types as Any
 
     def terrain_profile(self, lat1, lon1, lat2, lon2, step_m=30.0) -> list[tuple[float, float]]:
         dist = haversine_m(lat1, lon1, lat2, lon2)
@@ -277,7 +277,7 @@ class ElevationGrid:
 
     def close(self) -> None:
         """Release the DEM data array and GDAL dataset handle to free memory."""
-        self.data = None  # type: ignore[assignment]
+        self.data = None  # type: ignore[assignment]  # deliberate ndarray release after close() to free memory
 
     def __enter__(self):
         return self

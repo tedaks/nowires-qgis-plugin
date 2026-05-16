@@ -77,6 +77,7 @@ _PARAM_NAMES = (
     "BEL_ELEVATION_ANGLE",
     "N0", "EPSILON", "SIGMA", "OUTPUT_RASTER",
     "OUTPUT_REPORT_CSV", "OUTPUT_REPORT_JSON", "OUTPUT_REPORT_HTML",
+    "OUTPUT_REPORT_PDF",
 )
 PARAM_CONSTANTS = {k: k for k in _PARAM_NAMES}
 
@@ -154,6 +155,9 @@ def _add_output_params(alg):
     alg.addParameter(QgsProcessingParameterFileDestination(
         alg.OUTPUT_REPORT_HTML, "Coverage report HTML",
         "HTML files (*.html)", optional=True))
+    alg.addParameter(QgsProcessingParameterFileDestination(
+        alg.OUTPUT_REPORT_PDF, "Coverage report PDF",
+        "PDF files (*.pdf)", optional=True))
 
 
 def add_coverage_params(algorithm):

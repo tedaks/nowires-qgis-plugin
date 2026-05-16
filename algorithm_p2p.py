@@ -43,7 +43,7 @@ from .p2p_params import (
 )
 from .p2p_analysis_params import P2PAnalysisParams
 from .p2p_compute import run_p2p_analysis
-from .shared_params import extract_clutter_params
+from .shared_params import extract_clutter_params, extract_link_budget_params
 
 
 class P2PAlgorithm(NoWiresAlgorithm):
@@ -87,11 +87,12 @@ class P2PAlgorithm(NoWiresAlgorithm):
         time_pct = self.parameterAsDouble(parameters, self.TIME_PCT, context)
         location_pct = self.parameterAsDouble(parameters, self.LOCATION_PCT, context)
         situation_pct = self.parameterAsDouble(parameters, self.SITUATION_PCT, context)
-        tx_power = self.parameterAsDouble(parameters, self.TX_POWER, context)
-        tx_gain = self.parameterAsDouble(parameters, self.TX_GAIN, context)
-        rx_gain = self.parameterAsDouble(parameters, self.RX_GAIN, context)
-        cable_loss = self.parameterAsDouble(parameters, self.CABLE_LOSS, context)
-        rx_sens = self.parameterAsDouble(parameters, self.RX_SENSITIVITY, context)
+        lb = extract_link_budget_params(self, parameters, context)
+        tx_power = lb.tx_power_dbm
+        tx_gain = lb.tx_gain_dbi
+        rx_gain = lb.rx_gain_dbi
+        cable_loss = lb.cable_loss_db
+        rx_sens = lb.rx_sensitivity_dbm
         preset_index = self.parameterAsEnum(parameters, self.K_FACTOR_PRESET, context)
         custom_k_factor = self.parameterAsDouble(parameters, self.K_FACTOR, context)
         k_factor = resolve_k_factor(
