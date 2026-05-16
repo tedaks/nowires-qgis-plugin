@@ -230,15 +230,14 @@ def _itm_worker(args, grid_data=None, grid_meta=None):
 def _itm_worker_batch(batch_and_event):
     """Process a batch of coverage pixel tasks.
 
-    *batch_and_event* is a tuple ``(batch, cancel_event)`` where
-    *cancel_event* is a ``multiprocessing.Event`` (or None) used for
-    early cancellation.
+    Cancellation is checked once at batch start — ``cancel_event.is_set()`` is
+    an IPC round-trip under Manager-backed Events (required for spawn safety).
     """
     batch, cancel_event = batch_and_event
+    if cancel_event is not None and cancel_event.is_set():
+        return []
     results = []
     for args in batch:
-        if cancel_event is not None and cancel_event.is_set():
-            break
         try:
             results.append(_itm_worker(args))
         except Exception as exc:
