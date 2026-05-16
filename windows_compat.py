@@ -6,7 +6,7 @@
 Windows mirror of ``macos_compat``. Windows uses the ``spawn`` start method
 natively, so the same family of failures we hit on macOS-bundled Python
 (notably PYTHONHOME baked to a builder path) can surface here too. This
-module locates a working ``python.exe`` inside a Windows QGIS install,
+module locates a working ``pythonw.exe`` (or ``python.exe``) inside a Windows QGIS install,
 validates that it actually launches, and prepares the env so spawned
 workers find the QGIS-bundled stdlib.
 
@@ -34,19 +34,22 @@ __all__ = [
 
 
 def find_windows_python_executable():
-    """Return a path to a working python.exe on Windows, or None.
+    """Return a path to a working ``pythonw.exe`` (preferred) or ``python.exe``.
+
+    ``pythonw.exe`` is the windowless variant of the same interpreter; using
+    it avoids the stray console window that each spawned worker would open
+    when launched from a console-subsystem ``python.exe``.
 
     Candidates checked in order:
-    1. ``NOWIRES_PYTHON_EXE`` env var (explicit override).
-    2. ``sys.executable`` if it already ends with ``python.exe``.
-    3. ``sys._base_executable`` if distinct from ``sys.executable``.
-    4. Common Windows-QGIS bundle layouts relative to ``sys.executable``:
-       - ``<dir>/python.exe`` (standalone)
-       - ``<dir>/../apps/PythonXY/python.exe`` (OSGeo4W-style)
-       - ``<dir>/bin/python.exe``
+    1. ``NOWIRES_PYTHON_EXE`` env var (explicit override; any extension).
+    2. ``<bundle dirs>/pythonw.exe`` across common Windows-QGIS layouts:
+       ``<dir>/``, ``<dir>/../apps/PythonXY/``, ``<dir>/bin/`` etc.
+    3. ``sys.executable`` / ``sys._base_executable`` if they end in
+       ``python(w).exe``.
+    4. ``<bundle dirs>/python.exe`` as last-resort fallback.
 
     Each candidate is validated with ``_can_spawn`` under a prepared env that
-    sets ``PYTHONHOME = sys.prefix`` so a python.exe with a baked-in CI
+    sets ``PYTHONHOME = sys.prefix`` so an interpreter with a baked-in CI
     ``sys.prefix`` can still find its stdlib.
     """
     if os.name != "nt":
