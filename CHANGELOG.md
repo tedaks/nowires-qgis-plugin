@@ -9,12 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v1.5.5
+### Planned for v1.5.6
 
 - Extend PDF report output (`OUTPUT_REPORT_PDF`) from Coverage Analysis to Point-to-Point Analysis and Coverage Comparison. The shared `report_pdf.write_report_pdf()` writer is already in place; remaining work is parameter registration and `_write_*_outputs` wiring in `algorithm_p2p` and `algorithm_coverage_comparison`.
 - Promote the standalone "Preview Antenna Pattern" dialog into an inline `QgsProcessingParameterWidgetFactoryInterface` so the polar plot renders directly in the Coverage / P2P parameter dialog next to the pattern-file picker.
 - Investigate whether `should_use_multiprocessing(os_name="nt")` can be enabled by default on Windows once `NOWIRES_WINDOWS_MP=1` has been validated by users; remove the env-var opt-in once safe.
 - Audit `report_pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks.
+
+## [1.5.5] - 2026-05-16
+
+### Fixed
+
+- Fixed coverage multiprocessing silently falling back to sequential mode on macOS (and inside Linux containers). Plain `multiprocessing.Event()` cannot be shared between processes via pickle under the `spawn` start method — the error is `RuntimeError: Condition objects should only be shared between processes through inheritance`. The `_coverage_executor.execute_coverage_tasks` flow caught this in its broad `except Exception`, logged a warning, and quietly fell back to single-threaded execution. macOS (which defaults to `spawn`) and the digest-pinned `qgis/qgis:4.0` Docker integration container were both affected; Linux `fork` was not.
+  - Switched to `multiprocessing.Manager().Event()`. The Manager spawns a tiny server process; the `Event` proxy is what gets pickled to workers and survives spawn-mode transport.
+  - Measured speedup on the in-container `benchmarks/coverage_runtime.py`: small grid 6840 → **26480 px/s** (3.9×), medium grid 7318 → **39102 px/s** (5.3×), large grid 7416 → **43192 px/s** (5.8×). macOS users will see equivalent gains.
+
+### Changed
+
+- Moved the worker cancel-event check in `coverage_pool._itm_worker_batch` from per-task to per-batch. Each `cancel_event.is_set()` call is now an IPC round-trip to the Manager server; checking per-task would have cost ~36k IPC calls on a default 192² coverage run. Trade-off: cancel responsiveness drops from per-pixel to per-batch (~320 ms worst case for a 64-pixel batch at ~5 ms ITM/pixel).
+
+### Added
+
+- Added `tests/test_coverage_executor_spawn_safety.py` — 3 source-level contract tests asserting the executor uses `Manager().Event()` (not the plain constructor) and that the worker checks cancel at batch start. Catches regression to the spawn-unsafe pattern without needing a fork/spawn test harness.
 
 ## [1.5.4] - 2026-05-16
 
