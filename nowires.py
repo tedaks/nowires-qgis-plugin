@@ -108,76 +108,26 @@ class NoWiresPlugin:
             icon = QIcon(QPixmap(icon_path)) if os.path.exists(icon_path) else QIcon(icon_path)
         self._toolbar_actions = []
         self._menu_actions = []
-
-        # P2P Analysis action
-        self.p2p_action = QAction(
-            QIcon(icon), "Point-to-Point Analysis", self.iface.mainWindow()
-        )
-        self.p2p_action.triggered.connect(self.run_p2p)
-        self.iface.addPluginToMenu(_MENU_NAME, self.p2p_action)
-        self._toolbar_actions.append(self.p2p_action)
-        self._menu_actions.append(self.p2p_action)
-
-        # Coverage action
-        self.coverage_action = QAction(
-            QIcon(icon), "Coverage Analysis", self.iface.mainWindow()
-        )
-        self.coverage_action.triggered.connect(self.run_coverage)
-        self.iface.addPluginToMenu(_MENU_NAME, self.coverage_action)
-        self._menu_actions.append(self.coverage_action)
-
-        # Contour Lines action
-        self.contour_action = QAction(
-            QIcon(icon), "Contour Lines", self.iface.mainWindow()
-        )
-        self.contour_action.triggered.connect(self.run_contour)
-        self.iface.addPluginToMenu(_MENU_NAME, self.contour_action)
-        self._menu_actions.append(self.contour_action)
-
-        # Coverage Opacity action
-        self.opacity_action = QAction(
-            QIcon(icon), "Coverage Opacity", self.iface.mainWindow()
-        )
-        self.opacity_action.triggered.connect(self.run_coverage_opacity)
-        self.iface.addPluginToMenu(_MENU_NAME, self.opacity_action)
-        self._menu_actions.append(self.opacity_action)
-
-        # 3D View action
-        self.open_3d_action = QAction(
-            QIcon(icon), "Open 3D View", self.iface.mainWindow()
-        )
-        self.open_3d_action.triggered.connect(self.run_open_3d_view)
-        self.iface.addPluginToMenu(_MENU_NAME, self.open_3d_action)
-        self._menu_actions.append(self.open_3d_action)
-
-        # Coverage Comparison action
-        self.comparison_action = QAction(
-            QIcon(icon), "Coverage Comparison", self.iface.mainWindow()
-        )
-        self.comparison_action.triggered.connect(self.run_comparison)
-        self.iface.addPluginToMenu(_MENU_NAME, self.comparison_action)
-        self._toolbar_actions.append(self.comparison_action)
-        self._menu_actions.append(self.comparison_action)
-
-        # Batch P2P Analysis action
-        self.batch_action = QAction(
-            QIcon(icon), "Batch P2P Analysis", self.iface.mainWindow()
-        )
-        self.batch_action.triggered.connect(self.run_batch)
-        self.iface.addPluginToMenu(_MENU_NAME, self.batch_action)
-        self._toolbar_actions.append(self.batch_action)
-        self._menu_actions.append(self.batch_action)
-
-        # Clear DEM Cache action
-        self.clear_cache_action = QAction(
-            QIcon(icon), "Clear DEM Cache", self.iface.mainWindow()
-        )
-        self.clear_cache_action.triggered.connect(self.run_clear_cache)
-        self.iface.addPluginToMenu(_MENU_NAME, self.clear_cache_action)
-        self._menu_actions.append(self.clear_cache_action)
-
-        for action in self._toolbar_actions:
-            self.iface.addToolBarIcon(action)
+        # (label, slot, on_toolbar)
+        action_specs = [
+            ("Point-to-Point Analysis", self.run_p2p, True),
+            ("Coverage Analysis", self.run_coverage, False),
+            ("Contour Lines", self.run_contour, False),
+            ("Coverage Opacity", self.run_coverage_opacity, False),
+            ("Open 3D View", self.run_open_3d_view, False),
+            ("Coverage Comparison", self.run_comparison, True),
+            ("Batch P2P Analysis", self.run_batch, True),
+            ("Preview Antenna Pattern", self.run_pattern_preview, False),
+            ("Clear DEM Cache", self.run_clear_cache, False),
+        ]
+        for label, slot, on_toolbar in action_specs:
+            act = QAction(QIcon(icon), label, self.iface.mainWindow())
+            act.triggered.connect(slot)
+            self.iface.addPluginToMenu(_MENU_NAME, act)
+            self._menu_actions.append(act)
+            if on_toolbar:
+                self._toolbar_actions.append(act)
+                self.iface.addToolBarIcon(act)
 
         QTimer.singleShot(5000, self._warn_stale_temp_dirs)
         QTimer.singleShot(5000, self._cleanup_stale_shared_memory)
@@ -298,3 +248,9 @@ class NoWiresPlugin:
     def run_batch(self):
         import processing
         processing.execAlgorithmDialog("nowires:batch_p2p_analysis")
+
+    def run_pattern_preview(self):
+        from .antenna_pattern_preview import AntennaPatternPreviewDialog
+        dlg = AntennaPatternPreviewDialog(parent=self.iface.mainWindow())
+        dlg.show()
+        self._pattern_preview_dialog = dlg  # keep ref alive

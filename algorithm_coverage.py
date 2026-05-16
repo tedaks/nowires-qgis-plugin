@@ -53,8 +53,8 @@ def _validate_dem_coverage(elev, south, north, west, east, feedback):
 
 
 def _build_clutter_context(p, clutter_grid, elev):
-    """Build ClutterLossContext and compute terminal clutter losses."""
-    from .clutter_context import ClutterLossContext
+    """Resolve clutter grid, source label, and per-pixel placeholder context."""
+    from .clutter_context import build_initial_clutter_context
     clutter_grid_resolved = clutter_grid
     if clutter_grid_resolved is None and p.clutter_enabled:
         pad_deg = max(DEGREE_PADDING, p.radius_km / (111320.0 / 1000.0) * 0.1)
@@ -71,19 +71,14 @@ def _build_clutter_context(p, clutter_grid, elev):
         tx_ground = float(elev.sample(p.tx_lat, p.tx_lon))
         if not math.isfinite(tx_ground):
             tx_ground = 0.0
-        # Note: rx_ground_elevation_m is a placeholder (0.0) here. In coverage
-        # mode, each pixel gets its own RX ground elevation computed from the
-        # DEM during task building (coverage_tasks.py). The context created here
-        # is only used for TX-side clutter and the single-point report.
-        clutter_context = ClutterLossContext(
-            frequency_mhz=p.f_mhz, distance_m=0.0,
-            tx_height_m=p.tx_h, rx_height_m=p.rx_h,
-            rx_ground_elevation_m=0.0,
-            tx_ground_elevation_m=tx_ground,
-            polarization=p.polarization, cch_override_m=p.cch_override_m,
-            model=p.clutter_model, percentile=p.clutter_percentile,
-            street_width_m=p.street_width_m, bel_enabled=p.bel_enabled,
-            bel_building_type=p.bel_building_type,
+        # rx_ground=0 is a placeholder — coverage_tasks.py fills the per-pixel
+        # value during task build; this context is for TX clutter + the report.
+        clutter_context = build_initial_clutter_context(
+            frequency_mhz=p.f_mhz, tx_height_m=p.tx_h, rx_height_m=p.rx_h,
+            tx_ground_elevation_m=tx_ground, polarization=p.polarization,
+            cch_override_m=p.cch_override_m, model=p.clutter_model,
+            percentile=p.clutter_percentile, street_width_m=p.street_width_m,
+            bel_enabled=p.bel_enabled, bel_building_type=p.bel_building_type,
             bel_elevation_angle_deg=p.bel_elevation_angle_deg)
     tx_clutter_for_report = compute_terminal_clutter_losses(
         tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.tx_lat, rx_lon=p.tx_lon,
@@ -111,6 +106,7 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
         parameters, algorithm.OUTPUT_REPORT_JSON, context)
     report_html_path = algorithm.parameterAsFileOutput(
         parameters, algorithm.OUTPUT_REPORT_HTML, context)
+    report_pdf_path = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_REPORT_PDF, context)
 
     report_payload, raster_grid, valid, summary = (
         build_coverage_report_payload_for_grid(
@@ -174,11 +170,16 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
         write_report_json(report_json_path, report_payload)
     if report_html_path:
         write_report_html(report_html_path, report_payload, title="NoWires Coverage Report")
+    if report_pdf_path:
+        from .report_pdf import write_report_pdf
+        if not write_report_pdf(report_pdf_path, report_payload, "NoWires Coverage Report"):
+            feedback.pushWarning("PDF report skipped — Qt print-support unavailable.")
     return {
         algorithm.OUTPUT_RASTER: tif_path,
         algorithm.OUTPUT_REPORT_CSV: report_csv_path,
         algorithm.OUTPUT_REPORT_JSON: report_json_path,
         algorithm.OUTPUT_REPORT_HTML: report_html_path,
+        algorithm.OUTPUT_REPORT_PDF: report_pdf_path,
     }
 
 

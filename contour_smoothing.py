@@ -28,18 +28,20 @@ Gaussian-weighted contour line smoothing guided by TPI.
 import logging
 import math
 import os
-
-try:
-    from defusedxml.ElementTree import parse as _safe_parse  # nosec B405
-    import xml.etree.ElementTree as ET  # nosec B405
-    ET.parse = _safe_parse
-    _XML_SAFE = True
-except ImportError:
-    import xml.etree.ElementTree as ET  # nosec B405
-    _XML_SAFE = False
+import xml.etree.ElementTree as ET  # nosec B405
 
 import numpy as np
 from osgeo import gdal
+
+try:
+    from defusedxml.ElementTree import parse as _safe_parse  # nosec B405
+    _XML_SAFE = True
+except ImportError:
+    _safe_parse = None  # type: ignore[assignment]  # fallback when defusedxml not installed
+    _XML_SAFE = False
+
+def _parse_xml(path):  # explicit call avoids a global ET.parse monkey-patch
+    return _safe_parse(path) if _safe_parse is not None else ET.parse(path)  # nosec B314
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +120,7 @@ def _make_blur_vrt(vrt_path, src_path, kernel_size, sigma=None):
     ``KernelFilteredSource`` with the generated Gaussian coefficients.
     """
     gdal.BuildVRT(vrt_path, src_path)
-    tree = ET.parse(vrt_path)  # nosec B314
+    tree = _parse_xml(vrt_path)
     root = tree.getroot()
     ns = root.tag.split("}")[0] + "}" if root.tag.startswith("{") else ""
 

@@ -9,7 +9,7 @@ import numpy as np
 
 from .antenna import antenna_config_from_values
 from .clutter import compute_terminal_clutter_losses
-from .clutter_context import ClutterLossContext
+from .clutter_context import ClutterLossContext, build_initial_clutter_context  # noqa: F401
 from .coverage_pool import (  # noqa: F401
     CoverageResult, log_coverage_failures, should_use_multiprocessing,
     _itm_worker, _make_shared_grid,
@@ -39,10 +39,22 @@ def _build_rx_ground_grid(elev_grid, clutter_enabled, clutter_model, lats, lons,
     if not clutter_enabled or clutter_model != "advanced":
         return None
     _sample_grid = getattr(elev_grid, "sample_grid", None)
-    _sample_elev = getattr(elev_grid, "sample", None)
     if callable(_sample_grid):
         raw = _sample_grid(lats, lons)
         return np.where(np.isfinite(raw), raw, 0.0).astype(np.float32)
+    # Vectorized row-by-row fallback when sample_grid isn't available
+    # (mocked elevation grids in tests). N vector calls instead of N²
+    # scalar calls — 192× speedup at the default grid size.
+    _sample_line = getattr(elev_grid, "sample_line", None)
+    if callable(_sample_line):
+        rx_ground_grid = np.zeros((grid_size, grid_size), dtype=np.float32)
+        lon0, lon1 = float(lons[0]), float(lons[-1])
+        for i in range(grid_size):
+            lat_i = float(lats[i])
+            row = _sample_line(lat_i, lon0, lat_i, lon1, grid_size)
+            rx_ground_grid[i] = np.where(np.isfinite(row), row, 0.0)
+        return rx_ground_grid
+    _sample_elev = getattr(elev_grid, "sample", None)
     if callable(_sample_elev):
         rx_ground_grid = np.zeros((grid_size, grid_size), dtype=np.float32)
         for i in range(grid_size):
@@ -59,15 +71,13 @@ def _build_clutter_context(clutter_enabled, clutter_context, f_mhz, tx_h_m, rx_h
                            clutter_percentile, street_width_m, bel_enabled, bel_building_type,
                            bel_elevation_angle_deg):
     if clutter_enabled and clutter_context is None:
-        return ClutterLossContext(
-            frequency_mhz=f_mhz, distance_m=0.0,
-            tx_height_m=tx_h_m, rx_height_m=rx_h_m,
-            rx_ground_elevation_m=0.0, tx_ground_elevation_m=tx_ground_elev_m,
-            polarization=polarization, cch_override_m=cch_override_m, model=clutter_model,
+        return build_initial_clutter_context(
+            frequency_mhz=f_mhz, tx_height_m=tx_h_m, rx_height_m=rx_h_m,
+            tx_ground_elevation_m=tx_ground_elev_m, polarization=polarization,
+            cch_override_m=cch_override_m, model=clutter_model,
             percentile=clutter_percentile, street_width_m=street_width_m,
             bel_enabled=bel_enabled, bel_building_type=bel_building_type,
-            bel_elevation_angle_deg=bel_elevation_angle_deg,
-        )
+            bel_elevation_angle_deg=bel_elevation_angle_deg)
     return clutter_context
 
 
