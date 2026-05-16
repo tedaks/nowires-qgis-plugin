@@ -9,12 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v1.5.5
+### Planned for v1.5.6
 
 - Extend PDF report output (`OUTPUT_REPORT_PDF`) from Coverage Analysis to Point-to-Point Analysis and Coverage Comparison. The shared `report_pdf.write_report_pdf()` writer is already in place; remaining work is parameter registration and `_write_*_outputs` wiring in `algorithm_p2p` and `algorithm_coverage_comparison`.
 - Promote the standalone "Preview Antenna Pattern" dialog into an inline `QgsProcessingParameterWidgetFactoryInterface` so the polar plot renders directly in the Coverage / P2P parameter dialog next to the pattern-file picker.
 - Investigate whether `should_use_multiprocessing(os_name="nt")` can be enabled by default on Windows once `NOWIRES_WINDOWS_MP=1` has been validated by users; remove the env-var opt-in once safe.
 - Audit `report_pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks.
+
+## [1.5.5] - 2026-05-16
+
+### Fixed
+
+- Fixed coverage multiprocessing silently falling back to sequential mode on macOS via **three distinct bugs** that all surfaced as `feedback.pushInfo("Multiprocessing unavailable, using single-threaded mode...")` with the actual exception logged only via Python `logger.warning` (often invisible in the QGIS UI).
+
+  **(1) macOS POSIX shared-memory name too long.** `shared_dem_grid.SharedDEMGrid._create()` was generating names of the form `nowires_dem_<20 hex>` (32 chars). macOS XNU defines `PSHMNAMLEN = 31` as the maximum length including the leading `/` that `multiprocessing.shared_memory.SharedMemory` prepends, so the actual limit after the slash is 30 chars. Names of 32 chars + leading slash = 33 chars triggered `OSError: [Errno 63] File name too long` at `SharedMemory(create=True, name=...)`. Linux's `NAME_MAX = 255` hid this. Fix: truncate the UUID hex suffix from 20 to 16 chars (28 chars total, 29 with slash; comfortably under the macOS limit).
+
+  **(2) Spawn-mode cross-process cancel signal abandoned.** Even with the shm name fix, the next step in the pipeline used a plain `multiprocessing.Event()` in `_coverage_executor.execute_coverage_tasks`. Under the `spawn` start method (macOS default, Windows, containers), the Event's internal Condition raises `RuntimeError: Condition objects should only be shared between processes through inheritance` when `pool.map` tries to pickle it. An interim fix using `multiprocessing.Manager().Event()` worked in Docker but died on the user's macOS QGIS with `EOFError` (the Manager subprocess couldn't be sustained in that environment). The fix that actually works: **remove the cross-process cancel signal entirely**. Cancellation now comes from the main thread breaking out of `pool.map` between batches; in-flight batches finish naturally (~64 tasks × ~5 ms ≈ 320 ms worst case at default chunk size). Linux `fork` was masking both issues.
+
+  **(3) QGIS-bundled `python3.12` aborts on spawn because `sys.prefix` is baked to a CI-builder path.** After (1) and (2) were fixed, workers started spawning but died immediately with `ModuleNotFoundError: No module named 'encodings'` and `Fatal Python error: init_fs_encoding: failed to get the Python codec of the filesystem encoding`. The macOS QGIS-final 4.0.2 build ships a `python3.12` binary whose `sys.prefix` is hard-coded to `/Users/runner/work/QGIS/QGIS/build/vcpkg_installed/arm64-osx-dynamic-release/` (the CI builder's path). QGIS itself overrides this internally via `Py_SetPythonHome()`, but spawned children get no such override and can't find the stdlib. Surfaced as `BrokenProcessPool: A child process terminated abruptly`. Fix: `macos_compat.configure_macos_multiprocessing()` now sets `os.environ["PYTHONHOME"] = sys.prefix` (the *running* interpreter's prefix, which QGIS has remapped to a valid path like `Contents/Frameworks/`). Spawned workers inherit the env at spawn time and find the QGIS-bundled stdlib. Also added a `_can_spawn()` validation step in `find_macos_python_executable()` so we never return a binary that can't actually boot — and an `NOWIRES_PYTHON_EXE` env var override for users who want to point at a different Python (e.g. Homebrew).
+
+  Measured speedup on the in-container `benchmarks/coverage_runtime.py`: small grid 6840 → **31038 px/s** (4.5×), medium grid 7318 → **44024 px/s** (6.0×), large grid 7416 → **48207 px/s** (6.5×). macOS users will see equivalent gains.
+
+### Changed
+
+- Added a Windows mirror of `configure_macos_multiprocessing` / `find_macos_python_executable` in a new `windows_compat.py`. `_can_spawn` is shared between the two via `from .macos_compat import _can_spawn`. The Windows helper looks for `pythonw.exe` first, then `python.exe`, in standalone and OSGeo4W-style bundle layouts (`<qgis>/pythonw.exe`, `<qgis>/../apps/Python3X/pythonw.exe`, `<qgis>/bin/pythonw.exe`, etc.), validates each candidate by actually launching it under a prepared env (`PYTHONHOME=sys.prefix`), and honours the `NOWIRES_PYTHON_EXE` env var as an explicit override. `pythonw.exe` is preferred so spawned workers don't pop a stray cmd window each (`python.exe` is a console-subsystem binary; `pythonw.exe` is the same interpreter without a console — pipe-based stdin/stdout/stderr still works, which is all `multiprocessing` uses).
+- Replaced the v1.5.3-era `NOWIRES_WINDOWS_MP=1` opt-in env-var gate with the validating helper above. Windows multiprocessing is now self-adjusting: if `find_windows_python_executable()` returns a working interpreter, multiprocessing is on; otherwise the executor cleanly falls back to sequential with a clear log message.
+- Removed cross-process cancel signaling from coverage multiprocessing entirely. `_itm_worker_batch` now takes a plain batch argument (no `(batch, event)` tuple) and the executor no longer creates an `Event` or `Manager`. Trade-off: cancel responsiveness drops from per-pixel to per-batch (~320 ms worst case for a 64-pixel batch at ~5 ms ITM/pixel).
+
+### Added
+
+- Added `tests/test_coverage_executor_spawn_safety.py` — 3 source-level contract tests asserting the executor does NOT use `multiprocessing.Event()` or `multiprocessing.Manager()`, and that `_itm_worker_batch` takes a plain batch argument. Catches regression to either of the broken patterns without needing a fork/spawn test harness.
+- Added `tests/test_shared_dem_grid_name_length.py` — contract test that parses the literal name template in `shared_dem_grid.py` and asserts the total length (`/<prefix><N hex>`) stays under `PSHMNAMLEN = 31`. Future edits that lengthen the prefix or extend the hex suffix will fail loudly.
 
 ## [1.5.4] - 2026-05-16
 

@@ -134,7 +134,15 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
 - [temp_manager.py](temp_manager.py)
   Temporary directory management with cleanup
 - [macos_compat.py](macos_compat.py)
-  macOS multiprocessing compatibility guards
+  macOS multiprocessing compatibility (locates a real Python interpreter,
+  validates it via `_can_spawn`, sets `PYTHONHOME` for spawned workers)
+- [windows_compat.py](windows_compat.py)
+  Windows mirror of `macos_compat`: locates `pythonw.exe` (preferred) or
+  `python.exe` in QGIS bundle layouts, validates each candidate, sets
+  `PYTHONHOME` for spawned workers, honours `NOWIRES_PYTHON_EXE`
+- [antenna_pattern_preview.py](antenna_pattern_preview.py)
+  Standalone polar-plot dialog for previewing antenna pattern CSV files,
+  reached via the *NoWires → Preview Antenna Pattern* menu entry
 - [tile_download_base.py](tile_download_base.py)
   Shared tile-downloader base class with retry and fsync
 - [p2p_compute.py](p2p_compute.py)
@@ -728,8 +736,15 @@ project between QGIS sessions. The marker shapefile is written to
 
 ### Multiprocessing Note
 
-- Windows defaults to single-process mode to avoid spawning extra QGIS instances
-- non-Windows runtimes may use multiprocessing with shared memory
+- All three desktop platforms (Linux, macOS, Windows) use a `ProcessPoolExecutor` worker pool with shared memory by default. The decision is gated by `coverage_pool.should_use_multiprocessing()`, which consults a platform-specific *validating* helper:
+  - **Linux**: assumed to work; no further checks.
+  - **macOS**: `macos_compat.find_macos_python_executable()` searches for a real Python interpreter (the QGIS launcher binary at `sys.executable` cannot be used because spawning it relaunches the QGIS GUI), then validates each candidate by actually launching it with `PYTHONHOME=sys.prefix`. The bundled QGIS-on-macOS `python3.12` has its `sys.prefix` baked to a CI builder path that doesn't exist on user machines; setting `PYTHONHOME` in the parent env lets spawned workers find the QGIS-bundled stdlib.
+  - **Windows**: `windows_compat.find_windows_python_executable()` mirrors the macOS helper. It prefers `pythonw.exe` over `python.exe` (so each spawned worker doesn't pop a stray cmd window) and probes common bundle layouts (`<qgis>/pythonw.exe`, `<qgis>/../apps/Python3X/pythonw.exe`, `<qgis>/bin/pythonw.exe`, etc.).
+- If the validating helper returns `None` on macOS or Windows, the executor logs a clear warning and falls back to single-threaded mode cleanly.
+- The `NOWIRES_PYTHON_EXE` env var explicitly overrides interpreter detection on both macOS and Windows (e.g. point at `/opt/homebrew/bin/python3.12` or `C:\Python312\pythonw.exe`).
+- The `NOWIRES_MAX_WORKERS` env var caps worker count (default `min(os.cpu_count(), 16)`).
+- The `NOWIRES_WINDOWS_MP=1` env-var opt-in present in v1.5.3 is **removed in v1.5.5**; the new validating helper is the gate.
+- No cross-process cancel signal is used. Cancellation flows from the main thread breaking out of `pool.map` between batches; in-flight batches finish naturally (~64 tasks × ~5 ms ≈ 320 ms worst-case wait at default chunk size). Earlier attempts to share a cancel signal via `multiprocessing.Event()` and `multiprocessing.Manager().Event()` both broke on macOS QGIS under spawn-mode pickling.
 
 Raster positioning details:
 
@@ -758,15 +773,28 @@ The coverage support code is split by responsibility:
 - `coverage_summary.py`
   Raster-derived usable-distance metrics
 - `coverage_legend.py`
-  Coverage legend support in QGIS
+  Coverage legend support in QGIS; `show_coverage_legend()` constructs a
+  `QFrame`, which **must** run on the main thread. With ALLOW_THREADING
+  enabled (Coverage / Batch / Comparison), the algorithm stashes the
+  legend's `rx_sens` during `processAlgorithm` and shows it in
+  `postProcessAlgorithm` (main-thread-guaranteed by the Processing
+  framework).
 - `coverage_opacity.py`
   Live opacity adjustment dialog
 - `coverage_reporting.py`
   Coverage report output helpers
+- `coverage_dem_validate.py`
+  Small helper that warns when the downloaded DEM doesn't fully cover the
+  requested analysis bounds. Split out so `algorithm_coverage.py` stays
+  within the 300-line cap.
+- `report_pdf.py`
+  Qt-based PDF report writer (`QTextDocument` + `QPrinter`) used by Coverage
+  Analysis when `OUTPUT_REPORT_PDF` is set.
 
 Important constants:
 
 - `_get_max_workers()` returns `min(os.cpu_count() or 1, 16)` with lazy env-var lookup (capped at 16 workers via `NOWIRES_MAX_WORKERS`)
+- `NOWIRES_PYTHON_EXE` env var (optional) explicitly points the spawn pool at a specific Python interpreter on macOS or Windows, bypassing auto-detection
 - Dynamic chunk size via `_dynamic_chunk_size()`
 - `_MIN_COVERAGE_DISTANCE_M = 1.0`
 - `METERS_PER_DEGREE_LAT = 111320.0`
@@ -1095,7 +1123,6 @@ A `postProcessAlgorithm` override in `base_algorithm.py` reorders raster layers 
 ## Known Limitations
 
 - Coverage performance degrades as grid size and analysis distance grow.
-- Coverage multiprocessing is intentionally disabled on Windows.
 - Plugin-launched 3D canvas creation is disabled on Windows because it caused native QGIS crashes in this workflow.
 - Batch P2P analysis currently uses the same DEM for all links within a run; very spread-out point sets may require padding the DEM extent.
 - Coverage comparison requires both panels to share the same DEM and grid extent.
@@ -1122,9 +1149,9 @@ This preserves monotonicity and produces a physically reasonable high-loss resul
 ### Coverage Engine Robustness (NC2 / NI1 / NI2 Fixes)
 
 - Per-task exception handling in `_itm_worker_batch` prevents one bad pixel from killing an entire chunk of coverage tasks
-- The outer `except` clause in `compute_coverage` catches all `Exception` types, not just specific ones, ensuring fallback to sequential mode for any worker failure
-- A shared `multiprocessing.Event` propagates cancellation from the QGIS feedback thread into worker processes with task-level granularity
-- `_final_cov_pool()` documentation for per-worker shared-memory cleanup (dead `_cleanup_cov_pool` has been removed; per-worker handles are cleaned up by the OS on process exit)
+- The outer `except` clause in `execute_coverage_tasks` catches all `Exception` types, not just specific ones, ensuring fallback to sequential mode for any worker failure
+- Cancellation is **not** propagated to in-flight workers via any cross-process signal — `_itm_worker_batch` takes a plain batch argument (no `cancel_event`) and the main thread cancels by breaking out of `pool.map` between batches. In-flight batches finish naturally (~320 ms worst case at default chunk size). Two earlier attempts on v1.5.5 (plain `multiprocessing.Event()`, then `Manager().Event()`) both failed on macOS QGIS — the spawn-mode pickle path raises for the former and the Manager subprocess dies with `EOFError` for the latter.
+- `_final_cov_pool()` is registered with `atexit` on each worker process for shared-memory cleanup; per-worker handles are also cleaned up by the OS on process exit.
 
 ## Public Repository Files
 
