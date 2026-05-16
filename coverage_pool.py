@@ -77,23 +77,25 @@ _cov_grid_meta: dict = {}
 
 
 def should_use_multiprocessing(os_name=None):
-    """Return whether process-based parallelism is safe in this runtime."""
-    import sys
+    """Return whether process-based parallelism is safe in this runtime.
 
+    On macOS and Windows the platform-specific ``find_*_python_executable``
+    helpers validate each candidate; a False return here triggers the
+    clean sequential fallback in the executor.
+    """
+    import sys
     if os_name is None:
         os_name = os.name
     if os_name == "nt":
-        # Off by default; opt-in via NOWIRES_WINDOWS_MP=1 once spawn-mode
-        # behavior has been validated in the target environment.
-        return os.environ.get("NOWIRES_WINDOWS_MP", "").lower() in {"1", "true", "yes"}
-    if sys.platform == "darwin":
-        python_exe = find_macos_python_executable()
-        if python_exe is None:
-            logger.warning(
-                "macOS: no usable Python interpreter found for multiprocessing; "
-                "falling back to sequential mode."
-            )
+        from .windows_compat import find_windows_python_executable
+        if find_windows_python_executable() is None:
+            logger.warning("Windows: no usable Python for multiprocessing; "
+                           "falling back to sequential mode.")
             return False
+    if sys.platform == "darwin" and find_macos_python_executable() is None:
+        logger.warning("macOS: no usable Python for multiprocessing; "
+                       "falling back to sequential mode.")
+        return False
     return True
 
 
