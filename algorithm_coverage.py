@@ -185,6 +185,8 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
 class CoverageAlgorithm(NoWiresAlgorithm):
     """Coverage analysis heatmap prediction."""
 
+    ALLOW_THREADING = True
+
     def __init__(self):
         super().__init__()
         self._raster_layer_ids = []
@@ -279,14 +281,11 @@ class CoverageAlgorithm(NoWiresAlgorithm):
             self._tmp.cleanup()
             self._tmp.warn_persistent(feedback)
 
-    def _apply_coverage_style(self, layer):
+    def _on_coverage_loaded(self, layer):
         from .coverage_palette import apply_coverage_style
         apply_coverage_style(layer)
-
-    def _on_coverage_loaded(self, raster_layer):
-        self._apply_coverage_style(raster_layer)
-        raster_layer.setOpacity(1.0)
-        self._coverage_layer_id = raster_layer.id()
+        layer.setOpacity(1.0)
+        self._coverage_layer_id = layer.id()
 
     def name(self):
         return "coverage_analysis"

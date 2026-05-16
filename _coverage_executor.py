@@ -102,7 +102,7 @@ def execute_coverage_tasks(
                             itm_loss_grid, clutter_loss_grid, clutter_rx_db_grid,
                             bel_rx_db_grid)
                         pixels_done += len(batch_results)
-                        if feedback and chunk_idx % 50 == 0:
+                        if feedback and chunk_idx % 5 == 0:
                             feedback.setProgress(int(pixels_done / len(tasks) * 80))
         except Exception as exc:
             logger.warning(

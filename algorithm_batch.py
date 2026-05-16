@@ -34,7 +34,8 @@ from .elevation import ElevationGrid
 from .geo_bounds import shortest_longitude_bounds_for, validate_coordinates
 from .radio import K_FACTOR_PRESETS, resolve_k_factor, validate_itm_input_ranges
 from .antenna import antenna_preset_key
-from .clutter import LandCoverGrid, clutter_override_value, ensure_clutter_grid_for_area
+from .clutter import ensure_clutter_grid_for_area
+from .shared_params import extract_clutter_params
 from .batch_params import BATCH_PARAM_CONSTANTS, add_batch_params
 from .batch_outputs import (
     _feat_attr, compute_batch_links, rank_batch_results,
@@ -72,7 +73,6 @@ def _extract_batch_radio_params(algorithm, parameters, context):
     p = parameters
     _pD = algorithm.parameterAsDouble
     _pE = algorithm.parameterAsEnum
-    _pF = algorithm.parameterAsFile
     tx_h = _pD(p, algorithm.TX_HEIGHT, context)
     rx_h = _pD(p, algorithm.RX_HEIGHT, context)
     f_mhz = _pD(p, algorithm.FREQ_MHZ, context)
@@ -99,21 +99,7 @@ def _extract_batch_radio_params(algorithm, parameters, context):
     sigma = _pD(p, algorithm.SIGMA, context)
     validate_itm_input_ranges(tx_height_m=tx_h, rx_height_m=rx_h, frequency_mhz=f_mhz,
         surface_refractivity_n0=n0, earth_conductivity_sigma=sigma)
-    clutter_model_idx = _pE(p, algorithm.CLUTTER_MODEL, context)
-    ce = clutter_model_idx > 0
-    clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
-    cch_raw = _pD(p, algorithm.CCH_OVERRIDE, context)
-    cch_override_m = cch_raw if cch_raw > 0.0 else None
-    _crp = _pF(p, algorithm.CLUTTER_RASTER, context)
-    cg = LandCoverGrid.from_raster(_crp) if _crp else None
-    tco = clutter_override_value(_pE(p, algorithm.TX_CLUTTER_OVERRIDE, context))
-    rco = clutter_override_value(_pE(p, algorithm.RX_CLUTTER_OVERRIDE, context))
-    clutter_percentile = _pD(p, algorithm.CLUTTER_PERCENTILE, context)
-    street_width_m = _pD(p, algorithm.STREET_WIDTH, context)
-    bel_enabled = algorithm.parameterAsBool(parameters, algorithm.BEL_ENABLED, context)
-    bel_building_type_idx = _pE(p, algorithm.BEL_BUILDING_TYPE, context)
-    bel_building_type = ("traditional" if bel_building_type_idx == 0 else "thermally_efficient")
-    bel_elevation_angle = _pD(p, algorithm.BEL_ELEVATION_ANGLE, context)
+    c = extract_clutter_params(algorithm, parameters, context)
     tfb = _pD(p, algorithm.TX_FRONT_BACK_DB, context)
     rfb = _pD(p, algorithm.RX_FRONT_BACK_DB, context)
     return dict(tx_h=tx_h, rx_h=rx_h, f_mhz=f_mhz, polarization=polarization,
@@ -121,11 +107,12 @@ def _extract_batch_radio_params(algorithm, parameters, context):
         situation_pct=situation_pct, tx_power=tx_power, tx_gain_d=tx_gain_d,
         rx_gain_d=rx_gain_d, cable_loss=cable_loss, rx_sens=rx_sens, tx_pk=tx_pk,
         rx_pk=rx_pk, tx_az=tx_az, rx_az=rx_az, kf=kf, n0=n0, epsilon=epsilon,
-        sigma=sigma, ce=ce, cg=cg, tco=tco, rco=rco, tfb=tfb, rfb=rfb,
-        clutter_model=clutter_model, cch_override_m=cch_override_m,
-        clutter_percentile=clutter_percentile, street_width_m=street_width_m,
-        bel_enabled=bel_enabled, bel_building_type=bel_building_type,
-        bel_elevation_angle_deg=bel_elevation_angle)
+        sigma=sigma, ce=c.enabled, cg=c.grid, tco=c.tx_override, rco=c.rx_override,
+        tfb=tfb, rfb=rfb,
+        clutter_model=c.model, cch_override_m=c.cch_override_m,
+        clutter_percentile=c.percentile, street_width_m=c.street_width_m,
+        bel_enabled=c.bel_enabled, bel_building_type=c.bel_building_type,
+        bel_elevation_angle_deg=c.bel_elevation_angle_deg)
 
 def _collect_batch_inputs(algorithm, parameters, context, feedback):
     from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform
@@ -243,6 +230,8 @@ def _report_batch_results(feedback, results, mode):
 
 class BatchAnalysisAlgorithm(NoWiresAlgorithm):
     """Batch point-to-point link analysis."""
+
+    ALLOW_THREADING = True
 
     def initAlgorithm(self, config):
         add_batch_params(self)
