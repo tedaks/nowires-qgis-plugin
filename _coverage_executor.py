@@ -79,10 +79,16 @@ def execute_coverage_tasks(
         shared_grid = None
         try:
             shared_grid = _make_shared_grid(grid_data)
-            cancel_event = multiprocessing.Event()
             n_workers = max(1, min(os.cpu_count() or 1, _MAX_WORKERS))
-            with warnings.catch_warnings():
+            # Manager-backed Event works under the 'spawn' start method
+            # (macOS default, Windows, containers). A plain
+            # multiprocessing.Event() can't be shared via pickling under spawn
+            # and raises "Condition objects should only be shared between
+            # processes through inheritance", which previously forced a
+            # silent fallback to sequential mode on macOS.
+            with warnings.catch_warnings(), multiprocessing.Manager() as mgr:
                 warnings.filterwarnings("ignore", message="resource_tracker", category=UserWarning)
+                cancel_event = mgr.Event()
                 with ProcessPoolExecutor(
                     max_workers=n_workers,
                     initializer=_init_cov_pool,
