@@ -89,9 +89,8 @@ def write_report_json(path, payload):
         handle.write("\n")
 
 
-def write_report_html(path, payload, title):
-    """Write a plain printable HTML report."""
-    path = Path(path)
+def build_html_document(payload, title):
+    """Return the HTML document body used by both HTML and PDF writers."""
     sections = []
     for section_name, section_value in payload.items():
         if not isinstance(section_value, dict):
@@ -107,7 +106,7 @@ def write_report_html(path, payload, title):
                 html.escape(section_name.replace("_", " ").title()), rows
             )
         )
-    document = """<!doctype html>
+    return """<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -133,4 +132,8 @@ def write_report_html(path, payload, title):
         summary=html.escape(str(payload.get("status", {}).get("summary", ""))),
         sections="".join(sections),
     )
-    path.write_text(document, encoding="utf-8")
+
+
+def write_report_html(path, payload, title):
+    """Write a plain printable HTML report."""
+    Path(path).write_text(build_html_document(payload, title), encoding="utf-8")

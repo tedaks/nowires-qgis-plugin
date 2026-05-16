@@ -119,6 +119,8 @@ def ensure_clutter_grid_for_area(south: float, north: float, west: float, east: 
     if raster_path is None:
         return None
     try:
+        # LandCoverGrid.from_raster is a classmethod that returns Any-typed
+        # GDAL handles internally; mypy can't narrow to LandCoverGrid here.
         return LandCoverGrid.from_raster(raster_path)  # type: ignore[no-any-return]
     except RuntimeError:
         logger.warning("Failed to load downloaded WorldCover raster")

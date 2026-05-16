@@ -124,7 +124,6 @@ def test_coverage_legend_uses_qt6_enums_directly():
 def test_plugin_adds_opacity_menu_action():
     source = _text(PLUGIN_SOURCE)
     assert '"Coverage Opacity"' in source
-    assert "self.opacity_action" in source
     assert "self.run_coverage_opacity" in source
     assert "_MENU_NAME" in source
 

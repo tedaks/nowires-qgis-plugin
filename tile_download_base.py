@@ -35,19 +35,14 @@ from osgeo import gdal, ogr, osr
 from .geo_bounds import longitude_intervals
 
 logger = logging.getLogger(__name__)
+DEFAULT_PER_TILE_WALL_CLOCK_BUDGET = 180  # caps slow trickles where socket_timeout never fires
 
 
 def download_tile_with_retry(
-    tile_url,
-    local_tif,
-    base_name_label,
-    feedback=None,
-    max_retries=3,
-    socket_timeout=60,
-    valid_tile_re=None,
-    base_url=None,
-    opener=None,
-    wall_clock_budget=None,
+    tile_url, local_tif, base_name_label, feedback=None,
+    max_retries=3, socket_timeout=60, valid_tile_re=None,
+    base_url=None, opener=None,
+    wall_clock_budget=DEFAULT_PER_TILE_WALL_CLOCK_BUDGET,
 ):
     if valid_tile_re is not None and not valid_tile_re.match(base_name_label):
         logger.error("Invalid tile name rejected: %s", base_name_label)
@@ -177,15 +172,18 @@ def download_tile_with_retry(
                         wait_secs = 2 ** attempt
                 else:
                     wait_secs = 2 ** attempt
-                logger.warning(
-                    "HTTP %d downloading %s (attempt %d/%d): %s",
-                    e.code, base_name_label, attempt + 1, max_retries, e)
+                msg = "HTTP {} on {} (attempt {}/{}); retry in {}s".format(
+                    e.code, base_name_label, attempt + 1, max_retries, wait_secs)
+                logger.warning(msg)
+                if feedback:
+                    feedback.pushInfo(msg)
                 if attempt < max_retries - 1:
                     time.sleep(wait_secs)
             else:
-                logger.error(
-                    "HTTP %d downloading %s (non-retryable): %s",
-                    e.code, base_name_label, e)
+                msg = "HTTP {} on {} (non-retryable)".format(e.code, base_name_label)
+                logger.error(msg)
+                if feedback:
+                    feedback.pushWarning(msg)
                 break
         except Exception as e:
             logger.warning("Error downloading %s (attempt %d/%d): %s",

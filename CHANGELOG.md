@@ -9,6 +9,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned for v1.5.4
+
+- Extend PDF report output (`OUTPUT_REPORT_PDF`) from Coverage Analysis to Point-to-Point Analysis and Coverage Comparison. The shared `report_pdf.write_report_pdf()` writer is already in place; remaining work is parameter registration and `_write_*_outputs` wiring in `algorithm_p2p` and `algorithm_coverage_comparison`.
+- Promote the standalone "Preview Antenna Pattern" dialog into an inline `QgsProcessingParameterWidgetFactoryInterface` so the polar plot renders directly in the Coverage / P2P parameter dialog next to the pattern-file picker.
+- Investigate whether `should_use_multiprocessing(os_name="nt")` can be enabled by default on Windows once `NOWIRES_WINDOWS_MP=1` has been validated by users; remove the env-var opt-in once safe.
+- Audit `report_pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks.
+
+## [1.5.3] - 2026-05-16
+
+### Added
+
+- Added `write_report_pdf()` PDF report writer (`report_pdf.py`) using Qt6 `QTextDocument` + `QPrinter`. Wired to Coverage Analysis as a new `OUTPUT_REPORT_PDF` output. Falls back to a warning and returns `False` when Qt print-support isn't available rather than raising.
+- Added `AntennaPatternPreviewDialog` (`antenna_pattern_preview.py`) and a "Preview Antenna Pattern" plugin menu action. Loads an antenna pattern CSV and renders a polar plot via `QPainter` — no matplotlib dependency.
+- Added `extract_link_budget_params()` and `LinkBudgetBundle` in `shared_params`. Companion to `extract_clutter_params` introduced earlier; deduplicates the 5-double link-budget extraction across `algorithm_p2p`, `algorithm_batch`, and `coverage_params`.
+- Added `build_initial_clutter_context()` factory in `clutter_context.py`. Single source of truth for the placeholder `ClutterLossContext(distance=0, rx_ground=0)`; previously constructed inline in both `algorithm_coverage._build_clutter_context` and `coverage_engine._build_clutter_context`.
+- Added `NOWIRES_WINDOWS_MP` environment variable to opt Windows into multiprocessing (off by default). `_ensure_path()` already handles the sys.path hardening needed for spawn-mode workers.
+- Added `build_html_document()` in `report_export.py` to share the HTML body between HTML and PDF writers.
+- Added golden-file regression tests for CSV/JSON/HTML report output (`tests/test_report_export_golden.py`). Catches accidental drift in field names, escape rules, or document structure.
+- Added `tests/test_report_pdf.py` — unit test for the Qt-unavailable fallback path plus a qgis_integration test that asserts a real PDF is written.
+
+### Changed
+
+- Refactored `nowires.py` plugin GUI registration to a single `action_specs` table; removed nine duplicated `QAction(...)` blocks. Net –50 lines and easier to add new menu actions.
+- Switched `contour_smoothing.py` from monkey-patching `xml.etree.ElementTree.parse = _safe_parse` (which globally mutated the stdlib parser for every importer in the process) to an explicit `_parse_xml()` wrapper.
+- Vectorized the elevation-sampling fallback in `coverage_engine._build_rx_ground_grid` via row-by-row `sample_line` calls when `sample_grid` isn't available; 192× fewer Python-level calls at the default grid size for mocked elevation grids.
+- Increased sequential coverage progress reporting from 100 buckets to 200 (`_coverage_executor._run_sequential`).
+- HTTP retryable and non-retryable failures in `tile_download_base.download_tile_with_retry` now surface status code and retry timing through `feedback.pushInfo` / `pushWarning`; previously these only went to the Python log.
+- `_init_cov_pool` no longer raises `RuntimeError("Shared-memory pool already bound")` when a worker is reused across runs — resets stale state and rebinds instead. Friendlier when threading is enabled.
+- Added one-line reason comments to every previously-unexplained `# type: ignore` in production source (9 sites).
+
+### Added (previously in 1.5.3)
+
+- Added `ALLOW_THREADING` opt-in on `NoWiresAlgorithm`. Coverage Analysis, Batch P2P, and Coverage Comparison opt their `processAlgorithm()` into the Processing framework's worker-thread runner so the QGIS UI stays responsive during long computations; quick algorithms (P2P, Contour) keep the existing `NoThreading` behaviour.
+- Added `DEFAULT_PER_TILE_WALL_CLOCK_BUDGET` (180s) default for `download_tile_with_retry`. Caps the total time spent retrying a single DEM or WorldCover tile so a slow trickle (where `socket_timeout` never fires) cannot stall a coverage run for `socket_timeout × max_retries` seconds.
+- Added `get_cache_size()` and `format_cache_size()` to `cache_manager`. The "Clear DEM Cache" menu now reports current cache size and asks for confirmation before deleting.
+- Added `ClutterParamBundle` plus `extract_clutter_params()` in `shared_params`. Single helper replaces three ~20-line duplicated extraction blocks in `algorithm_p2p`, `algorithm_batch`, and `coverage_params`.
+- Added `test_algorithm_threading_optin.py` source-level contract tests verifying which algorithms opt into threading.
+- Added `TestGetCacheSize` tests for the new cache-size helpers.
+
+### Changed
+
+- Increased coverage multiprocessing progress update frequency from every 50 chunks to every 5 chunks (`_coverage_executor.py`) for finer UI feedback.
+- Refactored `clear_dem_cache()` to share the `_iter_cache_entries()` + `_entry_size()` helpers used by `get_cache_size()`, removing duplicated glob/walk loops.
+
 ## [1.5.2] - 2026-05-15
 
 ### Added

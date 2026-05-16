@@ -37,16 +37,13 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsProcessingException
 from .base_algorithm import NoWiresAlgorithm, install_constants
 from .radio import K_FACTOR_PRESETS, validate_itm_input_ranges, resolve_k_factor
 from .antenna import antenna_config_from_values
-from .clutter import (
-    LandCoverGrid,
-    clutter_override_value,
-)
 from .p2p_params import (
     PARAM_CONSTANTS,
     add_p2p_params,
 )
 from .p2p_analysis_params import P2PAnalysisParams
 from .p2p_compute import run_p2p_analysis
+from .shared_params import extract_clutter_params, extract_link_budget_params
 
 
 class P2PAlgorithm(NoWiresAlgorithm):
@@ -90,11 +87,12 @@ class P2PAlgorithm(NoWiresAlgorithm):
         time_pct = self.parameterAsDouble(parameters, self.TIME_PCT, context)
         location_pct = self.parameterAsDouble(parameters, self.LOCATION_PCT, context)
         situation_pct = self.parameterAsDouble(parameters, self.SITUATION_PCT, context)
-        tx_power = self.parameterAsDouble(parameters, self.TX_POWER, context)
-        tx_gain = self.parameterAsDouble(parameters, self.TX_GAIN, context)
-        rx_gain = self.parameterAsDouble(parameters, self.RX_GAIN, context)
-        cable_loss = self.parameterAsDouble(parameters, self.CABLE_LOSS, context)
-        rx_sens = self.parameterAsDouble(parameters, self.RX_SENSITIVITY, context)
+        lb = extract_link_budget_params(self, parameters, context)
+        tx_power = lb.tx_power_dbm
+        tx_gain = lb.tx_gain_dbi
+        rx_gain = lb.rx_gain_dbi
+        cable_loss = lb.cable_loss_db
+        rx_sens = lb.rx_sensitivity_dbm
         preset_index = self.parameterAsEnum(parameters, self.K_FACTOR_PRESET, context)
         custom_k_factor = self.parameterAsDouble(parameters, self.K_FACTOR, context)
         k_factor = resolve_k_factor(
@@ -130,27 +128,7 @@ class P2PAlgorithm(NoWiresAlgorithm):
             horizontal_pattern_path=self.parameterAsFile(parameters, self.RX_H_PATTERN, context),
             vertical_pattern_path=self.parameterAsFile(parameters, self.RX_V_PATTERN, context),
         )
-        clutter_model_idx = self.parameterAsEnum(parameters, self.CLUTTER_MODEL, context)
-        clutter_enabled = clutter_model_idx > 0
-        clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
-        cch_raw = self.parameterAsDouble(parameters, self.CCH_OVERRIDE, context)
-        cch_override_m = cch_raw if cch_raw > 0.0 else None
-        clutter_raster_path = self.parameterAsFile(parameters, self.CLUTTER_RASTER, context)
-        clutter_grid = None
-        if clutter_raster_path:
-            clutter_grid = LandCoverGrid.from_raster(clutter_raster_path)
-        tx_clutter_override = clutter_override_value(
-            self.parameterAsEnum(parameters, self.TX_CLUTTER_OVERRIDE, context)
-        )
-        rx_clutter_override = clutter_override_value(
-            self.parameterAsEnum(parameters, self.RX_CLUTTER_OVERRIDE, context)
-        )
-        clutter_percentile = self.parameterAsDouble(parameters, self.CLUTTER_PERCENTILE, context)
-        street_width_m = self.parameterAsDouble(parameters, self.STREET_WIDTH, context)
-        bel_enabled = self.parameterAsBool(parameters, self.BEL_ENABLED, context)
-        bel_building_type_idx = self.parameterAsEnum(parameters, self.BEL_BUILDING_TYPE, context)
-        bel_building_type = "traditional" if bel_building_type_idx == 0 else "thermally_efficient"
-        bel_elevation_angle = self.parameterAsDouble(parameters, self.BEL_ELEVATION_ANGLE, context)
+        c = extract_clutter_params(self, parameters, context)
 
         show_chart = self.parameterAsBool(parameters, self.SHOW_CHART, context)
         profile_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT_PROFILE, context)
@@ -171,16 +149,16 @@ class P2PAlgorithm(NoWiresAlgorithm):
             k_factor=k_factor, n0=n0, epsilon=epsilon, sigma=sigma,
             tx_antenna_config=tx_antenna_config,
             rx_antenna_config=rx_antenna_config,
-            clutter_enabled=clutter_enabled, clutter_grid=clutter_grid,
-            tx_clutter_override=tx_clutter_override,
-            rx_clutter_override=rx_clutter_override,
-            clutter_model=clutter_model,
-            cch_override_m=cch_override_m,
-            clutter_percentile=clutter_percentile,
-            street_width_m=street_width_m,
-            bel_enabled=bel_enabled,
-            bel_building_type=bel_building_type,
-            bel_elevation_angle_deg=bel_elevation_angle,
+            clutter_enabled=c.enabled, clutter_grid=c.grid,
+            tx_clutter_override=c.tx_override,
+            rx_clutter_override=c.rx_override,
+            clutter_model=c.model,
+            cch_override_m=c.cch_override_m,
+            clutter_percentile=c.percentile,
+            street_width_m=c.street_width_m,
+            bel_enabled=c.bel_enabled,
+            bel_building_type=c.bel_building_type,
+            bel_elevation_angle_deg=c.bel_elevation_angle_deg,
             profile_dest=profile_dest, fresnel_dest=fresnel_dest,
             markers_dest=markers_dest,
             report_csv_path=report_csv_path,
