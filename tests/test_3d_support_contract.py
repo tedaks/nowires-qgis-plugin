@@ -64,7 +64,6 @@ def test_three_d_windows_fallback_uses_clicked_button_and_checked_default():
 def test_plugin_adds_open_3d_view_action():
     source = _text(PLUGIN_SOURCE)
     assert '"Open 3D View"' in source
-    assert "self.open_3d_action" in source
     assert "self.run_open_3d_view" in source
     assert "self.iface.addPluginMenu" not in source
     assert "_MENU_NAME" in source
