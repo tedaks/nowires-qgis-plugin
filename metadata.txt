@@ -15,7 +15,7 @@ hasProcessingProvider=yes
 
 changelog=
     Version 1.5.5
-    - Fix coverage multiprocessing silently falling back to sequential on macOS. Two distinct bugs both surfacing as 'Multiprocessing unavailable'. (1) Shared-memory name too long for macOS PSHMNAMLEN=31: truncated UUID hex suffix from 20 to 16 chars. (2) Cross-process cancel signal removed entirely; multiprocessing.Event() failed under spawn, Manager().Event() failed with EOFError on macOS QGIS. Cancel now relies on main-thread break between batches (~320ms worst case). Linux fork was masking both.
+    - Fix coverage multiprocessing silently falling back to sequential on macOS. Three distinct bugs all surfacing as 'Multiprocessing unavailable'. (1) Shared-memory name too long for macOS PSHMNAMLEN=31: truncated UUID hex suffix from 20 to 16 chars. (2) Cross-process cancel signal removed entirely; multiprocessing.Event() failed under spawn, Manager().Event() failed with EOFError on macOS QGIS. Cancel now relies on main-thread break between batches (~320ms worst case). (3) QGIS-bundled python3.12 has sys.prefix baked to CI builder path; spawned workers couldn't find stdlib ('No module named encodings'). configure_macos_multiprocessing now sets PYTHONHOME=sys.prefix so workers inherit a working stdlib pointer. Added _can_spawn() validation and NOWIRES_PYTHON_EXE env override.
     - Measured 4-6× speedup on the in-container benchmark (~7k px/s → 31-48k px/s); macOS users will see equivalent gains.
     Version 1.5.4
     - Fix macOS SIGABRT crash when running Coverage Analysis with ALLOW_THREADING enabled: defer show_coverage_legend() from processAlgorithm (worker thread) to postProcessAlgorithm (main thread). Cocoa rejects QWidget creation off the main thread.
