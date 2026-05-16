@@ -15,8 +15,9 @@ hasProcessingProvider=yes
 
 changelog=
     Version 1.5.5
-    - Fix coverage multiprocessing silently falling back to sequential on macOS (and inside containers). Plain multiprocessing.Event() cannot be shared between processes via pickle under the 'spawn' start method ("Condition objects should only be shared between processes through inheritance"). Now uses multiprocessing.Manager().Event(), whose proxy survives pickling. Measured 5-6× speedup on the in-container benchmark (~7k px/s → 26-43k px/s).
-    - Move worker cancel-event check from per-task to per-batch. Each is_set() call is an IPC round-trip under Manager-backed Events; checking per-task would cost ~36k IPC calls on a 192² coverage.
+    - Fix coverage multiprocessing silently falling back to sequential on macOS. Two distinct bugs both surfacing as 'Multiprocessing unavailable'. (1) Shared-memory name too long for macOS PSHMNAMLEN=31: truncated UUID hex suffix from 20 to 16 chars. (2) Plain multiprocessing.Event() unpicklable under spawn: switched to Manager().Event(). Linux fork was masking both.
+    - Measured 5-6× speedup on the in-container benchmark (~7k px/s → 26-43k px/s); macOS users will see equivalent gains.
+    - Move worker cancel-event check from per-task to per-batch to avoid per-task IPC over the Manager server.
     Version 1.5.4
     - Fix macOS SIGABRT crash when running Coverage Analysis with ALLOW_THREADING enabled: defer show_coverage_legend() from processAlgorithm (worker thread) to postProcessAlgorithm (main thread). Cocoa rejects QWidget creation off the main thread.
     - Extract _validate_dem_coverage to coverage_dem_validate.py
