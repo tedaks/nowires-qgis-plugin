@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
-_VALID_MODELS = ("simple", "advanced")
+
+ClutterModel = Literal["simple", "advanced"]
+BuildingType = Literal["traditional", "thermally_efficient"]
+
+_VALID_MODELS: tuple[ClutterModel, ...] = ("simple", "advanced")
 
 
 @dataclass(frozen=True)
@@ -20,7 +25,7 @@ class TerminalClutterLosses:
     tx_bel_db: float = 0.0
     rx_bel_db: float = 0.0
     total_with_bel_db: float = 0.0
-    method: str = "simple"
+    method: ClutterModel = "simple"
     percentile: float = 50.0
 
 
@@ -34,11 +39,11 @@ class ClutterLossContext:
     tx_ground_elevation_m: float = 0.0
     polarization: int = 0
     cch_override_m: float | None = None
-    model: str = "simple"
+    model: ClutterModel = "simple"
     percentile: float = 50.0
     street_width_m: float = 27.0
     bel_enabled: bool = False
-    bel_building_type: str = "traditional"
+    bel_building_type: BuildingType = "traditional"
     bel_elevation_angle_deg: float = 0.0
 
     def __post_init__(self):
@@ -51,8 +56,8 @@ class ClutterLossContext:
 def build_initial_clutter_context(
     *, frequency_mhz: float, tx_height_m: float, rx_height_m: float,
     tx_ground_elevation_m: float, polarization: int, cch_override_m: float | None,
-    model: str, percentile: float, street_width_m: float,
-    bel_enabled: bool, bel_building_type: str, bel_elevation_angle_deg: float,
+    model: ClutterModel, percentile: float, street_width_m: float,
+    bel_enabled: bool, bel_building_type: BuildingType, bel_elevation_angle_deg: float,
 ) -> ClutterLossContext:
     """Build a ClutterLossContext with distance=0 and rx_ground=0 placeholders.
 

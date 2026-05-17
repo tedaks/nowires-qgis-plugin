@@ -30,6 +30,7 @@ Extracted from algorithm_coverage.py for modularity.
 import numpy as np
 
 from .clutter import CLUTTER_MODEL_OPTIONS
+from .clutter_context import ClutterModel
 from .antenna import ANTENNA_PRESET_OPTIONS
 from .constants import CLIMATE_NAMES, POLARIZATION_NAMES
 from .coverage_summary import summarize_coverage_grid
@@ -40,7 +41,7 @@ from .report_payloads import (
 from .raster_io import write_geotiff
 
 
-def _clutter_model_label(enabled, model="simple"):
+def _clutter_model_label(enabled, model: ClutterModel = "simple"):
     if not enabled:
         return CLUTTER_MODEL_OPTIONS[0]
     return CLUTTER_MODEL_OPTIONS[2] if model == "advanced" else CLUTTER_MODEL_OPTIONS[1]
