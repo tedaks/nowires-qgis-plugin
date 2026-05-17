@@ -28,7 +28,7 @@ OGR output writers for P2P profile line and Fresnel zone layers.
 from osgeo import ogr
 
 from .report_markers import ogr_driver_for_path, remove_existing_ogr_dataset
-from .defaults import FRESNEL_60PCT_FACTOR
+from .constants import FRESNEL_60PCT_FACTOR
 from .radio import PROP_MODE_NAMES
 
 __all__ = ["write_profile_line", "write_fresnel_zone"]

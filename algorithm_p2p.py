@@ -32,9 +32,10 @@ and were originally distributed under the MIT License. See NOTICE.md for
 attribution details.
 """
 
-from qgis.core import QgsCoordinateReferenceSystem, QgsProcessingException
+from qgis.core import QgsProcessingException
 
 from .base_algorithm import NoWiresAlgorithm, install_constants
+from .constants import WGS84_CRS
 from .radio import K_FACTOR_PRESETS, validate_itm_input_ranges, resolve_k_factor
 from .antenna import antenna_config_from_values
 from .p2p_params import (
@@ -60,11 +61,11 @@ class P2PAlgorithm(NoWiresAlgorithm):
         self._p2p_post_processors = []
         tx_point = self.parameterAsPoint(
             parameters, self.TX_POINT, context,
-            crs=QgsCoordinateReferenceSystem("EPSG:4326"),
+            crs=WGS84_CRS,
         )
         rx_point = self.parameterAsPoint(
             parameters, self.RX_POINT, context,
-            crs=QgsCoordinateReferenceSystem("EPSG:4326"),
+            crs=WGS84_CRS,
         )
 
         if tx_point is None or rx_point is None:

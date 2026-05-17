@@ -16,7 +16,6 @@ import shutil
 import tempfile
 
 from qgis.core import (
-    QgsCoordinateReferenceSystem,
     QgsGeometry,
     QgsProcessingException,
     QgsProcessingParameterAuthConfig,
@@ -32,7 +31,7 @@ from qgis.core import (
 )
 
 from .base_algorithm import NoWiresAlgorithm
-from .constants import MAX_AOI_EXTENT_DEGREES, FEET_PER_METER
+from .constants import MAX_AOI_EXTENT_DEGREES, FEET_PER_METER, WGS84_CRS
 
 from .contour_generation import generate_contour_lines, reproject_and_export
 from .contour_pipeline import (
@@ -119,7 +118,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
     def _validate_aoi(self, parameters, context):
         aoi = self.parameterAsExtent(
             parameters, self.AREA_OF_INTEREST, context,
-            crs=QgsCoordinateReferenceSystem("EPSG:4326"))
+            crs=WGS84_CRS)
         if aoi.isNull() or not aoi.isFinite():
             raise QgsProcessingException(self.tr(
                 "Invalid area of interest (NaN values detected).\n\n"
@@ -210,7 +209,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
 
             output_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
             project = context.project()
-            target_crs = project.crs() if project is not None else QgsCoordinateReferenceSystem("EPSG:4326")
+            target_crs = project.crs() if project is not None else WGS84_CRS
             try:
                 final_output_path, reproj_dir = reproject_and_export(
                     contour_shp_path, target_crs, output_dest,

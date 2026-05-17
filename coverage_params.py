@@ -34,7 +34,6 @@ from qgis.core import (
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
     QgsProcessingParameterRasterDestination,
-    QgsCoordinateReferenceSystem,
 )
 from .defaults import (
     DEFAULT_ANTENNA_AZIMUTH,
@@ -61,6 +60,7 @@ from .constants import (
     CLIMATE_OPTIONS,
     GRID_SIZE_PRESETS,
     GRID_SIZE_OPTIONS,
+    WGS84_CRS,
 )
 from .shared_params import (
     add_advanced_itm_params, add_clutter_params, add_link_budget_params,
@@ -181,7 +181,7 @@ def extract_coverage_params(alg, parameters, context):
     _enum = alg.parameterAsEnum
     tx_point = alg.parameterAsPoint(
         parameters, alg.TX_POINT, context,
-        crs=QgsCoordinateReferenceSystem("EPSG:4326"),
+        crs=WGS84_CRS,
     )
     if tx_point is None:
         raise QgsProcessingException("TX point is required.")

@@ -10,8 +10,7 @@ import numpy as np
 import pytest
 
 from fresnel import fresnel_radius, earth_bulge, fresnel_profile_analysis
-from constants import EARTH_RADIUS_M
-from defaults import FRESNEL_60PCT_FACTOR
+from constants import EARTH_RADIUS_M, FRESNEL_60PCT_FACTOR
 
 C_LIGHT = 299792458.0
 

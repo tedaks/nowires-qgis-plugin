@@ -28,6 +28,7 @@ Pure-Python helpers for NoWires report payloads.
 from __future__ import annotations
 
 from .reliability import summarize_reliability
+from .constants import EMPTY_MARGIN_DB
 
 _COPERNICUS_DEM_ATTRIBUTION = (
     "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and "
@@ -217,7 +218,7 @@ def build_empty_coverage_report_payload(
 ):
     """Build a coverage report payload for a grid with no valid modelled cells."""
     reliability = summarize_reliability(
-        margin_db=-999.0, frequency_mhz=f_mhz, distance_km=0.0, los_blocked=False,
+        margin_db=EMPTY_MARGIN_DB, frequency_mhz=f_mhz, distance_km=0.0, los_blocked=False,
     )
     inputs = _build_coverage_input_dict(
         tx_lat=tx_lat, tx_lon=tx_lon, tx_h=tx_h, rx_h=rx_h, f_mhz=f_mhz,

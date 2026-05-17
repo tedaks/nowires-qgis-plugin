@@ -34,7 +34,7 @@ attribution details.
 import logging
 from qgis.core import QgsProcessingException
 from .base_algorithm import NoWiresAlgorithm, install_constants
-from .constants import DEGREE_PADDING, METERS_PER_DEGREE_LAT
+from .constants import DEGREE_PADDING, METERS_PER_DEGREE_LAT, WGS84_CRS
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
 from .geo_bounds import coverage_bounds
@@ -74,12 +74,10 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
         add_comparison_params(self)
 
     def processAlgorithm(self, parameters, context, feedback):
-        from qgis.core import QgsCoordinateReferenceSystem
-
         self._raster_layer_ids = []
         self._comparison_post_processors = []
         self._tmp = TempDirManager()
-        crs4326 = QgsCoordinateReferenceSystem("EPSG:4326")
+        crs4326 = WGS84_CRS
         delta_style = DELTA_STYLE_OPTIONS[
             self.parameterAsEnum(parameters, self.DELTA_STYLE, context)]
         threshold_db = self.parameterAsDouble(parameters, self.DELTA_THRESHOLD_DB, context)
