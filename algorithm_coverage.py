@@ -22,7 +22,7 @@ from .report_export import write_report_csv, write_report_html, write_report_jso
 from .report_markers import write_single_marker
 from .coverage_params import PARAM_CONSTANTS, add_coverage_params, extract_coverage_params
 from .antenna import ANTENNA_PRESET_OPTIONS
-from .constants import DEGREE_PADDING
+from .constants import DEGREE_PADDING, METERS_PER_DEGREE_LAT
 from .geo_bounds import coverage_bounds
 from .coverage_reporting import (
     build_coverage_report_payload_for_grid, report_coverage_results,
@@ -37,7 +37,7 @@ def _build_clutter_context(p, clutter_grid, elev):
     from .clutter_context import build_initial_clutter_context
     clutter_grid_resolved = clutter_grid
     if clutter_grid_resolved is None and p.clutter_enabled:
-        pad_deg = max(DEGREE_PADDING, p.radius_km / (111320.0 / 1000.0) * 0.1)
+        pad_deg = max(DEGREE_PADDING, p.radius_km * 1000.0 / METERS_PER_DEGREE_LAT * 0.1)
         south, north, west, east = coverage_bounds(
             p.tx_lat, p.tx_lon, p.radius_km, padding_deg=pad_deg)
         clutter_grid_resolved = ensure_clutter_grid_for_area(
@@ -203,7 +203,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
             else CLUTTER_MODEL_OPTIONS[1] if p.clutter_enabled else CLUTTER_MODEL_OPTIONS[0]))
         feedback.pushInfo("TX antenna preset: {}".format(ANTENNA_PRESET_OPTIONS[p.antenna_preset]))
 
-        pad_deg = max(DEGREE_PADDING, p.radius_km / (111320.0 / 1000.0) * 0.1)
+        pad_deg = max(DEGREE_PADDING, p.radius_km * 1000.0 / METERS_PER_DEGREE_LAT * 0.1)
         south, north, west, east = coverage_bounds(
             p.tx_lat, p.tx_lon, p.radius_km, padding_deg=pad_deg)
 

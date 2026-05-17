@@ -18,8 +18,7 @@ from ._coverage_executor import execute_coverage_tasks
 from .coverage_tasks import _coverage_axis_centers, build_coverage_tasks
 from .geo_bounds import coverage_bounds
 from .constants import BYTES_PER_MEBIBYTE
-
-from concurrent.futures import ProcessPoolExecutor  # noqa: F401 re-exported for tests
+from .defaults import DEFAULT_N0, DEFAULT_EPSILON, DEFAULT_SIGMA
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +103,7 @@ def compute_coverage(
     grid_size=192, radius_km=50.0, profile_step_m=250.0, max_profile_pts=75,
     tx_power_dbm=43.0, tx_gain_dbi=8.0, rx_gain_dbi=2.0, cable_loss_db=2.0,
     rx_sensitivity_dbm=-100.0, antenna_az_deg=None, antenna_beamwidth_deg=360.0,
-    polarization=0, climate=1, N0=301.0, epsilon=15.0, sigma=0.005,
+    polarization=0, climate=1, N0=DEFAULT_N0, epsilon=DEFAULT_EPSILON, sigma=DEFAULT_SIGMA,
     time_pct=50.0, location_pct=50.0, situation_pct=50.0, antenna_preset=0,
     antenna_front_back_db=25.0, antenna_downtilt_deg=0.0,
     antenna_horizontal_pattern_path=None, antenna_vertical_pattern_path=None,

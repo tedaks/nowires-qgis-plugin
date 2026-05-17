@@ -33,6 +33,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .defaults import DEFAULT_FREQ_MHZ
+
 if TYPE_CHECKING:
     from .clutter import LandCoverGrid
 
@@ -43,7 +45,7 @@ class CoverageAnalysisParams:
     tx_lon: float = 0.0
     tx_h: float = 30.0
     rx_h: float = 10.0
-    f_mhz: float = 300.0
+    f_mhz: float = DEFAULT_FREQ_MHZ
     radius_km: float = 50.0
     grid_size: int = 192
     polarization: int = 1

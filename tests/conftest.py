@@ -439,6 +439,8 @@ for _submodule_name in (
 # must be imported through the NoWires package so ``from .xxx import ...`` resolves.
 for _pkg_sub in (
     "radio",
+    "coverage_analysis_params",
+    "batch_analysis_params",
     "coverage_compute",
     "coverage_summary",
     "fresnel",
