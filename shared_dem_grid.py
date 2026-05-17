@@ -25,12 +25,56 @@
 from __future__ import annotations
 
 import atexit
+import glob
 import multiprocessing
 import multiprocessing.shared_memory
-
+import os
+import re
 import uuid
 
 import numpy as np
+
+
+_SHM_NAME_RE = re.compile(r"^nowires_dem_(\d+)_[0-9a-f]+$")
+
+
+def cleanup_stale_shm_entries(dev_shm_dir: str, my_uid: int) -> None:
+    """Remove ``/dev/shm/nowires_dem_<pid>_<hex>`` entries that are stale AND
+    belong to the calling user.
+
+    Stale means: the embedded PID no longer maps to a live process. Per-user
+    scoping means: ``stat.st_uid`` must equal ``my_uid``. Both conditions
+    must hold; on a shared workstation, this prevents one user's QGIS
+    startup from destroying another user's in-flight DEM segments. Entries
+    whose name does not match the v1.5.7 template are left untouched.
+    """
+    if not os.path.isdir(dev_shm_dir):
+        return
+    for entry in glob.iglob(os.path.join(dev_shm_dir, "nowires_dem_*")):
+        m = _SHM_NAME_RE.match(os.path.basename(entry))
+        if m is None:
+            continue
+        try:
+            st = os.stat(entry)
+        except OSError:
+            continue
+        if st.st_uid != my_uid:
+            continue
+        pid = int(m.group(1))
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            pass  # PID is gone; safe to unlink
+        except PermissionError:
+            continue  # PID exists under a different uid; do not unlink
+        except OSError:
+            continue
+        else:
+            continue  # signal succeeded -> process is alive
+        try:
+            os.unlink(entry)
+        except OSError:
+            pass
 
 
 class SharedDEMGrid:
@@ -50,10 +94,13 @@ class SharedDEMGrid:
 
     def _create(self, grid_data: np.ndarray) -> None:
         # macOS limits POSIX shm names to 31 chars total (including the leading
-        # '/' that SharedMemory prepends). 12-char prefix + 16 hex chars = 28,
-        # plus '/' = 29. Linux NAME_MAX (255) is far more permissive but the
-        # 16-hex namespace (2^64) is still ample for uniqueness.
-        name = "nowires_dem_" + uuid.uuid4().hex[:16]
+        # '/' that SharedMemory prepends). Template: nowires_dem_<pid>_<hex9>.
+        # Linux max PID is 7 digits (4194304); 12 + 7 + 1 + 9 = 29, plus '/'
+        # = 30 — comfortably under XNU's PSHMNAMLEN=31. macOS PIDs are
+        # smaller still. Embedding the creator PID lets cleanup on shared
+        # workstations distinguish stale entries from other users' live
+        # segments (see NoWiresPlugin._cleanup_stale_shared_memory).
+        name = "nowires_dem_{}_{}".format(os.getpid(), uuid.uuid4().hex[:9])
         shm = multiprocessing.shared_memory.SharedMemory(
             create=True,
             name=name,
