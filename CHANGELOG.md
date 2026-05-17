@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `from __future__ import annotations` to 7 clutter/p2108 modules (`clutter_categories`, `clutter_constants`, `clutter_resolve`, `clutter_saalos`, `p2108_common`, `p2108_terrestrial_stat`, `p2109_bel`) for consistency with sibling modules.
 - Replace `last_contour_layer_id` string literal at `three_d.py:79` with `CONTOUR_LAYER_KEY` constant.
 - Reconcile sequential-mode notice in `_coverage_executor.py` with MP-fallback message: `"Using single-threaded mode..."` → `"Single-threaded mode: no multiprocessing detected"`.
+- Replace `# type: ignore[arg-type]` cluster in `comparison_reporting.py` with explicit `assert tmpdir is not None`; removes three type-ignore suppressions.
+- Break `clutter.py` ↔ `clutter_advanced.py` import cycle: move `TerminalClutterLosses` from `clutter.py` to `clutter_context.py`, eliminating the deferred-import workaround.
 
 ## [1.5.7] - 2026-05-17
 
@@ -71,29 +73,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v1.5.8  (PATCH — tech-debt / cleanup, zero behavior change)
+### Planned for v1.5.9  (PATCH — tech-debt / cleanup, zero behavior change)
 
 - Extract a single shared bilinear sampler. The same `-0.5` cell-edge-to-center shift and weighted-blend formula is reimplemented four times: `ElevationGrid.sample` (scalar), `ElevationGrid.sample_line` (1D), `ElevationGrid.sample_grid` (2D) (`elevation.py:168-253`), and `sample_line_from_grid` (`_geo_utils.py:14-48`). A helper that takes `(data, grid_meta, lats, lons)` and dispatches on shape would consolidate the four.
 - Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 44 positional/keyword params (`coverage_engine.py:102`), `build_p2p_report_payload` carries 41 (`report_payloads.py:58`), `build_coverage_report_payload_for_grid` carries 32 (`coverage_reporting.py:49`). Most of the natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist elsewhere in the codebase; the work is wiring them through.
-- Promote shared constants into `constants.py`: move `FRESNEL_60PCT_FACTOR` from `defaults.py` (already done), add `EMPTY_MARGIN_DB = -999.0` (already done), replace the three hardcoded `1048576.0` literals (already done). Remaining: `WGS84_CRS` singleton (already done), add `EMPTY_MARGIN_DB` (already done).
-- Replace `# type: ignore[arg-type]` cluster at `comparison_reporting.py:75,77,79` with an explicit `assert tmpdir is not None`.
-- Replace stringly-typed comparisons (already done for contour_smoothing, comparison_outputs, clutter). Remaining: convert clutter model (`"simple"` / `"advanced"`), building type (`"traditional"` / `"thermally_efficient"`), ITM climate strings to `typing.Literal`.
+- Convert remaining stringly-typed enums to `typing.Literal`: clutter model (`"simple"` / `"advanced"`), building type (`"traditional"` / `"thermally_efficient"`), ITM climate strings.
 - Deduplicate TOCTOU-safe directory creation.
 - Make the underscore-private clutter symbols imported by `coverage_tasks.py:31-37` (`_ClutterComponents`, `_compute_advanced_loss`, `_legacy_to_advanced_override`, `_resolve_category_advanced`) part of `clutter_advanced.py`'s public API — either by dropping the underscore prefix or by exposing a narrow `clutter_advanced_api` surface. The current state advertises "private" while having an out-of-module consumer.
-- Break the `clutter.py` ↔ `clutter_advanced.py` import cycle by moving `TerminalClutterLosses` (defined at `clutter.py:100`) into `clutter_context.py`, which is already imported by both sides. Removes the deferred-import workaround at `clutter_advanced.py:170`.
-- Convert remaining stringly-typed enums to `typing.Literal`: clutter model (`"simple"` / `"advanced"`), building type (`"traditional"` / `"thermally_efficient"`), ITM climate strings. Cheap, gives mypy real coverage of code paths that currently rely on string equality.
 - Decompose three long functions: `run_p2p_analysis` (183 lines, `p2p_compute.py:118-300`), `_compute_single_link` (158 lines, `batch_outputs.py:65-222`), `run_panel_coverage` (232 lines, `comparison_panel.py:51-282`). Suggested seams: separate layer/report writing from the computation core in `run_p2p_analysis`; lift the per-rank-by branches out of `_compute_single_link`; split parameter-extraction from execution in `run_panel_coverage`.
 - Single-source the per-category P.2108 parameters. `clutter_categories.py` and `p2108_height_gain.py:28-33` both define `R_m` and the method tag (`p2108_3_1_method` vs `method`) for each category, and changes today must be synchronised by hand. Pick one as canonical and derive the other.
 - Improve `worldcover_class_to_clutter_category` out-of-range handling (`clutter.py:53-57`). Today it warns and then does `raw % 256`, which silently aliases invalid IDs onto valid categories. Fall back to `"open"` (or raise) instead.
-- Replace the length-tag dispatch in `coverage_pool.apply_batch_results` (`_coverage_result_dispatch.py`) with an explicit sentinel. The branch currently keys on `isinstance(result, tuple) and len(result) == 2 and result[0] == "error"`; this is safe today because `_itm_worker_batch` only ever returns 8-tuples, None, or `("error", msg)`, but any future change that produces a 2-tuple with a non-`"error"` first element would fall through and crash on the 8-way unpack. Use a small `WorkerError` dataclass or a sentinel object instead.
-- Re-examine the tile-cache validation in `tile_download_base.download_tile_with_retry` (`tile_download_base.py:51-82`). Any `ComputeStatistics` failure on a cached file is treated as corruption and triggers a re-download — a transient I/O hiccup on a 100-tile run forces 100 re-downloads. Consider validating only structural integrity (band count, dimensions, RasterCount) on cache hits and reserving the `ComputeStatistics` check for first-fetch.
-- Reconsider the overall wall-clock deadline in `dem_downloader.download_tiles` (`dem_downloader.py:170`). `_WALL_CLOCK_TIMEOUT = 300s` is set at function entry on top of the per-tile budget (180s). For the documented 200-tile cap this gives ~1.5s per tile before the overall timeout fires. Either drop the overall deadline (the per-tile budget already caps slow trickles, post-v1.5.3) or scale it with tile count.
+- Replace the length-tag dispatch in `coverage_pool.apply_batch_results` (`_coverage_result_dispatch.py`) with an explicit sentinel. Use a small `WorkerError` dataclass or a sentinel object instead of the current `isinstance(result, tuple) and len(result) == 2 and result[0] == "error"` pattern.
+- Re-examine the tile-cache validation in `tile_download_base.download_tile_with_retry`. Any `ComputeStatistics` failure on a cached file is treated as corruption — consider validating only structural integrity on cache hits.
+- Reconsider the overall wall-clock deadline in `dem_downloader.download_tiles`. Either drop the overall deadline or scale it with tile count.
 - Minor polish:
-  - Add `from __future__ import annotations` to `clutter_categories.py`, `clutter_constants.py`, `clutter_resolve.py`, `clutter_saalos.py`, `p2108_common.py`, `p2108_terrestrial_stat.py`, `p2109_bel.py` for consistency with the rest of the clutter/p2108 modules.
-  - Wrap `document.print(printer)` in `report_pdf.write_report_pdf` (`report_pdf.py:51-54`) in try/except so disk-full / permission errors surface as a clean status instead of an unhandled Qt exception.
-  - Replace `last_contour_layer_id` string literal at `three_d.py:79` with the `CONTOUR_LAYER_KEY` constant defined at `three_d.py:40` (already used at lines 104, 114, 120).
-  - Move the global mutable `_warned_low_vhf_p2108_combined` flag (`clutter_resolve.py:12-19`) into a small `_State` dataclass so tests can reset it; today it can't be cleared between cases.
-  - Add a real module description to `nowires.py` (lines 4-23 currently contain only the GPL header inside the docstring slot; siblings like `elevation.py` put a description block after the header).
+  - Wrap `document.print(printer)` in `report_pdf.write_report_pdf` in try/except so disk-full/permission errors surface as a clean status.
+  - Move the global mutable `_warned_low_vhf_p2108_combined` flag into a small `_State` dataclass so tests can reset it.
+  - Add a real module description to `nowires.py`.
 
 ### Planned for v1.6.0  (MINOR — additive features)
 

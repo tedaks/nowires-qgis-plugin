@@ -31,10 +31,12 @@ changelog=
     - Refactor: move FRESNEL_60PCT_FACTOR from defaults.py to constants.py
     - Refactor: add EMPTY_MARGIN_DB constant; replace magic -999.0 in report_payloads
     - Refactor: replace 3 hardcoded 1048576.0 literals with BYTES_PER_MEBIBYTE
-    - Refactor: convert 7 remaining silent except-pass to logger.debug (nowires, three_d, p2p_chart, temp_manager, processing_utils)
+    - Refactor: convert 7 remaining silent except-pass to logger.debug; narrow to OSError where safe
     - Refactor: add from __future__ import annotations to 7 clutter/p2108 modules
     - Refactor: replace last_contour_layer_id string literal with CONTOUR_LAYER_KEY constant in three_d
     - Refactor: reconcile sequential-mode notice in _coverage_executor with MP-fallback message
+    - Refactor: replace type:ignore[arg-type] cluster in comparison_reporting with assert tmpdir is not None
+    - Refactor: break clutter.py \u003c-\u003e clutter_advanced.py import cycle; move TerminalClutterLosses to clutter_context
     - Add gdal_integration pytest marker for numpy-dependent GDAL tests
     - Refactor: replace hardcoded 111320.0 with METERS_PER_DEGREE_LAT in algorithm_coverage and algorithm_coverage_comparison
     - Refactor: replace f_mhz=300.0 dataclass defaults with DEFAULT_FREQ_MHZ from defaults.py
