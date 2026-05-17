@@ -84,9 +84,32 @@ jobs:
           stage="$RUNNER_TEMP/stage"
           mkdir -p "$stage/NoWires"
 
-          # Tracked files only, minus dev/CI/repo-management artifacts.
-          # The plugin ships as a NoWires/ folder per QGIS plugin convention.
-          git ls-files -z | tr '\0' '\n' | grep -vE '^(tests/|benchmarks/|\.github/|\.gitattributes$|\.gitignore$|pyproject\.toml$|mypy\.ini$|requirements-.*\.txt$|constraints-ci\.txt$|AGENTS\.md$|CONTRIBUTING\.md$)' > "$RUNNER_TEMP/manifest.txt"
+          # Explicit include list: only matching paths ship in the bundle.
+          # New dev files/dirs are excluded by default and must be added here.
+          # Directories shipped recursively:
+          include_dirs=(itm)
+          # Root-level files/patterns shipped (subdirectory matches are filtered out):
+          include_root_files=(
+            '*.py'
+            CHANGELOG.md
+            LICENSE
+            NOTICE.md
+            README.md
+            Technical_Documentation.md
+            USERS-GUIDE.md
+            logo.png
+            logo.svg
+            metadata.txt
+          )
+          manifest="$RUNNER_TEMP/manifest.txt"
+          : > "$manifest"
+          for dir in "${include_dirs[@]}"; do
+            git ls-files -z -- "$dir" | tr '\0' '\n' >> "$manifest"
+          done
+          for pat in "${include_root_files[@]}"; do
+            git ls-files -z -- "$pat" | tr '\0' '\n' | grep -vE '/' >> "$manifest"
+          done
+          sort -u -o "$manifest" "$manifest"
 
           tar -cf - --files-from="$RUNNER_TEMP/manifest.txt" | tar -xf - -C "$stage/NoWires"
 

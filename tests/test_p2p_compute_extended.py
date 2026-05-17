@@ -91,7 +91,7 @@ def _load_p2p_compute(monkeypatch):
 
 def _stub_outputs_and_layers(p2p_compute, monkeypatch):
     monkeypatch.setattr(p2p_compute, "_write_p2p_output_layers",
-        lambda *a, **kw: ("/tmp/p.gpkg", "/tmp/f.gpkg", "/tmp/m.gpkg"))
+        lambda *a, **kw: ("/tmp/p.gpkg", "/tmp/f.gpkg", "/tmp/fl.gpkg", "/tmp/m.gpkg"))
     monkeypatch.setattr(p2p_compute, "_load_p2p_qgis_layers", lambda *a, **kw: None)
     monkeypatch.setattr(p2p_compute, "_write_p2p_reports", lambda *a, **kw: None)
     monkeypatch.setattr(p2p_compute, "antenna_gain_adjustment_db", lambda *a, **kw: 0.0)

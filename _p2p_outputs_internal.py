@@ -29,7 +29,7 @@ def _write_p2p_output_layers(srs, paths, tx_lat, tx_lon, rx_lat, rx_lon,
         tx_lat=tx_lat, tx_lon=tx_lon, rx_lat=rx_lat, rx_lon=rx_lon,
         tx_h=tx_h, rx_h=rx_h, tx_gain=tx_gain, rx_gain=rx_gain,
         tx_power_dbm=tx_power, rx_sensitivity_dbm=rx_sens)
-    return profile_path, fresnel_poly_path, markers_path
+    return profile_path, fresnel_poly_path, fresnel_lines_path, markers_path
 
 
 def _write_p2p_reports(report_csv_path, report_json_path, report_html_path,
