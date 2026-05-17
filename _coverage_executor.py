@@ -12,9 +12,7 @@ import numpy as np
 from .coverage_pool import (
     apply_batch_results,
     _dynamic_chunk_size,
-    _init_cov_pool,
     _itm_worker,
-    _itm_worker_batch,
     _make_shared_grid,
     _MAX_WORKERS,
     _release_shared_memory,
@@ -77,6 +75,17 @@ def execute_coverage_tasks(
                 "Computing {} pixels with {} workers...".format(
                     len(tasks), max(1, min(os.cpu_count() or 1, _MAX_WORKERS)))
             )
+        # Resolve _init_cov_pool / _itm_worker_batch through the import
+        # machinery at call time rather than holding references frozen at
+        # module-import time. pickle's identity check
+        # (`getattr(sys.modules[fn.__module__], fn.__qualname__) is fn`)
+        # fails if coverage_pool is re-imported under the same name after
+        # _coverage_executor was loaded — e.g., during a QGIS plugin reload
+        # that touches only some plugin modules. A function-local
+        # `from .coverage_pool import ...` re-binds these names against
+        # the current sys.modules entry each call, so the references handed
+        # to ProcessPoolExecutor are exactly the ones pickle finds.
+        from .coverage_pool import _init_cov_pool, _itm_worker_batch
         shared_grid = None
         try:
             shared_grid = _make_shared_grid(grid_data)
@@ -113,8 +122,18 @@ def execute_coverage_tasks(
                 type(exc).__name__, exc,
             )
             use_mp = False
+            # Route the exception details through feedback.pushWarning so the
+            # cause is visible in the QGIS Processing log panel. Python
+            # logger.warning above can land on a StreamHandler with stream=None
+            # in a GUI-subsystem QGIS build (pythonw.exe-style) and silently
+            # drop the message — leaving the user staring at an opaque
+            # "Multiprocessing unavailable" with no diagnostic trail.
             if feedback:
-                feedback.pushInfo("Multiprocessing unavailable, using single-threaded mode...")
+                feedback.pushWarning(
+                    "Multiprocessing unavailable ({}: {}), using single-threaded mode...".format(
+                        type(exc).__name__, exc,
+                    )
+                )
         finally:
             if shared_grid is not None:
                 _release_shared_memory(shared_grid)
