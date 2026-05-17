@@ -31,13 +31,7 @@ _MIN_CHUNK_SIZE = 64
 _MAX_CHUNK_SIZE = 2048
 
 def _interpolate_nan_elevations(elevs):
-    """Replace NaN elevation values with linearly interpolated neighbours.
-
-    Falls back to the nearest valid value at the edges. Returns the array
-    unchanged if all values are NaN (caller checks np.all(isnan) separately).
-
-    Delegates to the shared nan_utils module to avoid code duplication.
-    """
+    """Replace NaN elevation values with linearly interpolated neighbours."""
     from .nan_utils import interpolate_nan_array
     return interpolate_nan_array(elevs)
 
@@ -69,11 +63,11 @@ _CoverageTask = namedtuple(
 # Module-level shared-memory state for worker processes.
 # Set per-pool by _init_cov_pool, read by _itm_worker. Safe under spawn
 # (each worker gets its own copy). NoThreading flag prevents concurrent
-# runs in the same process. Future multi-pool isolation: replace these
-# plain globals with a dict keyed by pool ID.
+# runs in the same process.
 _cov_shm: Optional[multiprocessing.shared_memory.SharedMemory] = None
 _cov_grid_data: Optional[np.ndarray] = None
 _cov_grid_meta: dict = {}
+_cov_pool_atexit_registered: bool = False
 
 
 def should_use_multiprocessing(os_name=None):
@@ -147,7 +141,10 @@ def _init_cov_pool(shm_name, shape, dtype_str, grid_meta):
     _cov_shm = multiprocessing.shared_memory.SharedMemory(name=shm_name)
     _cov_grid_data = np.ndarray(shape, dtype=np.dtype(dtype_str), buffer=_cov_shm.buf)
     _cov_grid_meta = grid_meta
-    atexit.register(_final_cov_pool)
+    global _cov_pool_atexit_registered
+    if not _cov_pool_atexit_registered:
+        atexit.register(_final_cov_pool)
+        _cov_pool_atexit_registered = True
 
 
 def _itm_worker(args, grid_data=None, grid_meta=None):

@@ -147,8 +147,10 @@ def download_and_merge_tiles(
             clip_result = None
         else:
             continue
-        if gdal.Open(fn_clip) is None:
+        test_ds = gdal.Open(fn_clip)
+        if test_ds is None:
             continue
+        test_ds = None
         clipped_rasters.append(fn_clip)
         progress += 1
         feedback.setProgress(int(progress * status_total))

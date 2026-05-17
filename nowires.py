@@ -83,6 +83,7 @@ class NoWiresPlugin:
         self._toolbar_actions = []
         self._menu_actions = []
         self._opacity_dialog = None
+        self._pattern_preview_dialog = None
 
     def initProcessing(self):
         """Register the processing provider."""
@@ -178,6 +179,9 @@ class NoWiresPlugin:
         if self._opacity_dialog is not None:
             self._opacity_dialog.close()
             self._opacity_dialog = None
+        if self._pattern_preview_dialog is not None:
+            self._pattern_preview_dialog.close()
+            self._pattern_preview_dialog = None
         remove_coverage_legend()
         if self.provider is not None:
             QgsApplication.processingRegistry().removeProvider(self.provider)
@@ -243,6 +247,8 @@ class NoWiresPlugin:
 
     def run_pattern_preview(self):
         from .antenna_pattern_preview import AntennaPatternPreviewDialog
+        if self._pattern_preview_dialog is not None:
+            self._pattern_preview_dialog.close()
         dlg = AntennaPatternPreviewDialog(parent=self.iface.mainWindow())
         dlg.show()
-        self._pattern_preview_dialog = dlg  # keep ref alive
+        self._pattern_preview_dialog = dlg
