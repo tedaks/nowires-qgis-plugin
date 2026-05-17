@@ -183,7 +183,7 @@ class TestComputeAdvancedLoss:
         import logging as _logging
         # Reset the module-level latch so this test is independent of order.
         import clutter_resolve
-        clutter_resolve._warned_low_vhf_p2108_combined = False
+        clutter_resolve._STATE.warned_low_vhf = False
         with caplog.at_level(_logging.WARNING, logger="clutter_advanced"):
             compute_advanced_loss("urban", "rx", _ctx(frequency_mhz=47.0))
             compute_advanced_loss("suburban", "rx", _ctx(frequency_mhz=47.0))
