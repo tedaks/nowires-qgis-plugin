@@ -3,8 +3,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import logging
+from dataclasses import dataclass
+
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class WorkerError:
+    message: str
 
 
 def apply_batch_results(batch_results, loss_grid, prx_grid, itm_loss_grid,
@@ -13,9 +20,9 @@ def apply_batch_results(batch_results, loss_grid, prx_grid, itm_loss_grid,
     for result in batch_results:
         if result is None:
             pixels_failed += 1
-        elif isinstance(result, tuple) and len(result) == 2 and result[0] == "error":
+        elif isinstance(result, WorkerError):
             pixels_failed += 1
-            logger.warning("Coverage pixel failed in worker: %s", result[1])
+            logger.warning("Coverage pixel failed in worker: %s", result.message)
         else:
             i, j, loss_db, prx, itm_loss_db, c_tx, c_rx, bel_rx = result
             loss_grid[i, j] = loss_db
