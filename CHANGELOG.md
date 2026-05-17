@@ -34,6 +34,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reconcile sequential-mode notice in `_coverage_executor.py` with MP-fallback message: `"Using single-threaded mode..."` → `"Single-threaded mode: no multiprocessing detected"`.
 - Replace `# type: ignore[arg-type]` cluster in `comparison_reporting.py` with explicit `assert tmpdir is not None`; removes three type-ignore suppressions.
 - Break `clutter.py` ↔ `clutter_advanced.py` import cycle: move `TerminalClutterLosses` from `clutter.py` to `clutter_context.py`, eliminating the deferred-import workaround.
+- Extract a single shared bilinear sampler into `_bilinear.py` (`bilinear_sample`, `bilinear_sample_grid`, `bilinear_sample_grid`), consolidating four re-implementations in `ElevationGrid.sample`, `ElevationGrid.sample_line`, `ElevationGrid.sample_grid`, and `sample_line_from_grid`.
+- Promote underscore-private clutter symbols to public API: `_ClutterComponents` → `ClutterComponents`, `_compute_advanced_loss` → `compute_advanced_loss`, `_resolve_category_advanced` → `resolve_category_advanced`; move `legacy_to_advanced_override` from `clutter_resolve.py` to `clutter_categories.py`.
+- Improve `worldcover_class_to_clutter_category` out-of-range handling: early-return `"open"` for invalid class IDs instead of `% 256` fallthrough.
+- Wrap `document.print(printer)` in `report_pdf.write_report_pdf` in try/except with `logger.debug` and `return False` on failure.
+- Add module description to `nowires.py`.
+- Single-source per-category P.2108 parameters: derive `p2108_height_gain._CATEGORY_PARAMS` from `clutter_categories.CLUTTER_CATEGORY_PARAMS` instead of duplicating `R_m` and method tags.
+- Convert stringly-typed enums to `typing.Literal`: add `ClutterModel = Literal["simple", "advanced"]` and `BuildingType = Literal["traditional", "thermally_efficient"]` in `clutter_context.py`; update type annotations across all call sites.
+- Replace length-tag dispatch `isinstance(result, tuple) and len(result) == 2 and result[0] == "error"` in `_coverage_result_dispatch.py` with `WorkerError` frozen dataclass sentinel.
+- Move `_warned_low_vhf_p2108_combined` global mutable flag into `_P2108State` dataclass in `clutter_resolve.py`; tests can reset via `_STATE.warned_low_vhf = False`.
+
+### Added
+
+- Added `test_p2108_category_params_derived_from_clutter_categories.py` — consistency test verifying `_CATEGORY_PARAMS` in `p2108_height_gain` is derived from `CLUTTER_CATEGORY_PARAMS`.
+- Added `test_worker_error_sentinel.py` — regression test for `WorkerError` dataclass sentinel replacing length-tag dispatch.
+
+### Deferred
+### Added
 
 ## [1.5.7] - 2026-05-17
 
@@ -75,21 +92,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned (PATCH — tech-debt / cleanup, zero behavior change)
 
-- Extract a single shared bilinear sampler. The same `-0.5` cell-edge-to-center shift and weighted-blend formula is reimplemented four times: `ElevationGrid.sample` (scalar), `ElevationGrid.sample_line` (1D), `ElevationGrid.sample_grid` (2D) (`elevation.py:168-253`), and `sample_line_from_grid` (`_geo_utils.py:14-48`). A helper that takes `(data, grid_meta, lats, lons)` and dispatches on shape would consolidate the four.
-- Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 44 positional/keyword params (`coverage_engine.py:102`), `build_p2p_report_payload` carries 41 (`report_payloads.py:58`), `build_coverage_report_payload_for_grid` carries 32 (`coverage_reporting.py:49`). Most of the natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist elsewhere in the codebase; the work is wiring them through.
-- Convert remaining stringly-typed enums to `typing.Literal`: clutter model (`"simple"` / `"advanced"`), building type (`"traditional"` / `"thermally_efficient"`), ITM climate strings.
-- Deduplicate TOCTOU-safe directory creation.
-- Make the underscore-private clutter symbols imported by `coverage_tasks.py:31-37` (`_ClutterComponents`, `_compute_advanced_loss`, `_legacy_to_advanced_override`, `_resolve_category_advanced`) part of `clutter_advanced.py`'s public API — either by dropping the underscore prefix or by exposing a narrow `clutter_advanced_api` surface. The current state advertises "private" while having an out-of-module consumer.
-- Decompose three long functions: `run_p2p_analysis` (183 lines, `p2p_compute.py:118-300`), `_compute_single_link` (158 lines, `batch_outputs.py:65-222`), `run_panel_coverage` (232 lines, `comparison_panel.py:51-282`). Suggested seams: separate layer/report writing from the computation core in `run_p2p_analysis`; lift the per-rank-by branches out of `_compute_single_link`; split parameter-extraction from execution in `run_panel_coverage`.
-- Single-source the per-category P.2108 parameters. `clutter_categories.py` and `p2108_height_gain.py:28-33` both define `R_m` and the method tag (`p2108_3_1_method` vs `method`) for each category, and changes today must be synchronised by hand. Pick one as canonical and derive the other.
-- Improve `worldcover_class_to_clutter_category` out-of-range handling (`clutter.py:53-57`). Today it warns and then does `raw % 256`, which silently aliases invalid IDs onto valid categories. Fall back to `"open"` (or raise) instead.
-- Replace the length-tag dispatch in `coverage_pool.apply_batch_results` (`_coverage_result_dispatch.py`) with an explicit sentinel. Use a small `WorkerError` dataclass or a sentinel object instead of the current `isinstance(result, tuple) and len(result) == 2 and result[0] == "error"` pattern.
+- Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 35 params, `build_p2p_report_payload` carries 35, `build_coverage_report_payload_for_grid` carries 31. Most natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist; the work is wiring them through.
+- Decompose three long functions: `run_p2p_analysis` (183 lines), `_compute_single_link` (158 lines), `run_panel_coverage` (232 lines).
 - Re-examine the tile-cache validation in `tile_download_base.download_tile_with_retry`. Any `ComputeStatistics` failure on a cached file is treated as corruption — consider validating only structural integrity on cache hits.
 - Reconsider the overall wall-clock deadline in `dem_downloader.download_tiles`. Either drop the overall deadline or scale it with tile count.
-- Minor polish:
-  - Wrap `document.print(printer)` in `report_pdf.write_report_pdf` in try/except so disk-full/permission errors surface as a clean status.
-  - Move the global mutable `_warned_low_vhf_p2108_combined` flag into a small `_State` dataclass so tests can reset it.
-  - Add a real module description to `nowires.py`.
 
 ### Planned for v1.6.0  (MINOR — additive features)
 
