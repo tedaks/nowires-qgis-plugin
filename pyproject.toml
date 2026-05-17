@@ -1,6 +1,6 @@
 [project]
 name = "nowires-qgis-plugin"
-version = "1.5.6"
+version = "1.5.7"
 description = "QGIS plugin for radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM"
 requires-python = ">=3.12"
 license = {text = "GPL-3.0-or-later"}
@@ -21,6 +21,7 @@ dev = [
 markers = [
     "benchmark: benchmark tests (deselect with '-m \"not benchmark\"')",
     "qgis_integration: requires a real QGIS runtime (deselect with '-m \"not qgis_integration\"')",
+    "gdal_integration: requires numpy-compatible GDAL bindings (deselect with '-m \"not gdal_integration\"')",
     "qt_dialog: requires Qt libraries for headless dialog testing",
 ]
 

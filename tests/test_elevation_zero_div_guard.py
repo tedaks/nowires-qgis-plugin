@@ -11,6 +11,7 @@ in the source code directly.
 """
 
 import os
+import pytest
 import numpy as np
 
 
@@ -19,6 +20,7 @@ _PLUGIN_DIR = os.path.join(_HERE, os.pardir)
 _SOURCE_FILE = os.path.normpath(os.path.join(_PLUGIN_DIR, "elevation.py"))
 
 
+@pytest.mark.gdal_integration
 def test_elevation_grid_source_has_zero_rows_cols_guard():
     """ElevationGrid.__init__ must guard against zero n_rows/n_cols."""
     with open(_SOURCE_FILE) as f:
@@ -31,6 +33,7 @@ def test_elevation_grid_source_has_zero_rows_cols_guard():
     )
 
 
+@pytest.mark.gdal_integration
 def test_elevation_grid_guard_before_division():
     """The zero check must appear before the d_lat/d_lon computation."""
     with open(_SOURCE_FILE) as f:
@@ -44,6 +47,7 @@ def test_elevation_grid_guard_before_division():
     )
 
 
+@pytest.mark.gdal_integration
 def test_elevation_grid_normal_dem_works(tmp_path):
     """ElevationGrid with a valid DEM must not raise."""
     from osgeo import gdal
