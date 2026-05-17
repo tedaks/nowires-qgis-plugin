@@ -19,6 +19,10 @@ import os
 
 import pytest
 
+pytestmark = pytest.mark.skipif(
+    not hasattr(os, "geteuid"), reason="/dev/shm cleanup is POSIX-only"
+)
+
 
 # Use shared_dem_grid directly — it has no qgis dependency, which keeps this
 # test isolated from sys.modules["qgis.core"] pollution that other test files

@@ -100,113 +100,111 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         clutter_grid = ensure_clutter_grid_for_area(
             south=south, north=north, west=west, east=east, feedback=p.feedback)
         owns_clutter_grid = clutter_grid is not None
-    p.feedback.pushInfo("Downloading DEM data for path...")
-    p.feedback.setProgress(5)
-    dem_path = ensure_dem_for_area(
-        south, north, west, east, feedback=p.feedback)
-    if dem_path is None:
-        raise QgsProcessingException(
-            "Failed to obtain DEM data for the path area.")
-    p.feedback.setProgress(30)
-    p.feedback.pushInfo("Building elevation grid...")
-    with ElevationGrid(dem_path) as elev:
-        points = elev.terrain_profile(
-            p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon, step_m=DEFAULT_PROFILE_STEP_M)
-    if len(points) < 2:
-        raise QgsProcessingException("Terrain profile too short.")
-    distances = [pt[0] for pt in points]
-    elevations = [pt[1] for pt in points]
-    nan_count = sum(1 for e in elevations if math.isnan(e))
-    if nan_count > 0:
-        if nan_count == len(elevations):
-            raise QgsProcessingException(
-                "All {} elevation samples are NaN — "
-                "DEM data is missing for this path.".format(nan_count))
-        p.feedback.pushInfo(
-            "Interpolating {} NaN elevation value(s) from nearest "
-            "valid samples (missing DEM data)".format(nan_count))
-        logger.warning(
-            "Interpolating %d NaN elevation value(s) from nearest "
-            "valid samples (missing DEM data)", nan_count)
-        elevations = _interpolate_nan_elevations(elevations)
-    step_m_val = dist_m / max(len(distances) - 1, 1)
-    pfl = build_pfl(elevations, step_m_val)
-    p.feedback.setProgress(50)
-    result = itm_p2p_loss(h_tx__meter=p.tx_h, h_rx__meter=p.rx_h, profile=pfl,
-        climate=p.climate, N0=p.n0, f__mhz=p.f_mhz, polarization=p.polarization,
-        epsilon=p.epsilon, sigma=p.sigma, time_pct=p.time_pct,
-        location_pct=p.location_pct, situation_pct=p.situation_pct)
-    if result.failed or not math.isfinite(result.loss_db):
-        raise QgsProcessingException(
-            "ITM prediction failed (loss_db={:.1f}, mode={}, "
-            "warnings={}).".format(result.loss_db, result.mode, result.warnings))
-    if result.loss_db > ITM_LOSS_UPPER_BOUND:
-        logger.debug("ITM loss %.1f dB exceeds cap (%.1f); capping",
-                     result.loss_db, ITM_LOSS_UPPER_BOUND)
-    loss_db = min(result.loss_db, ITM_LOSS_UPPER_BOUND)
-    tx_elev, rx_elev = elevations[0], elevations[-1]
-    tx_ant_h, rx_ant_h = tx_elev + p.tx_h, rx_elev + p.rx_h
-    wavelength_m = C_LIGHT / (p.f_mhz * 1e6)
-    dist_arr = np.asarray(distances, dtype=np.float64)
-    elev_arr = np.asarray(elevations, dtype=np.float64)
-    terrain_bulge, los_h, fresnel_r, obstructs, vf1, vf60 = (
-        fresnel_profile_analysis(
-            dist_arr, elev_arr, tx_ant_h, rx_ant_h,
-            dist_m, wavelength_m, p.k_factor))
-    los_blocked = bool(obstructs.any())
-    f1_violated = bool(vf1.any())
-    f60_violated = bool(vf60.any())
-    eirp_dbm = p.tx_power + p.tx_gain - p.cable_loss
-    tx_bearing = bearing_deg(p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon)
-    rx_bearing = bearing_deg(p.rx_lat, p.rx_lon, p.tx_lat, p.tx_lon)
-    vert_angle = math.degrees(math.atan2(
-        (rx_elev + p.rx_h) - (tx_elev + p.tx_h), max(dist_m, 1.0)))
-    ant_adj_total = (
-        antenna_gain_adjustment_db(tx_bearing, vert_angle, p.tx_antenna_config)
-        + antenna_gain_adjustment_db(rx_bearing, -vert_angle, p.rx_antenna_config))
-    clutter_context = None
-    if p.clutter_enabled:
-        from .clutter_context import ClutterLossContext
-        clutter_context = ClutterLossContext(
-            frequency_mhz=p.f_mhz, distance_m=dist_m,
-            tx_height_m=p.tx_h, rx_height_m=p.rx_h,
-            rx_ground_elevation_m=float(rx_elev),
-            tx_ground_elevation_m=float(tx_elev),
-            polarization=p.polarization, cch_override_m=p.cch_override_m,
-            model=p.clutter_model, percentile=p.clutter_percentile,
-            street_width_m=p.street_width_m, bel_enabled=p.bel_enabled,
-            bel_building_type=p.bel_building_type,
-            bel_elevation_angle_deg=p.bel_elevation_angle_deg)
-    cl = compute_terminal_clutter_losses(
-        tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.rx_lat, rx_lon=p.rx_lon,
-        frequency_mhz=p.f_mhz, enabled=p.clutter_enabled,
-        land_cover_grid=clutter_grid, tx_override=p.tx_clutter_override,
-        rx_override=p.rx_clutter_override, context=clutter_context)
-    total_path_loss_db = loss_db + cl.total_with_bel_db
-    prx_dbm = eirp_dbm + p.rx_gain + ant_adj_total - total_path_loss_db
-    margin_db = prx_dbm - p.rx_sens
-    fspl_db = 20.0 * math.log10(dist_m / 1000.0) + 20.0 * math.log10(p.f_mhz) + 32.45
-    p.feedback.setProgress(70)
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(4326)
-    srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
     needs_temp_dir = not (p.profile_dest and p.fresnel_dest and p.markers_dest)
     tmp_mgr = TempDirManager()
     try:
+        p.feedback.pushInfo("Downloading DEM data for path...")
+        p.feedback.setProgress(5)
+        dem_path = ensure_dem_for_area(
+            south, north, west, east, feedback=p.feedback)
+        if dem_path is None:
+            raise QgsProcessingException(
+                "Failed to obtain DEM data for the path area.")
+        p.feedback.setProgress(30)
+        p.feedback.pushInfo("Building elevation grid...")
+        with ElevationGrid(dem_path) as elev:
+            points = elev.terrain_profile(
+                p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon, step_m=DEFAULT_PROFILE_STEP_M)
+        if len(points) < 2:
+            raise QgsProcessingException("Terrain profile too short.")
+        distances = [pt[0] for pt in points]
+        elevations = [pt[1] for pt in points]
+        nan_count = sum(1 for e in elevations if math.isnan(e))
+        if nan_count > 0:
+            if nan_count == len(elevations):
+                raise QgsProcessingException(
+                    "All {} elevation samples are NaN — "
+                    "DEM data is missing for this path.".format(nan_count))
+            p.feedback.pushInfo(
+                "Interpolating {} NaN elevation value(s) from nearest "
+                "valid samples (missing DEM data)".format(nan_count))
+            logger.warning(
+                "Interpolating %d NaN elevation value(s) from nearest "
+                "valid samples (missing DEM data)", nan_count)
+            elevations = _interpolate_nan_elevations(elevations)
+        step_m_val = dist_m / max(len(distances) - 1, 1)
+        pfl = build_pfl(elevations, step_m_val)
+        p.feedback.setProgress(50)
+        result = itm_p2p_loss(h_tx__meter=p.tx_h, h_rx__meter=p.rx_h, profile=pfl,
+            climate=p.climate, N0=p.n0, f__mhz=p.f_mhz, polarization=p.polarization,
+            epsilon=p.epsilon, sigma=p.sigma, time_pct=p.time_pct,
+            location_pct=p.location_pct, situation_pct=p.situation_pct)
+        if result.failed or not math.isfinite(result.loss_db):
+            raise QgsProcessingException(
+                "ITM prediction failed (loss_db={:.1f}, mode={}, "
+                "warnings={}).".format(result.loss_db, result.mode, result.warnings))
+        if result.loss_db > ITM_LOSS_UPPER_BOUND:
+            logger.debug("ITM loss %.1f dB exceeds cap (%.1f); capping",
+                         result.loss_db, ITM_LOSS_UPPER_BOUND)
+        loss_db = min(result.loss_db, ITM_LOSS_UPPER_BOUND)
+        tx_elev, rx_elev = elevations[0], elevations[-1]
+        tx_ant_h, rx_ant_h = tx_elev + p.tx_h, rx_elev + p.rx_h
+        wavelength_m = C_LIGHT / (p.f_mhz * 1e6)
+        dist_arr = np.asarray(distances, dtype=np.float64)
+        elev_arr = np.asarray(elevations, dtype=np.float64)
+        terrain_bulge, los_h, fresnel_r, obstructs, vf1, vf60 = (
+            fresnel_profile_analysis(
+                dist_arr, elev_arr, tx_ant_h, rx_ant_h,
+                dist_m, wavelength_m, p.k_factor))
+        los_blocked = bool(obstructs.any())
+        f1_violated = bool(vf1.any())
+        f60_violated = bool(vf60.any())
+        eirp_dbm = p.tx_power + p.tx_gain - p.cable_loss
+        tx_bearing = bearing_deg(p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon)
+        rx_bearing = bearing_deg(p.rx_lat, p.rx_lon, p.tx_lat, p.tx_lon)
+        vert_angle = math.degrees(math.atan2(
+            (rx_elev + p.rx_h) - (tx_elev + p.tx_h), max(dist_m, 1.0)))
+        ant_adj_total = (
+            antenna_gain_adjustment_db(tx_bearing, vert_angle, p.tx_antenna_config)
+            + antenna_gain_adjustment_db(rx_bearing, -vert_angle, p.rx_antenna_config))
+        clutter_context = None
+        if p.clutter_enabled:
+            from .clutter_context import ClutterLossContext
+            clutter_context = ClutterLossContext(
+                frequency_mhz=p.f_mhz, distance_m=dist_m,
+                tx_height_m=p.tx_h, rx_height_m=p.rx_h,
+                rx_ground_elevation_m=float(rx_elev),
+                tx_ground_elevation_m=float(tx_elev),
+                polarization=p.polarization, cch_override_m=p.cch_override_m,
+                model=p.clutter_model, percentile=p.clutter_percentile,
+                street_width_m=p.street_width_m, bel_enabled=p.bel_enabled,
+                bel_building_type=p.bel_building_type,
+                bel_elevation_angle_deg=p.bel_elevation_angle_deg)
+        cl = compute_terminal_clutter_losses(
+            tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.rx_lat, rx_lon=p.rx_lon,
+            frequency_mhz=p.f_mhz, enabled=p.clutter_enabled,
+            land_cover_grid=clutter_grid, tx_override=p.tx_clutter_override,
+            rx_override=p.rx_clutter_override, context=clutter_context)
+        total_path_loss_db = loss_db + cl.total_with_bel_db
+        prx_dbm = eirp_dbm + p.rx_gain + ant_adj_total - total_path_loss_db
+        margin_db = prx_dbm - p.rx_sens
+        fspl_db = 20.0 * math.log10(dist_m / 1000.0) + 20.0 * math.log10(p.f_mhz) + 32.45
+        p.feedback.setProgress(70)
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+        srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
         if needs_temp_dir:
             temp_dir = os.path.join(get_temp_dir(), "p2p_outputs")
             os.makedirs(temp_dir, exist_ok=True)
         else:
             temp_dir = None
-        profile_path, fresnel_poly_path, markers_path = _write_p2p_output_layers(
+        profile_path, fresnel_poly_path, fresnel_lines_path, markers_path = _write_p2p_output_layers(
                 srs, dict(profile_dest=p.profile_dest, fresnel_dest=p.fresnel_dest,
                     markers_dest=p.markers_dest, temp_dir=temp_dir),
                 p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon, dist_m, result,
                 dist_arr, terrain_bulge, los_h, fresnel_r,
                 p.tx_h, p.rx_h, p.tx_gain, p.rx_gain, p.tx_power, p.rx_sens,
                 itm_loss_db=loss_db)
-        _poly_root, _poly_ext = os.path.splitext(fresnel_poly_path)
-        fresnel_lines_path = "{}_lines{}".format(_poly_root, _poly_ext)
         report_payload = build_p2p_report_payload(
             tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.rx_lat, rx_lon=p.rx_lon,
             tx_h=p.tx_h, rx_h=p.rx_h, f_mhz=p.f_mhz,
