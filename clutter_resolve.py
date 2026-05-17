@@ -1,6 +1,9 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
+from __future__ import annotations
+
 import logging
+from dataclasses import dataclass
 
 from .clutter_categories import (
     legacy_to_advanced_override,
@@ -9,14 +12,19 @@ from .clutter_categories import (
 
 logger = logging.getLogger(__name__)
 
-_warned_low_vhf_p2108_combined = False
+
+@dataclass
+class _P2108State:
+    warned_low_vhf: bool = False
+
+
+_STATE = _P2108State()
 
 
 def _maybe_warn_low_vhf_p2108_combined(f_ghz, category):
-    global _warned_low_vhf_p2108_combined
-    if _warned_low_vhf_p2108_combined:
+    if _STATE.warned_low_vhf:
         return
-    _warned_low_vhf_p2108_combined = True
+    _STATE.warned_low_vhf = True
     logger.warning(
         "P.2108 §3.2 invalid below 0.5 GHz; advanced clutter for category "
         "%s at %.3f GHz contributes 0 dB. Consider 'simple' mode for "
@@ -25,13 +33,9 @@ def _maybe_warn_low_vhf_p2108_combined(f_ghz, category):
     )
 
 
-def _legacy_to_advanced_override(name):
-    return legacy_to_advanced_override(name)
-
-
-def _resolve_category_advanced(lat, lon, override, land_cover_grid):
+def resolve_category_advanced(lat, lon, override, land_cover_grid):
     if override:
-        return _legacy_to_advanced_override(override), "override"
+        return legacy_to_advanced_override(override), "override"
     if land_cover_grid is not None:
         class_id = land_cover_grid.sample_class(lat, lon)
         if class_id is not None:

@@ -22,5 +22,5 @@ class TestP2pChartModuleContract:
         assert p2p_chart.__all__ == ["show_profile_chart"]
 
     def test_fresnel_60pct_factor_import(self):
-        from defaults import FRESNEL_60PCT_FACTOR
+        from constants import FRESNEL_60PCT_FACTOR
         assert 0.0 < FRESNEL_60PCT_FACTOR < 1.0

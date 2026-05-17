@@ -16,7 +16,6 @@ import shutil
 import tempfile
 
 from qgis.core import (
-    QgsCoordinateReferenceSystem,
     QgsGeometry,
     QgsProcessingException,
     QgsProcessingParameterAuthConfig,
@@ -32,7 +31,7 @@ from qgis.core import (
 )
 
 from .base_algorithm import NoWiresAlgorithm
-from .constants import MAX_AOI_EXTENT_DEGREES, FEET_PER_METER
+from .constants import MAX_AOI_EXTENT_DEGREES, FEET_PER_METER, WGS84_CRS
 
 from .contour_generation import generate_contour_lines, reproject_and_export
 from .contour_pipeline import (
@@ -42,7 +41,9 @@ from .contour_pipeline import (
     load_dem_output,
     load_overlay_layer,
 )
-from .contour_smoothing import _raster_calc, smooth_contour_dem
+from .contour_smoothing import (
+    SMOOTHING_OPTIONS, SMOOTHING_MEDIUM, _raster_calc, smooth_contour_dem,
+)
 from .contour_symbology import apply_contour_symbology
 from .dem_downloader import get_temp_dir
 from .processing_utils import queue_layer_for_loading, register_destination_layer
@@ -94,7 +95,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             defaultValue=10, minValue=1, maxValue=5000, optional=False))
         self.addParameter(QgsProcessingParameterEnum(
             name=self.SMOOTHING, description=self.tr("Contour line smoothing level"),
-            options=["None", "Low", "Medium", "High"], defaultValue="Medium",
+            options=SMOOTHING_OPTIONS, defaultValue=SMOOTHING_MEDIUM,
             usesStaticStrings=True, optional=False))
         color_param = QgsProcessingParameterColor(
             name=self.COLOR, description=self.tr("Contour line colour"),
@@ -117,7 +118,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
     def _validate_aoi(self, parameters, context):
         aoi = self.parameterAsExtent(
             parameters, self.AREA_OF_INTEREST, context,
-            crs=QgsCoordinateReferenceSystem("EPSG:4326"))
+            crs=WGS84_CRS)
         if aoi.isNull() or not aoi.isFinite():
             raise QgsProcessingException(self.tr(
                 "Invalid area of interest (NaN values detected).\n\n"
@@ -208,7 +209,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
 
             output_dest = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
             project = context.project()
-            target_crs = project.crs() if project is not None else QgsCoordinateReferenceSystem("EPSG:4326")
+            target_crs = project.crs() if project is not None else WGS84_CRS
             try:
                 final_output_path, reproj_dir = reproject_and_export(
                     contour_shp_path, target_crs, output_dest,

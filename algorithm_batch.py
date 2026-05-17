@@ -28,7 +28,7 @@ import logging
 from typing import Any
 from qgis.core import QgsProcessingException
 from .base_algorithm import NoWiresAlgorithm, install_constants
-from .constants import DEGREE_PADDING
+from .constants import DEGREE_PADDING, WGS84_CRS
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
 from .geo_bounds import shortest_longitude_bounds_for, validate_coordinates
@@ -114,9 +114,9 @@ def _extract_batch_radio_params(algorithm, parameters, context):
         bel_elevation_angle_deg=c.bel_elevation_angle_deg)
 
 def _collect_batch_inputs(algorithm, parameters, context, feedback):
-    from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform
+    from qgis.core import QgsCoordinateTransform
     mode = algorithm.parameterAsEnum(parameters, algorithm.MODE, context)
-    wgs84 = QgsCoordinateReferenceSystem("EPSG:4326")
+    wgs84 = WGS84_CRS
     cache: dict[str, Any] = {}
     def _xform(point, src_crs):
         if src_crs is None or not src_crs.isValid() or src_crs.authid().upper() == "EPSG:4326":

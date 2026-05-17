@@ -25,11 +25,15 @@
 Shared processing utilities for NoWires algorithms.
 """
 
+import logging
+
 from qgis.core import (
     QgsProcessingContext,
     QgsProcessingLayerPostProcessorInterface,
     QgsProject,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def queue_layer_for_loading(context, layer, name):
@@ -98,7 +102,8 @@ def register_destination_layer(context, path, name, styler=None):
     try:
         if not context.willLoadLayerOnCompletion(path):
             return None
-    except Exception:
+    except Exception as exc:
+        logger.debug("willLoadLayerOnCompletion check: %s", exc)
         return None
     details = context.layerToLoadOnCompletionDetails(path)
     if details is None:

@@ -26,6 +26,7 @@ from NoWires.coverage_pool import (
     _itm_worker_batch,
     _final_cov_pool,
 )
+from NoWires._coverage_result_dispatch import WorkerError
 
 
 class TestInterpolateNANElevations:
@@ -146,7 +147,7 @@ class TestApplyBatchResults:
         )
         assert failed == 1
 
-    def test_error_tuple_increments_failure_count(self):
+    def test_worker_error_increments_failure_count(self):
         n = 2
         loss = np.full((n, n), np.nan)
         prx = np.full((n, n), np.nan)
@@ -155,7 +156,7 @@ class TestApplyBatchResults:
         clutter_rx = np.full((n, n), np.nan)
         bel_rx = np.full((n, n), np.nan)
 
-        results = [("error", "something broke")]
+        results = [WorkerError("something broke")]
 
         failed = apply_batch_results(
             results, loss, prx, itm_loss, clutter_loss, clutter_rx, bel_rx,

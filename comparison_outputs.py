@@ -34,6 +34,7 @@ from qgis.core import (
     QgsSingleBandPseudoColorRenderer,
 )
 
+from .comparison_params import DELTA_STYLE_DIVERGING, DELTA_STYLE_THRESHOLD
 from .raster_io import write_geotiff
 from .processing_utils import queue_layer_for_loading, register_destination_layer
 
@@ -57,7 +58,7 @@ def write_delta_raster(tif_path, delta_grid, min_lat, max_lat, min_lon, max_lon)
     write_geotiff(tif_path, delta_grid, min_lat, max_lat, min_lon, max_lon)
 
 
-def apply_delta_style(layer, threshold_db, style="diverging"):
+def apply_delta_style(layer, threshold_db, style=DELTA_STYLE_DIVERGING):
     """Apply color ramp to delta raster. 'diverging' uses blue-white-red;
     'threshold' shows only three categories: improved, unchanged, degraded."""
     from qgis.PyQt.QtGui import QColor
@@ -65,7 +66,7 @@ def apply_delta_style(layer, threshold_db, style="diverging"):
     provider = layer.dataProvider()
     entries = []
 
-    if style == "threshold":
+    if style == DELTA_STYLE_THRESHOLD:
         entries = [
             QgsColorRampShader.ColorRampItem(
                 -1e6, QColor(30, 80, 180), f"A better (<-{threshold_db:.0f} dB)"
@@ -106,7 +107,7 @@ def apply_delta_style(layer, threshold_db, style="diverging"):
         ]
 
     color_ramp_shader = QgsColorRampShader()
-    if style != "threshold":
+    if style != DELTA_STYLE_THRESHOLD:
         color_ramp_shader.setColorRampType(QgsColorRampShader.Interpolated)
     color_ramp_shader.setColorRampItemList(entries)
 
@@ -239,7 +240,7 @@ def compute_delta_summary(loss_grid_a, loss_grid_b, threshold_db):
         "valid_pixels": valid_count, "total_pixels": total_count,
         "min_delta": min_delta, "max_delta": max_delta, "mean_delta": mean_delta,
         "loss_delta_grid": loss_delta_grid, "valid_mask": valid_mask,
-        "threshold_db": threshold_db, "style": "diverging",
+        "threshold_db": threshold_db, "style": DELTA_STYLE_DIVERGING,
     }
     return delta_info
 

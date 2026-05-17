@@ -30,7 +30,7 @@ import logging
 
 import numpy as np
 
-from .defaults import FRESNEL_60PCT_FACTOR
+from .constants import FRESNEL_60PCT_FACTOR
 
 logger = logging.getLogger(__name__)
 
@@ -276,8 +276,8 @@ def show_profile_chart(
         if _tooltip_cid[0] is not None:
             try:
                 fig.canvas.mpl_disconnect(_tooltip_cid[0])
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("matplotlib disconnect: %s", exc)
             _tooltip_cid[0] = None
 
     class _ChartCanvas(FigureCanvasQTAgg):

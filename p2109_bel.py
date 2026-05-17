@@ -2,6 +2,8 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from __future__ import annotations
+
 """ITU-R P.2109-2 — Building Entry Loss.
 
 Validity: 0.08–100 GHz, building type 'traditional' or 'thermally_efficient',
@@ -13,6 +15,7 @@ import math
 
 import numpy as np
 
+from .clutter_context import BuildingType
 from .p2108_common import f_inv_normal, validate_frequency_ghz
 
 logger = logging.getLogger(__name__)
@@ -20,7 +23,7 @@ logger = logging.getLogger(__name__)
 _FREQ_MIN_GHZ = 0.08
 _FREQ_MAX_GHZ = 100.0
 
-_COEFFS = {
+_COEFFS: dict[BuildingType, dict[str, float]] = {
     "traditional": {
         "r": 12.64, "s": 3.72, "t": 0.96,
         "u": 9.6, "v": 2.0,
@@ -38,7 +41,7 @@ _COEFFS = {
 _C = -3.0
 
 
-def building_entry_loss(f_ghz, building_type, theta_deg=0.0, p=50.0):
+def building_entry_loss(f_ghz, building_type: BuildingType = "traditional", theta_deg=0.0, p=50.0):
     """P.2109-2 building entry loss (dB).
 
     Args:
@@ -76,7 +79,7 @@ def building_entry_loss(f_ghz, building_type, theta_deg=0.0, p=50.0):
     return max(0.0, L_BEL)
 
 
-def building_entry_loss_vec(f_ghz_arr, building_type, theta_deg=0.0, p=50.0):
+def building_entry_loss_vec(f_ghz_arr, building_type: BuildingType = "traditional", theta_deg=0.0, p=50.0):
     """Vectorized P.2109-2 building entry loss.
 
     Args:
