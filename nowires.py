@@ -83,6 +83,7 @@ class NoWiresPlugin:
         self._toolbar_actions = []
         self._menu_actions = []
         self._opacity_dialog = None
+        self._pattern_preview_dialog = None
 
     def initProcessing(self):
         """Register the processing provider."""
@@ -145,17 +146,9 @@ class NoWiresPlugin:
 
     @staticmethod
     def _cleanup_stale_shared_memory():
-        prefix = "nowires_dem_"
         try:
-            import glob as _glob
-            import os as _os
-            dev_shm = _os.path.join(_os.sep, "dev", "shm")
-            if _os.path.isdir(dev_shm):
-                for entry in _glob.iglob(_os.path.join(dev_shm, prefix + "*")):
-                    try:
-                        _os.unlink(entry)
-                    except OSError:
-                        pass
+            from .shared_dem_grid import cleanup_stale_shm_entries
+            cleanup_stale_shm_entries("/dev/shm", os.geteuid())
         except Exception:
             pass
 
@@ -186,6 +179,9 @@ class NoWiresPlugin:
         if self._opacity_dialog is not None:
             self._opacity_dialog.close()
             self._opacity_dialog = None
+        if self._pattern_preview_dialog is not None:
+            self._pattern_preview_dialog.close()
+            self._pattern_preview_dialog = None
         remove_coverage_legend()
         if self.provider is not None:
             QgsApplication.processingRegistry().removeProvider(self.provider)
@@ -251,6 +247,8 @@ class NoWiresPlugin:
 
     def run_pattern_preview(self):
         from .antenna_pattern_preview import AntennaPatternPreviewDialog
+        if self._pattern_preview_dialog is not None:
+            self._pattern_preview_dialog.close()
         dlg = AntennaPatternPreviewDialog(parent=self.iface.mainWindow())
         dlg.show()
-        self._pattern_preview_dialog = dlg  # keep ref alive
+        self._pattern_preview_dialog = dlg
