@@ -2,6 +2,8 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from __future__ import annotations
+
 """ITU-R P.2108-1 Section 3.2 — Statistical clutter loss for terrestrial paths.
 
 Validity: 0.5–67 GHz, min path length 0.25 km (one end) or 1.0 km (both ends),

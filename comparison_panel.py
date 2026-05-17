@@ -27,8 +27,7 @@ Coverage Comparison Algorithm — Panel coverage runner.
 Standalone function to run compute_coverage for one panel of the comparison.
 """
 
-from qgis.core import QgsCoordinateReferenceSystem
-
+from .constants import WGS84_CRS
 from .coverage_compute import (
     DEFAULT_MAX_PROFILE_PTS,
     coverage_profile_step_m,
@@ -60,7 +59,7 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
         parameters,
         f"{prefix}_POINT",
         context,
-        crs=QgsCoordinateReferenceSystem("EPSG:4326"),
+        crs=WGS84_CRS,
     )
     if tx_point is None:
         raise ValueError(f"{prefix} TX point is required.")

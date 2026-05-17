@@ -38,5 +38,13 @@ K_FACTOR_PRESETS_OPTIONS = [
 
 MAX_AOI_EXTENT_DEGREES = 5.0
 EARTH_RADIUS_M = 6371000.0
+FRESNEL_60PCT_FACTOR = 0.6
+EMPTY_MARGIN_DB = -999.0
 COVERAGE_NODATA = -9999.0
 ITM_LOSS_UPPER_BOUND = 400.0
+
+try:
+    from qgis.core import QgsCoordinateReferenceSystem as _QgsCRS
+    WGS84_CRS = _QgsCRS("EPSG:4326")
+except Exception:
+    WGS84_CRS = None

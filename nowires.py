@@ -22,6 +22,7 @@
  ***************************************************************************/
 """
 
+import logging
 import os
 import sys
 import tempfile
@@ -37,6 +38,9 @@ from .coverage_opacity import find_latest_coverage_layer, CoverageOpacityDialog
 from .provider import NoWiresProvider
 from .three_d import SCENE_MODE_GLOBE, SCENE_MODE_LOCAL, open_nowires_3d_view
 from .cache_manager import clear_dem_cache, format_cache_size, get_cache_size
+from .constants import BYTES_PER_MEBIBYTE
+
+logger = logging.getLogger(__name__)
 
 cmd_folder = os.path.dirname(__file__)
 
@@ -65,8 +69,8 @@ def _stale_temp_dir_count(max_entries: int = 1000) -> int:
                 entries.append(e)
         if len(entries) >= max_entries:
             return len(entries)
-    except Exception:
-        pass
+    except OSError as exc:
+        logger.debug("stale temp dir scan (user dir): %s", exc)
     return len(entries)
 
 
@@ -91,8 +95,8 @@ class NoWiresPlugin:
         if self.provider is not None:
             try:
                 registry.removeProvider(self.provider)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("provider removal: %s", exc)
         self.provider = NoWiresProvider()
         registry.addProvider(self.provider)
 
@@ -149,8 +153,8 @@ class NoWiresPlugin:
         try:
             from .shared_dem_grid import cleanup_stale_shm_entries
             cleanup_stale_shm_entries("/dev/shm", os.geteuid())
-        except Exception:
-            pass
+        except OSError as exc:
+            logger.debug("shared memory cleanup: %s", exc)
 
     def run_clear_cache(self):
         """Show current cache size and clear DEM/WorldCover tiles on confirmation."""
@@ -169,7 +173,7 @@ class NoWiresPlugin:
             removed, freed = clear_dem_cache()
             self.iface.messageBar().pushSuccess(
                 "NoWires", "Removed {} cached tile(s) (~{:.1f} MB freed).".format(
-                    removed, freed / 1048576.0))
+                    removed, freed / BYTES_PER_MEBIBYTE))
         except Exception as exc:
             self.iface.messageBar().pushWarning(
                 "NoWires", "Cache cleanup failed: {}".format(exc))
