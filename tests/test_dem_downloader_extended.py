@@ -114,17 +114,6 @@ class TestDownloadTilesTimeoutAndCancel:
         )
         assert paths == []
 
-    def test_download_tiles_wall_clock_exceeded(self, tmp_path, monkeypatch):
-        dd, tile_base = _import_dem_downloader()
-        monkeypatch.setattr(dd, "get_temp_dir", lambda: str(tmp_path))
-        monkeypatch.setattr(dd, "_WALL_CLOCK_TIMEOUT", 0)
-
-        paths = dd.download_tiles(
-            ["N00E000"],
-            temp_dir=str(tmp_path),
-        )
-        assert paths == []
-
 
 class TestEnsureDEMForArea:
     def test_no_tiles_returns_none(self, monkeypatch):

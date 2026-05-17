@@ -9,12 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix `tile_download_base.download_tile_with_retry` purging structurally-valid cached tiles when `ComputeStatistics` fails. The stats read was treating any `RuntimeError` or `None` return as corruption, triggering an unnecessary re-download. Cache hits now validate only structural integrity (`gdal.Open() is not None`, `RasterCount >= 1`, non-zero dimensions); actual pixel-data corruption is caught at use-time, and the per-tile wall-clock budget covers runaway downloads.
+- Fix `dem_downloader.download_tiles` and `worldcover_downloader.download_worldcover_tiles` false-tripping their overall wall-clock deadlines (300s / 600s) on legitimately-large coverage areas. The per-tile budget added in v1.5.3 (`DEFAULT_PER_TILE_WALL_CLOCK_BUDGET = 180s` in `tile_download_base`) already caps per-tile runaway; the overall deadlines did not scale with tile count and aborted healthy multi-tile runs. Both removed.
+
+### Added
+
+- Added `test_tile_cache_stats_tolerance.py` — regression test for cache-hit on `ComputeStatistics` failure with intact structural integrity.
+- Added `test_downloader_no_overall_deadline.py` — regression test for full processing of a large tile list with no overall-deadline check in either downloader.
+
 ### Planned (PATCH — tech-debt / cleanup, zero behavior change)
 
 - Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 35 params, `build_p2p_report_payload` carries 35, `build_coverage_report_payload_for_grid` carries 31. Most natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist; the work is wiring them through.
 - Decompose three long functions: `run_p2p_analysis` (183 lines), `_compute_single_link` (158 lines), `run_panel_coverage` (232 lines).
-- Re-examine the tile-cache validation in `tile_download_base.download_tile_with_retry`. Any `ComputeStatistics` failure on a cached file is treated as corruption — consider validating only structural integrity on cache hits.
-- Reconsider the overall wall-clock deadline in `dem_downloader.download_tiles`. Either drop the overall deadline or scale it with tile count.
 
 ### Planned for v1.6.0 (MINOR — additive features)
 
