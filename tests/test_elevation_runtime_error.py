@@ -31,6 +31,7 @@ def _make_grid(tmp_path):
     return path
 
 
+@pytest.mark.gdal_integration
 class TestSampleRaisesRuntimeErrorAfterClose:
     def test_sample_raises_runtime_error(self, tmp_path):
         from NoWires.elevation import ElevationGrid

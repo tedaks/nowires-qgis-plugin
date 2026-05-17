@@ -17,6 +17,8 @@ Six GitHub Actions workflows guard the project:
 
 Tool versions are pinned in `constraints-ci.txt`. Each job installs only what it needs via role-specific files (`requirements-lint.txt`, `requirements-typecheck.txt`, `requirements-test.txt`) using `pip install -c constraints-ci.txt -r requirements-<role>.txt`. The single coverage threshold lives in `pyproject.toml` (`[tool.coverage.report] fail_under`); CI invokes `pytest --cov` without a CLI override so the project file is the source of truth.
 
+The unit-test job in `tests.yml` excludes `qgis_integration` and `gdal_integration` markers. Tests that call `band.WriteArray()` / `band.ReadAsArray()` require numpy-2-compatible GDAL bindings and must carry `@pytest.mark.gdal_integration`; they run in the QGIS Docker container via `integration.yml`. Tests that need a full QGIS runtime carry `@pytest.mark.qgis_integration`.
+
 All third-party actions are SHA-pinned. Dependabot manages bumps for both `pip` and `github-actions` ecosystems (see `.github/dependabot.yml`).
 
 All tests must pass locally before committing. See CONTRIBUTING.md for commands.

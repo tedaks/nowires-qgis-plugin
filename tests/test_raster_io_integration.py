@@ -21,6 +21,7 @@ except (ImportError, AttributeError):
 pytestmark = pytest.mark.skipif(not _HAS_REAL_GDAL, reason="Requires GDAL")
 
 
+@pytest.mark.gdal_integration
 class TestWriteGeotiffIntegration:
     def test_write_geotiff_produces_valid_raster(self):
         from NoWires.raster_io import write_geotiff

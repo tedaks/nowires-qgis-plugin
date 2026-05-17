@@ -23,6 +23,7 @@ class TestContourOverlayContract:
         assert callable(prepare_elevation_overlay)
 
 
+@pytest.mark.gdal_integration
 class TestContourOverlayGDAL:
     def _create_dem(self, path, width=20, height=20):
         from osgeo import gdal, osr
