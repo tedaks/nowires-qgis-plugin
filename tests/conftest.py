@@ -430,7 +430,6 @@ for _submodule_name in (
     "report_export",
     "overlay_raster",
     "nan_utils",
-    "geo_bounds",
 ):
     _mod = __import__(_submodule_name, fromlist=[""])
     sys.modules[f"NoWires.{_submodule_name}"] = _mod
@@ -466,6 +465,7 @@ for _pkg_sub in (
     "contour_overlay",
     "contour_generation",
     "contour_smoothing",
+    "geo_bounds",
     "comparison_outputs",
     "coverage_opacity",
     "coverage_legend",

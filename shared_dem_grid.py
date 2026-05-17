@@ -31,11 +31,25 @@ import multiprocessing.shared_memory
 import os
 import re
 import uuid
+import weakref
 
 import numpy as np
 
 
 _SHM_NAME_RE = re.compile(r"^nowires_dem_(\d+)_[0-9a-f]+$")
+
+_pending_releases: dict = {}  # id(obj) -> SharedDEMGrid weak reference
+_atexit_registered = False
+
+
+def _atexit_release_pending():
+    """Module-level atexit: release any shared-memory segments still alive."""
+    for obj_id in list(_pending_releases):
+        ref = _pending_releases.get(obj_id)
+        if ref is not None:
+            obj = ref()
+            if obj is not None:
+                obj.release()
 
 
 def cleanup_stale_shm_entries(dev_shm_dir: str, my_uid: int) -> None:
@@ -118,7 +132,11 @@ class SharedDEMGrid:
             raise
         self._shm = shm
         self._name = name
-        atexit.register(self._atexit_cleanup)
+        _pending_releases[id(self)] = weakref.ref(self)
+        global _atexit_registered
+        if not _atexit_registered:
+            atexit.register(_atexit_release_pending)
+            _atexit_registered = True
 
     @property
     def shm(self):
@@ -130,7 +148,7 @@ class SharedDEMGrid:
 
     def release(self):
         """Close and unlink the shared-memory segment."""
-        atexit.unregister(self._atexit_cleanup)
+        _pending_releases.pop(id(self), None)
         if self._shm is not None and not self._unlinked:
             try:
                 self._shm.close()
@@ -146,6 +164,7 @@ class SharedDEMGrid:
             self._name = None
 
     def _atexit_cleanup(self):
+        _pending_releases.pop(id(self), None)
         if self._shm is not None and not self._unlinked:
             try:
                 self._shm.close()
@@ -162,3 +181,7 @@ class SharedDEMGrid:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.release()
         return False
+
+    def __del__(self):
+        if self._shm is not None and not self._unlinked:
+            self.release()

@@ -165,9 +165,11 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
     south, north = min(lats), max(lats)
     pad = max(DEGREE_PADDING, (north - south) * 0.1)
     west, east = shortest_longitude_bounds_for(lons, padding_deg=pad)
+    owns_clutter_grid = False
     if rp["cg"] is None and rp["ce"]:
         rp["cg"] = ensure_clutter_grid_for_area(south=south - pad, north=north + pad,
             west=west - pad, east=east + pad, feedback=feedback)
+        owns_clutter_grid = rp["cg"] is not None
     feedback.pushInfo("Downloading DEM data...")
     feedback.setProgress(5)
     dem_path = ensure_dem_for_area(
@@ -203,10 +205,11 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
             street_width_m=rp["street_width_m"],
             bel_enabled=rp["bel_enabled"],
             bel_building_type=rp["bel_building_type"],
-            bel_elevation_angle_deg=rp["bel_elevation_angle_deg"])
+            bel_elevation_angle_deg=rp["bel_elevation_angle_deg"],
+            owns_clutter_grid=owns_clutter_grid)
     except Exception:
         elev.close()
-        if rp["cg"] is not None:
+        if owns_clutter_grid and rp["cg"] is not None:
             rp["cg"].close()
         raise
 
@@ -252,7 +255,7 @@ class BatchAnalysisAlgorithm(NoWiresAlgorithm):
         finally:
             if inp.elev is not None:
                 inp.elev.close()
-            if inp.clutter_grid is not None:
+            if inp.owns_clutter_grid and inp.clutter_grid is not None:
                 inp.clutter_grid.close()
             tmp_mgr.cleanup()
             tmp_mgr.warn_persistent(feedback)

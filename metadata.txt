@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.5.6
+version=1.5.7
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,6 +14,21 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
+    Version 1.5.7
+    - Fix haversine numerical stability in coverage_summary._compute_grid_summary — add np.clip(a, 0.0, 1.0) before arcsin so FP rounding no longer yields NaN distances.
+    - Replace assert with RuntimeError in ElevationGrid.sample, sample_line, and sample_grid so errors are always enforced even under python -O.
+    - Fix algorithm_batch.processAlgorithm unconditionally closing user-supplied clutter grid — add owns_clutter_grid flag.
+    - Fix coverage_pool._init_cov_pool re-registering atexit handler on every call — gate with module-level flag.
+    - Fix _coverage_executor discarding partial MP counters on fallback — accumulate instead of reassign.
+    - Fix GDAL dataset leak in contour_pipeline clip verification — explicit ds = None release.
+    - Fix NoWiresPlugin.run_pattern_preview dialog leak — close-then-replace lifecycle.
+    - Clamp geo_bounds.coverage_bounds to valid lat range [-90, 90] and use METERS_PER_DEGREE_LAT from constants.py.
+    - Fix coverage_params using DEFAULT_TIME_PCT for all three pct params — split to per-param defaults.
+    - Fix contour_overlay releasing hillshade without FlushCache — add FlushCache() before release.
+    - Fix algorithm_contour leaking permanent temp dir — route fallback through TempDirManager.
+    - Fix ElevationGrid zero-division on degenerate DEM — raise RuntimeError when n_rows or n_cols is 0.
+    - Fix summarize_coverage_grid zero-division on empty grids — return zero-count dict early.
+    - Fix SharedDEMGrid._create atexit pinning self — use module-level weak-reference registry.
     Version 1.5.6
     - Fix PicklingError on Windows multiprocessing after the v1.5.5 pythonw.exe switch made the gate succeed and exercised a latent bug. _coverage_executor captured _init_cov_pool and _itm_worker_batch by name at module import time via `from .coverage_pool import ...`; if NoWires.coverage_pool was later replaced in sys.modules (QGIS plugin reload, Plugin Reloader, any importlib.reload of just that file), the cached references diverged from sys.modules["NoWires.coverage_pool"].<name> and pickle's identity check raised `_pickle.PicklingError: Can't pickle <function _init_cov_pool at 0x...>: it's not the same object as NoWires.coverage_pool._init_cov_pool`. Fix: move the `from .coverage_pool import _init_cov_pool, _itm_worker_batch` inside execute_coverage_tasks, so the references handed to ProcessPoolExecutor are exactly the ones pickle finds via getattr(sys.modules[fn.__module__], fn.__qualname__).
     - Change the multiprocessing-fallback diagnostic from feedback.pushInfo to feedback.pushWarning and include the exception type/message. Previously the underlying error was emitted only via Python logger.warning, which can silently drop messages on GUI-subsystem QGIS builds with a None-stream StreamHandler — making the failure mode invisible to users. The QGIS Processing log panel now shows the actual cause, so future regressions are self-diagnosing.

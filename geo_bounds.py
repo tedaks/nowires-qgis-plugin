@@ -4,21 +4,26 @@
 
 import math
 
+from .constants import METERS_PER_DEGREE_LAT
+
 
 def coverage_bounds(tx_lat, tx_lon, radius_km, padding_deg=0.0):
     """Compute the lat/lon bounding box for a coverage analysis.
 
     Returns (south, north, west, east) in degrees.
+    Latitude bounds are clamped to [-90, 90] to handle near-pole TX
+    positions where the analysis area would otherwise exceed valid range.
     """
-    meters_per_deg_lat = 111320.0
     radius_m = radius_km * 1000.0
-    lat_per_m = 1.0 / meters_per_deg_lat
-    lon_per_m = 1.0 / (meters_per_deg_lat * max(math.cos(math.radians(tx_lat)), 0.01))
+    lat_per_m = 1.0 / METERS_PER_DEGREE_LAT
+    lon_per_m = 1.0 / (METERS_PER_DEGREE_LAT * max(math.cos(math.radians(tx_lat)), 0.01))
     half_lat = radius_m * lat_per_m
     half_lon = radius_m * lon_per_m
+    south = max(-90.0, tx_lat - half_lat - padding_deg)
+    north = min(90.0, tx_lat + half_lat + padding_deg)
     return (
-        tx_lat - half_lat - padding_deg,
-        tx_lat + half_lat + padding_deg,
+        south,
+        north,
         tx_lon - half_lon - padding_deg,
         tx_lon + half_lon + padding_deg,
     )
