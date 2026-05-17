@@ -9,12 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v1.5.6
+### Planned for v1.5.7
 
 - Extend PDF report output (`OUTPUT_REPORT_PDF`) from Coverage Analysis to Point-to-Point Analysis and Coverage Comparison. The shared `report_pdf.write_report_pdf()` writer is already in place; remaining work is parameter registration and `_write_*_outputs` wiring in `algorithm_p2p` and `algorithm_coverage_comparison`.
 - Promote the standalone "Preview Antenna Pattern" dialog into an inline `QgsProcessingParameterWidgetFactoryInterface` so the polar plot renders directly in the Coverage / P2P parameter dialog next to the pattern-file picker.
-- Investigate whether `should_use_multiprocessing(os_name="nt")` can be enabled by default on Windows once `NOWIRES_WINDOWS_MP=1` has been validated by users; remove the env-var opt-in once safe.
 - Audit `report_pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks.
+
+## [1.5.6] - 2026-05-17
+
+### Fixed
+
+- Fixed `_pickle.PicklingError: Can't pickle <function _init_cov_pool at 0x...>: it's not the same object as NoWires.coverage_pool._init_cov_pool` on Windows multiprocessing. The error surfaced on Windows after the v1.5.5 `pythonw.exe` switch made `find_windows_python_executable()` succeed where it had been silently returning `None` on user setups — so the multiprocessing branch ran for the first time and exposed a latent bug.
+
+  Root cause: `_coverage_executor.py` did `from .coverage_pool import _init_cov_pool, _itm_worker_batch` at module-import time, freezing those names as references to the function objects from the *first* import of `coverage_pool`. If anything subsequently replaced `NoWires.coverage_pool` in `sys.modules` — QGIS plugin reload, the "Plugin Reloader" plugin, any manual `importlib.reload` of just that one file — `sys.modules["NoWires.coverage_pool"]._init_cov_pool` became a new function object, but `_coverage_executor._init_cov_pool` still pointed at the old one. `pickle`'s identity check (`getattr(sys.modules[fn.__module__], fn.__qualname__) is fn`) then failed when `ProcessPoolExecutor` tried to serialize the initializer to send to the spawned worker.
+
+  Fix: resolve both `_init_cov_pool` and `_itm_worker_batch` through `from . import coverage_pool as _cp` *inside* `execute_coverage_tasks`, so each call walks `sys.modules` fresh and the function references handed to `ProcessPoolExecutor` are guaranteed identical to what `pickle` finds by name. The module-level `from .coverage_pool import ...` line no longer carries those two names.
+
+### Changed
+
+- Changed the multiprocessing-fallback diagnostic in `_coverage_executor.execute_coverage_tasks` from `feedback.pushInfo("Multiprocessing unavailable, using single-threaded mode...")` to `feedback.pushWarning("Multiprocessing unavailable ({}: {}), using single-threaded mode...".format(type(exc).__name__, exc))`. Previously, when the MP branch raised, the exception type and message were emitted only via Python `logger.warning`; on GUI-subsystem QGIS builds (Windows `pythonw.exe`-bundled, some macOS configurations) the `StreamHandler` can have `stream=None` and silently drop the message — leaving the user with an opaque "Multiprocessing unavailable" with no trail back to the underlying cause. Routing the exception details through the QGIS Processing feedback channel keeps future regressions self-diagnosing in the log panel.
+
+### Added
+
+- Added `tests/test_coverage_executor_reload_pickle.py` — three regression tests that lock in the lazy-lookup contract: (1) after `importlib.reload(coverage_pool)`, the function objects passed to a fake `ProcessPoolExecutor` must be `is`-identical to the reloaded module's attributes; (2) `pickle.dumps` on the reloaded `_init_cov_pool` / `_itm_worker_batch` must succeed (mirrors what `ProcessPoolExecutor` does on spawn); (3) source-level check that `_coverage_executor.py` does not import either symbol at module scope ahead of `execute_coverage_tasks`. Verified the first and third fail without the fix and pass with it.
+
+### Documentation
+
+- `Technical_Documentation.md`: expanded the "Multiprocessing in QGIS" and "Coverage Engine Robustness" sections with the function-local-import contract, the underlying pickle identity-check failure mode, and how v1.5.5's `pythonw.exe` detection unmasked the previously-latent bug on Windows.
 
 ## [1.5.5] - 2026-05-16
 
