@@ -199,48 +199,6 @@ def test_http_retry_after_non_numeric_value(tmp_path, monkeypatch):
     assert sleeps[0] > 0
 
 
-def test_cached_tile_runtime_error_stats_is_replaced(tmp_path, monkeypatch):
-    """When ComputeStatistics raises RuntimeError, tile should be re-downloaded."""
-    local_tif = tmp_path / "tile.tif"
-    local_tif.write_bytes(b"cached")
-    opener = FakeOpener(FakeResponse(
-        "https://example.test/tile.tif",
-        [b"fresh"], headers={"Content-Length": "5"},
-    ))
-
-    class BrokenStatsDataset:
-        RasterCount = 1
-        RasterXSize = 256
-        RasterYSize = 256
-
-        def GetRasterBand(self, _idx):
-            class Band:
-                def ComputeStatistics(self, _approx_ok):
-                    raise RuntimeError("stats failure")
-            return Band()
-
-    open_results = iter([BrokenStatsDataset(), type(
-        "GoodDS", (), {
-            "RasterCount": 1, "RasterXSize": 256, "RasterYSize": 256,
-            "GetRasterBand": lambda s, i: type(
-                "Band", (), {"ComputeStatistics": lambda s, a: (1.0, 1.0)}
-            )(),
-        }
-    )()])
-    monkeypatch.setattr(tdb.gdal, "Open", lambda _path: next(open_results))
-
-    result = tdb.download_tile_with_retry(
-        tile_url="https://example.test/tile.tif",
-        local_tif=str(local_tif),
-        base_name_label="tile",
-        max_retries=1,
-        opener=opener,
-    )
-
-    assert result == str(local_tif)
-    assert local_tif.read_bytes() == b"fresh"
-
-
 def test_cached_tile_gdal_open_returns_none_replaced(tmp_path, monkeypatch):
     """When gdal.Open returns None for cached tile, re-download."""
     local_tif = tmp_path / "tile.tif"

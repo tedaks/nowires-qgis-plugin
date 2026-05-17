@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.5.8
+version=1.5.9
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,6 +14,9 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
+    Version 1.5.9
+    - Fix tile_download_base.download_tile_with_retry purging structurally-valid cached tiles when ComputeStatistics fails — validate only structural integrity (gdal.Open + RasterCount + non-zero dimensions) on cache hits
+    - Fix dem_downloader.download_tiles and worldcover_downloader.download_worldcover_tiles false-tripping their overall wall-clock deadlines on legitimately-large coverage areas — overall _WALL_CLOCK_TIMEOUT removed; per-tile budget (180s) already covers runaway protection
     Version 1.5.8
     - Refactor: decompose coverage_pool into _coverage_result_dispatch.py (300→276 lines)
     - Refactor: decompose p2p_compute into _p2p_outputs_internal.py (300→265 lines)

@@ -40,7 +40,6 @@ import os
 import re
 import stat
 import ssl
-import time
 import tempfile
 import urllib.request
 import getpass
@@ -62,7 +61,6 @@ COPERNICUS_BASE_URL = "https://copernicus-dem-30m.s3.amazonaws.com/"
 _MAX_TILES = 200
 _DOWNLOAD_RETRIES = 3
 _SOCKET_TIMEOUT = 60
-_WALL_CLOCK_TIMEOUT = 300
 _VALID_TILE_RE = re.compile(r"^Copernicus_DSM_COG_10_[NS]\d{2}_00_[EW]\d{3}_00_DEM$")
 
 
@@ -167,17 +165,10 @@ def download_tiles(tile_list: list[str], temp_dir: str | None = None,
         urllib.request.HTTPSHandler(context=ctx)
     )
     available: list[str] = []
-    deadline = time.monotonic() + _WALL_CLOCK_TIMEOUT
 
     for tile_name in tile_list:
         if feedback and feedback.isCanceled():
             return available
-        if time.monotonic() > deadline:
-            logger.warning("DEM download wall-clock timeout exceeded (%ds)", _WALL_CLOCK_TIMEOUT)
-            if feedback:
-                feedback.pushInfo(
-                    "Download timed out after {}s".format(_WALL_CLOCK_TIMEOUT))
-            break
 
         local_tif = os.path.join(temp_dir, tile_name + ".tif")
         tile_url = "{}{}/{}.tif".format(COPERNICUS_BASE_URL, tile_name, tile_name)
