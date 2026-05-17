@@ -89,3 +89,7 @@ For UI and Processing integration checks, copy the `NoWires` folder into your QG
 - Preserve third-party attribution in `NOTICE.md`.
 - Avoid committing generated caches or temporary analysis outputs.
 - Do not add comments unless they explain non-obvious logic.
+
+## Release Process
+
+See the [Release Process](AGENTS.md#release-process) section in `AGENTS.md` for version classification rules, PR sequencing, pre-flight greps, and release gates.
