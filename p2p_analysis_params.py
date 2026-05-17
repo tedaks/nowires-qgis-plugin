@@ -30,6 +30,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from .clutter_context import ClutterModel, BuildingType
+
 if TYPE_CHECKING:
     from .antenna import AntennaConfig
     from .clutter import LandCoverGrid
@@ -64,12 +66,12 @@ class P2PAnalysisParams:
     clutter_grid: LandCoverGrid | None = None
     tx_clutter_override: str | None = "open"
     rx_clutter_override: str | None = "open"
-    clutter_model: str = "simple"
+    clutter_model: ClutterModel = "simple"
     cch_override_m: float | None = None
     clutter_percentile: float = 50.0
     street_width_m: float = 27.0
     bel_enabled: bool = False
-    bel_building_type: str = "traditional"
+    bel_building_type: BuildingType = "traditional"
     bel_elevation_angle_deg: float = 0.0
     profile_dest: str = ""
     fresnel_dest: str = ""

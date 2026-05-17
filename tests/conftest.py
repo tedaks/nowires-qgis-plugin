@@ -484,6 +484,8 @@ for _pkg_sub in (
     "windows_compat",
     "_geo_utils",
     "_bilinear",
+    "shared_params",
+    "p2p_analysis_params",
 ):
     _mod = __import__(f"NoWires.{_pkg_sub}", fromlist=[""])
     _leaf = _pkg_sub.split(".")[-1]

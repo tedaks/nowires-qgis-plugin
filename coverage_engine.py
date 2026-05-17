@@ -9,7 +9,7 @@ import numpy as np
 
 from .antenna import antenna_config_from_values
 from .clutter import compute_terminal_clutter_losses
-from .clutter_context import ClutterLossContext, build_initial_clutter_context  # noqa: F401
+from .clutter_context import ClutterLossContext, build_initial_clutter_context, ClutterModel, BuildingType  # noqa: F401
 from .coverage_pool import (  # noqa: F401
     CoverageResult, log_coverage_failures, should_use_multiprocessing,
     _itm_worker, _make_shared_grid,
@@ -109,9 +109,9 @@ def compute_coverage(
     antenna_horizontal_pattern_path=None, antenna_vertical_pattern_path=None,
     clutter_enabled=False, clutter_grid=None, tx_clutter_override=None,
     rx_clutter_override=None, tx_clutter_loss_db=None, clutter_context=None,
-    feedback=None, clutter_model="simple", cch_override_m=None,
+    feedback=None, clutter_model: ClutterModel = "simple", cch_override_m=None,
     clutter_percentile=50.0, street_width_m=27.0,
-    bel_enabled=False, bel_building_type="traditional", bel_elevation_angle_deg=0.0,
+    bel_enabled=False, bel_building_type: BuildingType = "traditional", bel_elevation_angle_deg=0.0,
 ):
     radius_m = radius_km * 1000.0
     min_lat, max_lat, min_lon, max_lon = coverage_bounds(tx_lat, tx_lon, radius_km)
