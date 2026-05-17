@@ -33,6 +33,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from .defaults import DEFAULT_FREQ_MHZ
+
 if TYPE_CHECKING:
     from .clutter import LandCoverGrid
     from .elevation import ElevationGrid
@@ -45,7 +47,7 @@ class BatchAnalysisParams:
     rx_points: list = field(default_factory=list)
     tx_h: float = 30.0
     rx_h: float = 10.0
-    f_mhz: float = 300.0
+    f_mhz: float = DEFAULT_FREQ_MHZ
     polarization: int = 1
     climate: int = 1
     time_pct: float = 50.0

@@ -44,6 +44,8 @@ from .radio import (
 __all__ = [
     "GRID_SIZE_PRESETS",
     "POLARIZATION_NAMES",
+    "DELTA_STYLE_DIVERGING",
+    "DELTA_STYLE_THRESHOLD",
     "DELTA_STYLE_OPTIONS",
     "DELTA_THRESHOLD_DEFAULTS",
     "PANEL_A_CONSTANTS",
@@ -52,7 +54,9 @@ __all__ = [
     "make_panel_config",
 ]
 
-DELTA_STYLE_OPTIONS = ["diverging", "threshold"]
+DELTA_STYLE_DIVERGING = "diverging"
+DELTA_STYLE_THRESHOLD = "threshold"
+DELTA_STYLE_OPTIONS = [DELTA_STYLE_DIVERGING, DELTA_STYLE_THRESHOLD]
 DELTA_THRESHOLD_DEFAULTS = [3.0, 5.0, 10.0]
 
 _PANEL_KEYS = (

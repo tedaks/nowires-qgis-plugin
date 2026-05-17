@@ -43,8 +43,9 @@ CLUTTER_MODEL_OPTIONS = [
     "Simple clutter correction",
     "Advanced clutter correction",
 ]
+CLUTTER_OVERRIDE_AUTO = "Auto"
 CLUTTER_OVERRIDE_OPTIONS = [
-    "Auto",
+    CLUTTER_OVERRIDE_AUTO,
     "open", "rural", "vegetation", "suburban", "urban",
     "open_rural", "dense_rural",
 ]
@@ -66,12 +67,12 @@ def clutter_override_value(index_or_category) -> str | None:
     if index_or_category is None:
         return None
     if isinstance(index_or_category, str):
-        return None if index_or_category == "Auto" else index_or_category
+        return None if index_or_category == CLUTTER_OVERRIDE_AUTO else index_or_category
     idx = int(index_or_category)
     if idx < 0 or idx >= len(CLUTTER_OVERRIDE_OPTIONS):
         return None
     value = CLUTTER_OVERRIDE_OPTIONS[idx]
-    return None if value == "Auto" else value
+    return None if value == CLUTTER_OVERRIDE_AUTO else value
 
 
 def clutter_source_label(
