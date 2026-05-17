@@ -207,6 +207,7 @@ class TestLandCoverGridLifecycle:
         assert g.data is None
 
 
+@pytest.mark.gdal_integration
 class TestLandCoverGridFromRaster:
     def test_from_raster_creates_grid(self, tmp_path):
         try:
