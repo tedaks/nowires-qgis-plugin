@@ -7,22 +7,23 @@ from __future__ import annotations
 import logging
 
 from .worldcover_downloader import ensure_worldcover_for_area
-from .clutter_categories import (
+from .clutter_categories import (  # noqa: F401
     LEGACY_CLUTTER_CATEGORIES,
     LEGACY_CLUTTER_LOSS_DB,
     _WORLDCOVER_TO_LEGACY_IDX,
     _LEGACY_CAT_IDX,
     _LEGACY_CLUTTER_LOSS_ARRAY,
+    legacy_to_advanced_override,
 )
 from .clutter_context import TerminalClutterLosses  # noqa: F401
 from .clutter_advanced import (  # noqa: F401
     compute_terminal_clutter_loss, _category_height_m,
     compute_terminal_clutter_losses,
-    compute_path_clutter_loss, _ClutterComponents,
-    _compute_advanced_loss,
+    compute_path_clutter_loss, ClutterComponents,
+    compute_advanced_loss,
 )
 from .clutter_resolve import (  # noqa: F401
-    _resolve_category_advanced, _legacy_to_advanced_override,
+    resolve_category_advanced,
     _resolve_category,
 )
 from .clutter_grid import LandCoverGrid  # noqa: F401
@@ -54,7 +55,8 @@ def worldcover_class_to_clutter_category(class_id) -> str:
     raw = int(class_id)
     if raw < 0 or raw > 255:
         logger.warning("Unexpected WorldCover class ID %d (outside 0-255 range)", raw)
-    return CLUTTER_CATEGORIES[int(_WORLDCOVER_TO_CATEGORY[raw % 256])]
+        return "open"
+    return CLUTTER_CATEGORIES[int(_WORLDCOVER_TO_CATEGORY[raw])]
 
 
 def clutter_loss_db(category, frequency_mhz) -> float:
