@@ -69,14 +69,13 @@ def resolve_output_paths(
     tmpdir: str | None = None
     if not out_a or not out_b or not out_delta:
         tmpdir = tmp_mgr.make_dir("comp", persistent=True)
-    # tmpdir guaranteed non-None inside these branches by the preceding
-    # `tmpdir = tmp_mgr.make_dir(...)` when any of the outputs were missing.
+    assert tmpdir is not None
     if not out_a:
-        out_a = os.path.join(tmpdir, "coverage_a.tif")  # type: ignore[arg-type]
+        out_a = os.path.join(tmpdir, "coverage_a.tif")
     if not out_b:
-        out_b = os.path.join(tmpdir, "coverage_b.tif")  # type: ignore[arg-type]
+        out_b = os.path.join(tmpdir, "coverage_b.tif")
     if not out_delta:
-        out_delta = os.path.join(tmpdir, "coverage_delta.tif")  # type: ignore[arg-type]
+        out_delta = os.path.join(tmpdir, "coverage_delta.tif")
     return out_a, out_b, out_delta, out_report, tmpdir
 
 

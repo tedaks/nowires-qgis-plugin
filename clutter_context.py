@@ -8,6 +8,23 @@ _VALID_MODELS = ("simple", "advanced")
 
 
 @dataclass(frozen=True)
+class TerminalClutterLosses:
+    tx_category: str
+    rx_category: str
+    tx_loss_db: float
+    rx_loss_db: float
+    total_loss_db: float
+    source: str
+    tx_cch_m: float = 0.0
+    rx_cch_m: float = 0.0
+    tx_bel_db: float = 0.0
+    rx_bel_db: float = 0.0
+    total_with_bel_db: float = 0.0
+    method: str = "simple"
+    percentile: float = 50.0
+
+
+@dataclass(frozen=True)
 class ClutterLossContext:
     frequency_mhz: float
     distance_m: float
