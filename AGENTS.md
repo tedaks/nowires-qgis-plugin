@@ -102,3 +102,15 @@ Each release is one or more focused PRs, sequenced by risk:
 - CHANGELOG entries moved from `[Unreleased]` → `## [X.Y.Z] - YYYY-MM-DD`
 - Tag `vX.Y.Z` (triggers `release.yml`)
 - Features: manual QGIS UI test recorded in the PR description
+
+## Prohibited Automation
+
+**Never commit, merge, push, or create PRs without explicit user instruction.** These actions modify the repository's public history and must always be user-initiated:
+
+- `git commit` — only when the user explicitly asks to commit
+- `git push` — only when the user explicitly asks to push
+- `git merge` / PR merge — only when the user explicitly asks to merge
+- `gh pr create` — only when the user explicitly asks to create a PR
+- `git tag` — only when the user explicitly asks to tag a release
+
+The agent may prepare diffs, run tests, lint, typecheck, and suggest next steps — but must never execute any of the above commands unless the user gives a clear, direct instruction to do so.
