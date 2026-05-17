@@ -28,13 +28,13 @@ import numpy as np
 
 from .clutter import CLUTTER_LOSS_DB
 from .clutter_advanced import (
-    _ClutterComponents,
-    _compute_advanced_loss,
+    ClutterComponents,
+    compute_advanced_loss,
     compute_path_clutter_loss,
 )
+from .clutter_categories import legacy_to_advanced_override
 from .clutter_resolve import (
-    _legacy_to_advanced_override,
-    _resolve_category_advanced,
+    resolve_category_advanced,
 )
 from .clutter_context import ClutterLossContext
 from .constants import EARTH_RADIUS_M
@@ -125,7 +125,7 @@ def build_coverage_tasks(
     advanced = clutter_context is not None and clutter_context.model == "advanced"
 
     if advanced and clutter_enabled:
-        tx_category, _tx_source = _resolve_category_advanced(
+        tx_category, _tx_source = resolve_category_advanced(
             tx_lat, tx_lon, tx_clutter_override, clutter_grid)
         # In coverage mode every grid cell is an RX location, so rx_override
         # correctly applies across the entire grid even though the name suggests
@@ -135,7 +135,7 @@ def build_coverage_tasks(
                 lats, lons, rx_override=rx_clutter_override, context=clutter_context)
             if clutter_grid is not None else np.full(
                 (n_rows_lat, n_cols_lon),
-                _legacy_to_advanced_override(rx_clutter_override or "open"),
+                legacy_to_advanced_override(rx_clutter_override or "open"),
                 dtype=object,
             )
         )
@@ -169,11 +169,11 @@ def build_coverage_tasks(
         rx_category_grid = None
 
     # NOTE: This double loop is O(grid_size^2) in Python.  For large grids
-    # with clutter enabled, per-pixel _compute_advanced_loss calls in
+    # with clutter enabled, per-pixel compute_advanced_loss calls in
     # advanced mode dominate task generation time.  A LUT keyed on
     # (category, terminal, distance_bucket, ground_bucket) avoids redundant
     # invocations for pixels sharing the same quantised parameters.
-    _clutter_lut: dict[tuple[str, ...], _ClutterComponents] = {}
+    _clutter_lut: dict[tuple[str, ...], ClutterComponents] = {}
     tasks: list[_CoverageTask] = []
     for i in range(grid_size):
         for j in range(grid_size):
@@ -213,12 +213,12 @@ def build_coverage_tasks(
                     bel_elevation_angle_deg=clutter_context.bel_elevation_angle_deg,
                 )
                 if tx_cached is None:
-                    tx_comp = _compute_advanced_loss(tx_category, "tx", pixel_ctx)
+                    tx_comp = compute_advanced_loss(tx_category, "tx", pixel_ctx)
                     _clutter_lut[tx_lut_key] = tx_comp
                 else:
                     tx_comp = tx_cached
                 if rx_cached is None:
-                    rx_comp = _compute_advanced_loss(rx_cat, "rx", pixel_ctx)
+                    rx_comp = compute_advanced_loss(rx_cat, "rx", pixel_ctx)
                     _clutter_lut[rx_lut_key] = rx_comp
                 else:
                     rx_comp = rx_cached

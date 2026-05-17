@@ -39,6 +39,7 @@ import numpy as np
 
 from osgeo import gdal
 
+from ._bilinear import bilinear_sample, bilinear_sample_grid
 from ._geo_utils import _interpolate_longitudes_shortest, sample_line_from_grid  # noqa: F401 re-export
 from .constants import BYTES_PER_MEBIBYTE, EARTH_RADIUS_M
 
@@ -171,30 +172,7 @@ class ElevationGrid:
     def sample(self, lat: float, lon: float) -> float:
         if self.data is None:
             raise RuntimeError("ElevationGrid closed")
-        # max_lat is the top-edge latitude (geotransform origin), not cell center.
-        # The -0.5 shift maps from cell edge to cell center for bilinear lookup.
-        fy = (self.max_lat - lat) / self.d_lat - 0.5
-        fx = (lon - self.min_lon) / self.d_lon - 0.5
-        if fy < -0.5 or fx < -0.5 or fy > self.n_rows - 0.5 or fx > self.n_cols - 0.5:
-            return float("nan")
-        fy = max(0.0, min(self.n_rows - 1.0, fy))
-        fx = max(0.0, min(self.n_cols - 1.0, fx))
-        y0 = int(fy)
-        x0 = int(fx)
-        y1 = min(y0 + 1, self.n_rows - 1)
-        x1 = min(x0 + 1, self.n_cols - 1)
-        ty = fy - y0
-        tx = fx - x0
-        v00 = self.data[y0, x0]
-        v01 = self.data[y0, x1]
-        v10 = self.data[y1, x0]
-        v11 = self.data[y1, x1]
-        return (  # type: ignore[no-any-return]  # numpy bilinear-blend result types as Any
-            v00 * (1 - tx) * (1 - ty)
-            + v01 * tx * (1 - ty)
-            + v10 * (1 - tx) * ty
-            + v11 * tx * ty
-        )
+        return bilinear_sample(self.data, self.grid_meta_dict(), lat, lon)  # type: ignore[no-any-return]
 
     def sample_line(self, lat1, lon1, lat2, lon2, n_points):
         if self.data is None:
@@ -202,61 +180,12 @@ class ElevationGrid:
         ts = np.linspace(0.0, 1.0, n_points)
         lats = lat1 + ts * (lat2 - lat1)
         lons = _interpolate_longitudes_shortest(lon1, lon2, ts)
-        fy_raw = (self.max_lat - lats) / self.d_lat - 0.5
-        fx_raw = (lons - self.min_lon) / self.d_lon - 0.5
-        oob = (
-            (fy_raw < -0.5) | (fx_raw < -0.5)
-            | (fy_raw > self.n_rows - 0.5) | (fx_raw > self.n_cols - 0.5)
-        )
-        fy = np.clip(fy_raw, 0.0, self.n_rows - 1.0 - 1e-9)
-        fx = np.clip(fx_raw, 0.0, self.n_cols - 1.0 - 1e-9)
-        y0 = np.floor(fy).astype(np.int32)
-        x0 = np.floor(fx).astype(np.int32)
-        y1 = np.clip(y0 + 1, 0, self.n_rows - 1)
-        x1 = np.clip(x0 + 1, 0, self.n_cols - 1)
-        ty = (fy - y0).astype(np.float32)
-        tx_ = (fx - x0).astype(np.float32)
-        result = (
-            self.data[y0, x0] * (1 - tx_) * (1 - ty)
-            + self.data[y0, x1] * tx_ * (1 - ty)
-            + self.data[y1, x0] * (1 - tx_) * ty
-            + self.data[y1, x1] * tx_ * ty
-        )
-        result[oob] = np.nan
-        return result
+        return bilinear_sample(self.data, self.grid_meta_dict(), lats, lons)
 
     def sample_grid(self, lats: np.ndarray, lons: np.ndarray) -> np.ndarray:
-        """Sample the DEM at every (lat, lon) grid intersection.
-
-        Returns a float32 array of shape (len(lats), len(lons)).
-        Out-of-bounds or no-data cells are NaN.
-        """
         if self.data is None:
             raise RuntimeError("ElevationGrid closed")
-        lats_arr = np.asarray(lats, dtype=np.float64)[:, np.newaxis]
-        lons_arr = np.asarray(lons, dtype=np.float64)[np.newaxis, :]
-        fy_raw = (self.max_lat - lats_arr) / self.d_lat - 0.5
-        fx_raw = (lons_arr - self.min_lon) / self.d_lon - 0.5
-        oob = (
-            (fy_raw < -0.5) | (fx_raw < -0.5)
-            | (fy_raw > self.n_rows - 0.5) | (fx_raw > self.n_cols - 0.5)
-        )
-        fy = np.clip(fy_raw, 0.0, self.n_rows - 1.0 - 1e-9)
-        fx = np.clip(fx_raw, 0.0, self.n_cols - 1.0 - 1e-9)
-        y0 = np.floor(fy).astype(np.int32)
-        x0 = np.floor(fx).astype(np.int32)
-        y1 = np.clip(y0 + 1, 0, self.n_rows - 1)
-        x1 = np.clip(x0 + 1, 0, self.n_cols - 1)
-        ty = (fy - y0).astype(np.float32)
-        tx_ = (fx - x0).astype(np.float32)
-        result = (
-            self.data[y0, x0] * (1 - tx_) * (1 - ty)
-            + self.data[y0, x1] * tx_ * (1 - ty)
-            + self.data[y1, x0] * (1 - tx_) * ty
-            + self.data[y1, x1] * tx_ * ty
-        ).astype(np.float32)
-        result[oob] = np.nan
-        return result  # type: ignore[no-any-return]  # numpy bilinear-blend result types as Any
+        return bilinear_sample_grid(self.data, self.grid_meta_dict(), lats, lons)  # type: ignore[no-any-return]
 
     def terrain_profile(self, lat1, lon1, lat2, lon2, step_m=30.0) -> list[tuple[float, float]]:
         dist = haversine_m(lat1, lon1, lat2, lon2)

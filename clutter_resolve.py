@@ -11,6 +11,7 @@ from .clutter_categories import (
 
 logger = logging.getLogger(__name__)
 
+
 _warned_low_vhf_p2108_combined = False
 
 
@@ -27,13 +28,9 @@ def _maybe_warn_low_vhf_p2108_combined(f_ghz, category):
     )
 
 
-def _legacy_to_advanced_override(name):
-    return legacy_to_advanced_override(name)
-
-
-def _resolve_category_advanced(lat, lon, override, land_cover_grid):
+def resolve_category_advanced(lat, lon, override, land_cover_grid):
     if override:
-        return _legacy_to_advanced_override(override), "override"
+        return legacy_to_advanced_override(override), "override"
     if land_cover_grid is not None:
         class_id = land_cover_grid.sample_class(lat, lon)
         if class_id is not None:

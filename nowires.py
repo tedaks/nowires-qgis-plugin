@@ -20,6 +20,8 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+
+NoWires QGIS plugin entry point and initialisation.
 """
 
 import logging
