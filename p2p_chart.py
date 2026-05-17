@@ -188,6 +188,8 @@ def show_profile_chart(
     if len(los_h) > 0:
         tx_marker, = ax.plot(0, los_h[0], "r^", markersize=12, label="TX", zorder=5)
         rx_marker, = ax.plot(d_km[-1], los_h[-1], "rv", markersize=12, label="RX", zorder=5)
+    else:
+        tx_marker, rx_marker = None, None
     ax.set_xlim(d_km[0], d_km[-1])
     ax.set_ylim(np.min(terrain_bulge) - 10,
                 max(np.max(los_h + fresnel_r), np.max(terrain_bulge) + 10))
@@ -237,8 +239,10 @@ def show_profile_chart(
                     (f1_upper,"fresnel"),(f1_lower,"fresnel"),(f1_fill,"fresnel"),
                     (f60_upper,"violation_band"),(f60_fill,"violation_band"),
                     (tx_marker,"antennas"),(rx_marker,"antennas")]:
-                    art.set_visible(toggle_state[k])
+                    if art is not None:
+                        art.set_visible(toggle_state[k])
                 _set_obstructions_visible(toggle_state["obstructions"])
+                fig.canvas.draw_idle()
             except Exception:
                 logger.exception("P2P chart visibility update failed")
         QTimer.singleShot(0, _a)
@@ -272,22 +276,16 @@ def show_profile_chart(
         toolbar.addWidget(cb)
 
     _tooltip_cid = [None]
-    def _on_close_event(event):
+    def _on_destroy():
         if _tooltip_cid[0] is not None:
-            try:
+            with contextlib.suppress(Exception):
                 fig.canvas.mpl_disconnect(_tooltip_cid[0])
-            except Exception as exc:
-                logger.debug("matplotlib disconnect: %s", exc)
             _tooltip_cid[0] = None
-
-    class _ChartCanvas(FigureCanvasQTAgg):
-        def closeEvent(self, event):
-            _on_close_event(event)
-            for cb in [w for w in toolbar.findChildren(QCheckBox) if isinstance(w, QCheckBox)]:
-                with contextlib.suppress(RuntimeError):
-                    cb.blockSignals(True)
-            super().closeEvent(event)
-    canvas = _ChartCanvas(fig)
+        for cb in toolbar.findChildren(QCheckBox):
+            with contextlib.suppress(RuntimeError):
+                cb.blockSignals(True)
+    canvas = FigureCanvasQTAgg(fig)
+    dock.destroyed.connect(_on_destroy)
     tooltip_cid = _setup_tooltip(ax, fig, d_km, distances, terrain_bulge, los_h, fresnel_r)
     _tooltip_cid[0] = tooltip_cid
     container = QWidget()
@@ -297,3 +295,4 @@ def show_profile_chart(
     layout.addWidget(canvas)
     dock.setWidget(container)
     qgis_iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
+    dock.setFloating(True)

@@ -238,6 +238,8 @@ def antenna_gain_adjustment_db(bearing_deg, elevation_angle_deg, config):
     Pattern CSVs MUST use gains *relative to peak* (i.e., always <= 0 dB).
     Positive gains in pattern files are silently clamped to 0.0.
     """
+    if config is None:
+        return 0.0
     if config.preset == "omni":
         return 0.0
     if config.horizontal_pattern_path:

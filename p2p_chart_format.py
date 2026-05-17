@@ -34,9 +34,11 @@ __all__ = ["build_obstruction_data", "build_chart_status_text"]
 
 
 def build_obstruction_data(d_km, terrain_bulge, los_h, fresnel_r):
-    """Find peak obstruction indices and compute per-point deficit values.
+    """Find peak obstruction indices sorted by Fresnel penetration deficit.
 
-    Returns a list of (index, deficit) tuples for up to 5 highest obstructions.
+    Returns a list of (idx, d_km, terrain_bulge, los_h, fresnel_r, deficit)
+    tuples for up to 5 obstructions with the highest deficit, where
+    deficit = max(0, terrain_bulge - (los_h - fresnel_r)).
     """
     obstruction_indices = np.where(terrain_bulge > los_h - fresnel_r)[0]
     index_set = set(obstruction_indices)
@@ -54,7 +56,8 @@ def build_obstruction_data(d_km, terrain_bulge, los_h, fresnel_r):
                     break
         if is_peak:
             peaks.append(idx)
-    peaks.sort(key=lambda i: terrain_bulge[i], reverse=True)
+    deficit = terrain_bulge - (los_h - fresnel_r)
+    peaks.sort(key=lambda i: deficit[i], reverse=True)
     return [
         (idx, d_km[idx], terrain_bulge[idx], los_h[idx], fresnel_r[idx],
          max(0, terrain_bulge[idx] - (los_h[idx] - fresnel_r[idx])))
