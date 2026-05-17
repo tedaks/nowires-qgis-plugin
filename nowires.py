@@ -145,17 +145,9 @@ class NoWiresPlugin:
 
     @staticmethod
     def _cleanup_stale_shared_memory():
-        prefix = "nowires_dem_"
         try:
-            import glob as _glob
-            import os as _os
-            dev_shm = _os.path.join(_os.sep, "dev", "shm")
-            if _os.path.isdir(dev_shm):
-                for entry in _glob.iglob(_os.path.join(dev_shm, prefix + "*")):
-                    try:
-                        _os.unlink(entry)
-                    except OSError:
-                        pass
+            from .shared_dem_grid import cleanup_stale_shm_entries
+            cleanup_stale_shm_entries("/dev/shm", os.geteuid())
         except Exception:
             pass
 
