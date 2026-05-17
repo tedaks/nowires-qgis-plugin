@@ -120,6 +120,9 @@ class ElevationGrid:
                 self.data[self.data == nodata] = np.nan
 
             self.n_rows, self.n_cols = self.data.shape
+            if self.n_rows == 0 or self.n_cols == 0:
+                raise RuntimeError(
+                    "DEM raster has zero rows/cols: {}".format(dem_path))
             self.min_lon = transform[0]
             self.max_lon = self.min_lon + transform[1] * self.n_cols
             self.min_lat = transform[3] + transform[5] * self.n_rows
@@ -166,7 +169,8 @@ class ElevationGrid:
         )
 
     def sample(self, lat: float, lon: float) -> float:
-        assert self.data is not None, "ElevationGrid closed"
+        if self.data is None:
+            raise RuntimeError("ElevationGrid closed")
         # max_lat is the top-edge latitude (geotransform origin), not cell center.
         # The -0.5 shift maps from cell edge to cell center for bilinear lookup.
         fy = (self.max_lat - lat) / self.d_lat - 0.5
@@ -193,7 +197,8 @@ class ElevationGrid:
         )
 
     def sample_line(self, lat1, lon1, lat2, lon2, n_points):
-        assert self.data is not None, "ElevationGrid closed"
+        if self.data is None:
+            raise RuntimeError("ElevationGrid closed")
         ts = np.linspace(0.0, 1.0, n_points)
         lats = lat1 + ts * (lat2 - lat1)
         lons = _interpolate_longitudes_shortest(lon1, lon2, ts)
@@ -221,12 +226,13 @@ class ElevationGrid:
         return result
 
     def sample_grid(self, lats: np.ndarray, lons: np.ndarray) -> np.ndarray:
-        assert self.data is not None, "ElevationGrid closed"
         """Sample the DEM at every (lat, lon) grid intersection.
 
         Returns a float32 array of shape (len(lats), len(lons)).
         Out-of-bounds or no-data cells are NaN.
         """
+        if self.data is None:
+            raise RuntimeError("ElevationGrid closed")
         lats_arr = np.asarray(lats, dtype=np.float64)[:, np.newaxis]
         lons_arr = np.asarray(lons, dtype=np.float64)[np.newaxis, :]
         fy_raw = (self.max_lat - lats_arr) / self.d_lat - 0.5

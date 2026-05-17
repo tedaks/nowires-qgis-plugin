@@ -33,6 +33,7 @@ from osgeo import ogr, osr
 from .report_markers import ogr_driver_for_path, remove_existing_ogr_dataset
 from .batch_params import BATCH_MODE_OPTIONS
 from .processing_utils import queue_layer_for_loading
+from .report_export import _csv_safe
 
 
 def write_batch_marker_layer(path, results, feedback, mode):
@@ -101,7 +102,7 @@ def write_batch_csv(path, results, mode):
                 point_id = "TX({}, {:.5f}, {:.5f})".format(rank, r["tx_lat"], r["tx_lon"])
             else:
                 point_id = "RX({}, {:.5f}, {:.5f})".format(rank, r["rx_lat"], r["rx_lon"])
-            writer.writerow([
+            writer.writerow([_csv_safe(v) for v in (
                 point_id,
                 rank,
                 r["tx_lat"],
@@ -114,7 +115,7 @@ def write_batch_csv(path, results, mode):
                 round(r["margin_db"], 2),
                 round(r["clearance_pct"], 1),
                 r["status"],
-            ])
+            )])
 
 
 def write_batch_json(path, results, mode):

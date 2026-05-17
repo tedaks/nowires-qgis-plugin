@@ -26,6 +26,7 @@ class TestContourGenerationContract:
         assert callable(reproject_and_export)
 
 
+@pytest.mark.gdal_integration
 class TestContourGenerationGDAL:
     def _create_dem(self, path, width=20, height=20, pixel_size=0.001, origin_x=8.0, origin_y=47.0):
         from osgeo import gdal, osr

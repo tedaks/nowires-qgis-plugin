@@ -1,37 +1,13 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""
-/***************************************************************************
- NoWires
-                      A QGIS plugin
- Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
-                              -------------------
-         begin                : 2026-04-22
-         copyright            : (C) 2026 Daniel Hulshof Saint Martin
-                                 Adaptations (C) 2026 Bortre Tenamo
-         email                : tedaks@gmail.com
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 3 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
-
-
-Contour Lines Generation Algorithm.
+"""Contour Lines Generation Algorithm.
 
 Generates contour lines and optional hillshade overlay from Copernicus
 GLO-30 DEM data. Adapted from the ContourLines QGIS plugin by
 Daniel Hulshof Saint Martin.
 
-Portions of this module are adapted from the ContourLines QGIS plugin
-and were originally distributed under the GPL. See NOTICE.md for
-attribution details.
+Portions adapted from the ContourLines QGIS plugin (GPL). See NOTICE.md.
 """
 
 import errno
@@ -93,12 +69,16 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
 
     def __init__(self):
         super().__init__()
-        self.temp_dir = get_temp_dir() or tempfile.mkdtemp(
-            prefix="nowires_contour_")  # persistent DEM cache dir (never cleaned)
+        self._tmp = TempDirManager()
+        fallback_dir = get_temp_dir()
+        if fallback_dir:
+            self.temp_dir = fallback_dir
+        else:
+            self.temp_dir = tempfile.mkdtemp(prefix="nowires_contour_")
+            self._tmp.add_dir(self.temp_dir)
         self.status_total = 0.0
         self.progress = 0.0
         self._raster_layer_ids = []
-        self._tmp = TempDirManager()  # per-run temp manager for clip/reproj files
         self._contour_layer_id = None
         self._contour_post_processor = None
 
