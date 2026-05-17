@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 
 from .clutter_categories import (
     legacy_to_advanced_override,
@@ -12,14 +13,18 @@ from .clutter_categories import (
 logger = logging.getLogger(__name__)
 
 
-_warned_low_vhf_p2108_combined = False
+@dataclass
+class _P2108State:
+    warned_low_vhf: bool = False
+
+
+_STATE = _P2108State()
 
 
 def _maybe_warn_low_vhf_p2108_combined(f_ghz, category):
-    global _warned_low_vhf_p2108_combined
-    if _warned_low_vhf_p2108_combined:
+    if _STATE.warned_low_vhf:
         return
-    _warned_low_vhf_p2108_combined = True
+    _STATE.warned_low_vhf = True
     logger.warning(
         "P.2108 §3.2 invalid below 0.5 GHz; advanced clutter for category "
         "%s at %.3f GHz contributes 0 dB. Consider 'simple' mode for "

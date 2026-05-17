@@ -17,7 +17,7 @@ from clutter_categories import legacy_to_advanced_override
 class TestMaybeWarnLowVhfP2108Combined:
     def test_emits_warning_on_first_call(self, caplog):
         import clutter_resolve
-        clutter_resolve._warned_low_vhf_p2108_combined = False
+        clutter_resolve._STATE.warned_low_vhf = False
         import logging
         with caplog.at_level(logging.WARNING, logger="clutter_resolve"):
             _maybe_warn_low_vhf_p2108_combined(0.3, "urban")
@@ -26,7 +26,7 @@ class TestMaybeWarnLowVhfP2108Combined:
 
     def test_suppresses_warning_on_second_call(self, caplog):
         import clutter_resolve
-        clutter_resolve._warned_low_vhf_p2108_combined = False
+        clutter_resolve._STATE.warned_low_vhf = False
         import logging
         with caplog.at_level(logging.WARNING, logger="clutter_resolve"):
             _maybe_warn_low_vhf_p2108_combined(0.3, "urban")
@@ -36,11 +36,11 @@ class TestMaybeWarnLowVhfP2108Combined:
 
     def test_resets_after_manual_reset(self, caplog):
         import clutter_resolve
-        clutter_resolve._warned_low_vhf_p2108_combined = False
+        clutter_resolve._STATE.warned_low_vhf = False
         import logging
         with caplog.at_level(logging.WARNING, logger="clutter_resolve"):
             _maybe_warn_low_vhf_p2108_combined(0.3, "urban")
-        clutter_resolve._warned_low_vhf_p2108_combined = False
+        clutter_resolve._STATE.warned_low_vhf = False
         with caplog.at_level(logging.WARNING, logger="clutter_resolve"):
             _maybe_warn_low_vhf_p2108_combined(0.3, "suburban")
         warns = [r for r in caplog.records if "P.2108" in r.getMessage()]
@@ -48,7 +48,7 @@ class TestMaybeWarnLowVhfP2108Combined:
 
     def test_returns_early_without_warning_when_latch_set(self, caplog):
         import clutter_resolve
-        clutter_resolve._warned_low_vhf_p2108_combined = True
+        clutter_resolve._STATE.warned_low_vhf = True
         import logging
         with caplog.at_level(logging.WARNING, logger="clutter_resolve"):
             _maybe_warn_low_vhf_p2108_combined(0.3, "urban")
