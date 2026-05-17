@@ -65,6 +65,10 @@ All Python source files in this project must strictly adhere to a maximum of **3
 - Before committing, verify: `find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}'` — must return zero files.
 - Ruff line-length is set to 99; use it consistently to keep lines compact.
 
+## Changelog Structure
+
+`CHANGELOG.md` must always have `## [Unreleased]` as the first versioned section (after the header), before any released version sections. Planned or deferred work lives under `### Planned` subsections within `[Unreleased]`. When cutting a release, move completed items from `[Unreleased]` into a new dated `## [X.Y.Z] - YYYY-MM-DD` section that goes immediately after `[Unreleased]`.
+
 ## Release Process
 
 This project adheres to [Semantic Versioning](https://semver.org). Bugfixes, refactors, and features ship in separate releases — never mix categories in one version.
