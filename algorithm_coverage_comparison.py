@@ -34,7 +34,7 @@ attribution details.
 import logging
 from qgis.core import QgsProcessingException
 from .base_algorithm import NoWiresAlgorithm, install_constants
-from .constants import DEGREE_PADDING
+from .constants import DEGREE_PADDING, METERS_PER_DEGREE_LAT
 from .dem_downloader import ensure_dem_for_area
 from .elevation import ElevationGrid
 from .geo_bounds import coverage_bounds
@@ -96,7 +96,7 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
         tx_lat_center = (tx_lat_a + tx_lat_b) / 2.0
         tx_lon_center = (tx_lon_a + tx_lon_b) / 2.0
 
-        pad_deg = max(DEGREE_PADDING, radius_km / (111320.0 / 1000.0) * 0.1)
+        pad_deg = max(DEGREE_PADDING, radius_km * 1000.0 / METERS_PER_DEGREE_LAT * 0.1)
         south, north, west, east = coverage_bounds(
             tx_lat_center, tx_lon_center, radius_km, padding_deg=pad_deg)
 

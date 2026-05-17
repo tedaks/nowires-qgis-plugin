@@ -42,7 +42,9 @@ from .contour_pipeline import (
     load_dem_output,
     load_overlay_layer,
 )
-from .contour_smoothing import _raster_calc, smooth_contour_dem
+from .contour_smoothing import (
+    SMOOTHING_OPTIONS, SMOOTHING_MEDIUM, _raster_calc, smooth_contour_dem,
+)
 from .contour_symbology import apply_contour_symbology
 from .dem_downloader import get_temp_dir
 from .processing_utils import queue_layer_for_loading, register_destination_layer
@@ -94,7 +96,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             defaultValue=10, minValue=1, maxValue=5000, optional=False))
         self.addParameter(QgsProcessingParameterEnum(
             name=self.SMOOTHING, description=self.tr("Contour line smoothing level"),
-            options=["None", "Low", "Medium", "High"], defaultValue="Medium",
+            options=SMOOTHING_OPTIONS, defaultValue=SMOOTHING_MEDIUM,
             usesStaticStrings=True, optional=False))
         color_param = QgsProcessingParameterColor(
             name=self.COLOR, description=self.tr("Contour line colour"),

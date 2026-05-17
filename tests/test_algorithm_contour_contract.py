@@ -13,6 +13,7 @@ CONTOUR_SOURCES = [
     for f in (
         "algorithm_contour.py",
         "contour_smoothing.py",
+        "_smoothing_vrt.py",
         "contour_overlay.py",
         "contour_symbology.py",
         "contour_generation.py",
