@@ -9,11 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v1.5.7
+### Planned for v1.5.7  (PATCH — bugfix release)
 
-- Extend PDF report output (`OUTPUT_REPORT_PDF`) from Coverage Analysis to Point-to-Point Analysis and Coverage Comparison. The shared `report_pdf.write_report_pdf()` writer is already in place; remaining work is parameter registration and `_write_*_outputs` wiring in `algorithm_p2p` and `algorithm_coverage_comparison`.
-- Promote the standalone "Preview Antenna Pattern" dialog into an inline `QgsProcessingParameterWidgetFactoryInterface` so the polar plot renders directly in the Coverage / P2P parameter dialog next to the pattern-file picker.
-- Audit `report_pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks.
 - Fix haversine numerical stability in `coverage_summary._compute_grid_summary` — add `a = np.clip(a, 0.0, 1.0)` before `2 * R * np.arcsin(np.sqrt(a))` at `coverage_summary.py:62-63`. Without the clip, FP rounding can push `a` slightly above 1.0 (most likely at antipodal or near-zero distances) and yield NaN distances in the summary. The vectorised twin in `coverage_tasks._haversine_grid` already clips (`coverage_tasks.py:63`); this aligns the two.
 - Replace `assert self.data is not None` with `RuntimeError` in `ElevationGrid.sample` / `sample_line` / `sample_grid` (`elevation.py:169,196,224`). `assert` is a no-op under `python -O`; QGIS rarely runs with `-O` but bundled interpreters on some platforms have done so historically, and a silent NaN read of `self.data` after `close()` would be much harder to diagnose than an explicit raise.
 - Scope `/dev/shm/nowires_dem_*` cleanup by PID and UID in `NoWiresPlugin._cleanup_stale_shared_memory` (`nowires.py:147-160`). Current code unconditionally `unlink`s every matching entry on `/dev/shm`, so on a shared Linux workstation one user's QGIS startup can destroy another user's in-flight DEM grids. Fix: embed the creator PID in the name at `SharedDEMGrid._create()` and only unlink entries whose PID no longer exists *and* whose `st_uid` matches `os.geteuid()`.
@@ -42,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix `summarize_coverage_grid` zero-division on empty grids (`coverage_summary.py:46-47`). `lat_step = (max_lat - min_lat) / n_rows` and `lon_step = (max_lon - min_lon) / n_cols` raise `ZeroDivisionError` when `prx_grid.shape` yields zero rows or columns. Add an early-return returning the existing zero-count summary dict (matching the `usable_distances.size == 0` path at lines 69-75) when `n_rows == 0` or `n_cols == 0`.
 - Fix `SharedDEMGrid._create` atexit-handler pinning `self` and `shm` until process exit (`shared_dem_grid.py:74`). `atexit.register(self._atexit_cleanup)` registers a bound method that holds a strong reference to `self`, preventing GC and pinning `self._shm` (the mapped shared-memory buffer). If `release()` is never called — e.g. an exception after `_create` returns but before the caller stores the object — the atexit handler never gets unregistered, so both the Python object and the `/dev/shm` segment survive until process exit. In a long-running QGIS session with repeated DEM loads, abandoned segments accumulate. Fix: register a module-level cleanup function instead of a bound method, storing a weak reference to `self`; or call `release()` in a `__del__` safety-net so the atexit handler is unregistered promptly when the object becomes unreachable.
 
-### Tech debt / cleanup (targeted post-v1.5.7)
+### Planned for v1.5.8  (PATCH — tech-debt / cleanup, zero behavior change)
 
 - Extract a single shared bilinear sampler. The same `-0.5` cell-edge-to-center shift and weighted-blend formula is reimplemented four times: `ElevationGrid.sample` (scalar), `ElevationGrid.sample_line` (1D), `ElevationGrid.sample_grid` (2D) (`elevation.py:168-253`), and `sample_line_from_grid` (`_geo_utils.py:14-48`). A helper that takes `(data, grid_meta, lats, lons)` and dispatches on shape would consolidate the four.
 - Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 44 positional/keyword params (`coverage_engine.py:102`), `build_p2p_report_payload` carries 41 (`report_payloads.py:58`), `build_coverage_report_payload_for_grid` carries 32 (`coverage_reporting.py:49`). Most of the natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist elsewhere in the codebase; the work is wiring them through.
@@ -75,6 +72,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Add a real module description to `nowires.py` (lines 4-23 currently contain only the GPL header inside the docstring slot; siblings like `elevation.py` put a description block after the header).
   - Drop the pointless `_os` / `_glob` import aliasing in `NoWiresPlugin._cleanup_stale_shared_memory` (`nowires.py:150-160`) — the names shadow the already-imported module-level `os`.
   - Reconcile the sequential-mode notice in `_coverage_executor._run_sequential` (`_coverage_executor.py:30`) with the v1.5.6 MP-fallback message. The sequential path emits `"Using single-threaded mode..."`; the MP fallback emits `"Multiprocessing unavailable (...), using single-threaded mode..."`. Either remove the bare sequential notice or align the phrasing.
+
+### Planned for v1.6.0  (MINOR — additive features)
+
+- Extend PDF report output (`OUTPUT_REPORT_PDF`) from Coverage Analysis to Point-to-Point Analysis and Coverage Comparison. The shared `report_pdf.write_report_pdf()` writer is already in place; remaining work is parameter registration and `_write_*_outputs` wiring in `algorithm_p2p` and `algorithm_coverage_comparison`.
+- Promote the standalone "Preview Antenna Pattern" dialog into an inline `QgsProcessingParameterWidgetFactoryInterface` so the polar plot renders directly in the Coverage / P2P parameter dialog next to the pattern-file picker.
+- Audit `report_pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks. Resolve before or during PDF parity work.
 
 ## [1.5.6] - 2026-05-17
 

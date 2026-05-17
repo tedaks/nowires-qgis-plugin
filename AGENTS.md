@@ -37,3 +37,41 @@ All Python source files in this project must strictly adhere to a maximum of **3
 
 - Before committing, verify: `find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}'` — must return zero files.
 - Ruff line-length is set to 99; use it consistently to keep lines compact.
+
+## Release Process
+
+This project adheres to [Semantic Versioning](https://semver.org). Bugfixes, refactors, and features ship in separate releases — never mix categories in one version.
+
+### Classification
+
+| Change type                                       | Bump  |
+|---------------------------------------------------|-------|
+| Bug fix (security, leak, correctness, robustness) | PATCH |
+| Refactor with zero behavior change                | PATCH |
+| New additive functionality                        | MINOR |
+| Public API rename, removed symbol, default change | MAJOR |
+
+Refactors that touch the public API surface escalate to MINOR. Before merging an underscore→public rename or signature change, run `grep -r "from NoWires"` outside the plugin tree; any external importer forces a MINOR bump.
+
+### Release shape
+
+Each release is one or more focused PRs, sequenced by risk:
+
+- **Bugfix release**: one PR per category, in order — security → resource leaks → correctness/robustness. Each fix lands with a regression test that fails without the patch (TDD convention since v1.5.0).
+- **Cleanup release**: one PR per theme — constants, dedup, decomposition, polish. Golden-file tests (`tests/test_report_export_golden.py`) must produce byte-identical output; zero behavior change is verified, not asserted.
+- **Feature release**: one PR per feature. Scope via brainstorm before code; manual QGIS UI test before tagging (CI cannot validate Qt widgets).
+
+### Pre-flight greps
+
+- **Leak / ownership fixes**: grep `owns_`, `\.close()`, `atexit.register` across the codebase. Prior releases (v1.5.0 → v1.5.1 → v1.5.7) missed sibling sites twice — do one comprehensive pass per leak class.
+- **Constant centralization**: grep the magic literal tree-wide; bundle all call sites in one PR so the constant lands with its callers.
+- **Public API change**: grep `from NoWires` outside the plugin tree.
+
+### Release gates
+
+- All PRs in the release merged in sequence
+- `tests.yml`, `integration.yml`, `benchmark.yml` green on the release commit
+- `version-check.yml` passes (metadata.txt bumped; `[Unreleased]` non-empty)
+- CHANGELOG entries moved from `[Unreleased]` → `## [X.Y.Z] - YYYY-MM-DD`
+- Tag `vX.Y.Z` (triggers `release.yml`)
+- Features: manual QGIS UI test recorded in the PR description
