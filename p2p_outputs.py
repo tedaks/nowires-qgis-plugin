@@ -91,7 +91,7 @@ def write_fresnel_zone(
                 dlon -= 360
             elif dlon < -180:
                 dlon += 360
-            lon = tx_lon + t * dlon
+            lon = ((tx_lon + t * dlon) + 180) % 360 - 180
             pts.append((float(lon), float(lat), float(heights[i])))
         return pts
 

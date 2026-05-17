@@ -39,6 +39,8 @@ C_LIGHT = 299792458.0
 
 def fresnel_radius(d1_m, d2_m, f_mhz):
     """Compute first Fresnel zone radius at a point along the path."""
+    if f_mhz <= 0:
+        return 0.0
     if d1_m <= 0 or d2_m <= 0:
         return 0.0
     wavelength_m = C_LIGHT / (f_mhz * 1e6)
@@ -47,6 +49,8 @@ def fresnel_radius(d1_m, d2_m, f_mhz):
 
 def earth_bulge(d_m, total_dist_m, k_factor=4.0 / 3.0):
     """Compute earth curvature bulge at distance d along a path."""
+    if k_factor <= 0:
+        return 0.0
     a_eff = k_factor * EARTH_RADIUS_M
     return (d_m * (total_dist_m - d_m)) / (2.0 * a_eff)
 
@@ -77,6 +81,11 @@ def fresnel_profile_analysis(
         Tuple of (terrain_bulge, los_h, fresnel_r, obstructs_los,
                   violates_f1, violates_f60) arrays.
     """
+    if k_factor <= 0:
+        n = len(distances) if hasattr(distances, '__len__') else 1
+        zeros = np.zeros(n, dtype=np.float64)
+        return zeros, zeros.copy(), zeros.copy(), np.zeros(n, dtype=bool), \
+            np.zeros(n, dtype=bool), np.zeros(n, dtype=bool)
     a_eff = k_factor * EARTH_RADIUS_M
 
     d = np.asarray(distances, dtype=np.float64)

@@ -16,6 +16,24 @@ hasProcessingProvider=yes
 changelog=
     Version 1.5.10
     - Fix AttributeError on Windows: module 'os' has no attribute 'geteuid' — guard /dev/shm cleanup with hasattr check; skip POSIX-only regression test on Windows
+    - Fix P2P profile chart checkbox toggles having no visible effect — add fig.canvas.draw_idle() after artist-visibility loop in deferred callback
+    - Fix latent NameError in P2P chart visibility toggle when tx_marker/rx_marker are undefined — initialise to None and skip in toggle loop
+    - Fix AttributeError when tx_antenna_config or rx_antenna_config is None — return 0.0 dB adjustment from antenna_gain_adjustment_db
+    - Fix clutter grid resource leak on early exception in run_p2p_analysis — widen try/finally to cover section from clutter-grid acquisition onward
+    - Fix Fresnel zone longitude overflow across antimeridian in write_fresnel_zone — wrap lon to [-180, 180]
+    - Fix _ChartCanvas.closeEvent dead code in P2P chart — replace with dock.destroyed signal for cleanup
+    - Fix setFloating called before addDockWidget in P2P chart — reorder to addDockWidget first then setFloating(True)
+    - Fix build_obstruction_data sorting by terrain height instead of Fresnel penetration deficit — sort by deficit descending
+    - Fix _write_p2p_output_layers not returning fresnel_lines_path — return 4-tuple directly
+    - Fix f_mhz and k_factor input validation in Fresnel — add early-return guards for f_mhz <= 0 and k_factor <= 0
+    - Fix build_obstruction_data docstring claiming (index, deficit) tuples — document actual 6-element tuple
+    - SHA-pin codeql.yml actions (replace @v4 tags with SHA digests)
+    - Add needs: [lint] gate to integration.yml to skip QGIS Docker job when cheap checks fail
+    - Remove unused qt_dialog pytest marker from pyproject.toml
+    - Add pip check step to integration.yml to verify QGIS container dependency tree
+    - Extract conftest QGIS mock setup into tests/_qgis_mocks.py (495→299 lines mock stubs, conftest down to 41 lines)
+    - Convert release.yml zip manifest from exclusion-based to explicit include list
+    Version 1.5.9
     - Fix tile_download_base.download_tile_with_retry purging structurally-valid cached tiles when ComputeStatistics fails — validate only structural integrity (gdal.Open + RasterCount + non-zero dimensions) on cache hits
     - Fix dem_downloader.download_tiles and worldcover_downloader.download_worldcover_tiles false-tripping their overall wall-clock deadlines on legitimately-large coverage areas — overall _WALL_CLOCK_TIMEOUT removed; per-tile budget (180s) already covers runaway protection
     Version 1.5.8

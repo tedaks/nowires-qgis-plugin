@@ -9,30 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned (PATCH — bug fixes)
-
-- Fix P2P profile chart checkbox toggles having no visible effect. `update_visibility()` called `art.set_visible()` on chart artists but never called `fig.canvas.draw_idle()` to trigger a repaint. Unchecking Terrain, LOS, Fresnel, 60% Band, or Antennas appeared to do nothing until the user triggered an unrelated repaint (mouse hover, window resize). Add `fig.canvas.draw_idle()` after the artist-visibility loop in the deferred callback so toggles take effect immediately.
-- Fix latent `NameError` in P2P profile chart visibility toggle when `tx_marker`/`rx_marker` are undefined. `tx_marker` and `rx_marker` are only created when `len(los_h) > 0` but `update_visibility()` references them unconditionally. Initialize both to `None` and skip them in the toggle loop when `None`.
-- Fix `AttributeError` when `P2PAnalysisParams.tx_antenna_config` or `rx_antenna_config` is `None` (the dataclass default). `antenna_gain_adjustment_db` accesses `config.preset` without a null check, crashing on `NoneType`. The report-payload path (lines 227–228) correctly guards with a ternary; the gain-calculation path (lines 164–166) does not. Return 0.0 dB adjustment when either config is `None`.
-- Fix clutter grid resource leak on early exception in `run_p2p_analysis`. The `clutter_grid.close()` call sits in a `finally` block at line 258 that only covers output writing (lines 195–257). If `ensure_dem_for_area` fails, the terrain profile is too short, all elevations are NaN, or ITM prediction fails (lines 108–142), the `finally` is never reached and the `LandCoverGrid` numpy array persists until GC — significant in long-running QGIS sessions with large land-cover rasters. Move the try/finally to encompass the whole section from clutter-grid acquisition onward.
-- Fix Fresnel zone longitude overflow across antimeridian in `write_fresnel_zone`. Interpolated `lon = tx_lon + t * dlon` can exceed ±180° when the path crosses ±180° (e.g., `tx_lon=179, rx_lon=-170` produces `lon=184.5` at `t=0.5`), creating invalid WGS84 coordinates. Wrap interpolated longitudes to [-180, 180] after computing `lon`.
-- Fix `_ChartCanvas.closeEvent` being dead code in P2P profile chart. The canvas is a child widget embedded in the dock layout; Qt only delivers `closeEvent` to top-level widgets, so the override never fires. The `mpl_disconnect` tooltip cleanup and `blockSignals` calls are never reached. Move cleanup to the `QDockWidget` close event or use `destroyed` signal.
-- Fix `dock.setFloating(True)` called before `addDockWidget` in P2P profile chart. `setFloating` has no effect when the dock is not yet in a `QMainWindow`; on some platforms the chart appears briefly docked before floating. Reorder to `addDockWidget` first, then `setFloating(True)`.
-- Fix `build_obstruction_data` sorting by terrain height instead of Fresnel penetration deficit. `peaks.sort(key=lambda i: terrain_bulge[i])` ranks the tallest peaks rather than the most obstructive ones (highest `terrain_bulge - (los_h - fresnel_r)`). When there are more than 5 obstructions, the most penetrative peaks may be omitted from annotations. Sort by deficit instead.
-- Fix `_p2p_outputs_internal._write_p2p_output_layers` not returning `fresnel_lines_path`. The function writes the Fresnel lines file but omits it from the return tuple. The caller in `p2p_compute.py` reconstructs the path from `fresnel_poly_path` using the same naming convention, which is a DRY violation. Return the path directly.
-- Fix `k_factor` and `wavelength_m` input validation in Fresnel calculations. `fresnel_radius` validates `d1_m`/`d2_m` but not `f_mhz` (zero/negative causes `ZeroDivisionError` or `ValueError`). `fresnel_profile_analysis` and `earth_bulge` don't validate `k_factor` (zero causes silent `inf`/`nan` arrays in NumPy; negative produces physically meaningless negative bulge). Add early-return guards for `f_mhz <= 0` and `k_factor <= 0`.
-- Fix `build_obstruction_data` docstring claiming returns `(index, deficit)` tuples when it actually returns 6-element tuples `(idx, d_km, terrain_bulge, los_h, fresnel_r, deficit)`.
-
 ### Planned (PATCH — tech-debt / cleanup, zero behavior change)
 
 - Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 35 params, `build_p2p_report_payload` carries 35, `build_coverage_report_payload_for_grid` carries 31. Most natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist; the work is wiring them through.
 - Decompose three long functions: `run_p2p_analysis` (183 lines), `_compute_single_link` (158 lines), `run_panel_coverage` (232 lines).
-- SHA-pin `github/codeql-action/init` and `github/codeql-action/analyze` in `codeql.yml` (currently `@v4` major-version tags; all other workflows use SHA digests per project policy in AGENTS.md).
-- Add `needs: [lint]` gate to `integration.yml` so the QGIS Docker job is skipped when cheap checks fail, avoiding ~20 min of wasted runner time.
-- Remove unused `qt_dialog` pytest marker from `pyproject.toml` marker declarations; `test_pyqt_dialogs.py` uses `skipif`, not the marker.
-- Add `pip check` step after `pip install --break-system-packages --ignore-installed` in `integration.yml` to verify the QGIS container dependency tree is not broken by constraint overrides.
-- Extract conftest QGIS mock setup from `tests/conftest.py` (495 lines) into `tests/_qgis_mocks.py` to keep conftest focused on fixtures and improve maintainability of mock stubs.
-- Convert `release.yml` zip manifest from exclusion-based `git ls-files | grep -vE` filtering to an explicit include list, preventing accidental inclusion of new dev-only directories.
 
 ### Planned for v1.6.0 (MINOR — additive features)
 
@@ -45,6 +25,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix `AttributeError: module 'os' has no attribute 'geteuid'` on Windows. `_cleanup_stale_shared_memory()` called `os.geteuid()` unconditionally, which is POSIX-only and crashes on Windows where `/dev/shm` doesn't exist. Guard with `hasattr(os, "geteuid")` and skip cleanup on non-POSIX platforms. Skip the `/dev/shm` cleanup scoping regression test module on non-POSIX platforms via `pytestmark = pytest.mark.skipif(not hasattr(os, "geteuid"), ...)`.
+- Fix P2P profile chart checkbox toggles having no visible effect. `update_visibility()` called `art.set_visible()` on chart artists but never called `fig.canvas.draw_idle()` to trigger a repaint. Unchecking Terrain, LOS, Fresnel, 60% Band, or Antennas appeared to do nothing until the user triggered an unrelated repaint (mouse hover, window resize). Add `fig.canvas.draw_idle()` after the artist-visibility loop in the deferred callback so toggles take effect immediately.
+- Fix latent `NameError` in P2P profile chart visibility toggle when `tx_marker`/`rx_marker` are undefined. `tx_marker` and `rx_marker` are only created when `len(los_h) > 0` but `update_visibility()` references them unconditionally. Initialize both to `None` and skip them in the toggle loop when `None`.
+- Fix `AttributeError` when `P2PAnalysisParams.tx_antenna_config` or `rx_antenna_config` is `None` (the dataclass default). `antenna_gain_adjustment_db` accesses `config.preset` without a null check, crashing on `NoneType`. The report-payload path (lines 227–228) correctly guards with a ternary; the gain-calculation path (lines 164–166) does not. Return 0.0 dB adjustment when either config is `None`.
+- Fix clutter grid resource leak on early exception in `run_p2p_analysis`. The `clutter_grid.close()` call sits in a `finally` block at line 258 that only covers output writing (lines 195–257). If `ensure_dem_for_area` fails, the terrain profile is too short, all elevations are NaN, or ITM prediction fails (lines 108–142), the `finally` is never reached and the `LandCoverGrid` numpy array persists until GC — significant in long-running QGIS sessions with large land-cover rasters. Move the try/finally to encompass the whole section from clutter-grid acquisition onward.
+- Fix Fresnel zone longitude overflow across antimeridian in `write_fresnel_zone`. Interpolated `lon = tx_lon + t * dlon` can exceed ±180° when the path crosses ±180° (e.g., `tx_lon=179, rx_lon=-170` produces `lon=184.5` at `t=0.5`), creating invalid WGS84 coordinates. Wrap interpolated longitudes to [-180, 180] after computing `lon`.
+- Fix `_ChartCanvas.closeEvent` being dead code in P2P profile chart. The canvas is a child widget embedded in the dock layout; Qt only delivers `closeEvent` to top-level widgets, so the override never fires. The `mpl_disconnect` tooltip cleanup and `blockSignals` calls are never reached. Move cleanup to the `QDockWidget` close event or use `destroyed` signal.
+- Fix `dock.setFloating(True)` called before `addDockWidget` in P2P profile chart. `setFloating` has no effect when the dock is not yet in a `QMainWindow`; on some platforms the chart appears briefly docked before floating. Reorder to `addDockWidget` first, then `setFloating(True)`.
+- Fix `build_obstruction_data` sorting by terrain height instead of Fresnel penetration deficit. `peaks.sort(key=lambda i: terrain_bulge[i])` ranks the tallest peaks rather than the most obstructive ones (highest `terrain_bulge - (los_h - fresnel_r)`). When there are more than 5 obstructions, the most penetrative peaks may be omitted from annotations. Sort by deficit instead.
+- Fix `_p2p_outputs_internal._write_p2p_output_layers` not returning `fresnel_lines_path`. The function writes the Fresnel lines file but omits it from the return tuple. The caller in `p2p_compute.py` reconstructs the path from `fresnel_poly_path` using the same naming convention, which is a DRY violation. Return the path directly.
+- Fix `k_factor` and `wavelength_m` input validation in Fresnel calculations. `fresnel_radius` validates `d1_m`/`d2_m` but not `f_mhz` (zero/negative causes `ZeroDivisionError` or `ValueError`). `fresnel_profile_analysis` and `earth_bulge` don't validate `k_factor` (zero causes silent `inf`/`nan` arrays in NumPy; negative produces physically meaningless negative bulge). Add early-return guards for `f_mhz <= 0` and `k_factor <= 0`.
+- Fix `build_obstruction_data` docstring claiming returns `(index, deficit)` tuples when it actually returns 6-element tuples `(idx, d_km, terrain_bulge, los_h, fresnel_r, deficit)`.
+
+### Added
+
+- Added `test_p2p_chart_visibility_draw.py` — regression tests for P2P chart visibility toggle repaint, marker NameError guard, dock destroyed signal cleanup, and addDockWidget/setFloating ordering.
+- Added `test_antenna_none_config.py` — regression test for `antenna_gain_adjustment_db` None config guard.
+- Added `test_p2p_clutter_grid_leak.py` — regression test for clutter grid resource leak on early exception.
+- Added `test_p2p_outputs_lon_wrap.py` — regression test for Fresnel zone longitude overflow across antimeridian.
+- Added `test_obstruction_deficit_sort.py` — regression test for `build_obstruction_data` deficit sort and 6-element tuple docstring.
+- Added `test_p2p_output_layers_fresnel_lines_path.py` — regression test for `_write_p2p_output_layers` returning `fresnel_lines_path` in 4-tuple.
+- Added `test_fresnel_input_validation.py` — regression test for `f_mhz` and `k_factor` validation guards in Fresnel calculations.
+
+### Changed
+
+- SHA-pin `github/codeql-action/init` and `github/codeql-action/analyze` in `codeql.yml` (previously `@v4` major-version tags; all other workflows already use SHA digests per project policy in AGENTS.md).
+- Add `needs: [lint]` gate to `integration.yml` so the QGIS Docker job is skipped when cheap checks fail, avoiding ~20 min of wasted runner time.
+- Remove unused `qt_dialog` pytest marker from `pyproject.toml` marker declarations; `test_pyqt_dialogs.py` uses `skipif`, not the marker.
+- Add `pip check` step after `pip install --break-system-packages --ignore-installed` in `integration.yml` to verify the QGIS container dependency tree is not broken by constraint overrides.
+- Extract conftest QGIS mock setup from `tests/conftest.py` (495 lines) into `tests/_qgis_mocks.py` to keep conftest focused on fixtures and improve maintainability of mock stubs.
+- Convert `release.yml` zip manifest from exclusion-based `git ls-files | grep -vE` filtering to an explicit include list, preventing accidental inclusion of new dev-only directories.
 
 ## [1.5.9] - 2026-05-17
 
