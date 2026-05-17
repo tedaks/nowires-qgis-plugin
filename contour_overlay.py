@@ -103,6 +103,7 @@ def prepare_elevation_overlay(source_dem_path, persistent_temp_dir, context, fee
         hillshade_ds = gdal.Open(overlay_hillshade_path, gdal.GA_Update)
         if hillshade_ds is not None:
             hillshade_ds.BuildOverviews("AVERAGE", overview_levels)
+            hillshade_ds.FlushCache()
             hillshade_ds = None
 
     return overlay_hillshade_path

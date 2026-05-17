@@ -42,6 +42,7 @@ def _create_raster(path, nx=5, ny=5, data_val=100.0):
     return path
 
 
+@pytest.mark.gdal_integration
 class TestGaussianKernel2D:
     def test_even_kernel_size(self):
         coefs = _gaussian_kernel_2d(4)
@@ -59,6 +60,7 @@ class TestGaussianKernel2D:
 
 
 @gdalskip
+@pytest.mark.gdal_integration
 class TestRasterCalc:
     def test_raster_calc_adds_two_rasters(self, tmp_path):
         r1 = str(tmp_path / "r1.tif")
@@ -119,6 +121,7 @@ class TestRasterCalc:
 
 
 @gdalskip
+@pytest.mark.gdal_integration
 class TestMakeBlurVRT:
     def test_make_blur_vrt_creates_file(self, tmp_path):
         src = str(tmp_path / "src.tif")
@@ -141,6 +144,7 @@ class TestMakeBlurVRT:
 
 
 @gdalskip
+@pytest.mark.gdal_integration
 class TestSmoothContourDEM:
     def test_smooth_contour_dem_off_skips_processing(self, tmp_path):
         src = str(tmp_path / "src.tif")

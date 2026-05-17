@@ -47,6 +47,7 @@ def _create_synthetic_tile(path, south, north, west, east, value=100.0, nx=10, n
     ds = None
 
 
+@pytest.mark.gdal_integration
 class TestClipAndMergeTiles:
     def test_merges_two_tiles(self, tmp_path):
         t1 = str(tmp_path / "tile1.tif")

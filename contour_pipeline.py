@@ -50,13 +50,21 @@ def setup_proxy_opener(auth_id, feedback):
         auth_cfg = QgsAuthMethodConfig()
         auth_mgr.loadAuthenticationConfig(auth_id, auth_cfg, True)
         auth_info = auth_cfg.configMap()
-        proxy_host = urlparse(auth_info["realm"]).hostname
-        proxy_port = urlparse(auth_info["realm"]).port
+        realm_url = auth_info["realm"]
+        parsed_realm = urlparse(realm_url)
+        # Default to http only if the realm URL omitted a scheme entirely;
+        # never coerce an explicit https:// realm to http://.
+        proxy_scheme = parsed_realm.scheme or "http"
+        proxy_host = parsed_realm.hostname
+        proxy_port = parsed_realm.port
         proxy_user = auth_info["username"]
         proxy_pass = auth_info["password"]
-        proxy_base_url = "http://{}:{}".format(proxy_host, proxy_port)
+        proxy_base_url = "{}://{}:{}".format(proxy_scheme, proxy_host, proxy_port)
         proxy_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
-        proxy_mgr.add_password(None, proxy_base_url, proxy_user, proxy_pass)
+        # Scope creds to the proxy realm URL. Passing realm=None turns these
+        # into a default-realm fallback that urllib will offer to *any*
+        # Basic-Auth challenge.
+        proxy_mgr.add_password(realm_url, proxy_base_url, proxy_user, proxy_pass)
         proxy_auth_handler = urllib.request.ProxyBasicAuthHandler(proxy_mgr)
         proxy_handler = urllib.request.ProxyHandler(
             {"http": proxy_base_url, "https": proxy_base_url}
@@ -139,8 +147,10 @@ def download_and_merge_tiles(
             clip_result = None
         else:
             continue
-        if gdal.Open(fn_clip) is None:
+        test_ds = gdal.Open(fn_clip)
+        if test_ds is None:
             continue
+        test_ds = None
         clipped_rasters.append(fn_clip)
         progress += 1
         feedback.setProgress(int(progress * status_total))
