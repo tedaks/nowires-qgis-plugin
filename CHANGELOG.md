@@ -73,7 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v1.5.9  (PATCH — tech-debt / cleanup, zero behavior change)
+### Planned (PATCH — tech-debt / cleanup, zero behavior change)
 
 - Extract a single shared bilinear sampler. The same `-0.5` cell-edge-to-center shift and weighted-blend formula is reimplemented four times: `ElevationGrid.sample` (scalar), `ElevationGrid.sample_line` (1D), `ElevationGrid.sample_grid` (2D) (`elevation.py:168-253`), and `sample_line_from_grid` (`_geo_utils.py:14-48`). A helper that takes `(data, grid_meta, lats, lons)` and dispatches on shape would consolidate the four.
 - Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 44 positional/keyword params (`coverage_engine.py:102`), `build_p2p_report_payload` carries 41 (`report_payloads.py:58`), `build_coverage_report_payload_for_grid` carries 32 (`coverage_reporting.py:49`). Most of the natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist elsewhere in the codebase; the work is wiring them through.
