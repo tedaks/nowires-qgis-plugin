@@ -18,6 +18,7 @@ from constants import (
     MAX_AOI_EXTENT_DEGREES,
     METERS_PER_DEGREE_LAT,
     FEET_PER_METER,
+    FRESNEL_60PCT_FACTOR,
     POLARIZATION_NAMES,
 )
 from defaults import (
@@ -43,7 +44,6 @@ from defaults import (
     DEFAULT_TX_HEIGHT_M,
     DEFAULT_TX_POWER_DBM,
     DEFAULT_EPSILON,
-    FRESNEL_60PCT_FACTOR,
 )
 
 

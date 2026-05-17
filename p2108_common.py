@@ -2,6 +2,8 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from __future__ import annotations
+
 """Shared helpers for ITU-R P.2108-1 and P.2109-2 implementations.
 
 P.2108 uses Q^-1 (inverse complementary normal CDF):
