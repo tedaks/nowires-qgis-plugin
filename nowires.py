@@ -152,6 +152,8 @@ class NoWiresPlugin:
 
     @staticmethod
     def _cleanup_stale_shared_memory():
+        if not hasattr(os, "geteuid"):
+            return
         try:
             from .shared_dem_grid import cleanup_stale_shm_entries
             cleanup_stale_shm_entries("/dev/shm", os.geteuid())
