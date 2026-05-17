@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.5.7
+version=1.5.8
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,6 +14,39 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
+    Version 1.5.8
+    - Refactor: decompose coverage_pool into _coverage_result_dispatch.py (300→276 lines)
+    - Refactor: decompose p2p_compute into _p2p_outputs_internal.py (300→265 lines)
+    - Refactor: decompose contour_smoothing into _smoothing_vrt.py (300→195 lines)
+    - Refactor: replace hardcoded 111320.0 with METERS_PER_DEGREE_LAT in algorithm_coverage and algorithm_coverage_comparison
+    - Refactor: replace f_mhz=300.0 dataclass defaults with DEFAULT_FREQ_MHZ
+    - Refactor: replace hardcoded ITM constants with DEFAULT_N0/DEFAULT_EPSILON/DEFAULT_SIGMA in coverage_engine
+    - Refactor: add SMOOTHING_NONE/LOW/MEDIUM/HIGH constants; replace string literals in contour parameter registration
+    - Refactor: add DELTA_STYLE_DIVERGING/THRESHOLD constants; replace string literals in comparison_outputs
+    - Refactor: add CLUTTER_OVERRIDE_AUTO constant; replace "Auto" string comparisons in clutter
+    - Refactor: collapse SharedDEMGrid._atexit_cleanup into class alias on release
+    - Refactor: convert silent except-pass to logger.debug in shared_dem_grid; narrow to OSError
+    - Refactor: drop duplicate ProcessPoolExecutor re-export from coverage_engine
+    - Refactor: add WGS84_CRS singleton to constants.py; replace 6 inline CRS constructions
+    - Refactor: move FRESNEL_60PCT_FACTOR from defaults.py to constants.py
+    - Refactor: add EMPTY_MARGIN_DB constant; replace magic -999.0 in report_payloads
+    - Refactor: replace 3 hardcoded 1048576.0 literals with BYTES_PER_MEBIBYTE
+    - Refactor: convert 7 remaining silent except-pass to logger.debug; narrow to OSError where safe
+    - Refactor: add from __future__ import annotations to 7 clutter/p2108 modules
+    - Refactor: replace last_contour_layer_id string literal with CONTOUR_LAYER_KEY constant in three_d
+    - Refactor: reconcile sequential-mode notice in _coverage_executor with MP-fallback message
+    - Refactor: replace type:ignore[arg-type] cluster in comparison_reporting with assert tmpdir is not None
+    - Refactor: break clutter.py \u003c-\u003e clutter_advanced.py import cycle; move TerminalClutterLosses to clutter_context
+    - Add gdal_integration pytest marker for numpy-dependent GDAL tests
+    - Refactor: replace hardcoded 111320.0 with METERS_PER_DEGREE_LAT in algorithm_coverage and algorithm_coverage_comparison
+    - Refactor: replace f_mhz=300.0 dataclass defaults with DEFAULT_FREQ_MHZ from defaults.py
+    - Refactor: replace hardcoded N0/epsilon/sigma in coverage_engine with DEFAULT_N0/DEFAULT_EPSILON/DEFAULT_SIGMA
+    - Refactor: add named constants for smoothing levels (SMOOTHING_NONE/LOW/MEDIUM/HIGH) in contour_smoothing
+    - Refactor: add DELTA_STYLE_DIVERGING/THRESHOLD constants in comparison_params; replace string literals in comparison_outputs
+    - Refactor: add CLUTTER_OVERRIDE_AUTO constant in clutter; replace "Auto" string literal comparisons
+    - Refactor: collapse SharedDEMGrid._atexit_cleanup into class-level alias on release
+    - Refactor: convert silent except-pass to logger.debug in shared_dem_grid close/release/unlink paths; narrow to OSError
+    - Refactor: drop duplicate ProcessPoolExecutor re-export from coverage_engine
     Version 1.5.7
     - Fix haversine numerical stability in coverage_summary._compute_grid_summary — add np.clip(a, 0.0, 1.0) before arcsin so FP rounding no longer yields NaN distances.
     - Replace assert with RuntimeError in ElevationGrid.sample, sample_line, and sample_grid so errors are always enforced even under python -O.

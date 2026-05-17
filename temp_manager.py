@@ -74,8 +74,8 @@ class TempDirManager:
             try:
                 from .dem_downloader import get_temp_dir
                 base_dir = get_temp_dir()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("macOS persistent temp dir: %s", exc)
         path = tempfile.mkdtemp(prefix="nowires_{}-".format(prefix), dir=base_dir)
         if sys.platform != "win32":
             try:

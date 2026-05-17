@@ -47,9 +47,12 @@ def write_report_pdf(path, payload, title) -> bool:
     )
     printer.setPageLayout(layout)
 
-    # Qt6 renamed QTextDocument.print_ → print; keep both for safety.
-    if hasattr(document, "print"):
-        document.print(printer)
-    else:
-        document.print_(printer)
+    try:
+        if hasattr(document, "print"):
+            document.print(printer)
+        else:
+            document.print_(printer)
+    except Exception as exc:
+        logger.debug("PDF write failed: %s", exc)
+        return False
     return True

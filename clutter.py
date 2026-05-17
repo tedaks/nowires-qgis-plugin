@@ -5,25 +5,25 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-
 
 from .worldcover_downloader import ensure_worldcover_for_area
-from .clutter_categories import (
+from .clutter_categories import (  # noqa: F401
     LEGACY_CLUTTER_CATEGORIES,
     LEGACY_CLUTTER_LOSS_DB,
     _WORLDCOVER_TO_LEGACY_IDX,
     _LEGACY_CAT_IDX,
     _LEGACY_CLUTTER_LOSS_ARRAY,
+    legacy_to_advanced_override,
 )
+from .clutter_context import TerminalClutterLosses  # noqa: F401
 from .clutter_advanced import (  # noqa: F401
     compute_terminal_clutter_loss, _category_height_m,
     compute_terminal_clutter_losses,
-    compute_path_clutter_loss, _ClutterComponents,
-    _compute_advanced_loss,
+    compute_path_clutter_loss, ClutterComponents,
+    compute_advanced_loss,
 )
 from .clutter_resolve import (  # noqa: F401
-    _resolve_category_advanced, _legacy_to_advanced_override,
+    resolve_category_advanced,
     _resolve_category,
 )
 from .clutter_grid import LandCoverGrid  # noqa: F401
@@ -43,8 +43,9 @@ CLUTTER_MODEL_OPTIONS = [
     "Simple clutter correction",
     "Advanced clutter correction",
 ]
+CLUTTER_OVERRIDE_AUTO = "Auto"
 CLUTTER_OVERRIDE_OPTIONS = [
-    "Auto",
+    CLUTTER_OVERRIDE_AUTO,
     "open", "rural", "vegetation", "suburban", "urban",
     "open_rural", "dense_rural",
 ]
@@ -54,7 +55,8 @@ def worldcover_class_to_clutter_category(class_id) -> str:
     raw = int(class_id)
     if raw < 0 or raw > 255:
         logger.warning("Unexpected WorldCover class ID %d (outside 0-255 range)", raw)
-    return CLUTTER_CATEGORIES[int(_WORLDCOVER_TO_CATEGORY[raw % 256])]
+        return "open"
+    return CLUTTER_CATEGORIES[int(_WORLDCOVER_TO_CATEGORY[raw])]
 
 
 def clutter_loss_db(category, frequency_mhz) -> float:
@@ -66,12 +68,12 @@ def clutter_override_value(index_or_category) -> str | None:
     if index_or_category is None:
         return None
     if isinstance(index_or_category, str):
-        return None if index_or_category == "Auto" else index_or_category
+        return None if index_or_category == CLUTTER_OVERRIDE_AUTO else index_or_category
     idx = int(index_or_category)
     if idx < 0 or idx >= len(CLUTTER_OVERRIDE_OPTIONS):
         return None
     value = CLUTTER_OVERRIDE_OPTIONS[idx]
-    return None if value == "Auto" else value
+    return None if value == CLUTTER_OVERRIDE_AUTO else value
 
 
 def clutter_source_label(
@@ -94,23 +96,6 @@ def clutter_source_label(
     if sources:
         return ",".join(sources)
     return "fallback_open"
-
-
-@dataclass(frozen=True)
-class TerminalClutterLosses:
-    tx_category: str
-    rx_category: str
-    tx_loss_db: float
-    rx_loss_db: float
-    total_loss_db: float
-    source: str
-    tx_cch_m: float = 0.0
-    rx_cch_m: float = 0.0
-    tx_bel_db: float = 0.0
-    rx_bel_db: float = 0.0
-    total_with_bel_db: float = 0.0
-    method: str = "simple"
-    percentile: float = 50.0
 
 
 def ensure_clutter_grid_for_area(south: float, north: float, west: float, east: float,

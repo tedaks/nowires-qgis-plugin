@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import atexit
 import glob
+import logging
 import multiprocessing
 import multiprocessing.shared_memory
 import os
@@ -34,6 +35,8 @@ import uuid
 import weakref
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 _SHM_NAME_RE = re.compile(r"^nowires_dem_(\d+)_[0-9a-f]+$")
@@ -87,8 +90,8 @@ def cleanup_stale_shm_entries(dev_shm_dir: str, my_uid: int) -> None:
             continue  # signal succeeded -> process is alive
         try:
             os.unlink(entry)
-        except OSError:
-            pass
+        except OSError as exc:
+            logger.debug("Failed to unlink stale shm entry %s: %s", entry, exc)
 
 
 class SharedDEMGrid:
@@ -127,8 +130,8 @@ class SharedDEMGrid:
             try:
                 shm.close()
                 shm.unlink()
-            except Exception:
-                pass
+            except OSError as exc:
+                logger.debug("shm cleanup during _create failed: %s", exc)
             raise
         self._shm = shm
         self._name = name
@@ -152,28 +155,18 @@ class SharedDEMGrid:
         if self._shm is not None and not self._unlinked:
             try:
                 self._shm.close()
-            except Exception:
-                pass
+            except OSError as exc:
+                logger.debug("shm.close() failed: %s", exc)
             try:
                 if not self._unlinked:
                     self._shm.unlink()
                     self._unlinked = True
-            except Exception:
-                pass
+            except OSError as exc:
+                logger.debug("shm.unlink() failed: %s", exc)
             self._shm = None
             self._name = None
 
-    def _atexit_cleanup(self):
-        _pending_releases.pop(id(self), None)
-        if self._shm is not None and not self._unlinked:
-            try:
-                self._shm.close()
-                self._shm.unlink()
-                self._unlinked = True
-            except Exception:
-                pass
-            self._shm = None
-            self._name = None
+    _atexit_cleanup = release
 
     def __enter__(self):
         return self

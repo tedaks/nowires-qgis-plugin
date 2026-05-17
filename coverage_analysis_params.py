@@ -33,6 +33,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .defaults import DEFAULT_FREQ_MHZ
+from .clutter_context import ClutterModel, BuildingType
+
 if TYPE_CHECKING:
     from .clutter import LandCoverGrid
 
@@ -43,7 +46,7 @@ class CoverageAnalysisParams:
     tx_lon: float = 0.0
     tx_h: float = 30.0
     rx_h: float = 10.0
-    f_mhz: float = 300.0
+    f_mhz: float = DEFAULT_FREQ_MHZ
     radius_km: float = 50.0
     grid_size: int = 192
     polarization: int = 1
@@ -68,12 +71,12 @@ class CoverageAnalysisParams:
     clutter_grid: LandCoverGrid | None = None
     tx_clutter_override: str | None = None
     rx_clutter_override: str | None = None
-    clutter_model: str = "simple"
+    clutter_model: ClutterModel = "simple"
     cch_override_m: float | None = None
     clutter_percentile: float = 50.0
     street_width_m: float = 27.0
     bel_enabled: bool = False
-    bel_building_type: str = "traditional"
+    bel_building_type: BuildingType = "traditional"
     bel_elevation_angle_deg: float = 0.0
     n0: float = 301.0
     epsilon: float = 15.0
