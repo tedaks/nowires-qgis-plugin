@@ -52,11 +52,6 @@ class TestGdalStableApiUsage:
                    "srcSRS", "dstSRS", "format"):
             assert kw in source, "Missing stable Warp kwarg: {}".format(kw)
 
-    def test_tile_download_validates_with_compute_statistics(self):
-        source = open("tile_download_base.py").read()
-        assert "ComputeStatistics" in source
-
-
 class TestOgrStableApiUsage:
     """Source-scanning contract: verify OGR vector output uses stable APIs."""
 

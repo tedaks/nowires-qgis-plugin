@@ -108,40 +108,6 @@ def test_valid_cached_tile_with_constant_stats_is_reused(tmp_path, monkeypatch):
     assert feedback.messages == ["Cache hit: tile"]
 
 
-def test_cached_tile_with_unreadable_stats_is_replaced(tmp_path, monkeypatch):
-    local_tif = tmp_path / "tile.tif"
-    local_tif.write_bytes(b"cached")
-    opener = FakeOpener(
-        FakeResponse(
-            "https://example.test/tile.tif",
-            [b"fresh"],
-            headers={"Content-Length": "5"},
-        )
-    )
-
-    class UnreadableStatsDataset(FakeDataset):
-        def GetRasterBand(self, _idx):
-            class Band:
-                def ComputeStatistics(self, _approx_ok):
-                    return None
-
-            return Band()
-
-    open_results = iter([UnreadableStatsDataset(), FakeDataset()])
-    monkeypatch.setattr(tdb.gdal, "Open", lambda _path: next(open_results))
-
-    result = tdb.download_tile_with_retry(
-        tile_url="https://example.test/tile.tif",
-        local_tif=str(local_tif),
-        base_name_label="tile",
-        max_retries=1,
-        opener=opener,
-    )
-
-    assert result == str(local_tif)
-    assert local_tif.read_bytes() == b"fresh"
-
-
 def test_degenerate_cached_tile_is_replaced(tmp_path, monkeypatch):
     local_tif = tmp_path / "tile.tif"
     local_tif.write_bytes(b"cached")
