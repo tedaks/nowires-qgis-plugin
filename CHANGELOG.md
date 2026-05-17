@@ -7,6 +7,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Planned (PATCH — tech-debt / cleanup, zero behavior change)
+
+- Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 35 params, `build_p2p_report_payload` carries 35, `build_coverage_report_payload_for_grid` carries 31. Most natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist; the work is wiring them through.
+- Decompose three long functions: `run_p2p_analysis` (183 lines), `_compute_single_link` (158 lines), `run_panel_coverage` (232 lines).
+- Re-examine the tile-cache validation in `tile_download_base.download_tile_with_retry`. Any `ComputeStatistics` failure on a cached file is treated as corruption — consider validating only structural integrity on cache hits.
+- Reconsider the overall wall-clock deadline in `dem_downloader.download_tiles`. Either drop the overall deadline or scale it with tile count.
+
+### Planned for v1.6.0 (MINOR — additive features)
+
+- Extend PDF report output (`OUTPUT_REPORT_PDF`) from Coverage Analysis to Point-to-Point Analysis and Coverage Comparison. The shared `report_pdf.write_report_pdf()` writer is already in place; remaining work is parameter registration and `_write_*_outputs` wiring in `algorithm_p2p` and `algorithm_coverage_comparison`.
+- Promote the standalone "Preview Antenna Pattern" dialog into an inline `QgsProcessingParameterWidgetFactoryInterface` so the polar plot renders directly in the Coverage / P2P parameter dialog next to the pattern-file picker.
+- Audit `report_pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks. Resolve before or during PDF parity work.
+
+## [1.5.8] - 2026-05-17
+
+### Changed
+
+- Decompose `coverage_pool.py` (300→276 lines): extract `apply_batch_results` and `log_coverage_failures` into `_coverage_result_dispatch.py`.
+- Decompose `p2p_compute.py` (300→265 lines): extract `_write_p2p_output_layers` and `_write_p2p_reports` into `_p2p_outputs_internal.py`.
+- Decompose `contour_smoothing.py` (300→195 lines): extract Gaussian kernel, raster calc, and blur VRT helpers into `_smoothing_vrt.py`.
+- Replace hardcoded `111320.0` in `algorithm_coverage.py` and `algorithm_coverage_comparison.py` with `METERS_PER_DEGREE_LAT` from `constants.py`.
+- Replace `f_mhz: float = 300.0` defaults in `CoverageAnalysisParams` and `BatchAnalysisParams` with `DEFAULT_FREQ_MHZ` from `defaults.py`.
+- Replace `N0=301.0, epsilon=15.0, sigma=0.005` in `coverage_engine.compute_coverage` with `DEFAULT_N0`, `DEFAULT_EPSILON`, `DEFAULT_SIGMA` from `defaults.py`.
+- Add `SMOOTHING_NONE`, `SMOOTHING_LOW`, `SMOOTHING_MEDIUM`, `SMOOTHING_HIGH`, `SMOOTHING_OPTIONS` constants in `contour_smoothing.py`; replace string literals in `algorithm_contour.py` parameter registration.
+- Add `DELTA_STYLE_DIVERGING` and `DELTA_STYLE_THRESHOLD` constants in `comparison_params.py`; replace string literals in `comparison_outputs.py`.
+- Add `CLUTTER_OVERRIDE_AUTO` constant in `clutter.py`; replace `"Auto"` string comparisons.
+- Collapse `SharedDEMGrid._atexit_cleanup` into class-level alias on `release`; eliminates duplicate logic.
+- Convert silent `except … pass` in `shared_dem_grid.py` close/release/unlink paths to `logger.debug`; narrow `except Exception` to `except OSError`.
+- Drop duplicate `ProcessPoolExecutor` re-export from `coverage_engine.py`; all runtime usage and monkeypatching lives in `_coverage_executor.py`.
+- Add `gdal_integration` pytest marker for tests that require numpy-2-compatible GDAL bindings; exclude from host unit-test run, include in QGIS Docker integration run.
+- Add `WGS84_CRS` singleton to `constants.py`; replace 6 inline `QgsCoordinateReferenceSystem("EPSG:4326")` constructions across `algorithm_p2p`, `algorithm_batch`, `algorithm_contour`, `algorithm_coverage_comparison`, `comparison_panel`, `coverage_params`.
+- Move `FRESNEL_60PCT_FACTOR` from `defaults.py` to `constants.py`; update import sites in `fresnel.py`, `p2p_outputs.py`, `p2p_chart.py`.
+- Add `EMPTY_MARGIN_DB = -999.0` to `constants.py`; replace magic literal in `report_payloads.py`.
+- Replace 3 hardcoded `1048576.0` literals in `nowires.py` and `cache_manager.py` with `BYTES_PER_MEBIBYTE` from `constants.py`.
+- Convert remaining 7 silent `except … pass` sites to `logger.debug`: `nowires.py` (3 sites), `three_d.py`, `p2p_chart.py`, `temp_manager.py`, `processing_utils.py`. Narrow `except Exception` to `except OSError` where safe (shared memory, temp dir).
+- Add `from __future__ import annotations` to 7 clutter/p2108 modules (`clutter_categories`, `clutter_constants`, `clutter_resolve`, `clutter_saalos`, `p2108_common`, `p2108_terrestrial_stat`, `p2109_bel`) for consistency with sibling modules.
+- Replace `last_contour_layer_id` string literal at `three_d.py:79` with `CONTOUR_LAYER_KEY` constant.
+- Reconcile sequential-mode notice in `_coverage_executor.py` with MP-fallback message: `"Using single-threaded mode..."` → `"Single-threaded mode: no multiprocessing detected"`.
+- Replace `# type: ignore[arg-type]` cluster in `comparison_reporting.py` with explicit `assert tmpdir is not None`; removes three type-ignore suppressions.
+- Break `clutter.py` ↔ `clutter_advanced.py` import cycle: move `TerminalClutterLosses` from `clutter.py` to `clutter_context.py`, eliminating the deferred-import workaround.
+- Extract a single shared bilinear sampler into `_bilinear.py` (`bilinear_sample`, `bilinear_sample_grid`, `bilinear_sample_grid`), consolidating four re-implementations in `ElevationGrid.sample`, `ElevationGrid.sample_line`, `ElevationGrid.sample_grid`, and `sample_line_from_grid`.
+- Promote underscore-private clutter symbols to public API: `_ClutterComponents` → `ClutterComponents`, `_compute_advanced_loss` → `compute_advanced_loss`, `_resolve_category_advanced` → `resolve_category_advanced`; move `legacy_to_advanced_override` from `clutter_resolve.py` to `clutter_categories.py`.
+- Improve `worldcover_class_to_clutter_category` out-of-range handling: early-return `"open"` for invalid class IDs instead of `% 256` fallthrough.
+- Wrap `document.print(printer)` in `report_pdf.write_report_pdf` in try/except with `logger.debug` and `return False` on failure.
+- Add module description to `nowires.py`.
+- Single-source per-category P.2108 parameters: derive `p2108_height_gain._CATEGORY_PARAMS` from `clutter_categories.CLUTTER_CATEGORY_PARAMS` instead of duplicating `R_m` and method tags.
+- Convert stringly-typed enums to `typing.Literal`: add `ClutterModel = Literal["simple", "advanced"]` and `BuildingType = Literal["traditional", "thermally_efficient"]` in `clutter_context.py`; update type annotations across all call sites.
+- Replace length-tag dispatch `isinstance(result, tuple) and len(result) == 2 and result[0] == "error"` in `_coverage_result_dispatch.py` with `WorkerError` frozen dataclass sentinel.
+- Move `_warned_low_vhf_p2108_combined` global mutable flag into `_P2108State` dataclass in `clutter_resolve.py`; tests can reset via `_STATE.warned_low_vhf = False`.
+
+### Added
+
+- Added `test_p2108_category_params_derived_from_clutter_categories.py` — consistency test verifying `_CATEGORY_PARAMS` in `p2108_height_gain` is derived from `CLUTTER_CATEGORY_PARAMS`.
+- Added `test_worker_error_sentinel.py` — regression test for `WorkerError` dataclass sentinel replacing length-tag dispatch.
+
 ## [1.5.7] - 2026-05-17
 
 ### Fixed
@@ -42,48 +99,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `test_elevation_zero_div_guard.py` — regression test for zero-rows/cols RuntimeError guard.
 - Added `test_coverage_summary_zero_div_guard.py` — regression test for empty-grid zero-division guard.
 - Added `test_coverage_pct_param_defaults.py` — regression test for separate percentage parameter defaults.
-
-## [Unreleased]
-
-### Planned for v1.5.8  (PATCH — tech-debt / cleanup, zero behavior change)
-
-- Extract a single shared bilinear sampler. The same `-0.5` cell-edge-to-center shift and weighted-blend formula is reimplemented four times: `ElevationGrid.sample` (scalar), `ElevationGrid.sample_line` (1D), `ElevationGrid.sample_grid` (2D) (`elevation.py:168-253`), and `sample_line_from_grid` (`_geo_utils.py:14-48`). A helper that takes `(data, grid_meta, lats, lons)` and dispatches on shape would consolidate the four.
-- Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 44 positional/keyword params (`coverage_engine.py:102`), `build_p2p_report_payload` carries 41 (`report_payloads.py:58`), `build_coverage_report_payload_for_grid` carries 32 (`coverage_reporting.py:49`). Most of the natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist elsewhere in the codebase; the work is wiring them through.
-- Promote shared constants into `constants.py`: a module-level `WGS84_CRS = QgsCoordinateReferenceSystem("EPSG:4326")` singleton (currently constructed inline in `algorithm_p2p.py:63,67`, `algorithm_batch.py:119`, `comparison_panel.py:63`, `algorithm_contour.py:140,231`); move `FRESNEL_60PCT_FACTOR` from `defaults.py:26` (it's a physical constant, not a default); add `EMPTY_MARGIN_DB = -999.0` to replace the magic `-999.0` at `report_payloads.py:220`; replace the three hardcoded `1048576.0` literals at `nowires.py:179`, `cache_manager.py:79,89` with the existing `BYTES_PER_MEBIBYTE`.
-- Replace literal `111320.0` at `algorithm_coverage.py:40`, `algorithm_coverage.py:206`, and `algorithm_coverage_comparison.py:99` with `METERS_PER_DEGREE_LAT` from `constants.py:3`. The three sites all compute the same padding formula `radius_km / (111320.0 / 1000.0) * 0.1` (10% of the radius in degrees); `p2p_compute.py:129` already does this correctly as `dist_m / METERS_PER_DEGREE_LAT * 0.1`. Either reshape the three callers to match the `p2p_compute` form, or extract a `coverage_padding_deg(radius_km)` helper next to `coverage_bounds` in `geo_bounds.py` so the `0.1` magic factor lives in one place with a comment.
-- Replace hardcoded `f_mhz: float = 300.0` defaults on the `CoverageAnalysisParams` (`coverage_analysis_params.py:46`) and `BatchAnalysisParams` (`batch_analysis_params.py:48`) dataclasses with `DEFAULT_FREQ_MHZ` from `defaults.py:5`. The parameter-registration layer in `coverage_params.py`, `batch_params.py`, `p2p_params.py`, and `comparison_add_params.py` all read `DEFAULT_FREQ_MHZ`, so the dataclass defaults are dead in practice — but they drift if `DEFAULT_FREQ_MHZ` ever changes and any caller constructs the dataclass without an explicit `f_mhz`.
-- Replace inline `N0=301.0, epsilon=15.0, sigma=0.005` on `coverage_engine.compute_coverage` (`coverage_engine.py:107`) with `DEFAULT_N0`, `DEFAULT_EPSILON`, `DEFAULT_SIGMA` from `defaults.py:17-19`. Same drift risk as the `DEFAULT_FREQ_MHZ` item above, but with a stronger flavour because these are ITM refractivity defaults that physics-curious users may legitimately want to retune in one place.
-- Replace `# type: ignore[arg-type]` cluster at `comparison_reporting.py:75,77,79` with an explicit `assert tmpdir is not None` after the `if not out_a or not out_b or not out_delta: tmpdir = tmp_mgr.make_dir(...)` block at line 70-71. The comment at lines 72-73 documents that the assertion holds, but it's three `type: ignore` markers that rely on a non-local invariant — moving the same logic to a runtime `assert` makes the contract checked rather than asserted in prose, and the type checker stops needing the suppressions.
-- Silent `except Exception: pass` (or bare `return None`) at 11 production sites that suppress diagnostics: `nowires.py:68` (stale temp dir counting), `nowires.py:93` (provider removal), `nowires.py:159` (shared memory cleanup), `three_d.py:93` (layer tree manipulation), `p2p_chart.py:279` (matplotlib disconnect), `shared_dem_grid.py:69,90,96,107` (SharedMemory close/release/unlink/atexit paths), `temp_manager.py:77` (macOS persistent temp dir), `processing_utils.py:101` (`willLoadLayerOnCompletion` returning None). At minimum convert each to `logger.debug("...: %s", exc)` so the cause is recoverable from logs; for the shared-memory and atexit paths, consider narrowing the `except` to the OSError/FileNotFoundError they actually need to swallow.
-- Replace stringly-typed comparisons outside the clutter/ITM enum cleanup item above: `contour_smoothing.py:151,247,257` matches `"None" / "Low" / "Medium"` literals whose only definition site is the parameter registration at `algorithm_contour.py:117` (no shared constant); `comparison_outputs.py:60,68,109,242` compares against bare `"diverging" / "threshold"` even though `DELTA_STYLE_OPTIONS` is defined at `comparison_params.py:55`; `clutter.py:69,74` compares against `"Auto"` rather than referencing `CLUTTER_OVERRIDE_OPTIONS[0]` from line 47 of the same file. Promote each to a named constant in the existing options module.
-- Three files sit exactly at the 300-line cap and any addition violates the limit: `contour_smoothing.py` (300), `p2p_compute.py` (300), `coverage_pool.py` (300). Decompose each before the next round of fixes lands — `p2p_compute.py` already has a planned split in the long-functions entry above (`run_p2p_analysis` extraction), and `coverage_pool.py` has at least two natural seams (`_init_cov_pool` lifecycle vs. `apply_batch_results` dispatch).
-- Remove the duplicate `ProcessPoolExecutor` re-export at `coverage_engine.py:22`. Both `coverage_engine.py` and `_coverage_executor.py:8` re-export the symbol with `noqa: F401`, but runtime usage and all monkeypatching now lives in `_coverage_executor` (`tests/test_coverage_engine_regressions.py:128,190`, `tests/test_coverage_executor_reload_pickle.py:113`). The only thing keeping the `coverage_engine.py` re-export alive is `tests/test_coverage_engine_perf.py:54`'s source-level grep — retarget the grep at `_coverage_executor.py` in the same commit so the import can be deleted.
-- Deduplicate TOCTOU-safe directory creation. `dem_downloader.get_temp_dir` (`dem_downloader.py:69-103`) and `worldcover_downloader._safe_create_dir` (`worldcover_downloader.py:68-113`) both implement the lstat → symlink-check → `O_DIRECTORY|O_NOFOLLOW` validation → atomic `mkdtemp`+`rename` pattern. Extract into one helper (e.g. `safe_user_subdir(name)`) and call from both.
-- Make the underscore-private clutter symbols imported by `coverage_tasks.py:31-37` (`_ClutterComponents`, `_compute_advanced_loss`, `_legacy_to_advanced_override`, `_resolve_category_advanced`) part of `clutter_advanced.py`'s public API — either by dropping the underscore prefix or by exposing a narrow `clutter_advanced_api` surface. The current state advertises "private" while having an out-of-module consumer.
-- Break the `clutter.py` ↔ `clutter_advanced.py` import cycle by moving `TerminalClutterLosses` (defined at `clutter.py:100`) into `clutter_context.py`, which is already imported by both sides. Removes the deferred-import workaround at `clutter_advanced.py:170`.
-- Convert stringly-typed enums to `typing.Literal`: clutter model (`"simple"` / `"advanced"`), building type (`"traditional"` / `"thermally_efficient"`), ITM climate strings. Cheap, gives mypy real coverage of code paths that currently rely on string equality.
-- Decompose three long functions: `run_p2p_analysis` (183 lines, `p2p_compute.py:118-300`), `_compute_single_link` (158 lines, `batch_outputs.py:65-222`), `run_panel_coverage` (232 lines, `comparison_panel.py:51-282`). Suggested seams: separate layer/report writing from the computation core in `run_p2p_analysis`; lift the per-rank-by branches out of `_compute_single_link`; split parameter-extraction from execution in `run_panel_coverage`.
-- Collapse `SharedDEMGrid._atexit_cleanup` and `SharedDEMGrid.release` (`shared_dem_grid.py:84-110`) — the bodies are near-identical; one should call the other (e.g. `_atexit_cleanup = release` as a class-level alias).
-- Single-source the per-category P.2108 parameters. `clutter_categories.py` and `p2108_height_gain.py:28-33` both define `R_m` and the method tag (`p2108_3_1_method` vs `method`) for each category, and changes today must be synchronised by hand. Pick one as canonical and derive the other.
-- Improve `worldcover_class_to_clutter_category` out-of-range handling (`clutter.py:53-57`). Today it warns and then does `raw % 256`, which silently aliases invalid IDs onto valid categories. Fall back to `"open"` (or raise) instead.
-- Replace the length-tag dispatch in `coverage_pool.apply_batch_results` (`coverage_pool.py:277-291`) with an explicit sentinel. The branch currently keys on `isinstance(result, tuple) and len(result) == 2 and result[0] == "error"`; this is safe today because `_itm_worker_batch` only ever returns 8-tuples, None, or `("error", msg)`, but any future change that produces a 2-tuple with a non-`"error"` first element would fall through and crash on the 8-way unpack. Use a small `WorkerError` dataclass or a sentinel object instead.
-- Re-examine the tile-cache validation in `tile_download_base.download_tile_with_retry` (`tile_download_base.py:51-82`). Any `ComputeStatistics` failure on a cached file is treated as corruption and triggers a re-download — a transient I/O hiccup on a 100-tile run forces 100 re-downloads. Consider validating only structural integrity (band count, dimensions, RasterCount) on cache hits and reserving the `ComputeStatistics` check for first-fetch.
-- Reconsider the overall wall-clock deadline in `dem_downloader.download_tiles` (`dem_downloader.py:170`). `_WALL_CLOCK_TIMEOUT = 300s` is set at function entry on top of the per-tile budget (180s). For the documented 200-tile cap this gives ~1.5s per tile before the overall timeout fires. Either drop the overall deadline (the per-tile budget already caps slow trickles, post-v1.5.3) or scale it with tile count.
-- Minor polish:
-  - Add `from __future__ import annotations` to `clutter_categories.py`, `clutter_constants.py`, `clutter_resolve.py`, `clutter_saalos.py`, `p2108_common.py`, `p2108_terrestrial_stat.py`, `p2109_bel.py` for consistency with the rest of the clutter/p2108 modules.
-  - Wrap `document.print(printer)` in `report_pdf.write_report_pdf` (`report_pdf.py:51-54`) in try/except so disk-full / permission errors surface as a clean status instead of an unhandled Qt exception.
-  - Replace `last_contour_layer_id` string literal at `three_d.py:79` with the `CONTOUR_LAYER_KEY` constant defined at `three_d.py:40` (already used at lines 104, 114, 120).
-  - Move the global mutable `_warned_low_vhf_p2108_combined` flag (`clutter_resolve.py:12-19`) into a small `_State` dataclass so tests can reset it; today it can't be cleared between cases.
-  - Fix `ElevationGrid.sample_grid` docstring ordering (`elevation.py:223-229`). `assert self.data is not None` appears *before* the docstring, so the triple-quoted block at lines 225-229 is a discarded expression rather than a docstring (`help(ElevationGrid.sample_grid)` returns None). Move the assert below the docstring.
-  - Add a real module description to `nowires.py` (lines 4-23 currently contain only the GPL header inside the docstring slot; siblings like `elevation.py` put a description block after the header).
-  - Drop the pointless `_os` / `_glob` import aliasing in `NoWiresPlugin._cleanup_stale_shared_memory` (`nowires.py:150-160`) — the names shadow the already-imported module-level `os`.
-  - Reconcile the sequential-mode notice in `_coverage_executor._run_sequential` (`_coverage_executor.py:30`) with the v1.5.6 MP-fallback message. The sequential path emits `"Using single-threaded mode..."`; the MP fallback emits `"Multiprocessing unavailable (...), using single-threaded mode..."`. Either remove the bare sequential notice or align the phrasing.
-
-### Planned for v1.6.0  (MINOR — additive features)
-
-- Extend PDF report output (`OUTPUT_REPORT_PDF`) from Coverage Analysis to Point-to-Point Analysis and Coverage Comparison. The shared `report_pdf.write_report_pdf()` writer is already in place; remaining work is parameter registration and `_write_*_outputs` wiring in `algorithm_p2p` and `algorithm_coverage_comparison`.
-- Promote the standalone "Preview Antenna Pattern" dialog into an inline `QgsProcessingParameterWidgetFactoryInterface` so the polar plot renders directly in the Coverage / P2P parameter dialog next to the pattern-file picker.
-- Audit `report_pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks. Resolve before or during PDF parity work.
 
 ## [1.5.6] - 2026-05-17
 

@@ -25,6 +25,7 @@
 Shared helpers for NoWires 3D scene support.
 """
 
+import logging
 import sys
 
 from qgis.core import Qgis, QgsProject
@@ -33,6 +34,8 @@ from qgis.PyQt.QtWidgets import QCheckBox, QMessageBox
 
 from .base_algorithm import ENTRY_KEY_LAST_COVERAGE, ENTRY_KEY_LAST_DEM
 
+
+logger = logging.getLogger(__name__)
 
 SCENE_MODE_LOCAL = "local"
 SCENE_MODE_GLOBE = "globe"
@@ -76,7 +79,7 @@ def highlight_nowires_layers(iface):
         project = QgsProject.instance()
         dem_id = project.readEntry(PROJECT_SCOPE, ENTRY_KEY_LAST_DEM)[0]
         coverage_id = project.readEntry(PROJECT_SCOPE, ENTRY_KEY_LAST_COVERAGE)[0]
-        contour_id = project.readEntry("NoWires", "last_contour_layer_id")[0]
+        contour_id = project.readEntry(PROJECT_SCOPE, CONTOUR_LAYER_KEY)[0]
 
         root = project.layerTreeRoot()
         for layer_id in [dem_id, coverage_id, contour_id]:
@@ -90,8 +93,8 @@ def highlight_nowires_layers(iface):
                     parent = tree_layer.parent()
                     if parent and parent != root:
                         parent.setExpanded(True)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("layer tree highlight: %s", exc)
 
 
 def remember_nowires_3d_layers(

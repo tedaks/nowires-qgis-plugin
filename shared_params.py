@@ -10,6 +10,7 @@ from qgis.core import (
     QgsProcessingParameterNumber,
 )
 
+from .clutter_context import ClutterModel, BuildingType
 from .clutter import (
     CLUTTER_MODEL_OPTIONS, CLUTTER_OVERRIDE_OPTIONS,
     LandCoverGrid, clutter_override_value,
@@ -150,7 +151,7 @@ class ClutterParamBundle:
     across coverage / p2p / batch for historical reasons).
     """
     enabled: bool
-    model: str  # "simple" or "advanced"
+    model: ClutterModel
     raster_path: str
     grid: Any   # LandCoverGrid | None
     tx_override: Any
@@ -159,7 +160,7 @@ class ClutterParamBundle:
     percentile: float
     street_width_m: float
     bel_enabled: bool
-    bel_building_type: str  # "traditional" or "thermally_efficient"
+    bel_building_type: BuildingType
     bel_elevation_angle_deg: float
 
 

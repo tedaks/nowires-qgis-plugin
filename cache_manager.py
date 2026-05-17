@@ -7,6 +7,7 @@ import glob as _glob
 import os
 import shutil
 
+from .constants import BYTES_PER_MEBIBYTE
 from .dem_downloader import get_temp_dir
 
 _DEM_PATTERNS = (
@@ -76,7 +77,7 @@ def clear_dem_cache(feedback=None):
     if feedback:
         feedback.pushInfo(
             "NoWires: removed {} cached tile file(s), freed ~{:.1f} MB".format(
-                removed, freed_bytes / 1048576.0
+                removed, freed_bytes / BYTES_PER_MEBIBYTE
             )
         )
     return removed, freed_bytes
@@ -86,5 +87,5 @@ def format_cache_size(file_count, total_bytes):
     """Human-readable summary used by UI confirmation prompts."""
     if file_count == 0:
         return "Cache is empty."
-    mb = total_bytes / 1048576.0
+    mb = total_bytes / BYTES_PER_MEBIBYTE
     return "Cache: {} file(s), ~{:.1f} MB.".format(file_count, mb)

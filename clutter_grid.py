@@ -135,7 +135,7 @@ class LandCoverGrid:
         advanced mode). In coverage analysis every grid cell represents an RX
         location, so rx_override correctly applies across the whole grid.
         """
-        from .clutter_resolve import _legacy_to_advanced_override
+        from .clutter_categories import legacy_to_advanced_override
 
         advanced = context is not None and context.model == "advanced"
 
@@ -183,7 +183,7 @@ class LandCoverGrid:
             for i, cat_name in enumerate(_ADVANCED_CATEGORIES):
                 result[cat_idx_arr == i] = cat_name
             if rx_override:
-                result[:, :] = _legacy_to_advanced_override(rx_override)
+                result[:, :] = legacy_to_advanced_override(rx_override)
             return result
 
         valid_class = (sampled >= 0) & (sampled < 256)

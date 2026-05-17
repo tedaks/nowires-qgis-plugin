@@ -439,6 +439,8 @@ for _submodule_name in (
 # must be imported through the NoWires package so ``from .xxx import ...`` resolves.
 for _pkg_sub in (
     "radio",
+    "coverage_analysis_params",
+    "batch_analysis_params",
     "coverage_compute",
     "coverage_summary",
     "fresnel",
@@ -480,6 +482,10 @@ for _pkg_sub in (
     "comparison_panel",
     "report_pdf",
     "windows_compat",
+    "_geo_utils",
+    "_bilinear",
+    "shared_params",
+    "p2p_analysis_params",
 ):
     _mod = __import__(f"NoWires.{_pkg_sub}", fromlist=[""])
     _leaf = _pkg_sub.split(".")[-1]

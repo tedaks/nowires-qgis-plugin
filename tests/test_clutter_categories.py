@@ -92,3 +92,15 @@ def test_simple_and_advanced_mappings_consistent():
             f"'{legacy_to_advanced_override(legacy_cat)}' "
             f"but advanced mapping gives '{advanced_cat}'"
         )
+
+
+def test_p2108_category_params_derived_from_clutter_categories():
+    from p2108_height_gain import _CATEGORY_PARAMS
+    for cat, params in _CATEGORY_PARAMS.items():
+        assert cat in CLUTTER_CATEGORY_PARAMS, f"{cat} missing from CLUTTER_CATEGORY_PARAMS"
+        assert params["R_m"] == CLUTTER_CATEGORY_PARAMS[cat]["R_m"], (
+            f"{cat}: R_m mismatch"
+        )
+        assert params["method"] == CLUTTER_CATEGORY_PARAMS[cat]["p2108_3_1_method"], (
+            f"{cat}: method mismatch"
+        )

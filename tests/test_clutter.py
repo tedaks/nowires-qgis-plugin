@@ -227,7 +227,7 @@ def test_cch_override_applies():
     assert v_default > 0.0 and v_override > 0.0
 
 
-from clutter import TerminalClutterLosses
+from clutter_context import TerminalClutterLosses
 
 
 def test_simple_mode_unchanged_when_context_none():
