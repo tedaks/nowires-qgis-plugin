@@ -16,6 +16,7 @@ import math
 
 import numpy as np
 
+from .clutter_categories import CLUTTER_CATEGORY_PARAMS
 from .p2108_common import validate_frequency_ghz
 
 logger = logging.getLogger(__name__)
@@ -25,12 +26,8 @@ _FREQ_MAX_GHZ = 3.0
 _DEFAULT_STREET_WIDTH_M = 27.0
 
 _CATEGORY_PARAMS: dict[str, dict[str, int | float | str]] = {
-    "open": {"R_m": 10, "method": "2b"},
-    "open_rural": {"R_m": 10, "method": "2b"},
-    "dense_rural": {"R_m": 10, "method": "2b"},
-    "vegetation": {"R_m": 15, "method": "2a"},
-    "suburban": {"R_m": 10, "method": "2a"},
-    "urban": {"R_m": 20, "method": "2a"},
+    cat: {"R_m": params["R_m"], "method": params["p2108_3_1_method"]}
+    for cat, params in CLUTTER_CATEGORY_PARAMS.items()
 }
 
 
