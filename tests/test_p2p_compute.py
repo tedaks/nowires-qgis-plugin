@@ -207,7 +207,7 @@ def test_run_p2p_analysis_closes_auto_clutter_grid(monkeypatch):
     monkeypatch.setattr(
         p2p_compute,
         "_write_p2p_output_layers",
-        lambda *args, **kwargs: ("/tmp/profile.gpkg", "/tmp/fresnel.gpkg", "/tmp/markers.gpkg"),
+        lambda *args, **kwargs: ("/tmp/profile.gpkg", "/tmp/fresnel.gpkg", "/tmp/fresnel_lines.gpkg", "/tmp/markers.gpkg"),
     )
     monkeypatch.setattr(p2p_compute, "_load_p2p_qgis_layers", lambda *args, **kwargs: None)
 
@@ -238,7 +238,7 @@ def test_run_p2p_analysis_leaves_supplied_clutter_grid_open(monkeypatch):
     monkeypatch.setattr(
         p2p_compute,
         "_write_p2p_output_layers",
-        lambda *args, **kwargs: ("/tmp/profile.gpkg", "/tmp/fresnel.gpkg", "/tmp/markers.gpkg"),
+        lambda *args, **kwargs: ("/tmp/profile.gpkg", "/tmp/fresnel.gpkg", "/tmp/fresnel_lines.gpkg", "/tmp/markers.gpkg"),
     )
     monkeypatch.setattr(p2p_compute, "_load_p2p_qgis_layers", lambda *args, **kwargs: None)
 
@@ -307,7 +307,7 @@ class TestP2PITMLossCap:
         monkeypatch.setattr(
             p2p_compute,
             "_write_p2p_output_layers",
-            lambda *a, **kw: ("/tmp/profile.gpkg", "/tmp/fresnel.gpkg", "/tmp/markers.gpkg"),
+            lambda *a, **kw: ("/tmp/profile.gpkg", "/tmp/fresnel.gpkg", "/tmp/fresnel_lines.gpkg", "/tmp/markers.gpkg"),
         )
         monkeypatch.setattr(p2p_compute, "_load_p2p_qgis_layers", lambda *a, **kw: None)
         monkeypatch.setattr(p2p_compute, "_write_p2p_reports", lambda *a, **kw: None)
@@ -336,7 +336,7 @@ class TestP2PITMLossCap:
         monkeypatch.setattr(
             p2p_compute,
             "_write_p2p_output_layers",
-            lambda *a, **kw: ("/tmp/profile.gpkg", "/tmp/fresnel.gpkg", "/tmp/markers.gpkg"),
+            lambda *a, **kw: ("/tmp/profile.gpkg", "/tmp/fresnel.gpkg", "/tmp/fresnel_lines.gpkg", "/tmp/markers.gpkg"),
         )
         monkeypatch.setattr(p2p_compute, "_load_p2p_qgis_layers", lambda *a, **kw: None)
         monkeypatch.setattr(p2p_compute, "_write_p2p_reports", lambda *a, **kw: None)
@@ -449,7 +449,7 @@ class TestP2PITMLossCapConsistency:
         monkeypatch.setattr(
             p2p_compute, "_write_p2p_output_layers",
             lambda *a, **kw: (write_args.update(kw) or
-                              ("/tmp/p.gpkg", "/tmp/f.gpkg", "/tmp/m.gpkg")),
+                              ("/tmp/p.gpkg", "/tmp/f.gpkg", "/tmp/fl.gpkg", "/tmp/m.gpkg")),
         )
 
         class _CapturingFeedback:
