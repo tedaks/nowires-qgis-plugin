@@ -77,5 +77,6 @@ class BatchAnalysisParams:
     bel_enabled: bool = False
     bel_building_type: str = "traditional"
     bel_elevation_angle_deg: float = 0.0
+    owns_clutter_grid: bool = False
     elev: ElevationGrid | None = None
     total: int = 0

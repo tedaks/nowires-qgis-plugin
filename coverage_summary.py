@@ -43,6 +43,13 @@ def summarize_coverage_grid(
     """Summarize usable-distance metrics from a received-power raster."""
     prx_grid = np.where(np.isfinite(prx_grid) & (prx_grid != COVERAGE_NODATA), prx_grid, np.nan)
     n_rows, n_cols = prx_grid.shape
+    if n_rows == 0 or n_cols == 0:
+        return {
+            "usable_cell_count": 0,
+            "min_distance_km": 0.0,
+            "max_distance_km": 0.0,
+            "average_distance_km": 0.0,
+        }
     lat_step = (max_lat - min_lat) / n_rows
     lon_step = (max_lon - min_lon) / n_cols
 
@@ -60,6 +67,7 @@ def summarize_coverage_grid(
     dphi = lat2_r - lat1_r
     dlam = lon2_r - lon1_r
     a = np.sin(dphi / 2) ** 2 + np.cos(lat1_r) * np.cos(lat2_r) * np.sin(dlam / 2) ** 2
+    a = np.clip(a, 0.0, 1.0)
     dist_grid_km = (2 * R * np.arcsin(np.sqrt(a))) / 1000.0  # (n_rows, n_cols)
 
     # Mask: usable cells above sensitivity
