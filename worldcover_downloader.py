@@ -40,7 +40,6 @@ import os
 import re
 import stat
 import ssl
-import time
 import tempfile
 import urllib.request
 import getpass
@@ -62,7 +61,6 @@ _DOWNLOAD_RETRIES = 3
 _SOCKET_TIMEOUT = 120
 _MAX_TILES = 200
 _VALID_TILE_RE = re.compile(r"^[NS]\d{2}[EW]\d{3}$")
-_WALL_CLOCK_TIMEOUT = 600
 
 
 def _safe_create_dir(target):
@@ -176,19 +174,10 @@ def download_worldcover_tiles(tile_list: list[str], temp_dir: str | None = None,
         urllib.request.HTTPSHandler(context=ctx)
     )
     available: list[str] = []
-    deadline = time.monotonic() + _WALL_CLOCK_TIMEOUT
 
     for tile_id in tile_list:
         if feedback and feedback.isCanceled():
             return available
-        if time.monotonic() > deadline:
-            logger.warning(
-                "WorldCover download wall-clock timeout exceeded (%ds)",
-                _WALL_CLOCK_TIMEOUT)
-            if feedback:
-                feedback.pushInfo(
-                    "Download timed out after {}s".format(_WALL_CLOCK_TIMEOUT))
-            break
 
         filename = worldcover_tile_filename(tile_id)
         local_tif = os.path.join(temp_dir, filename)
