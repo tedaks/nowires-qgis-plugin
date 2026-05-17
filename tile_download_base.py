@@ -52,26 +52,17 @@ def download_tile_with_retry(
         test_ds = gdal.Open(local_tif)
         if test_ds is not None:
             try:
-                stats = test_ds.GetRasterBand(1).ComputeStatistics(False)
-                if stats is None:
-                    logger.warning(
-                        "Cached tile %s failed stats read; re-downloading",
-                        base_name_label)
-                else:
-                    band_count = test_ds.RasterCount
-                    xsize = test_ds.RasterXSize
-                    ysize = test_ds.RasterYSize
-                    if xsize > 0 and ysize > 0 and band_count >= 1:
-                        logger.debug("Cache hit: %s (%dx%d)", base_name_label, xsize, ysize)
-                        if feedback:
-                            feedback.pushInfo("Cache hit: " + base_name_label)
-                        test_ds = None  # Release GDAL dataset handle promptly
-                        return local_tif
-                    logger.warning(
-                        "Cached tile %s has degenerate dimensions; re-downloading",
-                        base_name_label)
-            except RuntimeError:
-                logger.warning("Cached tile %s failed stats read; re-downloading", base_name_label)
+                band_count = test_ds.RasterCount
+                xsize = test_ds.RasterXSize
+                ysize = test_ds.RasterYSize
+                if xsize > 0 and ysize > 0 and band_count >= 1:
+                    logger.debug("Cache hit: %s (%dx%d)", base_name_label, xsize, ysize)
+                    if feedback:
+                        feedback.pushInfo("Cache hit: " + base_name_label)
+                    return local_tif
+                logger.warning(
+                    "Cached tile %s has degenerate dimensions; re-downloading",
+                    base_name_label)
             finally:
                 test_ds = None
         else:
