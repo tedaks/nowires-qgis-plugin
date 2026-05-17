@@ -5,8 +5,6 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-
 
 from .worldcover_downloader import ensure_worldcover_for_area
 from .clutter_categories import (
@@ -16,6 +14,7 @@ from .clutter_categories import (
     _LEGACY_CAT_IDX,
     _LEGACY_CLUTTER_LOSS_ARRAY,
 )
+from .clutter_context import TerminalClutterLosses  # noqa: F401
 from .clutter_advanced import (  # noqa: F401
     compute_terminal_clutter_loss, _category_height_m,
     compute_terminal_clutter_losses,
@@ -95,23 +94,6 @@ def clutter_source_label(
     if sources:
         return ",".join(sources)
     return "fallback_open"
-
-
-@dataclass(frozen=True)
-class TerminalClutterLosses:
-    tx_category: str
-    rx_category: str
-    tx_loss_db: float
-    rx_loss_db: float
-    total_loss_db: float
-    source: str
-    tx_cch_m: float = 0.0
-    rx_cch_m: float = 0.0
-    tx_bel_db: float = 0.0
-    rx_bel_db: float = 0.0
-    total_with_bel_db: float = 0.0
-    method: str = "simple"
-    percentile: float = 50.0
 
 
 def ensure_clutter_grid_for_area(south: float, north: float, west: float, east: float,

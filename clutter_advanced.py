@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 
 from .clutter_categories import CLUTTER_CATEGORY_PARAMS
-from .clutter_context import ClutterLossContext
+from .clutter_context import ClutterLossContext, TerminalClutterLosses
 from .clutter_resolve import (
     _maybe_warn_low_vhf_p2108_combined,
     _resolve_category,
@@ -167,7 +167,7 @@ def compute_terminal_clutter_losses(
     enabled=False, land_cover_grid=None, tx_override=None, rx_override=None,
     context=None,
 ):
-    from .clutter import clutter_loss_db, TerminalClutterLosses
+    from .clutter import clutter_loss_db
     if not enabled:
         return TerminalClutterLosses("open", "open", 0.0, 0.0, 0.0, "off")
     advanced = context is not None and context.model == "advanced"
