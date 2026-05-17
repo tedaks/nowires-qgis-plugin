@@ -10,7 +10,7 @@ from .clutter_context import ClutterLossContext, TerminalClutterLosses
 from .clutter_resolve import (
     _maybe_warn_low_vhf_p2108_combined,
     _resolve_category,
-    _resolve_category_advanced,
+    resolve_category_advanced,
 )
 from .p2108_height_gain import height_gain_loss
 from .p2108_terrestrial_stat import clutter_loss_p2108_terrestrial_stat
@@ -23,7 +23,7 @@ _P2108_S32_MIN_GHZ = 0.5
 
 
 @dataclass(frozen=True)
-class _ClutterComponents:
+class ClutterComponents:
     terminal_loss_db: float = 0.0
     path_loss_db: float = 0.0
     model: str = "none"
@@ -44,15 +44,15 @@ def _terminal_ground_elev_m(terminal, context):
     return context.tx_ground_elevation_m if terminal == "tx" else context.rx_ground_elevation_m
 
 
-def _compute_advanced_loss(category: str, terminal: str, context: ClutterLossContext) -> _ClutterComponents:
+def compute_advanced_loss(category: str, terminal: str, context: ClutterLossContext) -> ClutterComponents:
     params = CLUTTER_CATEGORY_PARAMS.get(category, CLUTTER_CATEGORY_PARAMS["open"])
     model: str = str(params["model"])
     cch_m = _category_height_m(category, context.cch_override_m)
     ant_h_m = _terminal_height_m(terminal, context)
     if model == "none" or cch_m <= 0.0:
-        return _ClutterComponents(0.0, 0.0, "none")
+        return ClutterComponents(0.0, 0.0, "none")
     if ant_h_m >= cch_m:
-        return _ClutterComponents(0.0, 0.0, model)
+        return ClutterComponents(0.0, 0.0, model)
     f_ghz = context.frequency_mhz / 1000.0
     d_km = context.distance_m / 1000.0
     p = context.percentile
@@ -67,13 +67,13 @@ def _compute_advanced_loss(category: str, terminal: str, context: ClutterLossCon
             pol=context.polarization,
             f__mhz=context.frequency_mhz,
         )
-        return _ClutterComponents(loss, 0.0, "saalos")
+        return ClutterComponents(loss, 0.0, "saalos")
     if model == "p2108_height_gain":
         loss_hg = height_gain_loss(
             ant_h_m, f_ghz, category,
             w_s_m=context.street_width_m,
         )
-        return _ClutterComponents(loss_hg, 0.0, "p2108_height_gain")
+        return ClutterComponents(loss_hg, 0.0, "p2108_height_gain")
     if model == "p2108_combined":
         hg_loss = 0.0
         stat_loss = 0.0
@@ -108,8 +108,8 @@ def _compute_advanced_loss(category: str, terminal: str, context: ClutterLossCon
                 if stat_loss > 0.0:
                     method_parts.append("§3.2(clamped)")
         method_str = "+".join(method_parts) if method_parts else "p2108_combined(0)"
-        return _ClutterComponents(hg_loss, stat_loss, method_str)
-    return _ClutterComponents(0.0, 0.0, "unknown")
+        return ClutterComponents(hg_loss, stat_loss, method_str)
+    return ClutterComponents(0.0, 0.0, "unknown")
 
 
 def compute_terminal_clutter_loss(category, terminal, context):
@@ -134,7 +134,7 @@ def compute_terminal_clutter_loss(category, terminal, context):
             f__mhz=context.frequency_mhz,
         )
     if model in ("p2108_height_gain", "p2108_combined"):
-        comp = _compute_advanced_loss(category, terminal, context)
+        comp = compute_advanced_loss(category, terminal, context)
         return comp.terminal_loss_db
     return 0.0
 
@@ -178,10 +178,10 @@ def compute_terminal_clutter_losses(
         rx_loss = clutter_loss_db(rx_cat, frequency_mhz)
         source = tx_src if tx_src == rx_src else "{},{}".format(tx_src, rx_src)
         return TerminalClutterLosses(tx_cat, rx_cat, tx_loss, rx_loss, tx_loss + rx_loss, source)
-    tx_cat, tx_src = _resolve_category_advanced(tx_lat, tx_lon, tx_override, land_cover_grid)
-    rx_cat, rx_src = _resolve_category_advanced(rx_lat, rx_lon, rx_override, land_cover_grid)
-    tx_comp = _compute_advanced_loss(tx_cat, "tx", context)
-    rx_comp = _compute_advanced_loss(rx_cat, "rx", context)
+    tx_cat, tx_src = resolve_category_advanced(tx_lat, tx_lon, tx_override, land_cover_grid)
+    rx_cat, rx_src = resolve_category_advanced(rx_lat, rx_lon, rx_override, land_cover_grid)
+    tx_comp = compute_advanced_loss(tx_cat, "tx", context)
+    rx_comp = compute_advanced_loss(rx_cat, "rx", context)
     tx_cch = _category_height_m(tx_cat, context.cch_override_m)
     rx_cch = _category_height_m(rx_cat, context.cch_override_m)
     source = tx_src if tx_src == rx_src else "{},{}".format(tx_src, rx_src)
