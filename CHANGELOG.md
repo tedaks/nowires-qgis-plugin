@@ -12,13 +12,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned (PATCH — tech-debt / cleanup, zero behavior change)
 
 - Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 35 params, `build_p2p_report_payload` carries 35, `build_coverage_report_payload_for_grid` carries 31. Most natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist; the work is wiring them through.
-- Decompose three long functions: `run_p2p_analysis` (183 lines), `_compute_single_link` (158 lines), `run_panel_coverage` (232 lines).
 
 ### Planned for v1.6.0 (MINOR — additive features)
 
 - Extend PDF report output (`OUTPUT_REPORT_PDF`) from Coverage Analysis to Point-to-Point Analysis and Coverage Comparison. The shared `report_pdf.write_report_pdf()` writer is already in place; remaining work is parameter registration and `_write_*_outputs` wiring in `algorithm_p2p` and `algorithm_coverage_comparison`.
 - Promote the standalone "Preview Antenna Pattern" dialog into an inline `QgsProcessingParameterWidgetFactoryInterface` so the polar plot renders directly in the Coverage / P2P parameter dialog next to the pattern-file picker.
 - Audit `report_pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks. Resolve before or during PDF parity work.
+
+## [1.5.11] - 2026-05-18
+
+### Changed
+
+- Extract `build_link_clutter_context()` factory in `clutter_context.py`, consolidating the 14-field `ClutterLossContext` construction duplicated in `p2p_compute.run_p2p_analysis` and `batch_outputs._compute_single_link`. Duck-types over `P2PAnalysisParams`/`BatchAnalysisParams`; `tx_h`/`rx_h` remain explicit since batch overrides per-link from feature attributes. Companion to existing `build_initial_clutter_context()` for the placeholder (distance=0, rx_ground=0) case used by coverage.
+- Replace inline Fresnel/earth-bulge/LOS reimplementation in `batch_outputs._compute_single_link` with a call to the existing `fresnel.fresnel_profile_analysis`. The two implementations were mathematically equivalent (per-point first-Fresnel radius, k-factor earth bulge, linear LOS interpolation); the inline version was a parallel maintenance burden. Removes the unused `EARTH_RADIUS_M` import from `batch_outputs.py` and the redundant `tx_h_eff_actual` alias. `clearance_pct` continues to use the strict `> 0` semantic by computing from `terrain_bulge`/`los_h`/`fresnel_r` returned by the helper.
+- Switch `comparison_panel.run_panel_coverage` from inline `ClutterLossContext(distance_m=0.0, rx_ground_elevation_m=0.0, ...)` construction to the existing `build_initial_clutter_context()` factory in `clutter_context.py`. Same placeholder-context pattern already used by `algorithm_coverage._build_clutter_context` and `coverage_engine._build_clutter_context`; consolidates the third call site. `tx_ground_elevation_m=0.0` is passed explicitly to preserve current behavior (sampling TX ground from the elevation grid here would be a separate fix, not a refactor).
+- Extract `ComparisonPanelParams` frozen-shape dataclass and `collect_panel_params()` factory in `comparison_params.py`. Moves the ~90-line `parameterAsDouble/Enum/File/Bool` block out of `run_panel_coverage` into a single typed bundle covering all 39 panel fields plus derived values (`clutter_enabled`, `clutter_model`, `bel_building_type`, `cch_override_m`, `antenna_bw_override`). `run_panel_coverage` drops from 227 lines to ~107 lines; `comparison_panel.py` from 276 lines to 163. Caller-visible behavior unchanged.
+- Consolidate the `tx_def["height"] if tx_def["height"] is not None else params.tx_h` resolution in `batch_outputs._compute_single_link` to a single `tx_h_eff` local at the top of the function. Previously the same ternary appeared three times (lines 95, 109, 131 of the pre-cleanup file) with two different aliases (`tx_h_eff` / `tx_h_actual`).
+
+### Added
+
+- Added `test_collect_panel_params.py` — 13 unit tests covering `comparison_params.collect_panel_params()`. Stubs `parameterAsDouble/Enum/File/Bool` with a fake algorithm object so the tests run as plain unit tests (no `qgis_integration` marker). Locks in the per-field dataclass mapping, prefix handling, and the derivation rules for `clutter_enabled`, `clutter_model`, `cch_override_m`, `bel_building_type`, `antenna_az` (conditional on `antenna_bw < 360`), and `antenna_bw_override` (the custom-preset escape clause).
+- Added 4 tests to `test_clutter_context.py` covering the new `build_link_clutter_context()` factory: full-field mapping from the params duck-type, per-link `dist_m` independent of params, explicit `tx_h`/`rx_h` overriding any params attribute, plus a guard test on `build_initial_clutter_context()`'s placeholder semantics (`distance_m=0`, `rx_ground_elevation_m=0` regardless of caller input).
+- Register `comparison_params` in `tests/_qgis_mocks.py` `_PACKAGE_SUBMODULES` so unit tests can import it through the `NoWires` package machinery without the `qgis_integration` marker.
+- Added `test_clutter_math_snapshot.py` — 32 drift-guard snapshot tests covering `p2108_height_gain.height_gain_loss`, `p2108_terrestrial_stat.clutter_loss_p2108_terrestrial_stat`, `p2109_bel.building_entry_loss`, and `clutter_saalos.clutter_loss_saalos`. Pins a small grid of (inputs → output) tuples per module and asserts `math.isclose` with `rel_tol=1e-9`. Expected values are self-captured from the current implementation, so the tests catch accidental coefficient drift between releases; spec compliance is still the job of the existing per-module property tests.
 
 ## [1.5.10] - 2026-05-17
 
