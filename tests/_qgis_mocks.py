@@ -453,6 +453,7 @@ _PACKAGE_SUBMODULES = (
     "benchmarks.reference_cases",
     "_coverage_executor",
     "comparison_panel",
+    "comparison_params",
     "report_pdf",
     "windows_compat",
     "_geo_utils",
