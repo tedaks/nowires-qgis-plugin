@@ -74,3 +74,27 @@ def build_initial_clutter_context(
         bel_enabled=bel_enabled, bel_building_type=bel_building_type,
         bel_elevation_angle_deg=bel_elevation_angle_deg,
     )
+
+
+def build_link_clutter_context(
+    *, params, dist_m: float, tx_h: float, rx_h: float,
+    tx_elev: float, rx_elev: float,
+) -> ClutterLossContext:
+    """Build a per-link ClutterLossContext from a params object.
+
+    Duck-types over P2PAnalysisParams and BatchAnalysisParams: both expose
+    f_mhz, polarization, cch_override_m, clutter_model, clutter_percentile,
+    street_width_m, bel_enabled, bel_building_type, bel_elevation_angle_deg.
+    tx_h/rx_h are explicit because batch overrides per-link from feature
+    attributes; the rest are read from params directly.
+    """
+    return ClutterLossContext(
+        frequency_mhz=params.f_mhz, distance_m=dist_m,
+        tx_height_m=tx_h, rx_height_m=rx_h,
+        rx_ground_elevation_m=rx_elev, tx_ground_elevation_m=tx_elev,
+        polarization=params.polarization, cch_override_m=params.cch_override_m,
+        model=params.clutter_model, percentile=params.clutter_percentile,
+        street_width_m=params.street_width_m, bel_enabled=params.bel_enabled,
+        bel_building_type=params.bel_building_type,
+        bel_elevation_angle_deg=params.bel_elevation_angle_deg,
+    )
