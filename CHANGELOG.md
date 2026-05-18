@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 35 params, `build_p2p_report_payload` carries 35, `build_coverage_report_payload_for_grid` carries 31. Most natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist; the work is wiring them through.
 - Decompose three long functions: `run_p2p_analysis` (183 lines), `_compute_single_link` (158 lines), `run_panel_coverage` (232 lines).
+- Add snapshot/regression test for P.2108 clutter loss math (`p2108_height_gain.py`, `p2108_terrestrial_stat.py`, `p2109_bel.py`, `clutter_saalos.py`). Compute output from fixed inputs, assert `math.isclose` against stored reference values to catch accidental coefficient drift.
 
 ### Planned for v1.6.0 (MINOR — additive features)
 
