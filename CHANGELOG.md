@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Extract `build_link_clutter_context()` factory in `clutter_context.py`, consolidating the 14-field `ClutterLossContext` construction duplicated in `p2p_compute.run_p2p_analysis` and `batch_outputs._compute_single_link`. Duck-types over `P2PAnalysisParams`/`BatchAnalysisParams`; `tx_h`/`rx_h` remain explicit since batch overrides per-link from feature attributes. Companion to existing `build_initial_clutter_context()` for the placeholder (distance=0, rx_ground=0) case used by coverage.
+- Replace inline Fresnel/earth-bulge/LOS reimplementation in `batch_outputs._compute_single_link` with a call to the existing `fresnel.fresnel_profile_analysis`. The two implementations were mathematically equivalent (per-point first-Fresnel radius, k-factor earth bulge, linear LOS interpolation); the inline version was a parallel maintenance burden. Removes the unused `EARTH_RADIUS_M` import from `batch_outputs.py` and the redundant `tx_h_eff_actual` alias. `clearance_pct` continues to use the strict `> 0` semantic by computing from `terrain_bulge`/`los_h`/`fresnel_r` returned by the helper.
 
 ### Planned (PATCH — tech-debt / cleanup, zero behavior change)
 
