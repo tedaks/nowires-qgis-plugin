@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned (PATCH — tech-debt / cleanup, zero behavior change)
+
+- Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 35 params, `build_p2p_report_payload` carries 35, `build_coverage_report_payload_for_grid` carries 31. Most natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist; the work is wiring them through.
+
+### Planned for v1.6.0 (MINOR — additive features)
+
+- Extend PDF report output (`OUTPUT_REPORT_PDF`) from Coverage Analysis to Point-to-Point Analysis and Coverage Comparison. The shared `report_pdf.write_report_pdf()` writer is already in place; remaining work is parameter registration and `_write_*_outputs` wiring in `algorithm_p2p` and `algorithm_coverage_comparison`.
+- Promote the standalone "Preview Antenna Pattern" dialog into an inline `QgsProcessingParameterWidgetFactoryInterface` so the polar plot renders directly in the Coverage / P2P parameter dialog next to the pattern-file picker.
+- Audit `report_pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks. Resolve before or during PDF parity work.
+
+## [1.5.11] - 2026-05-18
+
 ### Changed
 
 - Extract `build_link_clutter_context()` factory in `clutter_context.py`, consolidating the 14-field `ClutterLossContext` construction duplicated in `p2p_compute.run_p2p_analysis` and `batch_outputs._compute_single_link`. Duck-types over `P2PAnalysisParams`/`BatchAnalysisParams`; `tx_h`/`rx_h` remain explicit since batch overrides per-link from feature attributes. Companion to existing `build_initial_clutter_context()` for the placeholder (distance=0, rx_ground=0) case used by coverage.
@@ -23,17 +35,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 4 tests to `test_clutter_context.py` covering the new `build_link_clutter_context()` factory: full-field mapping from the params duck-type, per-link `dist_m` independent of params, explicit `tx_h`/`rx_h` overriding any params attribute, plus a guard test on `build_initial_clutter_context()`'s placeholder semantics (`distance_m=0`, `rx_ground_elevation_m=0` regardless of caller input).
 - Register `comparison_params` in `tests/_qgis_mocks.py` `_PACKAGE_SUBMODULES` so unit tests can import it through the `NoWires` package machinery without the `qgis_integration` marker.
 - Added `test_clutter_math_snapshot.py` — 32 drift-guard snapshot tests covering `p2108_height_gain.height_gain_loss`, `p2108_terrestrial_stat.clutter_loss_p2108_terrestrial_stat`, `p2109_bel.building_entry_loss`, and `clutter_saalos.clutter_loss_saalos`. Pins a small grid of (inputs → output) tuples per module and asserts `math.isclose` with `rel_tol=1e-9`. Expected values are self-captured from the current implementation, so the tests catch accidental coefficient drift between releases; spec compliance is still the job of the existing per-module property tests.
-
-### Planned (PATCH — tech-debt / cleanup, zero behavior change)
-
-- Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 35 params, `build_p2p_report_payload` carries 35, `build_coverage_report_payload_for_grid` carries 31. Most natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist; the work is wiring them through.
-- Decompose three long functions: `run_p2p_analysis` (183 lines), `_compute_single_link` (158 lines), `run_panel_coverage` (232 lines).
-
-### Planned for v1.6.0 (MINOR — additive features)
-
-- Extend PDF report output (`OUTPUT_REPORT_PDF`) from Coverage Analysis to Point-to-Point Analysis and Coverage Comparison. The shared `report_pdf.write_report_pdf()` writer is already in place; remaining work is parameter registration and `_write_*_outputs` wiring in `algorithm_p2p` and `algorithm_coverage_comparison`.
-- Promote the standalone "Preview Antenna Pattern" dialog into an inline `QgsProcessingParameterWidgetFactoryInterface` so the polar plot renders directly in the Coverage / P2P parameter dialog next to the pattern-file picker.
-- Audit `report_pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks. Resolve before or during PDF parity work.
 
 ## [1.5.10] - 2026-05-17
 
