@@ -22,12 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `test_collect_panel_params.py` — 13 unit tests covering `comparison_params.collect_panel_params()`. Stubs `parameterAsDouble/Enum/File/Bool` with a fake algorithm object so the tests run as plain unit tests (no `qgis_integration` marker). Locks in the per-field dataclass mapping, prefix handling, and the derivation rules for `clutter_enabled`, `clutter_model`, `cch_override_m`, `bel_building_type`, `antenna_az` (conditional on `antenna_bw < 360`), and `antenna_bw_override` (the custom-preset escape clause).
 - Added 4 tests to `test_clutter_context.py` covering the new `build_link_clutter_context()` factory: full-field mapping from the params duck-type, per-link `dist_m` independent of params, explicit `tx_h`/`rx_h` overriding any params attribute, plus a guard test on `build_initial_clutter_context()`'s placeholder semantics (`distance_m=0`, `rx_ground_elevation_m=0` regardless of caller input).
 - Register `comparison_params` in `tests/_qgis_mocks.py` `_PACKAGE_SUBMODULES` so unit tests can import it through the `NoWires` package machinery without the `qgis_integration` marker.
+- Added `test_clutter_math_snapshot.py` — 32 drift-guard snapshot tests covering `p2108_height_gain.height_gain_loss`, `p2108_terrestrial_stat.clutter_loss_p2108_terrestrial_stat`, `p2109_bel.building_entry_loss`, and `clutter_saalos.clutter_loss_saalos`. Pins a small grid of (inputs → output) tuples per module and asserts `math.isclose` with `rel_tol=1e-9`. Expected values are self-captured from the current implementation, so the tests catch accidental coefficient drift between releases; spec compliance is still the job of the existing per-module property tests.
 
 ### Planned (PATCH — tech-debt / cleanup, zero behavior change)
 
 - Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 35 params, `build_p2p_report_payload` carries 35, `build_coverage_report_payload_for_grid` carries 31. Most natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist; the work is wiring them through.
 - Decompose three long functions: `run_p2p_analysis` (183 lines), `_compute_single_link` (158 lines), `run_panel_coverage` (232 lines).
-- Add snapshot/regression test for P.2108 clutter loss math (`p2108_height_gain.py`, `p2108_terrestrial_stat.py`, `p2109_bel.py`, `clutter_saalos.py`). Compute output from fixed inputs, assert `math.isclose` against stored reference values to catch accidental coefficient drift.
 
 ### Planned for v1.6.0 (MINOR — additive features)
 
