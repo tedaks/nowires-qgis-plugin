@@ -180,18 +180,14 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
     )
     clutter_context = None
     if clutter_enabled:
-        from .clutter_context import ClutterLossContext
-        clutter_context = ClutterLossContext(
-            frequency_mhz=f_mhz, distance_m=0.0,
-            tx_height_m=tx_h, rx_height_m=rx_h,
-            rx_ground_elevation_m=0.0, polarization=polarization,
+        from .clutter_context import build_initial_clutter_context
+        clutter_context = build_initial_clutter_context(
+            frequency_mhz=f_mhz, tx_height_m=tx_h, rx_height_m=rx_h,
+            tx_ground_elevation_m=0.0, polarization=polarization,
             cch_override_m=cch_override_m, model=clutter_model,
-            percentile=clutter_percentile,
-            street_width_m=street_width_m,
-            bel_enabled=bel_enabled,
-            bel_building_type=bel_building_type,
-            bel_elevation_angle_deg=bel_elevation_angle,
-        )
+            percentile=clutter_percentile, street_width_m=street_width_m,
+            bel_enabled=bel_enabled, bel_building_type=bel_building_type,
+            bel_elevation_angle_deg=bel_elevation_angle)
     tx_clutter_for_report = compute_terminal_clutter_losses(
         tx_lat=tx_lat,
         tx_lon=tx_lon,
