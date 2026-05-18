@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Audit `report_pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks. Resolve before or during PDF parity work.
 - Add a radio preset library. Today every `tx_power` / `rx_sens` / `f_mhz` / `polarization` value is typed by hand from a vendor datasheet. Mirror the existing `ANTENNA_PRESETS` pattern in `antenna.py:84-90`: add a `RADIO_PRESETS` dict in a new `radio_presets.py` keyed by manufacturer + model, each entry a frozen dataclass (`label`, `f_mhz_min`, `f_mhz_max`, `tx_power_options_dbm`, `rx_sens_dbm`, `polarization`, `notes`). Add a `RADIO_PRESET` enum parameter to P2P, Batch, Coverage, and Coverage Comparison; selecting one populates the relevant numeric fields. Seed the library with the most common tactical / commercial radios (e.g. L3Harris RF-7800V-HH, AN/PRC-152, Motorola APX, Tait TM9400, Codan Envoy). Optionally extend with a `*.radio.json` drop-in folder so users can add their own without code changes. Skip PDF-parsing approaches — datasheet layouts vary enough between vendors that regex/heuristic extraction fails silently in dangerous ways for engineering work; LLM-based extraction is out of scope for the plugin runtime. Pre-flight grep on `tx_power` / `rx_sens` to ensure no callers bypass the new dialog flow; this touches the parameter-registration surface so it's a MINOR bump.
 
-## [1.5.11] - 2026-05-18
+## [1.5.12] - 2026-05-18
 
 ### Changed
 
