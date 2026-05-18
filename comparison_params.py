@@ -27,11 +27,19 @@ Coverage Comparison Algorithm — Constants and config factory.
 Extracted from algorithm_coverage_comparison.py for modularity.
 """
 
+from __future__ import annotations
+
+from dataclasses import dataclass
+
 from qgis.core import QgsProcessingParameterNumber
 
+from .antenna import CUSTOM_ANTENNA_PRESET_INDEX
+from .clutter import clutter_override_value
+from .clutter_context import BuildingType, ClutterModel
 from .constants import (
     POLARIZATION_NAMES,
     GRID_SIZE_PRESETS,
+    WGS84_CRS,
 )
 from .radio import (
     ITM_MAX_FREQUENCY_MHZ,
@@ -52,7 +60,125 @@ __all__ = [
     "PANEL_B_CONSTANTS",
     "OUTPUT_CONSTANTS",
     "make_panel_config",
+    "ComparisonPanelParams",
+    "collect_panel_params",
 ]
+
+
+@dataclass
+class ComparisonPanelParams:
+    tx_lat: float
+    tx_lon: float
+    tx_h: float
+    rx_h: float
+    f_mhz: float
+    radius_km: float
+    grid_size: int
+    polarization: int
+    climate: int
+    time_pct: float
+    location_pct: float
+    situation_pct: float
+    tx_power: float
+    tx_gain: float
+    rx_gain: float
+    cable_loss: float
+    rx_sens: float
+    antenna_bw: float
+    antenna_az: float | None
+    antenna_preset: int
+    front_back_db: float
+    downtilt_deg: float
+    h_pattern: str
+    v_pattern: str
+    clutter_enabled: bool
+    clutter_model: ClutterModel
+    cch_override_m: float | None
+    clutter_percentile: float
+    street_width_m: float
+    bel_enabled: bool
+    bel_building_type: BuildingType
+    bel_elevation_angle_deg: float
+    clutter_raster_path: str
+    tx_clutter_override: str | None
+    rx_clutter_override: str | None
+    antenna_bw_override: float | None
+    n0: float
+    epsilon: float
+    sigma: float
+
+
+def collect_panel_params(algo, prefix: str, parameters, context) -> ComparisonPanelParams:
+    """Read all per-panel QGIS parameters into a typed bundle.
+
+    Centralises the ~35 parameterAs* reads that comparison_panel previously
+    performed inline. Includes derived values (clutter_enabled,
+    clutter_model, bel_building_type, cch_override_m, antenna_bw_override)
+    so the caller never sees raw enum indices.
+
+    Does NOT touch shared_clutter_grid or load LandCoverGrid — those depend
+    on runtime state that lives in run_panel_coverage.
+    """
+    tx_point = algo.parameterAsPoint(parameters, f"{prefix}_POINT", context, crs=WGS84_CRS)
+    if tx_point is None:
+        raise ValueError(f"{prefix} TX point is required.")
+
+    def pd(key: str):
+        return algo.parameterAsDouble(parameters, f"{prefix}_{key}", context)
+
+    def pe(key: str):
+        return algo.parameterAsEnum(parameters, f"{prefix}_{key}", context)
+
+    def pf(key: str):
+        return algo.parameterAsFile(parameters, f"{prefix}_{key}", context)
+
+    def pb(key: str):
+        return algo.parameterAsBool(parameters, f"{prefix}_{key}", context)
+
+    antenna_bw = pd("ANTENNA_BW")
+    antenna_preset = pe("ANTENNA_PRESET")
+    antenna_az = pd("ANTENNA_AZ") if antenna_bw < 360.0 else None
+    antenna_bw_override = (
+        None
+        if antenna_preset != CUSTOM_ANTENNA_PRESET_INDEX and antenna_bw == 360.0
+        else antenna_bw
+    )
+
+    clutter_model_idx = pe("CLUTTER_MODEL")
+    cch_raw = pd("CCH_OVERRIDE")
+    bel_building_type_idx = pe("BEL_BUILDING_TYPE")
+
+    return ComparisonPanelParams(
+        tx_lat=tx_point.y(), tx_lon=tx_point.x(),
+        tx_h=pd("TX_HEIGHT"), rx_h=pd("RX_HEIGHT"),
+        f_mhz=pd("FREQ_MHZ"), radius_km=pd("RADIUS_KM"),
+        grid_size=GRID_SIZE_PRESETS[pe("GRID_SIZE")],
+        polarization=pe("POLARIZATION"), climate=pe("CLIMATE"),
+        time_pct=pd("TIME_PCT"), location_pct=pd("LOCATION_PCT"),
+        situation_pct=pd("SITUATION_PCT"),
+        tx_power=pd("TX_POWER"), tx_gain=pd("TX_GAIN"),
+        rx_gain=pd("RX_GAIN"), cable_loss=pd("CABLE_LOSS"),
+        rx_sens=pd("RX_SENSITIVITY"),
+        antenna_bw=antenna_bw, antenna_az=antenna_az,
+        antenna_preset=antenna_preset, front_back_db=pd("FRONT_BACK_DB"),
+        downtilt_deg=pd("DOWNTILT_DEG"),
+        h_pattern=pf("H_PATTERN"), v_pattern=pf("V_PATTERN"),
+        clutter_enabled=clutter_model_idx > 0,
+        clutter_model="advanced" if clutter_model_idx == 2 else "simple",
+        cch_override_m=cch_raw if cch_raw > 0.0 else None,
+        clutter_percentile=pd("CLUTTER_PERCENTILE"),
+        street_width_m=pd("STREET_WIDTH_M"),
+        bel_enabled=pb("BEL_ENABLED"),
+        bel_building_type=(
+            "traditional" if bel_building_type_idx == 0 else "thermally_efficient"
+        ),
+        bel_elevation_angle_deg=pd("BEL_ELEVATION_ANGLE"),
+        clutter_raster_path=pf("CLUTTER_RASTER"),
+        tx_clutter_override=clutter_override_value(pe("TX_CLUTTER_OVERRIDE")),
+        rx_clutter_override=clutter_override_value(pe("RX_CLUTTER_OVERRIDE")),
+        antenna_bw_override=antenna_bw_override,
+        n0=pd("N0"), epsilon=pd("EPSILON"), sigma=pd("SIGMA"),
+    )
 
 DELTA_STYLE_DIVERGING = "diverging"
 DELTA_STYLE_THRESHOLD = "threshold"

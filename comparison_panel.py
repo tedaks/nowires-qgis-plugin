@@ -27,7 +27,6 @@ Coverage Comparison Algorithm — Panel coverage runner.
 Standalone function to run compute_coverage for one panel of the comparison.
 """
 
-from .constants import WGS84_CRS
 from .coverage_compute import (
     DEFAULT_MAX_PROFILE_PTS,
     coverage_profile_step_m,
@@ -36,13 +35,11 @@ from .coverage_engine import compute_coverage
 from .clutter import (
     LandCoverGrid,
     clutter_source_label,
-    clutter_override_value,
     compute_terminal_clutter_losses,
     ensure_clutter_grid_for_area,
 )
 from .radio import validate_itm_input_ranges
-from .antenna import CUSTOM_ANTENNA_PRESET_INDEX
-from .comparison_params import GRID_SIZE_PRESETS
+from .comparison_params import collect_panel_params
 
 __all__ = ["run_panel_coverage"]
 
@@ -55,196 +52,94 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
     a new clutter grid for this panel. This ensures both panels in a
     comparison use identical clutter data.
     """
-    tx_point = algorithm_instance.parameterAsPoint(
-        parameters,
-        f"{prefix}_POINT",
-        context,
-        crs=WGS84_CRS,
-    )
-    if tx_point is None:
-        raise ValueError(f"{prefix} TX point is required.")
+    p = collect_panel_params(algorithm_instance, prefix, parameters, context)
 
-    tx_lat = tx_point.y()
-    tx_lon = tx_point.x()
-
-    tx_h = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_TX_HEIGHT", context)
-    rx_h = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_RX_HEIGHT", context)
-    f_mhz = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_FREQ_MHZ", context)
-    radius_km = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_RADIUS_KM", context)
-    grid_size_index = algorithm_instance.parameterAsEnum(
-        parameters, f"{prefix}_GRID_SIZE", context)
-    grid_size = GRID_SIZE_PRESETS[grid_size_index]
-    polarization = algorithm_instance.parameterAsEnum(
-        parameters, f"{prefix}_POLARIZATION", context)
-    climate = algorithm_instance.parameterAsEnum(parameters, f"{prefix}_CLIMATE", context)
-    time_pct = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_TIME_PCT", context)
-    location_pct = algorithm_instance.parameterAsDouble(
-        parameters, f"{prefix}_LOCATION_PCT", context)
-    situation_pct = algorithm_instance.parameterAsDouble(
-        parameters, f"{prefix}_SITUATION_PCT", context)
-    tx_power = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_TX_POWER", context)
-    tx_gain = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_TX_GAIN", context)
-    rx_gain = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_RX_GAIN", context)
-    cable_loss = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_CABLE_LOSS", context)
-    rx_sens = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_RX_SENSITIVITY", context)
-    antenna_bw = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_ANTENNA_BW", context)
-
-    antenna_az = None
-    if antenna_bw < 360.0:
-        antenna_az = algorithm_instance.parameterAsDouble(
-            parameters, f"{prefix}_ANTENNA_AZ", context)
-
-    antenna_preset = algorithm_instance.parameterAsEnum(
-        parameters, f"{prefix}_ANTENNA_PRESET", context)
-    front_back_db = algorithm_instance.parameterAsDouble(
-        parameters, f"{prefix}_FRONT_BACK_DB", context)
-    downtilt_deg = algorithm_instance.parameterAsDouble(
-        parameters, f"{prefix}_DOWNTILT_DEG", context)
-    h_pattern = algorithm_instance.parameterAsFile(parameters, f"{prefix}_H_PATTERN", context)
-    v_pattern = algorithm_instance.parameterAsFile(parameters, f"{prefix}_V_PATTERN", context)
-    clutter_model_idx = algorithm_instance.parameterAsEnum(
-        parameters, f"{prefix}_CLUTTER_MODEL", context)
-    clutter_enabled = clutter_model_idx > 0
-    clutter_model = "advanced" if clutter_model_idx == 2 else "simple"
-    cch_raw = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_CCH_OVERRIDE", context)
-    cch_override_m = cch_raw if cch_raw > 0.0 else None
-    clutter_percentile = algorithm_instance.parameterAsDouble(
-        parameters, f"{prefix}_CLUTTER_PERCENTILE", context)
-    street_width_m = algorithm_instance.parameterAsDouble(
-        parameters, f"{prefix}_STREET_WIDTH_M", context)
-    bel_enabled = algorithm_instance.parameterAsBool(
-        parameters, f"{prefix}_BEL_ENABLED", context)
-    bel_building_type_idx = algorithm_instance.parameterAsEnum(
-        parameters, f"{prefix}_BEL_BUILDING_TYPE", context)
-    bel_building_type = "traditional" if bel_building_type_idx == 0 else "thermally_efficient"
-    bel_elevation_angle = algorithm_instance.parameterAsDouble(
-        parameters, f"{prefix}_BEL_ELEVATION_ANGLE", context)
-    clutter_raster_path = algorithm_instance.parameterAsFile(
-        parameters, f"{prefix}_CLUTTER_RASTER", context)
     if shared_clutter_grid is not None:
         clutter_grid = shared_clutter_grid
-    elif clutter_raster_path:
-        clutter_grid = LandCoverGrid.from_raster(clutter_raster_path)
+    elif p.clutter_raster_path:
+        clutter_grid = LandCoverGrid.from_raster(p.clutter_raster_path)
     else:
         clutter_grid = None
-    tx_clutter_override = clutter_override_value(
-        algorithm_instance.parameterAsEnum(parameters, f"{prefix}_TX_CLUTTER_OVERRIDE", context)
-    )
-    rx_clutter_override = clutter_override_value(
-        algorithm_instance.parameterAsEnum(parameters, f"{prefix}_RX_CLUTTER_OVERRIDE", context)
-    )
-
-    antenna_bw_override = (
-        None
-        if antenna_preset != CUSTOM_ANTENNA_PRESET_INDEX and antenna_bw == 360.0
-        else antenna_bw
-    )
-
-    n0 = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_N0", context)
-    epsilon = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_EPSILON", context)
-    sigma = algorithm_instance.parameterAsDouble(parameters, f"{prefix}_SIGMA", context)
 
     validate_itm_input_ranges(
-        tx_height_m=tx_h,
-        rx_height_m=rx_h,
-        frequency_mhz=f_mhz,
-        surface_refractivity_n0=n0,
-        earth_conductivity_sigma=sigma,
+        tx_height_m=p.tx_h,
+        rx_height_m=p.rx_h,
+        frequency_mhz=p.f_mhz,
+        surface_refractivity_n0=p.n0,
+        earth_conductivity_sigma=p.sigma,
     )
 
     feedback.pushInfo(
-        f"[{prefix}] TX: ({tx_lat:.5f}, {tx_lon:.5f}), "
-        f"F={f_mhz:.1f} MHz, R={radius_km:.1f} km, Grid={grid_size}x{grid_size}"
+        f"[{prefix}] TX: ({p.tx_lat:.5f}, {p.tx_lon:.5f}), "
+        f"F={p.f_mhz:.1f} MHz, R={p.radius_km:.1f} km, "
+        f"Grid={p.grid_size}x{p.grid_size}"
     )
 
-    if clutter_grid is None and clutter_enabled:
+    if clutter_grid is None and p.clutter_enabled:
         clutter_grid = ensure_clutter_grid_for_area(
-            south=south,
-            north=north,
-            west=west,
-            east=east,
-            feedback=feedback,
+            south=south, north=north, west=west, east=east, feedback=feedback,
         )
-    if clutter_grid is None and clutter_enabled:
+    if clutter_grid is None and p.clutter_enabled:
         raise ValueError(
-            "{}: Failed to load clutter grid. Coverage comparison requires "
-            "identical clutter data for both panels.".format(prefix)
+            f"{prefix}: Failed to load clutter grid. Coverage comparison "
+            "requires identical clutter data for both panels."
         )
 
     clutter_source = clutter_source_label(
-        enabled=clutter_enabled,
-        land_cover_grid=clutter_grid,
-        raster_path=clutter_raster_path,
-        tx_override=tx_clutter_override,
-        rx_override=rx_clutter_override,
+        enabled=p.clutter_enabled, land_cover_grid=clutter_grid,
+        raster_path=p.clutter_raster_path,
+        tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override,
     )
     clutter_context = None
-    if clutter_enabled:
+    if p.clutter_enabled:
         from .clutter_context import build_initial_clutter_context
         clutter_context = build_initial_clutter_context(
-            frequency_mhz=f_mhz, tx_height_m=tx_h, rx_height_m=rx_h,
-            tx_ground_elevation_m=0.0, polarization=polarization,
-            cch_override_m=cch_override_m, model=clutter_model,
-            percentile=clutter_percentile, street_width_m=street_width_m,
-            bel_enabled=bel_enabled, bel_building_type=bel_building_type,
-            bel_elevation_angle_deg=bel_elevation_angle)
+            frequency_mhz=p.f_mhz, tx_height_m=p.tx_h, rx_height_m=p.rx_h,
+            tx_ground_elevation_m=0.0, polarization=p.polarization,
+            cch_override_m=p.cch_override_m, model=p.clutter_model,
+            percentile=p.clutter_percentile, street_width_m=p.street_width_m,
+            bel_enabled=p.bel_enabled, bel_building_type=p.bel_building_type,
+            bel_elevation_angle_deg=p.bel_elevation_angle_deg)
     tx_clutter_for_report = compute_terminal_clutter_losses(
-        tx_lat=tx_lat,
-        tx_lon=tx_lon,
-        rx_lat=tx_lat,
-        rx_lon=tx_lon,
-        frequency_mhz=f_mhz,
-        enabled=clutter_enabled,
+        tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.tx_lat, rx_lon=p.tx_lon,
+        frequency_mhz=p.f_mhz, enabled=p.clutter_enabled,
         land_cover_grid=clutter_grid,
-        tx_override=tx_clutter_override,
-        rx_override=rx_clutter_override,
+        tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override,
         context=clutter_context,
     )
 
     try:
         result = compute_coverage(
-            elev_grid=elev,
-            tx_lat=tx_lat,
-            tx_lon=tx_lon,
-            tx_h_m=tx_h,
-            rx_h_m=rx_h,
-            f_mhz=f_mhz,
-            grid_size=grid_size,
-            radius_km=radius_km,
-            profile_step_m=coverage_profile_step_m(f_mhz),
+            elev_grid=elev, tx_lat=p.tx_lat, tx_lon=p.tx_lon,
+            tx_h_m=p.tx_h, rx_h_m=p.rx_h, f_mhz=p.f_mhz,
+            grid_size=p.grid_size, radius_km=p.radius_km,
+            profile_step_m=coverage_profile_step_m(p.f_mhz),
             max_profile_pts=DEFAULT_MAX_PROFILE_PTS,
-            tx_power_dbm=tx_power,
-            tx_gain_dbi=tx_gain,
-            rx_gain_dbi=rx_gain,
-            cable_loss_db=cable_loss,
-            rx_sensitivity_dbm=rx_sens,
-            antenna_az_deg=antenna_az,
-            antenna_beamwidth_deg=antenna_bw_override,
-            polarization=polarization,
-            climate=climate,
-            N0=n0,
-            epsilon=epsilon,
-            sigma=sigma,
-            time_pct=time_pct,
-            location_pct=location_pct,
-            situation_pct=situation_pct,
-            antenna_preset=antenna_preset,
-            antenna_front_back_db=front_back_db,
-            antenna_downtilt_deg=downtilt_deg,
-            antenna_horizontal_pattern_path=h_pattern,
-            antenna_vertical_pattern_path=v_pattern,
-            clutter_enabled=clutter_enabled,
-            clutter_grid=clutter_grid,
-            tx_clutter_override=tx_clutter_override,
-            rx_clutter_override=rx_clutter_override,
+            tx_power_dbm=p.tx_power, tx_gain_dbi=p.tx_gain,
+            rx_gain_dbi=p.rx_gain, cable_loss_db=p.cable_loss,
+            rx_sensitivity_dbm=p.rx_sens,
+            antenna_az_deg=p.antenna_az,
+            antenna_beamwidth_deg=p.antenna_bw_override,
+            polarization=p.polarization, climate=p.climate,
+            N0=p.n0, epsilon=p.epsilon, sigma=p.sigma,
+            time_pct=p.time_pct, location_pct=p.location_pct,
+            situation_pct=p.situation_pct,
+            antenna_preset=p.antenna_preset,
+            antenna_front_back_db=p.front_back_db,
+            antenna_downtilt_deg=p.downtilt_deg,
+            antenna_horizontal_pattern_path=p.h_pattern,
+            antenna_vertical_pattern_path=p.v_pattern,
+            clutter_enabled=p.clutter_enabled, clutter_grid=clutter_grid,
+            tx_clutter_override=p.tx_clutter_override,
+            rx_clutter_override=p.rx_clutter_override,
             tx_clutter_loss_db=tx_clutter_for_report.tx_loss_db,
-            clutter_model=clutter_model,
-            cch_override_m=cch_override_m,
-            clutter_percentile=clutter_percentile,
-            street_width_m=street_width_m,
-            bel_enabled=bel_enabled,
-            bel_building_type=bel_building_type,
-            bel_elevation_angle_deg=bel_elevation_angle,
+            clutter_model=p.clutter_model,
+            cch_override_m=p.cch_override_m,
+            clutter_percentile=p.clutter_percentile,
+            street_width_m=p.street_width_m,
+            bel_enabled=p.bel_enabled,
+            bel_building_type=p.bel_building_type,
+            bel_elevation_angle_deg=p.bel_elevation_angle_deg,
             feedback=feedback,
         )
     finally:
@@ -255,23 +150,15 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
         "result": result,
         "clutter_source": clutter_source,
         "tx_clutter_for_report": tx_clutter_for_report,
-        "clutter_enabled": clutter_enabled,
-        "clutter_model": clutter_model,
-        "antenna_preset": antenna_preset,
-        "tx_lat": tx_lat,
-        "tx_lon": tx_lon,
-        "tx_h": tx_h,
-        "rx_h": rx_h,
-        "f_mhz": f_mhz,
-        "radius_km": radius_km,
-        "grid_size": grid_size,
-        "polarization": polarization,
-        "time_pct": time_pct,
-        "location_pct": location_pct,
-        "situation_pct": situation_pct,
-        "tx_power": tx_power,
-        "tx_gain": tx_gain,
-        "rx_gain": rx_gain,
-        "cable_loss": cable_loss,
-        "rx_sens": rx_sens,
+        "clutter_enabled": p.clutter_enabled,
+        "clutter_model": p.clutter_model,
+        "antenna_preset": p.antenna_preset,
+        "tx_lat": p.tx_lat, "tx_lon": p.tx_lon,
+        "tx_h": p.tx_h, "rx_h": p.rx_h,
+        "f_mhz": p.f_mhz, "radius_km": p.radius_km,
+        "grid_size": p.grid_size, "polarization": p.polarization,
+        "time_pct": p.time_pct, "location_pct": p.location_pct,
+        "situation_pct": p.situation_pct,
+        "tx_power": p.tx_power, "tx_gain": p.tx_gain, "rx_gain": p.rx_gain,
+        "cable_loss": p.cable_loss, "rx_sens": p.rx_sens,
     }
