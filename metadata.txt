@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.5.11
+version=1.5.12
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,7 +14,7 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
-    Version 1.5.11
+    Version 1.5.12
     - Refactor: extract build_link_clutter_context() factory in clutter_context — consolidates the 14-field ClutterLossContext construction duplicated in p2p_compute.run_p2p_analysis and batch_outputs._compute_single_link
     - Refactor: use existing fresnel.fresnel_profile_analysis in batch_outputs._compute_single_link instead of an inline (mathematically equivalent) reimplementation; drops the EARTH_RADIUS_M import and the tx_h_eff_actual alias
     - Refactor: use existing build_initial_clutter_context() factory in comparison_panel.run_panel_coverage instead of inline placeholder-context construction; consolidates the third call site (alongside algorithm_coverage and coverage_engine)
