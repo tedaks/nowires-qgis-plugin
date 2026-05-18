@@ -39,7 +39,7 @@ from .batch_analysis_params import BatchAnalysisParams
 from .batch_writer import write_batch_marker_layer, write_batch_csv, write_batch_json
 from .constants import DEFAULT_PROFILE_STEP_M
 from .elevation import bearing_deg, haversine_m
-from .fresnel import C_LIGHT, EARTH_RADIUS_M
+from .fresnel import C_LIGHT, fresnel_profile_analysis
 from .radio import (
     build_pfl,
     itm_p2p_loss,
@@ -65,6 +65,7 @@ logger = logging.getLogger(__name__)
 def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength_m):
     rx_lat = rx_def["lat"]
     rx_lon = rx_def["lon"]
+    tx_h_eff = tx_def["height"] if tx_def["height"] is not None else params.tx_h
     rx_h_eff = rx_def["height"] if rx_def["height"] is not None else params.rx_h
 
     dist_m = haversine_m(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon)
@@ -92,7 +93,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
     pfl = build_pfl(elevations, step_m_val)
 
     itm_result = itm_p2p_loss(
-        h_tx__meter=tx_def["height"] if tx_def["height"] is not None else params.tx_h,
+        h_tx__meter=tx_h_eff,
         h_rx__meter=rx_h_eff,
         profile=pfl,
         climate=params.climate,
@@ -106,23 +107,12 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
         situation_pct=params.situation_pct,
     )
 
-    tx_h_eff = tx_def["height"] if tx_def["height"] is not None else params.tx_h
     clutter_context = None
     if params.clutter_enabled:
-        from .clutter_context import ClutterLossContext
-        clutter_context = ClutterLossContext(
-            frequency_mhz=params.f_mhz, distance_m=dist_m,
-            tx_height_m=tx_h_eff, rx_height_m=rx_h_eff,
-            rx_ground_elevation_m=float(elevations[-1]),
-            tx_ground_elevation_m=float(elevations[0]),
-            polarization=params.polarization,
-            cch_override_m=params.cch_override_m, model=params.clutter_model,
-            percentile=params.clutter_percentile,
-            street_width_m=params.street_width_m,
-            bel_enabled=params.bel_enabled,
-            bel_building_type=params.bel_building_type,
-            bel_elevation_angle_deg=params.bel_elevation_angle_deg,
-        )
+        from .clutter_context import build_link_clutter_context
+        clutter_context = build_link_clutter_context(
+            params=params, dist_m=dist_m, tx_h=tx_h_eff, rx_h=rx_h_eff,
+            tx_elev=float(elevations[0]), rx_elev=float(elevations[-1]))
 
     clutter_losses = compute_terminal_clutter_losses(
         tx_lat=tx_def["lat"], tx_lon=tx_def["lon"],
@@ -138,10 +128,9 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
 
     tx_bearing = bearing_deg(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon)
     rx_bearing = bearing_deg(rx_lat, rx_lon, tx_def["lat"], tx_def["lon"])
-    tx_h_actual = tx_def["height"] if tx_def["height"] is not None else params.tx_h
     vertical_angle = math.degrees(
         math.atan2(
-            (elevations[-1] + rx_h_eff) - (elevations[0] + tx_h_actual),
+            (elevations[-1] + rx_h_eff) - (elevations[0] + tx_h_eff),
             max(dist_m, 1.0),
         )
     )
@@ -176,28 +165,12 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
     prx_dbm = eirp_eff + rx_gain_eff + ant_gain_adj_total - total_loss_db
     margin_db = prx_dbm - params.rx_sens
 
-    fresnel_r_arr: list[float] = []
-    for i in range(len(distances)):
-        d1 = distances[i]
-        d2 = dist_m - d1
-        if d1 > 0 and d2 > 0:
-            fr = math.sqrt(wavelength_m * d1 * d2 / dist_m)
-            fresnel_r_arr.append(fr)
-        else:
-            fresnel_r_arr.append(0.0)
-
-    fresnel_r = np.array(fresnel_r_arr, dtype=np.float64)
-    elev_arr = np.array(elevations, dtype=np.float64)
-    dist_arr = np.array(distances, dtype=np.float64)
-
-    tx_h_eff_actual = tx_def["height"] if tx_def["height"] is not None else params.tx_h
+    tx_antenna_h = elevations[0] + tx_h_eff
     rx_antenna_h = elevations[-1] + rx_h_eff
-    tx_antenna_h = elevations[0] + tx_h_eff_actual
-    t = np.divide(dist_arr, dist_m, out=np.zeros_like(dist_arr), where=dist_m > 0)
-    a_eff = params.k_factor * EARTH_RADIUS_M
-    bulge = (dist_arr * (dist_m - dist_arr)) / (2.0 * a_eff)
-    los_h = tx_antenna_h + t * (rx_antenna_h - tx_antenna_h)
-    terrain_bulge = elev_arr + bulge
+    terrain_bulge, los_h, fresnel_r, _, _, _ = fresnel_profile_analysis(
+        distances, elevations, tx_antenna_h, rx_antenna_h,
+        dist_m, wavelength_m, params.k_factor,
+    )
     fresnel_clearance = (los_h - fresnel_r) - terrain_bulge
     clearance_pct = float(
         np.sum(fresnel_clearance > 0) / max(len(fresnel_clearance), 1) * 100
@@ -216,7 +189,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
         "margin_db": margin_db,
         "clearance_pct": clearance_pct,
         "status": "VIABLE" if margin_db >= 0 else "NOT VIABLE",
-        "tx_height": tx_h_eff_actual,
+        "tx_height": tx_h_eff,
         "rx_height": rx_h_eff,
     }
 
