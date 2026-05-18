@@ -77,8 +77,8 @@ def test_comparison_algorithm_routes_destinations_through_register_helper():
 
 def test_comparison_algorithm_rx_override_is_correct():
     source = _comp_source()
-    assert "rx_override=rx_clutter_override" in source
-    assert "rx_override=tx_clutter_override" not in source
+    assert "rx_override=p.rx_clutter_override" in source
+    assert "rx_override=p.tx_clutter_override" not in source
 
 
 def test_comparison_algorithm_escapes_html():
