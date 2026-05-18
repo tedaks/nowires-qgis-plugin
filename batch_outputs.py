@@ -65,6 +65,7 @@ logger = logging.getLogger(__name__)
 def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength_m):
     rx_lat = rx_def["lat"]
     rx_lon = rx_def["lon"]
+    tx_h_eff = tx_def["height"] if tx_def["height"] is not None else params.tx_h
     rx_h_eff = rx_def["height"] if rx_def["height"] is not None else params.rx_h
 
     dist_m = haversine_m(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon)
@@ -92,7 +93,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
     pfl = build_pfl(elevations, step_m_val)
 
     itm_result = itm_p2p_loss(
-        h_tx__meter=tx_def["height"] if tx_def["height"] is not None else params.tx_h,
+        h_tx__meter=tx_h_eff,
         h_rx__meter=rx_h_eff,
         profile=pfl,
         climate=params.climate,
@@ -106,7 +107,6 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
         situation_pct=params.situation_pct,
     )
 
-    tx_h_eff = tx_def["height"] if tx_def["height"] is not None else params.tx_h
     clutter_context = None
     if params.clutter_enabled:
         from .clutter_context import build_link_clutter_context
@@ -128,10 +128,9 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
 
     tx_bearing = bearing_deg(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon)
     rx_bearing = bearing_deg(rx_lat, rx_lon, tx_def["lat"], tx_def["lon"])
-    tx_h_actual = tx_def["height"] if tx_def["height"] is not None else params.tx_h
     vertical_angle = math.degrees(
         math.atan2(
-            (elevations[-1] + rx_h_eff) - (elevations[0] + tx_h_actual),
+            (elevations[-1] + rx_h_eff) - (elevations[0] + tx_h_eff),
             max(dist_m, 1.0),
         )
     )
