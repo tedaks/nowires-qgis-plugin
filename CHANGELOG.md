@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extract `ComparisonPanelParams` frozen-shape dataclass and `collect_panel_params()` factory in `comparison_params.py`. Moves the ~90-line `parameterAsDouble/Enum/File/Bool` block out of `run_panel_coverage` into a single typed bundle covering all 39 panel fields plus derived values (`clutter_enabled`, `clutter_model`, `bel_building_type`, `cch_override_m`, `antenna_bw_override`). `run_panel_coverage` drops from 227 lines to ~107 lines; `comparison_panel.py` from 276 lines to 163. Caller-visible behavior unchanged.
 - Consolidate the `tx_def["height"] if tx_def["height"] is not None else params.tx_h` resolution in `batch_outputs._compute_single_link` to a single `tx_h_eff` local at the top of the function. Previously the same ternary appeared three times (lines 95, 109, 131 of the pre-cleanup file) with two different aliases (`tx_h_eff` / `tx_h_actual`).
 
+### Added
+
+- Added `test_collect_panel_params.py` — 13 unit tests covering `comparison_params.collect_panel_params()`. Stubs `parameterAsDouble/Enum/File/Bool` with a fake algorithm object so the tests run as plain unit tests (no `qgis_integration` marker). Locks in the per-field dataclass mapping, prefix handling, and the derivation rules for `clutter_enabled`, `clutter_model`, `cch_override_m`, `bel_building_type`, `antenna_az` (conditional on `antenna_bw < 360`), and `antenna_bw_override` (the custom-preset escape clause).
+- Added 4 tests to `test_clutter_context.py` covering the new `build_link_clutter_context()` factory: full-field mapping from the params duck-type, per-link `dist_m` independent of params, explicit `tx_h`/`rx_h` overriding any params attribute, plus a guard test on `build_initial_clutter_context()`'s placeholder semantics (`distance_m=0`, `rx_ground_elevation_m=0` regardless of caller input).
+- Register `comparison_params` in `tests/_qgis_mocks.py` `_PACKAGE_SUBMODULES` so unit tests can import it through the `NoWires` package machinery without the `qgis_integration` marker.
+
 ### Planned (PATCH — tech-debt / cleanup, zero behavior change)
 
 - Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 35 params, `build_p2p_report_payload` carries 35, `build_coverage_report_payload_for_grid` carries 31. Most natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist; the work is wiring them through.
