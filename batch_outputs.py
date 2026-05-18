@@ -109,20 +109,10 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
     tx_h_eff = tx_def["height"] if tx_def["height"] is not None else params.tx_h
     clutter_context = None
     if params.clutter_enabled:
-        from .clutter_context import ClutterLossContext
-        clutter_context = ClutterLossContext(
-            frequency_mhz=params.f_mhz, distance_m=dist_m,
-            tx_height_m=tx_h_eff, rx_height_m=rx_h_eff,
-            rx_ground_elevation_m=float(elevations[-1]),
-            tx_ground_elevation_m=float(elevations[0]),
-            polarization=params.polarization,
-            cch_override_m=params.cch_override_m, model=params.clutter_model,
-            percentile=params.clutter_percentile,
-            street_width_m=params.street_width_m,
-            bel_enabled=params.bel_enabled,
-            bel_building_type=params.bel_building_type,
-            bel_elevation_angle_deg=params.bel_elevation_angle_deg,
-        )
+        from .clutter_context import build_link_clutter_context
+        clutter_context = build_link_clutter_context(
+            params=params, dist_m=dist_m, tx_h=tx_h_eff, rx_h=rx_h_eff,
+            tx_elev=float(elevations[0]), rx_elev=float(elevations[-1]))
 
     clutter_losses = compute_terminal_clutter_losses(
         tx_lat=tx_def["lat"], tx_lon=tx_def["lon"],
