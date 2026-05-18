@@ -31,7 +31,7 @@ The project uses three GitHub Actions workflows run on every push and pull reque
 | Job | Description |
 |-----|-------------|
 | `lint` | Runs `ruff check .` and enforces the 300-line file limit |
-| `audit` | Installs the project + dev extras and runs `pip-audit --requirement requirements-ci.txt` |
+| `audit` | Runs `pip-audit --requirement constraints-ci.txt` against the pinned dependency list |
 | `mypy` | Runs `mypy . --config-file mypy.ini` for static type checking |
 | `pytest` | Runs `pytest -m "not benchmark and not qgis_integration" --cov` on Python 3.12. Coverage threshold lives in `pyproject.toml` (currently 59%). |
 
@@ -71,10 +71,15 @@ find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__
 
 ```bash
 docker run --rm \
-  -v $(pwd):/plugin -w /plugin \
+  -v $(pwd):/project:ro -w /project \
   -e QGIS_PREFIX_PATH=/usr -e QT_QPA_PLATFORM=offscreen \
-  qgis/qgis:4.0 \
-  bash -c 'pip install --break-system-packages pytest pytest-cov numpy defusedxml hypothesis && pytest -m qgis_integration -v'
+  -e PYTHONPATH=/project:/usr/share/qgis/python \
+  qgis/qgis:4.0@sha256:6f33d932b56305a550d9e079d64daeabca71fcc97101bba1ca578c55c0e1439b \
+  bash -c 'pip install --break-system-packages --ignore-installed -c constraints-ci.txt -r requirements-test.txt && \
+    pytest -m qgis_integration -v --tb=short && \
+    pytest tests/test_gdal_compat.py -v --tb=short && \
+    pytest tests/test_raster_io_integration.py -v --tb=short && \
+    pytest -m gdal_integration -v --tb=short'
 ```
 
 ## Manual Testing
