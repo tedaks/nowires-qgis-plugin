@@ -58,21 +58,26 @@ Recommended path:
 
 ## Download the Plugin from GitHub
 
-You can download the plugin in either of these ways:
+Three download options are available:
 
-### Option 1: Download ZIP
+### Option 1: Release ZIP (recommended)
+
+1. Go to the [GitHub Releases](https://github.com/tedaks/nowires-qgis-plugin/releases) page.
+2. Download the `NoWires-X.Y.Z.zip` file from the latest release.
+3. The ZIP is a ready-to-install plugin bundle — no extraction or renaming needed.
+
+### Option 2: Download Source ZIP
 
 1. Open the GitHub repository page for NoWires.
 2. Click `Code`.
 3. Click `Download ZIP`.
-4. Extract the archive.
+4. Extract the archive and rename the extracted folder to `NoWires`.
 
 Important:
 
-- The extracted plugin folder should be named `NoWires`.
-- The files `__init__.py` and `metadata.txt` should be directly inside that folder.
+- The files `__init__.py` and `metadata.txt` must be directly inside the `NoWires` folder.
 
-### Option 2: Clone with Git
+### Option 3: Clone with Git
 
 ```bash
 git clone https://github.com/tedaks/nowires-qgis-plugin.git
@@ -82,21 +87,23 @@ If needed, rename the cloned folder to `NoWires` before installing it into QGIS.
 
 ## Install the Plugin into QGIS
 
-The safest cross-platform method is to use your active QGIS profile folder instead of guessing the path manually.
+### Recommended Method: Install from ZIP
 
-### Recommended Method: Open the Active Profile Folder
+1. Download the release ZIP (`NoWires-X.Y.Z.zip`) from [GitHub Releases](https://github.com/tedaks/nowires-qgis-plugin/releases).
+2. In QGIS, open **Plugins → Manage and Install Plugins → Install from ZIP**.
+3. Select the downloaded ZIP file and click **Install Plugin**.
+4. QGIS installs the plugin automatically and prompts you to enable it.
+
+This method works on all platforms and avoids manual folder placement.
+
+### Alternative Method: Manual Folder Copy
 
 1. Start QGIS.
 2. Open your active profile folder from QGIS.
    Typical places to look are:
    - `Settings` -> `User Profiles`
    - or another menu entry that opens the active profile folder directly
-3. Inside the active profile folder, create this path if it does not already exist:
-
-```text
-python/plugins
-```
-
+3. Inside the active profile folder, create `python/plugins` if it does not already exist.
 4. Copy the `NoWires` folder into that `python/plugins` folder.
 
 Result:
@@ -105,9 +112,7 @@ Result:
 <active-profile-folder>/python/plugins/NoWires
 ```
 
-### Typical Profile Locations
-
-These are common examples, but the active-profile-folder method above is more reliable:
+### Typical Profile Locations (for manual copy)
 
 - Windows: `%APPDATA%\\QGIS\\QGIS4\\profiles\\default\\python\\plugins`
 - Linux: `~/.local/share/QGIS/QGIS4/profiles/default/python/plugins`
@@ -545,10 +550,16 @@ Instead:
 
 ## Updating the Plugin
 
-To update manually from GitHub:
+### Recommended: Update via ZIP
+
+1. Download the latest `NoWires-X.Y.Z.zip` from [GitHub Releases](https://github.com/tedaks/nowires-qgis-plugin/releases).
+2. In QGIS, open **Plugins → Manage and Install Plugins → Install from ZIP**.
+3. Select the new ZIP — QGIS replaces the previous version automatically.
+
+### Alternative: Manual Update
 
 1. Close QGIS.
-2. Replace the installed `NoWires` folder inside your QGIS profile's `python/plugins` directory.
+2. Replace the installed `NoWires` folder inside your QGIS profile's `python/plugins` directory with the new version.
 3. Start QGIS again.
 
 ## Removing the Plugin
