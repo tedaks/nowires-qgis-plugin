@@ -4,7 +4,7 @@ Radio propagation analysis and terrain tools powered by NTIA's Irregular Terrain
 
 ## Status
 
-This repository contains the QGIS 4 plugin source for **NoWires** version 1.5.11.
+This repository contains the QGIS 4 plugin source for **NoWires** version 1.5.12.
 
 Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 SPDX-License-Identifier: GPL-3.0-or-later
@@ -65,10 +65,18 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 
 ## Installation
 
+### Option 1: Install from ZIP (recommended)
+
+1. Download `NoWires-X.Y.Z.zip` from the latest [GitHub Release](https://github.com/tedaks/nowires-qgis-plugin/releases).
+2. In QGIS, open **Plugins → Manage and Install Plugins → Install from ZIP**.
+3. Select the downloaded ZIP file and click **Install Plugin**.
+4. Enable NoWires in **Plugins → Manage and Install Plugins** if not auto-enabled.
+
+### Option 2: Manual folder copy
+
 1. Copy the `NoWires` folder to your QGIS user plugins directory:
    - **Linux/macOS:** `~/.local/share/QGIS/QGIS4/profiles/default/python/plugins/`
    - **Windows:** `%APPDATA%\QGIS\QGIS4\profiles\default\python\plugins\`
-
 2. Restart QGIS and enable the plugin in **Plugins → Manage and Install Plugins**.
 
 ## Repository Layout
