@@ -17,7 +17,7 @@ def test_try_covers_clutter_grid_acquisition():
     """The try block must start no later than 3 lines after owns_clutter_grid
     assignment so that exceptions during DEM download, elevation processing,
     or ITM prediction trigger the finally clause that closes the clutter grid."""
-    with open("p2p_compute.py") as f:
+    with open("p2p/compute.py") as f:
         source = f.read()
 
     lines = source.splitlines()

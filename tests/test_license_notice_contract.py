@@ -6,7 +6,7 @@
 
 from pathlib import Path
 
-from report_payloads import build_coverage_report_payload
+from report.payloads import build_coverage_report_payload
 
 
 PLUGIN_DIR = Path(__file__).resolve().parent.parent
@@ -29,13 +29,13 @@ def test_notice_lists_all_contourlines_derived_modules():
     notice = _text("NOTICE.md")
 
     for filename in (
-        "algorithm_contour.py",
+        "algorithm/contour.py",
         "dem_downloader.py",
-        "contour_generation.py",
-        "contour_pipeline.py",
-        "contour_symbology.py",
-        "contour_overlay.py",
-        "contour_smoothing.py",
+        "contour/generation.py",
+        "contour/pipeline.py",
+        "contour/symbology.py",
+        "contour/overlay.py",
+        "contour/smoothing.py",
     ):
         assert f"`{filename}`" in notice
 

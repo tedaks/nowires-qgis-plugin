@@ -11,7 +11,7 @@ change should fail loudly here rather than ship silently.
 import json
 import math
 
-from report_export import write_report_csv, write_report_html, write_report_json
+from report.export import write_report_csv, write_report_html, write_report_json
 
 
 def _fixture_payload():

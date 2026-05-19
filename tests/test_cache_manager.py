@@ -26,7 +26,7 @@ def temp_cache_dir():
     """Create an isolated temp directory and point get_temp_dir at it."""
     tmp = tempfile.mkdtemp(prefix="nowires_test_cache_")
     # Monkey-patch dem_downloader.get_temp_dir — cache_manager imports this
-    # via `from .dem_downloader import get_temp_dir`, creating a local binding.
+    # via `from NoWires.dem_downloader import get_temp_dir`, creating a local binding.
     # Both the source module and cache_manager's reference must be patched.
     import dem_downloader as ddl
     import cache_manager as cm

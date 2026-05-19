@@ -8,10 +8,10 @@ import os
 
 
 PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
-OPACITY_SOURCE = os.path.join(PLUGIN_DIR, "coverage_opacity.py")
+OPACITY_SOURCE = os.path.join(PLUGIN_DIR, "coverage/opacity.py")
 PLUGIN_SOURCE = os.path.join(PLUGIN_DIR, "nowires.py")
-COVERAGE_SOURCE = os.path.join(PLUGIN_DIR, "algorithm_coverage.py")
-LEGEND_SOURCE = os.path.join(PLUGIN_DIR, "coverage_legend.py")
+COVERAGE_SOURCE = os.path.join(PLUGIN_DIR, "algorithm/coverage.py")
+LEGEND_SOURCE = os.path.join(PLUGIN_DIR, "coverage/legend.py")
 
 
 def _text(path):
@@ -36,7 +36,7 @@ def test_opacity_module_has_dialog_class():
 
 def test_opacity_dialog_uses_qt6_slider_enums_directly():
     source = _text(OPACITY_SOURCE)
-    assert "from .qt_compat import" not in source
+    assert "from NoWires.qt_compat import" not in source
     assert "QSlider(Qt.Orientation.Horizontal)" in source
     assert "QSlider.TickPosition.TicksBelow" in source
 
@@ -101,7 +101,7 @@ def test_opacity_dialog_refreshes_map_canvas():
 def test_plugin_imports_opacity_module():
     source = _text(PLUGIN_SOURCE)
     assert (
-        "from .coverage_opacity import find_latest_coverage_layer, CoverageOpacityDialog"
+        "from NoWires.coverage.opacity import find_latest_coverage_layer, CoverageOpacityDialog"
         in source
     )
 
@@ -114,7 +114,7 @@ def test_plugin_imports_qaction_from_qtgui_for_qt6():
 
 def test_coverage_legend_uses_qt6_enums_directly():
     source = _text(LEGEND_SOURCE)
-    assert "from .qt_compat import" not in source
+    assert "from NoWires.qt_compat import" not in source
     assert "QFrame.Shape.StyledPanel" in source
     assert "Qt.WidgetAttribute.WA_TransparentForMouseEvents" in source
     assert "QEvent.Type.Resize" in source

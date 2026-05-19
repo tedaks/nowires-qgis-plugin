@@ -5,13 +5,13 @@
 
 import numpy as np
 
-from NoWires.coverage_engine import (
+from NoWires.coverage.engine import (
     _get_tx_ground_elevation,
     _build_rx_ground_grid,
     _build_clutter_context,
     _compute_tx_clutter_loss,
 )
-from NoWires.clutter_context import ClutterLossContext
+from NoWires.clutter.context import ClutterLossContext
 
 
 class _ElevObj:

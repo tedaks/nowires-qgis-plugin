@@ -14,7 +14,7 @@ import pytest
 
 # Ensure the coverage_analysis_params module can be imported
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from coverage_analysis_params import CoverageAnalysisParams
+from coverage.analysis_params import CoverageAnalysisParams
 
 
 def _install_qgis_stubs():
@@ -152,7 +152,7 @@ class Feedback:
 
 
 def test_feat_attr_returns_default_when_field_is_missing():
-    from NoWires.batch_outputs import _feat_attr
+    from NoWires.batch.outputs import _feat_attr
 
     class FeatureWithoutField:
         def attribute(self, name):
@@ -236,7 +236,7 @@ def test_tile_clip_geometry_splits_antimeridian_bounds():
 
 
 def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypatch, tmp_path):
-    import NoWires.algorithm_coverage as module
+    import NoWires.algorithm.coverage as module
 
     class InvalidRasterLayer:
         def __init__(self, path, name):
@@ -318,7 +318,7 @@ def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypa
     monkeypatch.setattr(module, "ElevationGrid", lambda path: FakeElevationGrid())
     monkeypatch.setattr(module, "QgsRasterLayer", InvalidRasterLayer)
     def _fake_coverage_result(**_kw):
-        from coverage_engine import CoverageResult
+        from coverage.engine import CoverageResult
         return CoverageResult(
             prx_grid=np.array([[-80.0, -90.0]], dtype=np.float32),
             loss_grid=np.array([[100.0, 110.0]], dtype=np.float32),
@@ -357,7 +357,7 @@ def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypa
 
 
 def test_contour_merge_uses_only_successfully_clipped_tiles(monkeypatch, tmp_path):
-    import NoWires.contour_pipeline as module
+    import NoWires.contour.pipeline as module
 
     tile_a = str(tmp_path / "tile_a.tif")
     tile_b = str(tmp_path / "tile_b.tif")

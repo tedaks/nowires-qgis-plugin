@@ -33,7 +33,7 @@ def _make_geotiff(path, grid, min_lat, max_lat, min_lon, max_lon):
 
 class TestCoverageStyleRoundtrip:
     def test_apply_coverage_style_sets_renderer(self, qgis_app, tmp_path):
-        from NoWires.coverage_palette import apply_coverage_style
+        from NoWires.coverage.palette import apply_coverage_style
         tif = str(tmp_path / "coverage.tif")
         grid = np.full((20, 20), -70.0, dtype=np.float32)
         _make_geotiff(tif, grid, 47.0, 47.1, 8.0, 8.1)
@@ -45,7 +45,7 @@ class TestCoverageStyleRoundtrip:
         assert isinstance(renderer, QgsSingleBandPseudoColorRenderer)
 
     def test_coverage_style_has_discrete_ramp(self, qgis_app, tmp_path):
-        from NoWires.coverage_palette import apply_coverage_style
+        from NoWires.coverage.palette import apply_coverage_style
         tif = str(tmp_path / "coverage_discrete.tif")
         grid = np.full((20, 20), -70.0, dtype=np.float32)
         _make_geotiff(tif, grid, 47.0, 47.1, 8.0, 8.1)
@@ -59,7 +59,7 @@ class TestCoverageStyleRoundtrip:
         assert func.colorRampType() == QgsColorRampShader.Discrete
 
     def test_coverage_style_ramp_items_match_signal_levels(self, qgis_app, tmp_path):
-        from NoWires.coverage_palette import apply_coverage_style, SIGNAL_LEVELS
+        from NoWires.coverage.palette import apply_coverage_style, SIGNAL_LEVELS
         tif = str(tmp_path / "coverage_ramp.tif")
         grid = np.full((20, 20), -70.0, dtype=np.float32)
         _make_geotiff(tif, grid, 47.0, 47.1, 8.0, 8.1)
@@ -76,7 +76,7 @@ class TestCoverageStyleRoundtrip:
 
 class TestDeltaStyleRoundtrip:
     def test_apply_delta_style_diverging(self, qgis_app, tmp_path):
-        from NoWires.comparison_outputs import apply_delta_style
+        from NoWires.comparison.outputs import apply_delta_style
         tif = str(tmp_path / "delta_diverging.tif")
         grid = np.full((20, 20), 3.0, dtype=np.float32)
         _make_geotiff(tif, grid, 47.0, 47.1, 8.0, 8.1)
@@ -93,7 +93,7 @@ class TestDeltaStyleRoundtrip:
         assert len(items) >= 5
 
     def test_apply_delta_style_threshold(self, qgis_app, tmp_path):
-        from NoWires.comparison_outputs import apply_delta_style
+        from NoWires.comparison.outputs import apply_delta_style
         tif = str(tmp_path / "delta_threshold.tif")
         grid = np.full((20, 20), 2.0, dtype=np.float32)
         _make_geotiff(tif, grid, 47.0, 47.1, 8.0, 8.1)

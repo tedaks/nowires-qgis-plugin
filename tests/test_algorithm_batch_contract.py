@@ -10,7 +10,7 @@ import os
 PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
 BATCH_SOURCES = [
     os.path.join(PLUGIN_DIR, f)
-    for f in ("base_algorithm.py", "constants.py", "algorithm_batch.py", "batch_params.py", "batch_outputs.py", "batch_writer.py")
+    for f in ("base_algorithm.py", "constants.py", "algorithm/batch.py", "batch/params.py", "batch/outputs.py", "batch/writer.py")
 ]
 
 

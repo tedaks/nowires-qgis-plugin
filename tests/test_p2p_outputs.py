@@ -22,7 +22,7 @@ pytestmark = [
     pytest.mark.qgis_integration,
 ]
 
-from p2p_outputs import write_profile_line, write_fresnel_zone
+from p2p.outputs import write_profile_line, write_fresnel_zone
 from radio import PROP_MODE_NAMES
 from unittest.mock import MagicMock
 
