@@ -9,7 +9,7 @@ from concurrent.futures import ProcessPoolExecutor  # noqa: F401 re-exported for
 
 import numpy as np
 
-from .coverage_pool import (
+from NoWires.coverage_pool import (
     apply_batch_results,
     _dynamic_chunk_size,
     _itm_worker,
@@ -18,8 +18,8 @@ from .coverage_pool import (
     _release_shared_memory,
     should_use_multiprocessing,
 )
-from .macos_compat import configure_macos_multiprocessing, ensure_spawn_start_method
-from .windows_compat import configure_windows_multiprocessing
+from NoWires.macos_compat import configure_macos_multiprocessing, ensure_spawn_start_method
+from NoWires.windows_compat import configure_windows_multiprocessing
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ def execute_coverage_tasks(
         # `from .coverage_pool import ...` re-binds these names against
         # the current sys.modules entry each call, so the references handed
         # to ProcessPoolExecutor are exactly the ones pickle finds.
-        from .coverage_pool import _init_cov_pool, _itm_worker_batch
+        from NoWires.coverage_pool import _init_cov_pool, _itm_worker_batch
         shared_grid = None
         try:
             shared_grid = _make_shared_grid(grid_data)

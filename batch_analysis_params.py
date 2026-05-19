@@ -33,12 +33,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from .defaults import DEFAULT_FREQ_MHZ
-from .clutter_context import ClutterModel, BuildingType
+from NoWires.defaults import DEFAULT_FREQ_MHZ
+from NoWires.clutter_context import ClutterModel, BuildingType
 
 if TYPE_CHECKING:
-    from .clutter import LandCoverGrid
-    from .elevation import ElevationGrid
+    from NoWires.clutter import LandCoverGrid
+    from NoWires.elevation import ElevationGrid
 
 
 @dataclass

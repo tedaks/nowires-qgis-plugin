@@ -35,7 +35,7 @@ from qgis.core import (
     QgsProcessingParameterPoint,
     QgsProcessingParameterRasterDestination,
 )
-from .defaults import (
+from NoWires.defaults import (
     DEFAULT_ANTENNA_AZIMUTH,
     DEFAULT_ANTENNA_BEAMWIDTH,
     DEFAULT_DOWNTILT_DEG,
@@ -48,21 +48,21 @@ from .defaults import (
     DEFAULT_TIME_PCT,
     DEFAULT_TX_HEIGHT_M,
 )
-from .radio import (
+from NoWires.radio import (
     ITM_MAX_FREQUENCY_MHZ,
     ITM_MAX_TERMINAL_HEIGHT_M,
     ITM_MIN_FREQUENCY_MHZ,
     ITM_MIN_TERMINAL_HEIGHT_M,
     validate_itm_input_ranges,
 )
-from .antenna import ANTENNA_PRESET_OPTIONS, CUSTOM_ANTENNA_PRESET_INDEX
-from .constants import (
+from NoWires.antenna import ANTENNA_PRESET_OPTIONS, CUSTOM_ANTENNA_PRESET_INDEX
+from NoWires.constants import (
     CLIMATE_OPTIONS,
     GRID_SIZE_PRESETS,
     GRID_SIZE_OPTIONS,
     WGS84_CRS,
 )
-from .shared_params import (
+from NoWires.shared_params import (
     add_advanced_itm_params, add_clutter_params, add_link_budget_params,
     extract_clutter_params,
 )
@@ -176,7 +176,7 @@ def add_coverage_params(algorithm):
 
 def extract_coverage_params(alg, parameters, context):
     from qgis.core import QgsProcessingException
-    from .coverage_analysis_params import CoverageAnalysisParams
+    from NoWires.coverage_analysis_params import CoverageAnalysisParams
     _dbl = alg.parameterAsDouble
     _enum = alg.parameterAsEnum
     tx_point = alg.parameterAsPoint(
@@ -185,7 +185,7 @@ def extract_coverage_params(alg, parameters, context):
     )
     if tx_point is None:
         raise QgsProcessingException("TX point is required.")
-    from .geo_bounds import validate_coordinates
+    from NoWires.geo_bounds import validate_coordinates
     validate_coordinates(tx_point.y(), tx_point.x(), "TX")
     doubles = {}
     for key, attr in (

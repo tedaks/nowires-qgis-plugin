@@ -5,17 +5,17 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from .clutter_categories import CLUTTER_CATEGORY_PARAMS
-from .clutter_context import ClutterLossContext, TerminalClutterLosses
-from .clutter_resolve import (
+from NoWires.clutter_categories import CLUTTER_CATEGORY_PARAMS
+from NoWires.clutter_context import ClutterLossContext, TerminalClutterLosses
+from NoWires.clutter_resolve import (
     _maybe_warn_low_vhf_p2108_combined,
     _resolve_category,
     resolve_category_advanced,
 )
-from .p2108_height_gain import height_gain_loss
-from .p2108_terrestrial_stat import clutter_loss_p2108_terrestrial_stat
-from .p2109_bel import building_entry_loss
-from .clutter_saalos import clutter_loss_saalos
+from NoWires.p2108_height_gain import height_gain_loss
+from NoWires.p2108_terrestrial_stat import clutter_loss_p2108_terrestrial_stat
+from NoWires.p2109_bel import building_entry_loss
+from NoWires.clutter_saalos import clutter_loss_saalos
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +167,7 @@ def compute_terminal_clutter_losses(
     enabled=False, land_cover_grid=None, tx_override=None, rx_override=None,
     context=None,
 ):
-    from .clutter import clutter_loss_db
+    from NoWires.clutter import clutter_loss_db
     if not enabled:
         return TerminalClutterLosses("open", "open", 0.0, 0.0, 0.0, "off")
     advanced = context is not None and context.model == "advanced"

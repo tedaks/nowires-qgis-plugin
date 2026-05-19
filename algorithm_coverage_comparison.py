@@ -33,25 +33,25 @@ attribution details.
 
 import logging
 from qgis.core import QgsProcessingException
-from .base_algorithm import NoWiresAlgorithm, install_constants
-from .constants import DEGREE_PADDING, METERS_PER_DEGREE_LAT, WGS84_CRS
-from .dem_downloader import ensure_dem_for_area
-from .elevation import ElevationGrid
-from .geo_bounds import coverage_bounds
-from .comparison_params import (
+from NoWires.base_algorithm import NoWiresAlgorithm, install_constants
+from NoWires.constants import DEGREE_PADDING, METERS_PER_DEGREE_LAT, WGS84_CRS
+from NoWires.dem_downloader import ensure_dem_for_area
+from NoWires.elevation import ElevationGrid
+from NoWires.geo_bounds import coverage_bounds
+from NoWires.comparison_params import (
     GRID_SIZE_PRESETS, DELTA_STYLE_OPTIONS,
     PANEL_A_CONSTANTS, PANEL_B_CONSTANTS, OUTPUT_CONSTANTS, make_panel_config)
-from .comparison_add_params import add_panel_params, add_comparison_params
-from .comparison_outputs import (
+from NoWires.comparison_add_params import add_panel_params, add_comparison_params
+from NoWires.comparison_outputs import (
     write_coverage_raster, write_delta_raster,
     write_comparison_html_report, compute_delta_summary,
     load_comparison_layers)
-from .clutter import ensure_clutter_grid_for_area
-from .comparison_panel import run_panel_coverage
-from .comparison_reporting import (
+from NoWires.clutter import ensure_clutter_grid_for_area
+from NoWires.comparison_panel import run_panel_coverage
+from NoWires.comparison_reporting import (
     build_panel_info, build_delta_info, report_comparison_results,
     validate_panels, resolve_output_paths)
-from .temp_manager import TempDirManager
+from NoWires.temp_manager import TempDirManager
 
 logger = logging.getLogger(__name__)
 

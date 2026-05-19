@@ -14,12 +14,12 @@ from typing import Optional
 
 import numpy as np
 
-from .antenna import antenna_gain_adjustment_db
-from .coverage_compute import compute_itm_p2p
-from ._coverage_result_dispatch import WorkerError, apply_batch_results, log_coverage_failures
-from ._geo_utils import sample_line_from_grid
-from .macos_compat import find_macos_python_executable
-from .shared_dem_grid import SharedDEMGrid
+from NoWires.antenna import antenna_gain_adjustment_db
+from NoWires.coverage_compute import compute_itm_p2p
+from NoWires._coverage_result_dispatch import WorkerError, apply_batch_results, log_coverage_failures
+from NoWires._geo_utils import sample_line_from_grid
+from NoWires.macos_compat import find_macos_python_executable
+from NoWires.shared_dem_grid import SharedDEMGrid
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ _MAX_CHUNK_SIZE = 2048
 
 def _interpolate_nan_elevations(elevs):
     """Replace NaN elevation values with linearly interpolated neighbours."""
-    from .nan_utils import interpolate_nan_array
+    from NoWires.nan_utils import interpolate_nan_array
     return interpolate_nan_array(elevs)
 
 @dataclass
@@ -82,7 +82,7 @@ def should_use_multiprocessing(os_name=None):
     if os_name is None:
         os_name = os.name
     if os_name == "nt":
-        from .windows_compat import find_windows_python_executable
+        from NoWires.windows_compat import find_windows_python_executable
         if find_windows_python_executable() is None:
             logger.warning("Windows: no usable Python for multiprocessing; "
                            "falling back to sequential mode.")

@@ -34,9 +34,9 @@ from qgis.core import (
     QgsSingleBandPseudoColorRenderer,
 )
 
-from .comparison_params import DELTA_STYLE_DIVERGING, DELTA_STYLE_THRESHOLD
-from .raster_io import write_geotiff
-from .processing_utils import queue_layer_for_loading, register_destination_layer
+from NoWires.comparison_params import DELTA_STYLE_DIVERGING, DELTA_STYLE_THRESHOLD
+from NoWires.raster_io import write_geotiff
+from NoWires.processing_utils import queue_layer_for_loading, register_destination_layer
 
 __all__ = [
     "write_coverage_raster",
@@ -198,7 +198,7 @@ def write_comparison_html_report(path, panel_a_info, panel_b_info, delta_info):
 
 def compute_delta_summary(loss_grid_a, loss_grid_b, threshold_db):
     import numpy as np
-    from .constants import COVERAGE_NODATA
+    from NoWires.constants import COVERAGE_NODATA
 
     a_valid = np.isfinite(loss_grid_a) & (loss_grid_a != COVERAGE_NODATA)
     loss_grid_a = np.where(a_valid, loss_grid_a, np.nan)
@@ -275,7 +275,7 @@ def load_comparison_layers(context: object, output_a: str, output_b: str, output
     until QGIS finishes processing (otherwise QGIS will dereference freed
     Python wrappers and crash).
     """
-    from .coverage_palette import apply_coverage_style
+    from NoWires.coverage_palette import apply_coverage_style
 
     raster_layer_ids: list[str] = []
     post_processors = []

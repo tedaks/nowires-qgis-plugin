@@ -37,13 +37,13 @@ from qgis.core import (
     QgsProcessingParameterRasterDestination,
 )
 
-from .antenna import ANTENNA_PRESET_OPTIONS
-from .comparison_params import (
+from NoWires.antenna import ANTENNA_PRESET_OPTIONS
+from NoWires.comparison_params import (
     DELTA_STYLE_OPTIONS,
     OUTPUT_CONSTANTS,
 )
-from .constants import CLIMATE_OPTIONS, GRID_SIZE_OPTIONS
-from .defaults import (
+from NoWires.constants import CLIMATE_OPTIONS, GRID_SIZE_OPTIONS
+from NoWires.defaults import (
     DEFAULT_ANTENNA_AZIMUTH,
     DEFAULT_ANTENNA_BEAMWIDTH,
     DEFAULT_CABLE_LOSS_DB,
@@ -64,7 +64,7 @@ from .defaults import (
     DEFAULT_TX_HEIGHT_M,
     DEFAULT_TX_POWER_DBM,
 )
-from .shared_params import add_clutter_params
+from NoWires.shared_params import add_clutter_params
 
 __all__ = ["add_panel_params", "add_comparison_params"]
 

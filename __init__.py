@@ -70,7 +70,7 @@ def classFactory(iface):
     _ensure_gdal_env()
     from osgeo import gdal
     gdal.UseExceptions()
-    from .nowires import NoWiresPlugin
+    from NoWires.nowires import NoWiresPlugin
     return NoWiresPlugin(iface)
 
 

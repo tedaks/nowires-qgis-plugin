@@ -30,7 +30,7 @@ import logging
 
 import numpy as np
 
-from .constants import FRESNEL_60PCT_FACTOR
+from NoWires.constants import FRESNEL_60PCT_FACTOR
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ __all__ = ["show_profile_chart"]
 
 
 def _add_obstruction_annotations(ax, d_km, terrain_bulge, los_h, fresnel_r):
-    from .p2p_chart_format import build_obstruction_data
+    from NoWires.p2p_chart_format import build_obstruction_data
     annotations = []
     for idx, ob_x, ob_y, _los, _fr, deficit in build_obstruction_data(
         d_km, terrain_bulge, los_h, fresnel_r
@@ -200,7 +200,7 @@ def show_profile_chart(
     ax.legend(loc="upper right", fontsize=8)
     ax.grid(True, alpha=0.3)
 
-    from .p2p_chart_format import build_chart_status_text
+    from NoWires.p2p_chart_format import build_chart_status_text
     status_text = build_chart_status_text(result, prx_dbm, margin_db, itm_loss_db=itm_loss_db)
     ax.text(
         0.02, 0.98, status_text,

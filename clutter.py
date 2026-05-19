@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import logging
 
-from .worldcover_downloader import ensure_worldcover_for_area
-from .clutter_categories import (  # noqa: F401
+from NoWires.worldcover_downloader import ensure_worldcover_for_area
+from NoWires.clutter_categories import (  # noqa: F401
     LEGACY_CLUTTER_CATEGORIES,
     LEGACY_CLUTTER_LOSS_DB,
     _WORLDCOVER_TO_LEGACY_IDX,
@@ -15,18 +15,18 @@ from .clutter_categories import (  # noqa: F401
     _LEGACY_CLUTTER_LOSS_ARRAY,
     legacy_to_advanced_override,
 )
-from .clutter_context import TerminalClutterLosses  # noqa: F401
-from .clutter_advanced import (  # noqa: F401
+from NoWires.clutter_context import TerminalClutterLosses  # noqa: F401
+from NoWires.clutter_advanced import (  # noqa: F401
     compute_terminal_clutter_loss, _category_height_m,
     compute_terminal_clutter_losses,
     compute_path_clutter_loss, ClutterComponents,
     compute_advanced_loss,
 )
-from .clutter_resolve import (  # noqa: F401
+from NoWires.clutter_resolve import (  # noqa: F401
     resolve_category_advanced,
     _resolve_category,
 )
-from .clutter_grid import LandCoverGrid  # noqa: F401
+from NoWires.clutter_grid import LandCoverGrid  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

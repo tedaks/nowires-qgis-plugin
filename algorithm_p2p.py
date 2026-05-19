@@ -34,17 +34,17 @@ attribution details.
 
 from qgis.core import QgsProcessingException
 
-from .base_algorithm import NoWiresAlgorithm, install_constants
-from .constants import WGS84_CRS
-from .radio import K_FACTOR_PRESETS, validate_itm_input_ranges, resolve_k_factor
-from .antenna import antenna_config_from_values
-from .p2p_params import (
+from NoWires.base_algorithm import NoWiresAlgorithm, install_constants
+from NoWires.constants import WGS84_CRS
+from NoWires.radio import K_FACTOR_PRESETS, validate_itm_input_ranges, resolve_k_factor
+from NoWires.antenna import antenna_config_from_values
+from NoWires.p2p_params import (
     PARAM_CONSTANTS,
     add_p2p_params,
 )
-from .p2p_analysis_params import P2PAnalysisParams
-from .p2p_compute import run_p2p_analysis
-from .shared_params import extract_clutter_params, extract_link_budget_params
+from NoWires.p2p_analysis_params import P2PAnalysisParams
+from NoWires.p2p_compute import run_p2p_analysis
+from NoWires.shared_params import extract_clutter_params, extract_link_budget_params
 
 
 class P2PAlgorithm(NoWiresAlgorithm):
@@ -76,7 +76,7 @@ class P2PAlgorithm(NoWiresAlgorithm):
         rx_lat = rx_point.y()
         rx_lon = rx_point.x()
 
-        from .geo_bounds import validate_coordinates
+        from NoWires.geo_bounds import validate_coordinates
         validate_coordinates(tx_lat, tx_lon, "TX")
         validate_coordinates(rx_lat, rx_lon, "RX")
 

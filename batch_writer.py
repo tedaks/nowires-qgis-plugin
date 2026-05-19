@@ -30,10 +30,10 @@ import os
 
 from osgeo import ogr, osr
 
-from .report_markers import ogr_driver_for_path, remove_existing_ogr_dataset
-from .batch_params import BATCH_MODE_OPTIONS
-from .processing_utils import queue_layer_for_loading
-from .report_export import _csv_safe
+from NoWires.report_markers import ogr_driver_for_path, remove_existing_ogr_dataset
+from NoWires.batch_params import BATCH_MODE_OPTIONS
+from NoWires.processing_utils import queue_layer_for_loading
+from NoWires.report_export import _csv_safe
 
 
 def write_batch_marker_layer(path, results, feedback, mode):

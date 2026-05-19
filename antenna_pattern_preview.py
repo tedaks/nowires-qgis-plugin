@@ -22,7 +22,7 @@ from qgis.PyQt.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from .antenna import _read_pattern_points
+from NoWires.antenna import _read_pattern_points
 
 logger = logging.getLogger(__name__)
 

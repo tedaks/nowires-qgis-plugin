@@ -27,8 +27,8 @@ Pure-Python helpers for NoWires report payloads.
 
 from __future__ import annotations
 
-from .reliability import summarize_reliability
-from .constants import EMPTY_MARGIN_DB
+from NoWires.reliability import summarize_reliability
+from NoWires.constants import EMPTY_MARGIN_DB
 
 _COPERNICUS_DEM_ATTRIBUTION = (
     "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and "
