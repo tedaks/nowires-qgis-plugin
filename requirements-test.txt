@@ -3,3 +3,4 @@ pytest-cov
 hypothesis
 numpy
 defusedxml
+import-linter
