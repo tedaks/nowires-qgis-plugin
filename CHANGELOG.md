@@ -11,6 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned (PATCH — tech-debt / cleanup, zero behavior change)
 
+## [1.6.0] - 2026-05-19
+
+### Refactor
+
+- Internal module layout reorganized into 8 subpackages
+  (algorithm/, batch/, comparison/, contour/, coverage/, clutter/, p2p/,
+  report/). 60 modules relocated; zero behavior changes. All imports
+  switched to absolute (`NoWires.X`).
+- Architectural import rule enforced by import-linter: ITM module
+  must not depend on qgis or PyQt.
+- **NOTE FOR USERS:** Restart QGIS after upgrading. Do not use Plugin
+  Reloader, which retains references to deleted flat modules and will
+  raise ImportError on first invocation post-upgrade.
+
+
 - Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 35 params, `build_p2p_report_payload` carries 35, `build_coverage_report_payload_for_grid` carries 31. Most natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist; the work is wiring them through.
 
 ### Planned for v1.6.0 (MINOR — additive features)
