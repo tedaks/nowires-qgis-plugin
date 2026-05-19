@@ -27,19 +27,19 @@ Coverage Comparison Algorithm — Panel coverage runner.
 Standalone function to run compute_coverage for one panel of the comparison.
 """
 
-from .coverage_compute import (
+from NoWires.coverage_compute import (
     DEFAULT_MAX_PROFILE_PTS,
     coverage_profile_step_m,
 )
-from .coverage_engine import compute_coverage
-from .clutter import (
+from NoWires.coverage_engine import compute_coverage
+from NoWires.clutter import (
     LandCoverGrid,
     clutter_source_label,
     compute_terminal_clutter_losses,
     ensure_clutter_grid_for_area,
 )
-from .radio import validate_itm_input_ranges
-from .comparison_params import collect_panel_params
+from NoWires.radio import validate_itm_input_ranges
+from NoWires.comparison_params import collect_panel_params
 
 __all__ = ["run_panel_coverage"]
 
@@ -92,7 +92,7 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
     )
     clutter_context = None
     if p.clutter_enabled:
-        from .clutter_context import build_initial_clutter_context
+        from NoWires.clutter_context import build_initial_clutter_context
         clutter_context = build_initial_clutter_context(
             frequency_mhz=p.f_mhz, tx_height_m=p.tx_h, rx_height_m=p.rx_h,
             tx_ground_elevation_m=0.0, polarization=p.polarization,

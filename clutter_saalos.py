@@ -6,7 +6,7 @@ import math
 
 import numpy as np
 
-from .clutter_constants import MAX_CLUTTER_LOSS
+from NoWires.clutter_constants import MAX_CLUTTER_LOSS
 
 # SAALOS polarization convention:
 #   1 = Horizontal, 2 = Vertical, 0 = Other/fallback

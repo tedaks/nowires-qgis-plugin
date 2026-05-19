@@ -47,7 +47,7 @@ import numpy as np
 
 # --- Signal Level Definitions ---
 
-from .coverage_palette import SIGNAL_LEVELS
+from NoWires.coverage_palette import SIGNAL_LEVELS
 
 THRESHOLDS = np.array([t for t, _, _ in SIGNAL_LEVELS], dtype=np.float64)
 COLORS = np.array(
@@ -166,7 +166,7 @@ class ITMResult:
 
 def _get_itm():
     """Import from the bundled itm package (tedaks/pyitm)."""
-    from .itm import Climate, Polarization, TerrainProfile, predict_p2p
+    from NoWires.itm import Climate, Polarization, TerrainProfile, predict_p2p
 
     return Climate, Polarization, TerrainProfile, predict_p2p
 

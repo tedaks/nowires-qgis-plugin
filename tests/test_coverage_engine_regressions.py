@@ -22,15 +22,20 @@ def test_coverage_engine_source_compiles():
     py_compile.compile(ENGINE_SOURCE, doraise=True)
 
 
-def _import_coverage_engine():
-    sys.modules["osgeo"] = MagicMock()
-    sys.modules["osgeo.gdal"] = MagicMock()
+def _import_coverage_engine(monkeypatch):
+    # Use monkeypatch.setitem so sys.modules pollution is unwound at teardown.
+    # Direct sys.modules assignment leaks MagicMock("osgeo") into the rest of
+    # the test session and causes later tests (e.g. test_p2p_outputs_lon_wrap)
+    # to receive a MagicMock SpatialReference, which OGR's C code accepts
+    # then loops inside CreateLayer until the OOM killer fires.
+    monkeypatch.setitem(sys.modules, "osgeo", MagicMock())
+    monkeypatch.setitem(sys.modules, "osgeo.gdal", MagicMock())
 
     package = types.ModuleType("NoWires")
     package.__path__ = [PLUGIN_DIR]
     package.__package__ = "NoWires"
     package.__name__ = "NoWires"
-    sys.modules["NoWires"] = package
+    monkeypatch.setitem(sys.modules, "NoWires", package)
 
     engine = importlib.import_module("NoWires.coverage_engine")
     executor = importlib.import_module("NoWires._coverage_executor")
@@ -53,7 +58,7 @@ class _DummyGrid:
 
 
 def test_compute_coverage_runs_in_single_process_mode(monkeypatch):
-    coverage_engine, coverage_executor = _import_coverage_engine()
+    coverage_engine, coverage_executor = _import_coverage_engine(monkeypatch)
 
     monkeypatch.setattr(coverage_executor, "should_use_multiprocessing", lambda: False)
     monkeypatch.setattr(
@@ -80,7 +85,7 @@ def test_compute_coverage_runs_in_single_process_mode(monkeypatch):
 
 
 def test_compute_coverage_cleans_shared_memory_when_cancelled(monkeypatch):
-    coverage_engine, coverage_executor = _import_coverage_engine()
+    coverage_engine, coverage_executor = _import_coverage_engine(monkeypatch)
 
     class FakeSharedGrid:
         def __init__(self):
@@ -149,7 +154,7 @@ def test_compute_coverage_falls_back_on_pool_error_and_cleans_shared_memory(monk
     compute_coverage should fall back to sequential mode, clean up shared
     memory, and still produce a valid result.
     """
-    coverage_engine, coverage_executor = _import_coverage_engine()
+    coverage_engine, coverage_executor = _import_coverage_engine(monkeypatch)
 
     class FakeSharedGrid:
         def __init__(self):

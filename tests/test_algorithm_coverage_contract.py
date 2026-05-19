@@ -39,7 +39,7 @@ def test_coverage_algorithm_uses_new_processing_id_and_label():
 
 def test_coverage_algorithm_uses_raster_summary_helper_for_range_metrics():
     source = _coverage_source()
-    assert "from .coverage_summary import summarize_coverage_grid" in source
+    assert "from NoWires.coverage_summary import summarize_coverage_grid" in source
     assert "summary = summarize_coverage_grid(" in source
     assert (
         'feedback.pushInfo("Max usable distance:' in source
@@ -79,7 +79,7 @@ def test_coverage_algorithm_defaults_polarization_to_vertical():
 
 def test_coverage_algorithm_shows_map_legend():
     source = _coverage_source()
-    assert "from .coverage_legend import show_coverage_legend" in source
+    assert "from NoWires.coverage_legend import show_coverage_legend" in source
     assert "show_coverage_legend(" in source
     assert "rx_sensitivity_dbm" in source
 
@@ -127,7 +127,7 @@ def test_coverage_profile_step_helper_returns_finer_sampling():
 def test_coverage_algorithm_wires_profile_step_helper():
     """The algorithm must call the helper rather than baking in a literal."""
     source = _coverage_source()
-    assert "from .coverage_compute import" in source
+    assert "from NoWires.coverage_compute import" in source
     assert "coverage_profile_step_m" in source
     assert "DEFAULT_MAX_PROFILE_PTS" in source
     assert "profile_step_m=coverage_profile_step_m(" in source

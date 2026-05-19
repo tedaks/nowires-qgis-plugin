@@ -30,7 +30,7 @@ import os
 
 from osgeo import gdal
 
-from .overlay_raster import build_overview_levels, choose_overlay_dimensions
+from NoWires.overlay_raster import build_overview_levels, choose_overlay_dimensions
 
 
 def prepare_elevation_overlay(source_dem_path, persistent_temp_dir, context, feedback):

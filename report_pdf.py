@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from .report_export import build_html_document
+from NoWires.report_export import build_html_document
 
 logger = logging.getLogger(__name__)
 

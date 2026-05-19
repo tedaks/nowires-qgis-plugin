@@ -36,7 +36,7 @@ from qgis.PyQt.QtWidgets import (
 import sys
 from qgis.core import QgsProject
 
-from .base_algorithm import ENTRY_KEY_LAST_COVERAGE
+from NoWires.base_algorithm import ENTRY_KEY_LAST_COVERAGE
 
 COVERAGE_LAYER_PREFIX = "Coverage ("
 

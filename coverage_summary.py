@@ -27,7 +27,7 @@ Helpers for deriving coverage metrics from a computed raster grid.
 
 import numpy as np
 
-from .constants import COVERAGE_NODATA, EARTH_RADIUS_M
+from NoWires.constants import COVERAGE_NODATA, EARTH_RADIUS_M
 
 
 def summarize_coverage_grid(

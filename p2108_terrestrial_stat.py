@@ -16,7 +16,7 @@ import math
 
 import numpy as np
 
-from .p2108_common import q_inv_complementary_normal, validate_distance_km, validate_frequency_ghz
+from NoWires.p2108_common import q_inv_complementary_normal, validate_distance_km, validate_frequency_ghz
 
 logger = logging.getLogger(__name__)
 

@@ -33,7 +33,7 @@ from qgis.core import (
     QgsProcessingParameterPoint,
     QgsProcessingParameterVectorDestination,
 )
-from .defaults import (
+from NoWires.defaults import (
     DEFAULT_ANTENNA_AZIMUTH,
     DEFAULT_DOWNTILT_DEG,
     DEFAULT_FREQ_MHZ,
@@ -44,16 +44,16 @@ from .defaults import (
     DEFAULT_TIME_PCT,
     DEFAULT_TX_HEIGHT_M,
 )
-from .radio import (
+from NoWires.radio import (
     ITM_MAX_FREQUENCY_MHZ,
     ITM_MAX_TERMINAL_HEIGHT_M,
     ITM_MIN_FREQUENCY_MHZ,
     ITM_MIN_TERMINAL_HEIGHT_M,
 )
-from .antenna import ANTENNA_PRESET_OPTIONS
-from .constants import POLARIZATION_NAMES, CLIMATE_OPTIONS, K_FACTOR_PRESETS_OPTIONS
-from .shared_params import add_link_budget_params, add_clutter_params, add_advanced_itm_params
-from .p2p_report_display import report_p2p_results
+from NoWires.antenna import ANTENNA_PRESET_OPTIONS
+from NoWires.constants import POLARIZATION_NAMES, CLIMATE_OPTIONS, K_FACTOR_PRESETS_OPTIONS
+from NoWires.shared_params import add_link_budget_params, add_clutter_params, add_advanced_itm_params
+from NoWires.p2p_report_display import report_p2p_results
 
 __all__ = [
     "PARAM_CONSTANTS",

@@ -26,19 +26,19 @@ import math
 
 import numpy as np
 
-from .clutter import CLUTTER_LOSS_DB
-from .clutter_advanced import (
+from NoWires.clutter import CLUTTER_LOSS_DB
+from NoWires.clutter_advanced import (
     ClutterComponents,
     compute_advanced_loss,
     compute_path_clutter_loss,
 )
-from .clutter_categories import legacy_to_advanced_override
-from .clutter_resolve import (
+from NoWires.clutter_categories import legacy_to_advanced_override
+from NoWires.clutter_resolve import (
     resolve_category_advanced,
 )
-from .clutter_context import ClutterLossContext
-from .constants import EARTH_RADIUS_M
-from .coverage_pool import _CoverageTask
+from NoWires.clutter_context import ClutterLossContext
+from NoWires.constants import EARTH_RADIUS_M
+from NoWires.coverage_pool import _CoverageTask
 
 _MIN_COVERAGE_DISTANCE_M = 1.0
 _DISTANCE_BUCKET_M = 10.0
@@ -145,7 +145,7 @@ def build_coverage_tasks(
         # per-pixel loop instead of redundantly evaluating per pixel.
         bel_db = 0.0
         if clutter_context.bel_enabled:
-            from .p2109_bel import building_entry_loss
+            from NoWires.p2109_bel import building_entry_loss
             bel_db = building_entry_loss(
                 f_mhz / 1000.0,
                 clutter_context.bel_building_type,

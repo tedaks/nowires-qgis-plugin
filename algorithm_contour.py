@@ -30,25 +30,25 @@ from qgis.core import (
     QgsVectorLayer,
 )
 
-from .base_algorithm import NoWiresAlgorithm
-from .constants import MAX_AOI_EXTENT_DEGREES, FEET_PER_METER, WGS84_CRS
+from NoWires.base_algorithm import NoWiresAlgorithm
+from NoWires.constants import MAX_AOI_EXTENT_DEGREES, FEET_PER_METER, WGS84_CRS
 
-from .contour_generation import generate_contour_lines, reproject_and_export
-from .contour_pipeline import (
+from NoWires.contour_generation import generate_contour_lines, reproject_and_export
+from NoWires.contour_pipeline import (
     setup_proxy_opener,
     write_aoi_shapefile,
     download_and_merge_tiles,
     load_dem_output,
     load_overlay_layer,
 )
-from .contour_smoothing import (
+from NoWires.contour_smoothing import (
     SMOOTHING_OPTIONS, SMOOTHING_MEDIUM, _raster_calc, smooth_contour_dem,
 )
-from .contour_symbology import apply_contour_symbology
-from .dem_downloader import get_temp_dir
-from .processing_utils import queue_layer_for_loading, register_destination_layer
-from .temp_manager import TempDirManager
-from .three_d import configure_contours_for_3d
+from NoWires.contour_symbology import apply_contour_symbology
+from NoWires.dem_downloader import get_temp_dir
+from NoWires.processing_utils import queue_layer_for_loading, register_destination_layer
+from NoWires.temp_manager import TempDirManager
+from NoWires.three_d import configure_contours_for_3d
 
 
 

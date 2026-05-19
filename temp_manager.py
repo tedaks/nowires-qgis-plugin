@@ -72,7 +72,7 @@ class TempDirManager:
         base_dir = None
         if persistent and sys.platform == "darwin":
             try:
-                from .dem_downloader import get_temp_dir
+                from NoWires.dem_downloader import get_temp_dir
                 base_dir = get_temp_dir()
             except Exception as exc:
                 logger.debug("macOS persistent temp dir: %s", exc)

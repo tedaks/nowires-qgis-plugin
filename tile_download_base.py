@@ -32,7 +32,7 @@ import urllib.error
 
 from osgeo import gdal, ogr, osr
 
-from .geo_bounds import longitude_intervals
+from NoWires.geo_bounds import longitude_intervals
 
 logger = logging.getLogger(__name__)
 DEFAULT_PER_TILE_WALL_CLOCK_BUDGET = 180  # caps slow trickles where socket_timeout never fires
@@ -223,7 +223,7 @@ def clip_and_merge_tiles(
         return None
 
     aoi_shp = os.path.join(temp_dir, aoi_prefix + "_aoi_clip.shp")
-    from .report_markers import remove_existing_ogr_dataset
+    from NoWires.report_markers import remove_existing_ogr_dataset
     shp_driver = ogr.GetDriverByName("ESRI Shapefile")
     remove_existing_ogr_dataset(shp_driver, aoi_shp)
     ds = shp_driver.CreateDataSource(aoi_shp)

@@ -33,7 +33,7 @@ from qgis.core import (
     QgsProcessingParameterNumber,
     QgsProcessingParameterPoint,
 )
-from .defaults import (
+from NoWires.defaults import (
     DEFAULT_ANTENNA_AZIMUTH,
     DEFAULT_FREQ_MHZ,
     DEFAULT_FRONT_BACK_DB,
@@ -43,15 +43,15 @@ from .defaults import (
     DEFAULT_TIME_PCT,
     DEFAULT_TX_HEIGHT_M,
 )
-from .radio import (
+from NoWires.radio import (
     ITM_MIN_FREQUENCY_MHZ,
     ITM_MAX_FREQUENCY_MHZ,
     ITM_MIN_TERMINAL_HEIGHT_M,
     ITM_MAX_TERMINAL_HEIGHT_M,
 )
-from .antenna import ANTENNA_PRESET_OPTIONS
-from .constants import CLIMATE_OPTIONS
-from .shared_params import add_link_budget_params, add_clutter_params, add_advanced_itm_params
+from NoWires.antenna import ANTENNA_PRESET_OPTIONS
+from NoWires.constants import CLIMATE_OPTIONS
+from NoWires.shared_params import add_link_budget_params, add_clutter_params, add_advanced_itm_params
 
 __all__ = [
     "MODE", "TX_POINT", "RX_LAYER", "RX_POINT", "TX_LAYER",

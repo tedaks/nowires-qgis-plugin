@@ -52,8 +52,8 @@ from qgis.core import (
     QgsRectangle,
 )
 
-from .geo_bounds import longitude_intervals
-from .tile_download_base import clip_and_merge_tiles, download_tile_with_retry
+from NoWires.geo_bounds import longitude_intervals
+from NoWires.tile_download_base import clip_and_merge_tiles, download_tile_with_retry
 
 logger = logging.getLogger(__name__)
 

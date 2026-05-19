@@ -23,7 +23,7 @@ import multiprocessing
 import os
 import sys
 
-from .macos_compat import _can_spawn
+from NoWires.macos_compat import _can_spawn
 
 logger = logging.getLogger(__name__)
 

@@ -32,7 +32,7 @@ from qgis.core import Qgis, QgsProject
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QCheckBox, QMessageBox
 
-from .base_algorithm import ENTRY_KEY_LAST_COVERAGE, ENTRY_KEY_LAST_DEM
+from NoWires.base_algorithm import ENTRY_KEY_LAST_COVERAGE, ENTRY_KEY_LAST_DEM
 
 
 logger = logging.getLogger(__name__)

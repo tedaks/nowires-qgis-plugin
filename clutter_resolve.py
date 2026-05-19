@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from .clutter_categories import (
+from NoWires.clutter_categories import (
     legacy_to_advanced_override,
     worldcover_class_to_advanced_category,
 )
