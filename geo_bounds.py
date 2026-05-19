@@ -4,7 +4,7 @@
 
 import math
 
-from .constants import METERS_PER_DEGREE_LAT
+from NoWires.constants import METERS_PER_DEGREE_LAT
 
 
 def coverage_bounds(tx_lat, tx_lon, radius_km, padding_deg=0.0):

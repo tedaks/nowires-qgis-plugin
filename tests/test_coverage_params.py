@@ -14,7 +14,7 @@ pytestmark = pytest.mark.qgis_integration
 
 class TestCoverageParamsConstants:
     def test_param_constants_contains_expected_keys(self):
-        from NoWires.coverage_params import PARAM_CONSTANTS
+        from NoWires.coverage.params import PARAM_CONSTANTS
         expected = {
             "TX_POINT", "TX_HEIGHT", "RX_HEIGHT", "FREQ_MHZ", "RADIUS_KM",
             "GRID_SIZE", "POLARIZATION", "CLIMATE", "TIME_PCT",
@@ -29,6 +29,6 @@ class TestCoverageParamsConstants:
         assert expected.issubset(set(PARAM_CONSTANTS.keys()))
 
     def test_param_constants_values_match_keys(self):
-        from NoWires.coverage_params import PARAM_CONSTANTS
+        from NoWires.coverage.params import PARAM_CONSTANTS
         for key, value in PARAM_CONSTANTS.items():
             assert value == key, f"PARAM_CONSTANTS[{key!r}] = {value!r}, expected {key!r}"

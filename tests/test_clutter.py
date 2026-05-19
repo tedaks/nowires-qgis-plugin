@@ -181,7 +181,7 @@ def test_legacy_categories_unchanged():
 
 
 from clutter import compute_terminal_clutter_loss, _category_height_m
-from clutter_context import ClutterLossContext
+from clutter.context import ClutterLossContext
 
 
 def _ctx(**overrides):
@@ -227,7 +227,7 @@ def test_cch_override_applies():
     assert v_default > 0.0 and v_override > 0.0
 
 
-from clutter_context import TerminalClutterLosses
+from clutter.context import TerminalClutterLosses
 
 
 def test_simple_mode_unchanged_when_context_none():

@@ -9,7 +9,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from coverage_compute import grid_to_raster_array, COVERAGE_NODATA
+from coverage.compute import grid_to_raster_array, COVERAGE_NODATA
 
 
 class TestGridToRasterArrayProperties:

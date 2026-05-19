@@ -56,21 +56,21 @@ class TestOgrStableApiUsage:
     """Source-scanning contract: verify OGR vector output uses stable APIs."""
 
     def test_p2p_outputs_uses_create_datasource(self):
-        source = open("p2p_outputs.py").read()
+        source = open("p2p/outputs.py").read()
         assert "driver.CreateDataSource(" in source
 
     def test_p2p_outputs_creates_feature_with_layer_defn(self):
-        source = open("p2p_outputs.py").read()
+        source = open("p2p/outputs.py").read()
         assert "GetLayerDefn" in source
         assert "CreateFeature" in source
 
     def test_p2p_outputs_uses_wkb_geometry_types(self):
-        source = open("p2p_outputs.py").read()
+        source = open("p2p/outputs.py").read()
         assert "wkbLineString" in source
         assert "wkbPolygon" in source
 
     def test_report_markers_uses_ogr_driver_for_path(self):
-        source = open("report_markers.py").read()
+        source = open("report/markers.py").read()
         assert "ogr_driver_for_path" in source
 
 
@@ -88,15 +88,15 @@ class TestDatasetLifecycle:
         assert "del band" in source, "raster_io must release band before closing dataset"
 
     def test_p2p_outputs_closes_poly_datasource(self):
-        source = open("p2p_outputs.py").read()
+        source = open("p2p/outputs.py").read()
         assert "ds_poly = None" in source
 
     def test_p2p_outputs_closes_lines_datasource(self):
-        source = open("p2p_outputs.py").read()
+        source = open("p2p/outputs.py").read()
         assert "ds_lines = None" in source
 
     def test_clutter_closes_gdal_band_and_dataset(self):
-        source = open("clutter_grid.py").read()
+        source = open("clutter/grid.py").read()
         assert "del band" in source
         assert "del ds" in source
 

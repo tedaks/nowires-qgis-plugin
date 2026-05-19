@@ -48,7 +48,7 @@ def test_windows_compat_sets_pythonhome_for_spawned_workers():
 
 def test_windows_compat_validates_each_candidate_with_can_spawn():
     src = _source("windows_compat.py")
-    assert "from .macos_compat import _can_spawn" in src
+    assert "from NoWires.macos_compat import _can_spawn" in src
     assert "_can_spawn(candidate, spawn_env)" in src
 
 
@@ -58,12 +58,12 @@ def test_windows_compat_honors_override_env_var():
 
 
 def test_executor_calls_configure_windows():
-    src = _source("_coverage_executor.py")
+    src = _source("coverage/_executor.py")
     assert "configure_windows_multiprocessing" in src
 
 
 def test_should_use_multiprocessing_consults_windows_helper():
-    src = _source("coverage_pool.py")
+    src = _source("coverage/pool.py")
     assert "find_windows_python_executable" in src
 
 

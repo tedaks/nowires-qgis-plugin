@@ -49,7 +49,7 @@ def _fake_auth_manager(realm_url, username="user", password="secret"):
 class TestProxyAuthRealmScoping:
     def test_add_password_realm_is_not_none(self):
         """Regression: realm must be scoped, not the default-realm wildcard."""
-        from NoWires import contour_pipeline
+        import NoWires.contour.pipeline as contour_pipeline
 
         with patch.object(
             contour_pipeline, "QgsApplication"
@@ -74,7 +74,7 @@ class TestProxyAuthRealmScoping:
 class TestProxyAuthSchemePreserved:
     def test_https_proxy_not_downgraded(self):
         """Regression: HTTPS proxy realm must not be coerced to http://."""
-        from NoWires import contour_pipeline
+        import NoWires.contour.pipeline as contour_pipeline
 
         with patch.object(contour_pipeline, "QgsApplication") as MockApp:
             MockApp.authManager.return_value = _fake_auth_manager(
@@ -92,7 +92,7 @@ class TestProxyAuthSchemePreserved:
 
     def test_http_proxy_preserved(self):
         """Sanity: HTTP proxy realm stays http://."""
-        from NoWires import contour_pipeline
+        import NoWires.contour.pipeline as contour_pipeline
 
         with patch.object(contour_pipeline, "QgsApplication") as MockApp:
             MockApp.authManager.return_value = _fake_auth_manager(

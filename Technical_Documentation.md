@@ -34,11 +34,11 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
 
 ### Primary Algorithms
 
-- [algorithm_p2p.py](algorithm_p2p.py)
+- [algorithm/p2p.py](algorithm/p2p.py)
   Point-to-point analysis
-- [algorithm_coverage.py](algorithm_coverage.py)
+- [algorithm/coverage.py](algorithm/coverage.py)
   Coverage heatmap analysis
-- [algorithm_contour.py](algorithm_contour.py)
+- [algorithm/contour.py](algorithm/contour.py)
   Contour and hillshade/elevation overlay workflow
 
 ### Supporting Modules
@@ -47,35 +47,35 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   ITM bridge, Fresnel analysis, signal-level definitions
 - [fresnel.py](fresnel.py)
   Fresnel zone and LOS analysis
-- [coverage_engine.py](coverage_engine.py)
+- [coverage/engine.py](coverage/engine.py)
   Coverage raster computation
-- [coverage_compute.py](coverage_compute.py)
+- [coverage/compute.py](coverage/compute.py)
   Shared coverage propagation helpers
-- [coverage_analysis_params.py](coverage_analysis_params.py)
+- [coverage/analysis_params.py](coverage/analysis_params.py)
   Coverage algorithm parameter registration
-- [coverage_params.py](coverage_params.py)
+- [coverage/params.py](coverage/params.py)
   Coverage parameter definitions and defaults
-- [coverage_pool.py](coverage_pool.py)
+- [coverage/pool.py](coverage/pool.py)
   Coverage multiprocessing pool and shared-memory management
-- [coverage_tasks.py](coverage_tasks.py)
+- [coverage/tasks.py](coverage/tasks.py)
   Per-pixel coverage task definitions
-- [coverage_summary.py](coverage_summary.py)
+- [coverage/summary.py](coverage/summary.py)
   Raster-derived usable-distance metrics
-- [coverage_palette.py](coverage_palette.py)
+- [coverage/palette.py](coverage/palette.py)
   Heatmap stop definitions
-- [coverage_legend.py](coverage_legend.py)
+- [coverage/legend.py](coverage/legend.py)
   Coverage legend support in QGIS
-- [coverage_opacity.py](coverage_opacity.py)
+- [coverage/opacity.py](coverage/opacity.py)
   Live opacity adjustment dialog for the latest coverage layer
-- [coverage_reporting.py](coverage_reporting.py)
+- [coverage/reporting.py](coverage/reporting.py)
   Coverage report output helpers
 - [reliability.py](reliability.py)
   Formal-or-fallback availability and reliability helpers
-- [report_export.py](report_export.py)
+- [report/export.py](report/export.py)
   Shared CSV, JSON, and HTML report writers
-- [report_payloads.py](report_payloads.py)
+- [report/payloads.py](report/payloads.py)
   Pure-Python payload builders and P2P marker helpers
-- [report_markers.py](report_markers.py)
+- [report/markers.py](report/markers.py)
   TX/RX marker output helpers
 - [elevation.py](elevation.py)
   DEM sampling, terrain profiles, geographic helpers
@@ -83,29 +83,29 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   Copernicus GLO-30 download, cache, merge, clip
 - [antenna.py](antenna.py)
   Directional antenna gain adjustment, presets, pattern files, and vertical downtilt
-- [clutter.py](clutter.py)
+- [clutter/__init__.py](clutter/__init__.py)
   Terminal clutter correction dispatch and helpers
-- [clutter_advanced.py](clutter_advanced.py)
+- [clutter/advanced.py](clutter/advanced.py)
   Advanced clutter mode dispatcher (saalos + P.2108 §3.1/§3.2 + P.2109 BEL)
-- [clutter_categories.py](clutter_categories.py)
+- [clutter/categories.py](clutter/categories.py)
   Clutter category definitions, WorldCover class mapping, P.2108 model dispatch params
-- [clutter_constants.py](clutter_constants.py)
+- [clutter/constants.py](clutter/constants.py)
   Shared clutter constants (simple loss table, limits)
-- [clutter_context.py](clutter_context.py)
+- [clutter/context.py](clutter/context.py)
   ClutterLossContext dataclass
 - [cache_manager.py](cache_manager.py)
   DEM and WorldCover tile cache cleanup utilities
 - [clutter_p2108.py](clutter_p2108.py)
   Deprecation shim delegating to `p2108_terrestrial_stat`
-- [p2108_common.py](p2108_common.py)
+- [clutter/p2108_common.py](clutter/p2108_common.py)
   Shared inverse-normal CDF helpers (`Q⁻¹`, `F⁻¹`) and validation for P.2108/P.2109
-- [p2108_height_gain.py](p2108_height_gain.py)
+- [clutter/p2108_height_gain.py](clutter/p2108_height_gain.py)
   ITU-R P.2108-1 §3.1 height-gain terminal correction (scalar + vectorized)
-- [p2108_terrestrial_stat.py](p2108_terrestrial_stat.py)
+- [clutter/p2108_terrestrial_stat.py](clutter/p2108_terrestrial_stat.py)
   ITU-R P.2108-1 §3.2 statistical clutter loss for terrestrial paths (scalar + vectorized)
-- [p2109_bel.py](p2109_bel.py)
+- [clutter/p2109_bel.py](clutter/p2109_bel.py)
   ITU-R P.2109-2 building entry loss (scalar + vectorized)
-- [clutter_saalos.py](clutter_saalos.py)
+- [clutter/saalos.py](clutter/saalos.py)
   Saalos vegetation clutter loss (Python port from Rust)
 - [worldcover_downloader.py](worldcover_downloader.py)
   ESA WorldCover 2020 v100 tile download, caching, and clip/merge
@@ -145,49 +145,49 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   reached via the *NoWires → Preview Antenna Pattern* menu entry
 - [tile_download_base.py](tile_download_base.py)
   Shared tile-downloader base class with retry and fsync
-- [p2p_compute.py](p2p_compute.py)
+- [p2p/compute.py](p2p/compute.py)
   P2P ITM and link-budget computation
-- [p2p_params.py](p2p_params.py)
+- [p2p/params.py](p2p/params.py)
   P2P parameter definitions and defaults
-- [p2p_analysis_params.py](p2p_analysis_params.py)
+- [p2p/analysis_params.py](p2p/analysis_params.py)
   P2P algorithm parameter registration
-- [p2p_outputs.py](p2p_outputs.py)
+- [p2p/outputs.py](p2p/outputs.py)
   P2P vector output helpers
-- [p2p_chart.py](p2p_chart.py)
+- [p2p/chart.py](p2p/chart.py)
   Interactive profile chart with hover, callouts, and export
-- [p2p_chart_format.py](p2p_chart_format.py)
+- [p2p/chart_format.py](p2p/chart_format.py)
   Chart axis and label formatting
-- [p2p_symbology.py](p2p_symbology.py)
+- [p2p/symbology.py](p2p/symbology.py)
   P2P vector layer symbology
-- [p2p_report_display.py](p2p_report_display.py)
+- [p2p/report_display.py](p2p/report_display.py)
   P2P report display in QGIS
-- [batch_analysis_params.py](batch_analysis_params.py)
+- [batch/analysis_params.py](batch/analysis_params.py)
   Batch algorithm parameter registration
-- [batch_params.py](batch_params.py)
+- [batch/params.py](batch/params.py)
   Batch parameter definitions and defaults
-- [batch_outputs.py](batch_outputs.py)
+- [batch/outputs.py](batch/outputs.py)
   Batch output helpers
-- [batch_writer.py](batch_writer.py)
+- [batch/writer.py](batch/writer.py)
   Batch CSV/layer writer
-- [comparison_add_params.py](comparison_add_params.py)
+- [comparison/add_params.py](comparison/add_params.py)
   Comparison algorithm parameter registration
-- [comparison_params.py](comparison_params.py)
+- [comparison/params.py](comparison/params.py)
   Comparison parameter definitions and defaults
-- [comparison_panel.py](comparison_panel.py)
+- [comparison/panel.py](comparison/panel.py)
   Single-panel comparison computation
-- [comparison_outputs.py](comparison_outputs.py)
+- [comparison/outputs.py](comparison/outputs.py)
   Comparison output helpers (vector + raster)
-- [comparison_reporting.py](comparison_reporting.py)
+- [comparison/reporting.py](comparison/reporting.py)
   Comparison report output helpers
-- [contour_generation.py](contour_generation.py)
+- [contour/generation.py](contour/generation.py)
   Contour line generation core
-- [contour_overlay.py](contour_overlay.py)
+- [contour/overlay.py](contour/overlay.py)
   Hillshade/elevation overlay helpers
-- [contour_pipeline.py](contour_pipeline.py)
+- [contour/pipeline.py](contour/pipeline.py)
   Contour processing pipeline
-- [contour_smoothing.py](contour_smoothing.py)
+- [contour/smoothing.py](contour/smoothing.py)
   VRT Gaussian smoothing for contour DEM
-- [contour_symbology.py](contour_symbology.py)
+- [contour/symbology.py](contour/symbology.py)
   Rule-based contour symbology
 
 ### Bundled Third-Party Engine
@@ -256,7 +256,7 @@ In addition to Processing algorithms, the plugin exposes post-run helper actions
 
 ### Purpose
 
-`algorithm_p2p.py` computes a single ITM link between a transmitter and receiver and then performs Fresnel-zone and earth-curvature analysis on the sampled terrain profile.
+`algorithm/p2p.py` computes a single ITM link between a transmitter and receiver and then performs Fresnel-zone and earth-curvature analysis on the sampled terrain profile.
 
 ### P2P Flow
 
@@ -364,7 +364,7 @@ In the current codebase, Earth radius factor is used in the Fresnel and earth-bu
 
 ### Purpose
 
-`algorithm_coverage.py` produces a received-signal raster and derives usable-range metrics from that raster.
+`algorithm/coverage.py` produces a received-signal raster and derives usable-range metrics from that raster.
 
 ### Coverage Flow
 
@@ -372,7 +372,7 @@ In the current codebase, Earth radius factor is used in the Fresnel and earth-bu
 2. Treat `Max analysis distance (km)` as the outer computation envelope.
 3. Download and prepare a DEM covering that envelope.
 4. Build a dense elevation grid.
-5. Call `compute_coverage()` in [coverage_engine.py](coverage_engine.py).
+5. Call `compute_coverage()` in [coverage/engine.py](coverage/engine.py).
 6. Write the result to a GeoTIFF.
 7. Apply a heatmap renderer and opacity setting.
 8. Add the raster and legend to the map.
@@ -461,7 +461,7 @@ Tradeoff:
 
 ### Coverage Engine Details
 
-`coverage_engine.py` is responsible for per-pixel propagation computation.
+`coverage/engine.py` is responsible for per-pixel propagation computation.
 
 Key behaviors:
 
@@ -528,7 +528,7 @@ Horizontal pattern files wrap around 360° (the last point must close the circle
 
 ### Clutter Correction Layer
 
-`clutter.py` implements the optional terminal correction layer. It keeps ITM unchanged, samples a WorldCover-compatible raster at terminal locations, maps raw classes to propagation categories, and adds terminal losses after ITM.
+`clutter/__init__.py` implements the optional terminal correction layer. It keeps ITM unchanged, samples a WorldCover-compatible raster at terminal locations, maps raw classes to propagation categories, and adds terminal losses after ITM.
 
 Three clutter modes are available:
 
@@ -587,7 +587,7 @@ Out-of-band frequencies are clamped to the nearest valid range, with a warning l
 
 ### P.2108-1 §3.1 — Height-Gain Terminal Correction
 
-`p2108_height_gain.py` implements the ITU-R P.2108-1 §3.1 height-gain terminal correction.
+`clutter/p2108_height_gain.py` implements the ITU-R P.2108-1 §3.1 height-gain terminal correction.
 
 - **Validity:** 0.03–3 GHz, antenna height h below representative clutter height R.
 - **Per-category** (from P.2108-1 Table 3)：categories `open`, `open_rural`, and `dense_rural` use method (2b) — `Ah = −Kh2 · log10(h/R)`; categories `suburban`, `urban`, and `vegetation` use method (2a) — `Ah = J(ν) − 6.03` with knife-edge diffraction `J(ν)`.
@@ -598,7 +598,7 @@ API: `height_gain_loss(h_m, f_ghz, category, w_s_m=27.0)` returns loss in dB.
 
 ### P.2108-1 §3.2 — Statistical Clutter Loss
 
-`p2108_terrestrial_stat.py` implements the ITU-R P.2108-1 §3.2 statistical clutter loss for terrestrial paths.
+`clutter/p2108_terrestrial_stat.py` implements the ITU-R P.2108-1 §3.2 statistical clutter loss for terrestrial paths.
 
 - **Validity:** 0.5–67 GHz, percentage locations 0 < p < 100.
 - **Combined urban+suburban statistic** — not per-category. Caller is responsible for only invoking this for urban/suburban categories.
@@ -610,7 +610,7 @@ API: `clutter_loss_p2108_terrestrial_stat(d_km, f_ghz, p=50.0)` returns loss in 
 
 ### P.2109-2 — Building Entry Loss
 
-`p2109_bel.py` implements the ITU-R P.2109-2 building entry loss model.
+`clutter/p2109_bel.py` implements the ITU-R P.2109-2 building entry loss model.
 
 - **Validity:** 0.08–100 GHz, building type `traditional` or `thermally_efficient`, elevation angle θ (degrees above horizontal), probability P (0–100%).
 - **Two-lognormal model** (P.2109-2 §3, eqs (1)–(10)): `L_BEL(P) = 10·log10(10^(0.1·A) + 10^(0.1·B) + 10^(0.1·C))` where A and B are lognormal terms and C = −3.0 dB is a constant floor.
@@ -623,7 +623,7 @@ API: `building_entry_loss(f_ghz, building_type, theta_deg=0.0, p=50.0)` returns 
 
 ### P.2108/P.2109 Shared Helpers
 
-`p2108_common.py` provides:
+`clutter/p2108_common.py` provides:
 
 - `_ndtri(p)` — Abramowitz & Stegun §26.2.23 rational approximation with 2 Newton refinement steps using `math.erf`. Avoids scipy dependency.
 - `q_inv_complementary_normal(p)` — `Q⁻¹(p) = −F⁻¹(p)` (P.2108/§3.2 convention).
@@ -758,38 +758,38 @@ Raster positioning details:
 
 The coverage support code is split by responsibility:
 
-- `coverage_compute.py`
+- `coverage/compute.py`
   Hosts the shared propagation-side helper used by coverage calculations
-- `coverage_palette.py`
+- `coverage/palette.py`
   Heatmap stop definitions
-- `coverage_engine.py`
+- `coverage/engine.py`
   Owns the grid walk, raster assembly, multiprocessing decisions, and integration logic
-- `coverage_analysis_params.py`
+- `coverage/analysis_params.py`
   Coverage algorithm parameter registration
-- `coverage_params.py`
+- `coverage/params.py`
   Coverage parameter definitions and defaults
-- `coverage_pool.py`
+- `coverage/pool.py`
   Coverage multiprocessing pool and shared-memory management
-- `coverage_tasks.py`
+- `coverage/tasks.py`
   Per-pixel coverage task definitions
-- `coverage_summary.py`
+- `coverage/summary.py`
   Raster-derived usable-distance metrics
-- `coverage_legend.py`
+- `coverage/legend.py`
   Coverage legend support in QGIS; `show_coverage_legend()` constructs a
   `QFrame`, which **must** run on the main thread. With ALLOW_THREADING
   enabled (Coverage / Batch / Comparison), the algorithm stashes the
   legend's `rx_sens` during `processAlgorithm` and shows it in
   `postProcessAlgorithm` (main-thread-guaranteed by the Processing
   framework).
-- `coverage_opacity.py`
+- `coverage/opacity.py`
   Live opacity adjustment dialog
-- `coverage_reporting.py`
+- `coverage/reporting.py`
   Coverage report output helpers
-- `coverage_dem_validate.py`
+- `coverage/dem_validate.py`
   Small helper that warns when the downloaded DEM doesn't fully cover the
-  requested analysis bounds. Split out so `algorithm_coverage.py` stays
+  requested analysis bounds. Split out so `algorithm/coverage.py` stays
   within the 300-line cap.
-- `report_pdf.py`
+- `report/pdf.py`
   Qt-based PDF report writer (`QTextDocument` + `QPrinter`) used by Coverage
   Analysis when `OUTPUT_REPORT_PDF` is set.
 
@@ -830,7 +830,7 @@ Implementation detail:
 The coverage raster uses:
 
 - a `QgsColorRampShader` with `Discrete` color ramp type
-- palette stops from `coverage_palette.py`
+- palette stops from `coverage/palette.py`
 - a ceiling entry at `+100 dBm` (same color as Very Strong) so the `Discrete` shader covers all values up to +100 dBm
 - layer opacity driven by a custom Processing slider wrapper
 - a live plugin menu action for post-run coverage opacity adjustment
@@ -867,7 +867,7 @@ This benchmark is intended for local performance comparison and regression spott
 
 ### Coverage Summary
 
-`coverage_summary.py` derives:
+`coverage/summary.py` derives:
 
 - usable cell count
 - minimum usable distance
@@ -880,7 +880,7 @@ These metrics are based on raster cells at or above `RX sensitivity`.
 
 ### Purpose
 
-`algorithm_coverage_comparison.py` runs two coverage configurations side-by-side and produces a delta raster showing the path-loss difference (Panel A minus Panel B) in dB.
+`algorithm/coverage_comparison.py` runs two coverage configurations side-by-side and produces a delta raster showing the path-loss difference (Panel A minus Panel B) in dB.
 
 ### Comparison Flow
 
@@ -907,7 +907,7 @@ All coverage parameters are available for each panel, plus:
 
 ### Purpose
 
-`algorithm_batch.py` computes multiple P2P links in one run, supporting one-to-many (single TX, multiple RX) and many-to-one (single RX, multiple TX) modes.
+`algorithm/batch.py` computes multiple P2P links in one run, supporting one-to-many (single TX, multiple RX) and many-to-one (single RX, multiple TX) modes.
 
 ### Batch Flow
 
@@ -936,7 +936,7 @@ All coverage parameters are available for each panel, plus:
 
 ### Purpose
 
-`algorithm_contour.py` generates contour lines and an optional elevation overlay from downloaded Copernicus DEM data.
+`algorithm/contour.py` generates contour lines and an optional elevation overlay from downloaded Copernicus DEM data.
 
 ### Contour Inputs
 
@@ -1083,10 +1083,10 @@ Test coverage includes:
 
 - source-based regression checks for Processing contracts
 - unit tests for pure Python helpers
-- P.2108-1 §3.1 height-gain terminal correction (14 tests in `test_p2108_height_gain.py`)
-- P.2108-1 §3.2 statistical clutter loss (14 tests in `test_p2108_terrestrial_stat.py`)
-- P.2109-2 building entry loss (10 tests in `test_p2109_bel.py`)
-- P.2108/P.2109 shared inverse-normal helpers and sign-convention guards (24 tests in `test_p2108_common.py`)
+- P.2108-1 §3.1 height-gain terminal correction (14 tests in `test_clutter/p2108_height_gain.py`)
+- P.2108-1 §3.2 statistical clutter loss (14 tests in `test_clutter/p2108_terrestrial_stat.py`)
+- P.2109-2 building entry loss (10 tests in `test_clutter/p2109_bel.py`)
+- P.2108/P.2109 shared inverse-normal helpers and sign-convention guards (24 tests in `test_clutter/p2108_common.py`)
 - coverage-engine behavior checks
 - benchmark and module-split regressions
 - 3D support contract checks
@@ -1112,7 +1112,7 @@ GitHub Actions runs `pytest -q` for pushes and pull requests.
 
 When changing parameter keys or types, compatibility with stored Processing models and scripts must be considered explicitly.
 
-The `K_FACTOR` / `K_FACTOR_PRESET` handling in `algorithm_p2p.py` is an example of preserving legacy behavior while evolving the UI.
+The `K_FACTOR` / `K_FACTOR_PRESET` handling in `algorithm/p2p.py` is an example of preserving legacy behavior while evolving the UI.
 
 Output parameters for algorithms use `QgsProcessingParameterFileDestination` rather than `RasterDestination` or `VectorDestination`. This avoids a double-loading conflict: the `*Destination` types tell QGIS Processing to auto-load the output layer, but the algorithms also queue layers via `addLayerToLoadOnCompletion` with custom styling. Using `FileDestination` means only the manually-queued load with proper styling occurs.
 

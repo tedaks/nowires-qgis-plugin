@@ -6,3 +6,5 @@ hypothesis==6.152.7
 numpy==2.4.4
 defusedxml==0.7.1
 pip-audit==2.10.0
+import-linter==2.11
+

@@ -7,7 +7,7 @@ import math
 
 import pytest
 
-from p2108_terrestrial_stat import (
+from clutter.p2108_terrestrial_stat import (
     _L_l,
     _L_s,
     clutter_loss_p2108_terrestrial_stat,
