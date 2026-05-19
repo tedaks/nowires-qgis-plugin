@@ -31,8 +31,8 @@ import math
 
 import numpy as np
 
-from .constants import EARTH_RADIUS_M
-from .constants import FRESNEL_60PCT_FACTOR
+from NoWires.constants import EARTH_RADIUS_M
+from NoWires.constants import FRESNEL_60PCT_FACTOR
 
 C_LIGHT = 299792458.0
 

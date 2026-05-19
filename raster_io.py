@@ -4,8 +4,8 @@ from osgeo import gdal, osr
 
 from qgis.core import QgsProcessingException
 
-from .constants import COVERAGE_NODATA
-from .coverage_compute import grid_to_raster_array
+from NoWires.constants import COVERAGE_NODATA
+from NoWires.coverage_compute import grid_to_raster_array
 
 
 def write_geotiff(path, grid, min_lat, max_lat, min_lon, max_lon, nodata=COVERAGE_NODATA):

@@ -11,7 +11,7 @@ succeed where it had been silently returning None:
     it's not the same object as NoWires.coverage_pool._init_cov_pool
 
 Cause: ``_coverage_executor`` captured ``_init_cov_pool`` /
-``_itm_worker_batch`` at module import time via ``from .coverage_pool
+``_itm_worker_batch`` at module import time via ``from NoWires.coverage_pool
 import ...``. If anything subsequently replaced ``NoWires.coverage_pool``
 in ``sys.modules`` (QGIS plugin reload, the Plugin Reloader plugin, any
 manual ``importlib.reload``), the cached attribute on the executor module

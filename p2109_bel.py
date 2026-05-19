@@ -15,8 +15,8 @@ import math
 
 import numpy as np
 
-from .clutter_context import BuildingType
-from .p2108_common import f_inv_normal, validate_frequency_ghz
+from NoWires.clutter_context import BuildingType
+from NoWires.p2108_common import f_inv_normal, validate_frequency_ghz
 
 logger = logging.getLogger(__name__)
 

@@ -30,11 +30,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from .clutter_context import ClutterModel, BuildingType
+from NoWires.clutter_context import ClutterModel, BuildingType
 
 if TYPE_CHECKING:
-    from .antenna import AntennaConfig
-    from .clutter import LandCoverGrid
+    from NoWires.antenna import AntennaConfig
+    from NoWires.clutter import LandCoverGrid
 
 
 @dataclass

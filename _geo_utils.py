@@ -4,7 +4,7 @@
 
 import numpy as np
 
-from ._bilinear import bilinear_sample
+from NoWires._bilinear import bilinear_sample
 
 
 def _interpolate_longitudes_shortest(lon1: float, lon2: float, ts: np.ndarray) -> np.ndarray:

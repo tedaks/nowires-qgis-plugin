@@ -33,15 +33,15 @@ from dataclasses import dataclass
 
 from qgis.core import QgsProcessingParameterNumber
 
-from .antenna import CUSTOM_ANTENNA_PRESET_INDEX
-from .clutter import clutter_override_value
-from .clutter_context import BuildingType, ClutterModel
-from .constants import (
+from NoWires.antenna import CUSTOM_ANTENNA_PRESET_INDEX
+from NoWires.clutter import clutter_override_value
+from NoWires.clutter_context import BuildingType, ClutterModel
+from NoWires.constants import (
     POLARIZATION_NAMES,
     GRID_SIZE_PRESETS,
     WGS84_CRS,
 )
-from .radio import (
+from NoWires.radio import (
     ITM_MAX_FREQUENCY_MHZ,
     ITM_MAX_N0,
     ITM_MIN_FREQUENCY_MHZ,

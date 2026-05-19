@@ -31,7 +31,7 @@ import os
 import numpy as np
 from osgeo import gdal
 
-from ._smoothing_vrt import _gaussian_kernel_2d, _make_blur_vrt, _raster_calc  # noqa: F401
+from NoWires._smoothing_vrt import _gaussian_kernel_2d, _make_blur_vrt, _raster_calc  # noqa: F401
 
 SMOOTHING_NONE = "None"
 SMOOTHING_LOW = "Low"

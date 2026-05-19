@@ -36,7 +36,7 @@ def _algorithm_source():
 
 def test_coverage_algorithm_delegates_to_palette():
     source = _algorithm_source()
-    assert "from .coverage_palette import apply_coverage_style" in source
+    assert "from NoWires.coverage_palette import apply_coverage_style" in source
     assert "apply_coverage_style(layer)" in source
 
 

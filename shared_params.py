@@ -10,13 +10,13 @@ from qgis.core import (
     QgsProcessingParameterNumber,
 )
 
-from .clutter_context import ClutterModel, BuildingType
-from .clutter import (
+from NoWires.clutter_context import ClutterModel, BuildingType
+from NoWires.clutter import (
     CLUTTER_MODEL_OPTIONS, CLUTTER_OVERRIDE_OPTIONS,
     LandCoverGrid, clutter_override_value,
 )
-from .constants import K_FACTOR_PRESETS_OPTIONS
-from .defaults import (
+from NoWires.constants import K_FACTOR_PRESETS_OPTIONS
+from NoWires.defaults import (
     DEFAULT_BEL_ELEVATION_ANGLE_DEG,
     DEFAULT_CABLE_LOSS_DB,
     DEFAULT_CLUTTER_PERCENTILE,
@@ -30,7 +30,7 @@ from .defaults import (
     DEFAULT_TX_GAIN_DBI,
     DEFAULT_TX_POWER_DBM,
 )
-from .radio import ITM_MIN_N0, ITM_MAX_N0, ITM_MIN_SIGMA
+from NoWires.radio import ITM_MIN_N0, ITM_MAX_N0, ITM_MIN_SIGMA
 
 _DBL = QgsProcessingParameterNumber.Type.Double
 

@@ -35,21 +35,21 @@ try:
 except ImportError:
     _QGIS_NULL = None
 
-from .batch_analysis_params import BatchAnalysisParams
-from .batch_writer import write_batch_marker_layer, write_batch_csv, write_batch_json
-from .constants import DEFAULT_PROFILE_STEP_M
-from .elevation import bearing_deg, haversine_m
-from .fresnel import C_LIGHT, fresnel_profile_analysis
-from .radio import (
+from NoWires.batch_analysis_params import BatchAnalysisParams
+from NoWires.batch_writer import write_batch_marker_layer, write_batch_csv, write_batch_json
+from NoWires.constants import DEFAULT_PROFILE_STEP_M
+from NoWires.elevation import bearing_deg, haversine_m
+from NoWires.fresnel import C_LIGHT, fresnel_profile_analysis
+from NoWires.radio import (
     build_pfl,
     itm_p2p_loss,
 )
-from .antenna import (
+from NoWires.antenna import (
     ANTENNA_PRESET_KEYS,
     antenna_config_from_values,
     antenna_gain_adjustment_db,
 )
-from .clutter import compute_terminal_clutter_losses
+from NoWires.clutter import compute_terminal_clutter_losses
 
 __all__ = [
     "_feat_attr",
@@ -85,7 +85,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
     if nan_count == len(elevations):
         return None
     if nan_count > 0:
-        from .nan_utils import interpolate_nan_elevations
+        from NoWires.nan_utils import interpolate_nan_elevations
         elevations = interpolate_nan_elevations(np.array(elevations, dtype=np.float64))
         if np.all(np.isnan(elevations)):
             return None
@@ -109,7 +109,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
 
     clutter_context = None
     if params.clutter_enabled:
-        from .clutter_context import build_link_clutter_context
+        from NoWires.clutter_context import build_link_clutter_context
         clutter_context = build_link_clutter_context(
             params=params, dist_m=dist_m, tx_h=tx_h_eff, rx_h=rx_h_eff,
             tx_elev=float(elevations[0]), rx_elev=float(elevations[-1]))
@@ -123,7 +123,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
         context=clutter_context,
     )
 
-    from .constants import ITM_LOSS_UPPER_BOUND
+    from NoWires.constants import ITM_LOSS_UPPER_BOUND
     total_loss_db = min(itm_result.loss_db, ITM_LOSS_UPPER_BOUND) + clutter_losses.total_with_bel_db
 
     tx_bearing = bearing_deg(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon)

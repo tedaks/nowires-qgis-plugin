@@ -29,16 +29,16 @@ Extracted from algorithm_coverage.py for modularity.
 
 import numpy as np
 
-from .clutter import CLUTTER_MODEL_OPTIONS
-from .clutter_context import ClutterModel
-from .antenna import ANTENNA_PRESET_OPTIONS
-from .constants import CLIMATE_NAMES, POLARIZATION_NAMES
-from .coverage_summary import summarize_coverage_grid
-from .report_payloads import (
+from NoWires.clutter import CLUTTER_MODEL_OPTIONS
+from NoWires.clutter_context import ClutterModel
+from NoWires.antenna import ANTENNA_PRESET_OPTIONS
+from NoWires.constants import CLIMATE_NAMES, POLARIZATION_NAMES
+from NoWires.coverage_summary import summarize_coverage_grid
+from NoWires.report_payloads import (
     build_coverage_report_payload,
     build_empty_coverage_report_payload,
 )
-from .raster_io import write_geotiff
+from NoWires.raster_io import write_geotiff
 
 
 def _clutter_model_label(enabled, model: ClutterModel = "simple"):

@@ -34,8 +34,8 @@ import math
 
 import numpy as np
 
-from .radio import build_pfl, itm_p2p_loss
-from .constants import COVERAGE_NODATA, ITM_LOSS_UPPER_BOUND
+from NoWires.radio import build_pfl, itm_p2p_loss
+from NoWires.constants import COVERAGE_NODATA, ITM_LOSS_UPPER_BOUND
 
 logger = logging.getLogger(__name__)
 

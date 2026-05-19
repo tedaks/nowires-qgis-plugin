@@ -16,8 +16,8 @@ import math
 
 import numpy as np
 
-from .clutter_categories import CLUTTER_CATEGORY_PARAMS
-from .p2108_common import validate_frequency_ghz
+from NoWires.clutter_categories import CLUTTER_CATEGORY_PARAMS
+from NoWires.p2108_common import validate_frequency_ghz
 
 logger = logging.getLogger(__name__)
 

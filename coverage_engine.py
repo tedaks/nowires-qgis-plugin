@@ -7,18 +7,18 @@ import math
 
 import numpy as np
 
-from .antenna import antenna_config_from_values
-from .clutter import compute_terminal_clutter_losses
-from .clutter_context import ClutterLossContext, build_initial_clutter_context, ClutterModel, BuildingType  # noqa: F401
-from .coverage_pool import (  # noqa: F401
+from NoWires.antenna import antenna_config_from_values
+from NoWires.clutter import compute_terminal_clutter_losses
+from NoWires.clutter_context import ClutterLossContext, build_initial_clutter_context, ClutterModel, BuildingType  # noqa: F401
+from NoWires.coverage_pool import (  # noqa: F401
     CoverageResult, log_coverage_failures, should_use_multiprocessing,
     _itm_worker, _make_shared_grid,
 )
-from ._coverage_executor import execute_coverage_tasks
-from .coverage_tasks import _coverage_axis_centers, build_coverage_tasks
-from .geo_bounds import coverage_bounds
-from .constants import BYTES_PER_MEBIBYTE
-from .defaults import DEFAULT_N0, DEFAULT_EPSILON, DEFAULT_SIGMA
+from NoWires._coverage_executor import execute_coverage_tasks
+from NoWires.coverage_tasks import _coverage_axis_centers, build_coverage_tasks
+from NoWires.geo_bounds import coverage_bounds
+from NoWires.constants import BYTES_PER_MEBIBYTE
+from NoWires.defaults import DEFAULT_N0, DEFAULT_EPSILON, DEFAULT_SIGMA
 
 logger = logging.getLogger(__name__)
 

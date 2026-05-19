@@ -34,9 +34,9 @@ from osgeo import gdal, ogr
 from qgis.PyQt.QtGui import QPainter
 from qgis.core import QgsApplication, QgsAuthMethodConfig, QgsProject, QgsRasterLayer
 
-from .base_algorithm import ENTRY_KEY_LAST_DEM
-from .dem_downloader import required_tiles, download_tiles
-from .processing_utils import queue_layer_for_loading
+from NoWires.base_algorithm import ENTRY_KEY_LAST_DEM
+from NoWires.dem_downloader import required_tiles, download_tiles
+from NoWires.processing_utils import queue_layer_for_loading
 
 
 def setup_proxy_opener(auth_id, feedback):
@@ -79,7 +79,7 @@ def setup_proxy_opener(auth_id, feedback):
 
 def write_aoi_shapefile(aoi_geometry, aoi_shp_path):
     """Write an OGR polygon shapefile from a QgsGeometry for clipping."""
-    from .report_markers import remove_existing_ogr_dataset
+    from NoWires.report_markers import remove_existing_ogr_dataset
     shp_driver = ogr.GetDriverByName("ESRI Shapefile")
     remove_existing_ogr_dataset(shp_driver, aoi_shp_path)
     aoi_datasource = shp_driver.CreateDataSource(aoi_shp_path)
@@ -198,7 +198,7 @@ def load_overlay_layer(elevation_dem_path, temp_dir, context, feedback):
     overlay_dir = tempfile.mkdtemp(dir=temp_dir, prefix="contour_overlay_")
     feedback.pushInfo("Elevation overlay outputs in: " + overlay_dir)
 
-    from .contour_overlay import prepare_elevation_overlay
+    from NoWires.contour_overlay import prepare_elevation_overlay
     overlay_path = prepare_elevation_overlay(
         elevation_dem_path, overlay_dir, context, feedback
     )

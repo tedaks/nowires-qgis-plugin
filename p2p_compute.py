@@ -9,26 +9,26 @@ import numpy as np
 from osgeo import osr
 from qgis.core import QgsProcessingException
 
-from .constants import (
+from NoWires.constants import (
     CLIMATE_NAMES, DEFAULT_PROFILE_STEP_M, DEGREE_PADDING, METERS_PER_DEGREE_LAT,
     POLARIZATION_NAMES,
 )
-from .constants import ITM_LOSS_UPPER_BOUND
-from .temp_manager import TempDirManager
-from .dem_downloader import ensure_dem_for_area, get_temp_dir
-from .elevation import ElevationGrid, bearing_deg, haversine_m
-from .fresnel import C_LIGHT, fresnel_profile_analysis
-from .geo_bounds import shortest_longitude_bounds
-from .p2p_analysis_params import P2PAnalysisParams
-from .radio import PROP_MODE_NAMES, build_pfl, itm_p2p_loss
-from .report_payloads import build_p2p_report_payload
-from .antenna import antenna_gain_adjustment_db
-from .clutter import (compute_terminal_clutter_losses,
+from NoWires.constants import ITM_LOSS_UPPER_BOUND
+from NoWires.temp_manager import TempDirManager
+from NoWires.dem_downloader import ensure_dem_for_area, get_temp_dir
+from NoWires.elevation import ElevationGrid, bearing_deg, haversine_m
+from NoWires.fresnel import C_LIGHT, fresnel_profile_analysis
+from NoWires.geo_bounds import shortest_longitude_bounds
+from NoWires.p2p_analysis_params import P2PAnalysisParams
+from NoWires.radio import PROP_MODE_NAMES, build_pfl, itm_p2p_loss
+from NoWires.report_payloads import build_p2p_report_payload
+from NoWires.antenna import antenna_gain_adjustment_db
+from NoWires.clutter import (compute_terminal_clutter_losses,
     ensure_clutter_grid_for_area)
-from .p2p_params import report_p2p_results
-from .processing_utils import queue_layer_for_loading, register_destination_layer
-from .p2p_chart import show_profile_chart
-from ._p2p_outputs_internal import _write_p2p_output_layers, _write_p2p_reports
+from NoWires.p2p_params import report_p2p_results
+from NoWires.processing_utils import queue_layer_for_loading, register_destination_layer
+from NoWires.p2p_chart import show_profile_chart
+from NoWires._p2p_outputs_internal import _write_p2p_output_layers, _write_p2p_reports
 
 logger = logging.getLogger(__name__)
 __all__ = ["run_p2p_analysis"]
@@ -41,14 +41,14 @@ def _interpolate_nan_elevations(elevations):
     Falls back to nearest valid value at edges. Returns unchanged if all NaN.
     Delegates to shared nan_utils module to avoid code duplication.
     """
-    from .nan_utils import interpolate_nan_elevations
+    from NoWires.nan_utils import interpolate_nan_elevations
     return interpolate_nan_elevations(elevations)
 
 
 def _load_p2p_qgis_layers(context, profile_path, fresnel_poly_path,
         fresnel_lines_path, markers_path, show_chart, chart_kwargs, sink):
     from qgis.core import QgsVectorLayer
-    from .p2p_symbology import (
+    from NoWires.p2p_symbology import (
         apply_fresnel_polygon_symbology, apply_fresnel_lines_symbology,
         apply_profile_line_symbology,
     )
@@ -169,7 +169,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             + antenna_gain_adjustment_db(rx_bearing, -vert_angle, p.rx_antenna_config))
         clutter_context = None
         if p.clutter_enabled:
-            from .clutter_context import build_link_clutter_context
+            from NoWires.clutter_context import build_link_clutter_context
             clutter_context = build_link_clutter_context(
                 params=p, dist_m=dist_m, tx_h=p.tx_h, rx_h=p.rx_h,
                 tx_elev=float(tx_elev), rx_elev=float(rx_elev))

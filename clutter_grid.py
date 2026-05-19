@@ -15,7 +15,7 @@ import logging
 import numpy as np
 from osgeo import gdal
 
-from .clutter_categories import (
+from NoWires.clutter_categories import (
     LEGACY_CLUTTER_CATEGORIES,
     _LEGACY_CLUTTER_LOSS_ARRAY,
     _WORLDCOVER_TO_LEGACY_IDX,
@@ -135,7 +135,7 @@ class LandCoverGrid:
         advanced mode). In coverage analysis every grid cell represents an RX
         location, so rx_override correctly applies across the whole grid.
         """
-        from .clutter_categories import legacy_to_advanced_override
+        from NoWires.clutter_categories import legacy_to_advanced_override
 
         advanced = context is not None and context.model == "advanced"
 
@@ -190,7 +190,7 @@ class LandCoverGrid:
         safe_sampled = np.where(valid_class, sampled, 0).astype(np.int32, copy=False)
         cat_idx = _WORLDCOVER_TO_CATEGORY[safe_sampled]
         cat_idx = np.where(out_of_bounds, 0, cat_idx)
-        from .clutter_categories import _LEGACY_CAT_IDX
+        from NoWires.clutter_categories import _LEGACY_CAT_IDX
         if rx_override:
             cat_idx[:] = _LEGACY_CAT_IDX.get(rx_override, 0)
         return _CLUTTER_LOSS_ARRAY[cat_idx]

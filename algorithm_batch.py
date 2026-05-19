@@ -27,22 +27,22 @@ Portions adapted from tedaks/nowires (MIT). See NOTICE.md.
 import logging
 from typing import Any
 from qgis.core import QgsProcessingException
-from .base_algorithm import NoWiresAlgorithm, install_constants
-from .constants import DEGREE_PADDING, WGS84_CRS
-from .dem_downloader import ensure_dem_for_area
-from .elevation import ElevationGrid
-from .geo_bounds import shortest_longitude_bounds_for, validate_coordinates
-from .radio import K_FACTOR_PRESETS, resolve_k_factor, validate_itm_input_ranges
-from .antenna import antenna_preset_key
-from .clutter import ensure_clutter_grid_for_area
-from .shared_params import extract_clutter_params, extract_link_budget_params
-from .batch_params import BATCH_PARAM_CONSTANTS, add_batch_params
-from .batch_outputs import (
+from NoWires.base_algorithm import NoWiresAlgorithm, install_constants
+from NoWires.constants import DEGREE_PADDING, WGS84_CRS
+from NoWires.dem_downloader import ensure_dem_for_area
+from NoWires.elevation import ElevationGrid
+from NoWires.geo_bounds import shortest_longitude_bounds_for, validate_coordinates
+from NoWires.radio import K_FACTOR_PRESETS, resolve_k_factor, validate_itm_input_ranges
+from NoWires.antenna import antenna_preset_key
+from NoWires.clutter import ensure_clutter_grid_for_area
+from NoWires.shared_params import extract_clutter_params, extract_link_budget_params
+from NoWires.batch_params import BATCH_PARAM_CONSTANTS, add_batch_params
+from NoWires.batch_outputs import (
     _feat_attr, compute_batch_links, rank_batch_results,
 )
-from .temp_manager import TempDirManager
-from .batch_analysis_params import BatchAnalysisParams
-from .batch_writer import write_batch_outputs
+from NoWires.temp_manager import TempDirManager
+from NoWires.batch_analysis_params import BatchAnalysisParams
+from NoWires.batch_writer import write_batch_outputs
 
 logger = logging.getLogger(__name__)
 
