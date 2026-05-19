@@ -9,7 +9,7 @@ import math
 import numpy as np
 import pytest
 
-from comparison_reporting import build_panel_info, build_delta_info
+from comparison.reporting import build_panel_info, build_delta_info
 
 
 class TestBuildPanelInfo:

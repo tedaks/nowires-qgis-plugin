@@ -60,7 +60,7 @@ class TestP2PAlgorithmExecution:
     def test_p2p_process_algorithm_runs_with_synthetic_dem(
         self, qgis_app, processing_context, feedback, monkeypatch, tmp_path,
     ):
-        from NoWires.algorithm_p2p import P2PAlgorithm
+        from NoWires.algorithm.p2p import P2PAlgorithm
         from NoWires import dem_downloader as dd_mod
         from NoWires import clutter as clutter_mod
 
@@ -137,7 +137,7 @@ class TestCoverageAlgorithmExecution:
     def test_coverage_process_algorithm_runs_with_synthetic_dem(
         self, qgis_app, processing_context, feedback, monkeypatch, tmp_path,
     ):
-        from NoWires.algorithm_coverage import CoverageAlgorithm
+        from NoWires.algorithm.coverage import CoverageAlgorithm
         from NoWires import dem_downloader as dd_mod
 
         dem_path = str(tmp_path / "dem.tif")
@@ -206,7 +206,7 @@ class TestCoverageAlgorithmExecution:
 
 class TestAlgorithmParameterConsistency:
     def test_p2p_algorithm_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm_p2p import P2PAlgorithm
+        from NoWires.algorithm.p2p import P2PAlgorithm
         alg = P2PAlgorithm()
         alg.initAlgorithm({})
         assert alg.name() == "p2p_analysis"
@@ -214,7 +214,7 @@ class TestAlgorithmParameterConsistency:
         assert alg.OUTPUT_PROFILE is not None
 
     def test_coverage_algorithm_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm_coverage import CoverageAlgorithm
+        from NoWires.algorithm.coverage import CoverageAlgorithm
         alg = CoverageAlgorithm()
         alg.initAlgorithm({})
         assert alg.name() == "coverage_analysis"
@@ -223,20 +223,20 @@ class TestAlgorithmParameterConsistency:
         assert alg.OUTPUT_RASTER is not None
 
     def test_batch_algorithm_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm_batch import BatchAnalysisAlgorithm
+        from NoWires.algorithm.batch import BatchAnalysisAlgorithm
         alg = BatchAnalysisAlgorithm()
         alg.initAlgorithm({})
         assert alg.name() == "batch_p2p_analysis"
 
     def test_contour_algorithm_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm_contour import ContourLinesAlgorithm
+        from NoWires.algorithm.contour import ContourLinesAlgorithm
         alg = ContourLinesAlgorithm()
         alg.initAlgorithm({})
         assert alg.name() == "contour_lines"
         assert alg.OUTPUT is not None
 
     def test_comparison_algorithm_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm_coverage_comparison import CoverageComparisonAlgorithm
+        from NoWires.algorithm.coverage_comparison import CoverageComparisonAlgorithm
         alg = CoverageComparisonAlgorithm()
         alg.initAlgorithm({})
         assert alg.name() == "coverage_comparison"
@@ -247,7 +247,7 @@ class TestBatchAlgorithmExecution:
     def test_batch_one_to_many_process_algorithm_runs(
         self, qgis_app, processing_context, feedback, monkeypatch, tmp_path,
     ):
-        from NoWires.algorithm_batch import BatchAnalysisAlgorithm
+        from NoWires.algorithm.batch import BatchAnalysisAlgorithm
         from NoWires import dem_downloader as dd_mod
         from osgeo import ogr, osr
 
@@ -311,7 +311,7 @@ class TestBatchAlgorithmExecution:
 
 class TestContourAlgorithmExecution:
     def test_contour_validate_aoi_with_valid_rectangle(self, qgis_app):
-        from NoWires.algorithm_contour import ContourLinesAlgorithm
+        from NoWires.algorithm.contour import ContourLinesAlgorithm
         from qgis.core import QgsRectangle, QgsProcessingContext
 
         alg = ContourLinesAlgorithm()
@@ -327,7 +327,7 @@ class TestContourAlgorithmExecution:
         assert not geom.isEmpty()
 
     def test_contour_validate_aoi_rejects_large_area(self, qgis_app):
-        from NoWires.algorithm_contour import ContourLinesAlgorithm
+        from NoWires.algorithm.contour import ContourLinesAlgorithm
         from qgis.core import QgsRectangle, QgsProcessingContext
         from qgis.core import QgsProcessingException
 

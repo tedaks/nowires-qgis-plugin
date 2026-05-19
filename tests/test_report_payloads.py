@@ -7,7 +7,7 @@
 from unittest.mock import patch
 
 from reliability import summarize_reliability
-from report_payloads import (
+from report.payloads import (
     build_coverage_report_payload,
     build_empty_coverage_report_payload,
     build_p2p_report_payload,
@@ -300,7 +300,7 @@ class TestBuildEmptyCoverageReportPayload:
         return defaults
 
     def test_uses_margin_db_negative_999_for_reliability(self):
-        with patch("report_payloads.summarize_reliability") as mock_rel:
+        with patch("report.payloads.summarize_reliability") as mock_rel:
             mock_rel.return_value = dict(
                 availability_method="fallback_margin",
                 availability_estimate_pct=None,

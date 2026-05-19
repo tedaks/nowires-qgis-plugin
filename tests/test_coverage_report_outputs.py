@@ -4,7 +4,7 @@
 # This program is free software under GPLv3 or later. See LICENSE.
 """Behavior tests for coverage report payloads."""
 
-from report_payloads import (
+from report.payloads import (
     build_coverage_report_payload,
     build_empty_coverage_report_payload,
 )

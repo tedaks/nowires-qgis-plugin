@@ -5,7 +5,7 @@
 """Tests for contour_smoothing pure-logic functions."""
 
 
-from contour_smoothing import _gaussian_kernel_2d
+from contour.smoothing import _gaussian_kernel_2d
 
 
 class TestGaussianKernel2d:

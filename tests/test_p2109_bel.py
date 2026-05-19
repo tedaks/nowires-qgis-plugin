@@ -7,7 +7,7 @@ import math
 
 import pytest
 
-from p2109_bel import building_entry_loss, building_entry_loss_vec
+from clutter.p2109_bel import building_entry_loss, building_entry_loss_vec
 
 
 class TestBuildingEntryLoss:

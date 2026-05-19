@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # This program is free software under GPLv3 or later. See LICENSE.
 import pytest
-from clutter_categories import (
+from clutter.categories import (
     ADVANCED_CLUTTER_CATEGORIES,
     CLUTTER_CATEGORY_PARAMS,
     _LEGACY_TO_ADVANCED,
@@ -82,7 +82,7 @@ def test_simple_and_advanced_mappings_consistent():
     advanced counterpart must produce the same result through both paths.
     """
     from clutter import CLUTTER_CATEGORIES, _WORLDCOVER_TO_CATEGORY
-    from NoWires.clutter_grid import _WORLDCOVER_TO_ADVANCED_IDX, _ADVANCED_CATEGORIES
+    from NoWires.clutter.grid import _WORLDCOVER_TO_ADVANCED_IDX, _ADVANCED_CATEGORIES
     consistent_legacy_classes = {10, 50, 60, 70, 80, 90}
     for cls_id in consistent_legacy_classes:
         legacy_cat = CLUTTER_CATEGORIES[_WORLDCOVER_TO_CATEGORY[cls_id]]
@@ -95,7 +95,7 @@ def test_simple_and_advanced_mappings_consistent():
 
 
 def test_p2108_category_params_derived_from_clutter_categories():
-    from p2108_height_gain import _CATEGORY_PARAMS
+    from clutter.p2108_height_gain import _CATEGORY_PARAMS
     for cat, params in _CATEGORY_PARAMS.items():
         assert cat in CLUTTER_CATEGORY_PARAMS, f"{cat} missing from CLUTTER_CATEGORY_PARAMS"
         assert params["R_m"] == CLUTTER_CATEGORY_PARAMS[cat]["R_m"], (

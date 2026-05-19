@@ -13,7 +13,7 @@ import sys
 
 import pytest
 
-from NoWires.report_pdf import write_report_pdf
+from NoWires.report.pdf import write_report_pdf
 
 
 _PAYLOAD = {

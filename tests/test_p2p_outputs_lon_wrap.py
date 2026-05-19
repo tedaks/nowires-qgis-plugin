@@ -9,7 +9,7 @@ path crosses the antimeridian, creating invalid WGS84 coordinates.
 """
 import numpy as np
 
-from p2p_outputs import write_fresnel_zone
+from p2p.outputs import write_fresnel_zone
 
 
 def _make_srs():

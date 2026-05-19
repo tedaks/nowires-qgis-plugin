@@ -14,7 +14,7 @@ unit tests (no qgis_integration marker) and lock in:
     cch_override_m, antenna_bw_override) honour their derivation rules
 """
 
-from comparison_params import ComparisonPanelParams, collect_panel_params
+from comparison.params import ComparisonPanelParams, collect_panel_params
 
 
 class _FakePoint:
@@ -138,7 +138,7 @@ def test_collect_panel_params_simple_field_mapping():
 
 
 def test_collect_panel_params_grid_size_maps_through_presets():
-    from comparison_params import GRID_SIZE_PRESETS
+    from comparison.params import GRID_SIZE_PRESETS
     algo = _FakeAlgo(_default_values())
     p = collect_panel_params(algo, "PANEL_A", parameters={}, context=None)
     assert p.grid_size == GRID_SIZE_PRESETS[2]
@@ -205,7 +205,7 @@ def test_collect_panel_params_antenna_az_only_read_when_bw_lt_360():
 
 def test_collect_panel_params_antenna_bw_override_rule():
     # Rule: None if (preset != CUSTOM_INDEX AND bw == 360.0), else bw.
-    from comparison_params import CUSTOM_ANTENNA_PRESET_INDEX
+    from comparison.params import CUSTOM_ANTENNA_PRESET_INDEX
 
     # Case A: bw == 360, preset == omni (not custom) → override None.
     v = _default_values()

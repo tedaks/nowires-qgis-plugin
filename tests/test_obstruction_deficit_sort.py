@@ -9,7 +9,7 @@ terrain height, not Fresnel penetration deficit. With more than 5
 obstructions, the most obstructive peaks could be omitted.
 """
 import numpy as np
-from p2p_chart_format import build_obstruction_data
+from p2p.chart_format import build_obstruction_data
 
 
 def test_obstruction_data_sorted_by_deficit():

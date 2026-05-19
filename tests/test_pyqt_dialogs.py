@@ -71,7 +71,7 @@ def _make_dialog(layer=None):
     """Create a CoverageOpacityDialog with a mock layer."""
     if layer is None:
         layer = _make_layer()
-    from NoWires.coverage_opacity import CoverageOpacityDialog
+    from NoWires.coverage.opacity import CoverageOpacityDialog
     return CoverageOpacityDialog(layer)
 
 
@@ -86,7 +86,7 @@ class TestCoverageOpacityDialogConstruction:
 
     def test_dialog_is_non_modal_by_design(self):
         """CoverageOpacityDialog calls setModal(False) in __init__."""
-        from NoWires.coverage_opacity import CoverageOpacityDialog
+        from NoWires.coverage.opacity import CoverageOpacityDialog
         # Verify the source code explicitly calls setModal(False)
         import inspect
         source = inspect.getsource(CoverageOpacityDialog.__init__)
@@ -129,14 +129,14 @@ class TestCoverageOpacityDialogSlider:
 class TestCoverageOpacityDialogLayerResolution:
     def test_resolve_layer_fetches_from_project(self):
         dialog = _make_dialog(layer=_make_layer(layer_id="my_layer"))
-        with patch("NoWires.coverage_opacity.QgsProject") as mock_project:
+        with patch("NoWires.coverage.opacity.QgsProject") as mock_project:
             mock_project.instance().mapLayer.return_value = _make_layer()
             result = dialog._resolve_layer()
             assert result is not None
 
     def test_resolve_layer_returns_none_for_invalid_layer(self):
         dialog = _make_dialog(layer=_make_layer(layer_id="gone"))
-        with patch("NoWires.coverage_opacity.QgsProject") as mock_project:
+        with patch("NoWires.coverage.opacity.QgsProject") as mock_project:
             bad_layer = MagicMock()
             bad_layer.isValid.return_value = False
             mock_project.instance().mapLayer.return_value = bad_layer
@@ -145,7 +145,7 @@ class TestCoverageOpacityDialogLayerResolution:
 
     def test_resolve_layer_returns_none_for_missing_layer(self):
         dialog = _make_dialog(layer=_make_layer(layer_id="missing"))
-        with patch("NoWires.coverage_opacity.QgsProject") as mock_project:
+        with patch("NoWires.coverage.opacity.QgsProject") as mock_project:
             mock_project.instance().mapLayer.return_value = None
             result = dialog._resolve_layer()
             assert result is None
@@ -153,20 +153,20 @@ class TestCoverageOpacityDialogLayerResolution:
 
 class TestFindLatestCoverageLayer:
     def test_returns_none_when_no_layers_exist(self):
-        from NoWires.coverage_opacity import find_latest_coverage_layer
-        with patch("NoWires.coverage_opacity.QgsProject") as mock_project:
+        from NoWires.coverage.opacity import find_latest_coverage_layer
+        with patch("NoWires.coverage.opacity.QgsProject") as mock_project:
             mock_project.instance().mapLayers.return_value = {}
             mock_project.instance().readEntry.return_value = ("", False)
             result = find_latest_coverage_layer()
             assert result is None
 
     def test_returns_layer_matching_prefix(self):
-        from NoWires.coverage_opacity import find_latest_coverage_layer, COVERAGE_LAYER_PREFIX
+        from NoWires.coverage.opacity import find_latest_coverage_layer, COVERAGE_LAYER_PREFIX
         matching = MagicMock()
         matching.name.return_value = COVERAGE_LAYER_PREFIX + "test)"
         non_matching = MagicMock()
         non_matching.name.return_value = "Some Other Layer"
-        with patch("NoWires.coverage_opacity.QgsProject") as mock_project:
+        with patch("NoWires.coverage.opacity.QgsProject") as mock_project:
             mock_project.instance().mapLayers.return_value = {
                 "a": non_matching, "b": matching
             }

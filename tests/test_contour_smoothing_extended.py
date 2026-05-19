@@ -19,7 +19,7 @@ gdalskip = pytest.mark.skipif(
     not _REAL_GDAL, reason="Real GDAL not available (mocked by conftest)",
 )
 
-from NoWires.contour_smoothing import _gaussian_kernel_2d, _raster_calc, _make_blur_vrt, smooth_contour_dem
+from NoWires.contour.smoothing import _gaussian_kernel_2d, _raster_calc, _make_blur_vrt, smooth_contour_dem
 
 
 def _create_raster(path, nx=5, ny=5, data_val=100.0):

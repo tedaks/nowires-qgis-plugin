@@ -11,13 +11,13 @@ PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
 CONTOUR_SOURCES = [
     os.path.join(PLUGIN_DIR, f)
     for f in (
-        "algorithm_contour.py",
-        "contour_smoothing.py",
-        "_smoothing_vrt.py",
-        "contour_overlay.py",
-        "contour_symbology.py",
-        "contour_generation.py",
-        "contour_pipeline.py",
+        "algorithm/contour.py",
+        "contour/smoothing.py",
+        "contour/_smoothing_vrt.py",
+        "contour/overlay.py",
+        "contour/symbology.py",
+        "contour/generation.py",
+        "contour/pipeline.py",
     )
 ]
 

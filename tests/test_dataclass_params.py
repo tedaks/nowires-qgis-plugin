@@ -27,9 +27,9 @@ from defaults import (
     DEFAULT_TX_POWER_DBM,
 )
 
-from coverage_analysis_params import CoverageAnalysisParams
-from p2p_analysis_params import P2PAnalysisParams
-from batch_analysis_params import BatchAnalysisParams
+from coverage.analysis_params import CoverageAnalysisParams
+from p2p.analysis_params import P2PAnalysisParams
+from batch.analysis_params import BatchAnalysisParams
 
 
 class TestCoverageAnalysisParams:

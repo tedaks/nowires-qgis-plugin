@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # This program is free software under GPLv3 or later. See LICENSE.
 import pytest
-from clutter_constants import MAX_CLUTTER_LOSS
-from clutter_saalos import clutter_loss_saalos
+from clutter.constants import MAX_CLUTTER_LOSS
+from clutter.saalos import clutter_loss_saalos
 
 
 @pytest.mark.parametrize("d,cch,h_tx,h_rx,h_gnd,pol,f", [
@@ -76,7 +76,7 @@ def test_negative_arte_clamped_to_zero():
 
 
 import numpy as np
-from clutter_saalos import clutter_loss_saalos_vec
+from clutter.saalos import clutter_loss_saalos_vec
 
 
 def test_vec_matches_scalar_h_pol():

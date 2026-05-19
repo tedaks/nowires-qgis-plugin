@@ -58,12 +58,12 @@ def test_windows_compat_honors_override_env_var():
 
 
 def test_executor_calls_configure_windows():
-    src = _source("_coverage_executor.py")
+    src = _source("coverage/_executor.py")
     assert "configure_windows_multiprocessing" in src
 
 
 def test_should_use_multiprocessing_consults_windows_helper():
-    src = _source("coverage_pool.py")
+    src = _source("coverage/pool.py")
     assert "find_windows_python_executable" in src
 
 

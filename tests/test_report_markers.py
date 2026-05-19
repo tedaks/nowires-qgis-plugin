@@ -19,7 +19,7 @@ except Exception:
 import pytest
 
 if _REAL_GDAL:
-    from NoWires.report_markers import (
+    from NoWires.report.markers import (
         ogr_driver_for_path,
         remove_existing_ogr_dataset,
         build_p2p_marker_records,

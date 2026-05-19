@@ -39,11 +39,11 @@ from qgis.core import QgsProcessingProvider
 logger = logging.getLogger(__name__)
 
 _ALGORITHM_CLASSES = [
-    ("algorithm_p2p", "P2PAlgorithm"),
-    ("algorithm_coverage", "CoverageAlgorithm"),
-    ("algorithm_coverage_comparison", "CoverageComparisonAlgorithm"),
-    ("algorithm_contour", "ContourLinesAlgorithm"),
-    ("algorithm_batch", "BatchAnalysisAlgorithm"),
+    ("algorithm.p2p", "P2PAlgorithm"),
+    ("algorithm.coverage", "CoverageAlgorithm"),
+    ("algorithm.coverage_comparison", "CoverageComparisonAlgorithm"),
+    ("algorithm.contour", "ContourLinesAlgorithm"),
+    ("algorithm.batch", "BatchAnalysisAlgorithm"),
 ]
 
 

@@ -24,7 +24,7 @@ pytestmark = [
 
 class TestBatchMarkerLayer:
     def test_marker_layer_loads_in_qgis(self, qgis_app, tmp_path):
-        from NoWires.batch_writer import write_batch_marker_layer
+        from NoWires.batch.writer import write_batch_marker_layer
         gpkg = str(tmp_path / "batch_markers.gpkg")
         results = [
             {"tx_lat": 47.0, "tx_lon": 8.0, "rx_lat": 47.05, "rx_lon": 8.05,
@@ -46,7 +46,7 @@ class TestBatchMarkerLayer:
             "layer load failed")
 
     def test_marker_layer_feature_count(self, qgis_app, tmp_path):
-        from NoWires.batch_writer import write_batch_marker_layer
+        from NoWires.batch.writer import write_batch_marker_layer
         gpkg = str(tmp_path / "batch_count.gpkg")
         results = [
             {"tx_lat": 47.0, "tx_lon": 8.0, "rx_lat": 47.05, "rx_lon": 8.05,
@@ -63,7 +63,7 @@ class TestBatchMarkerLayer:
         assert layer.featureCount() == 1
 
     def test_marker_layer_has_expected_fields(self, qgis_app, tmp_path):
-        from NoWires.batch_writer import write_batch_marker_layer
+        from NoWires.batch.writer import write_batch_marker_layer
         gpkg = str(tmp_path / "batch_fields.gpkg")
         results = [
             {"tx_lat": 47.0, "tx_lon": 8.0, "rx_lat": 47.05, "rx_lon": 8.05,
@@ -83,7 +83,7 @@ class TestBatchMarkerLayer:
             assert name in field_names, "Missing field: {}".format(name)
 
     def test_marker_layer_is_point_geometry(self, qgis_app, tmp_path):
-        from NoWires.batch_writer import write_batch_marker_layer
+        from NoWires.batch.writer import write_batch_marker_layer
         gpkg = str(tmp_path / "batch_geom.gpkg")
         results = [
             {"tx_lat": 47.0, "tx_lon": 8.0, "rx_lat": 47.05, "rx_lon": 8.05,
