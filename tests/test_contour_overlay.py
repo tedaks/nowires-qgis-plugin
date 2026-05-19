@@ -13,7 +13,7 @@ import os
 import numpy as np
 import pytest
 
-from contour_overlay import prepare_elevation_overlay
+from contour.overlay import prepare_elevation_overlay
 
 pytestmark = [pytest.mark.qgis_integration]
 

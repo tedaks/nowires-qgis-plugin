@@ -18,11 +18,11 @@ pytestmark = [pytest.mark.qgis_integration]
 
 class TestContourGenerationContract:
     def test_module_imports_generate(self):
-        from contour_generation import generate_contour_lines
+        from contour.generation import generate_contour_lines
         assert callable(generate_contour_lines)
 
     def test_module_imports_reproject(self):
-        from contour_generation import reproject_and_export
+        from contour.generation import reproject_and_export
         assert callable(reproject_and_export)
 
 
@@ -49,7 +49,7 @@ class TestContourGenerationGDAL:
 
     def test_generate_contour_lines_produces_shapefile(self, tmp_path):
         from osgeo import ogr
-        from contour_generation import generate_contour_lines
+        from contour.generation import generate_contour_lines
         dem_path = self._create_dem(str(tmp_path / "test_dem.tif"))
         out_dir = str(tmp_path / "contours_out")
         os.makedirs(out_dir, exist_ok=True)
@@ -65,7 +65,7 @@ class TestContourGenerationGDAL:
 
     def test_contour_lines_have_valid_geometry(self, tmp_path):
         from osgeo import ogr
-        from contour_generation import generate_contour_lines
+        from contour.generation import generate_contour_lines
         dem_path = self._create_dem(str(tmp_path / "test_dem.tif"))
         out_dir = str(tmp_path / "contours_out2")
         os.makedirs(out_dir, exist_ok=True)
@@ -80,7 +80,7 @@ class TestContourGenerationGDAL:
 
     def test_contour_lines_have_srs_4326(self, tmp_path):
         from osgeo import ogr
-        from contour_generation import generate_contour_lines
+        from contour.generation import generate_contour_lines
         dem_path = self._create_dem(str(tmp_path / "test_dem.tif"))
         out_dir = str(tmp_path / "contours_out3")
         os.makedirs(out_dir, exist_ok=True)

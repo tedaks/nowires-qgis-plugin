@@ -32,7 +32,7 @@ def _result_row(status="VIABLE"):
     "\t=2+2",
 ])
 def test_status_starting_with_formula_char_is_sanitized(tmp_path, payload):
-    from NoWires.batch_writer import write_batch_csv
+    from NoWires.batch.writer import write_batch_csv
 
     out = tmp_path / "batch.csv"
     write_batch_csv(str(out), [_result_row(status=payload)], mode=1)
@@ -52,7 +52,7 @@ def test_status_starting_with_formula_char_is_sanitized(tmp_path, payload):
 
 def test_status_safe_value_is_untouched(tmp_path):
     """Sanity: ordinary status strings must not be modified."""
-    from NoWires.batch_writer import write_batch_csv
+    from NoWires.batch.writer import write_batch_csv
 
     out = tmp_path / "batch.csv"
     write_batch_csv(str(out), [_result_row(status="VIABLE")], mode=1)
@@ -65,7 +65,7 @@ def test_status_safe_value_is_untouched(tmp_path):
 
 def test_negative_number_status_is_preserved(tmp_path):
     """Negative numbers in a status-like cell should not be escaped as a formula."""
-    from NoWires.batch_writer import write_batch_csv
+    from NoWires.batch.writer import write_batch_csv
 
     out = tmp_path / "batch.csv"
     # status of "-12.3" must round-trip as the numeric string; only non-numeric

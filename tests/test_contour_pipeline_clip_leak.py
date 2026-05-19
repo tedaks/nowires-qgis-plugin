@@ -15,7 +15,7 @@ import os
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PLUGIN_DIR = os.path.join(_HERE, os.pardir)
-_SOURCE_FILE = os.path.normpath(os.path.join(_PLUGIN_DIR, "contour_pipeline.py"))
+_SOURCE_FILE = os.path.normpath(os.path.join(_PLUGIN_DIR, "contour/pipeline.py"))
 
 
 def test_gdal_open_clip_check_releases_dataset():

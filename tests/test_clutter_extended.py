@@ -154,7 +154,7 @@ class TestComputeTerminalClutterLossesDisabled:
 
 class TestLandCoverGridVectorizedAdvanced:
     def test_advanced_grid_returns_category_strings(self):
-        from clutter_context import ClutterLossContext
+        from clutter.context import ClutterLossContext
         grid = LandCoverGrid(
             data=np.array([[50, 10], [80, 20]], dtype=np.int16),
             min_lat=0.0, max_lat=1.0,
@@ -175,7 +175,7 @@ class TestLandCoverGridVectorizedAdvanced:
         assert cats[1, 1] == "dense_rural"
 
     def test_advanced_grid_override_broadcasts(self):
-        from clutter_context import ClutterLossContext
+        from clutter.context import ClutterLossContext
         grid = LandCoverGrid(
             data=np.array([[50, 50]], dtype=np.int16),
             min_lat=0.0, max_lat=1.0,

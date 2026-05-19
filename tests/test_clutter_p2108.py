@@ -10,7 +10,7 @@ exercise p2108_terrestrial_stat directly.
 
 import numpy as np
 
-from p2108_terrestrial_stat import (
+from clutter.p2108_terrestrial_stat import (
     clutter_loss_p2108_terrestrial_stat,
     clutter_loss_p2108_terrestrial_stat_vec,
 )

@@ -13,7 +13,7 @@ import os
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PLUGIN_DIR = os.path.join(_HERE, os.pardir)
-_SOURCE_FILE = os.path.normpath(os.path.join(_PLUGIN_DIR, "algorithm_contour.py"))
+_SOURCE_FILE = os.path.normpath(os.path.join(_PLUGIN_DIR, "algorithm/contour.py"))
 
 
 def test_contour_init_routes_fallback_through_tmp_manager():

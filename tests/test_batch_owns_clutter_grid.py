@@ -15,7 +15,7 @@ auto-downloaded.
 
 def test_batch_params_dataclass_has_owns_clutter_grid():
     """BatchAnalysisParams must include an owns_clutter_grid field."""
-    from batch_analysis_params import BatchAnalysisParams
+    from batch.analysis_params import BatchAnalysisParams
 
     params = BatchAnalysisParams()
     assert hasattr(params, "owns_clutter_grid"), (
@@ -28,7 +28,7 @@ def test_batch_params_dataclass_has_owns_clutter_grid():
 
 def test_batch_analysis_params_owns_clutter_grid_default():
     """owns_clutter_grid must default to False, not True."""
-    from batch_analysis_params import BatchAnalysisParams
+    from batch.analysis_params import BatchAnalysisParams
 
     p = BatchAnalysisParams()
     assert p.owns_clutter_grid is False

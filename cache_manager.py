@@ -7,8 +7,8 @@ import glob as _glob
 import os
 import shutil
 
-from .constants import BYTES_PER_MEBIBYTE
-from .dem_downloader import get_temp_dir
+from NoWires.constants import BYTES_PER_MEBIBYTE
+from NoWires.dem_downloader import get_temp_dir
 
 _DEM_PATTERNS = (
     "Copernicus_DSM_COG_*.tif",

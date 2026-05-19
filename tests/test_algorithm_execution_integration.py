@@ -30,7 +30,7 @@ def feedback():
 
 class TestAlgorithmParameterConsistency:
     def test_p2p_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm_p2p import P2PAlgorithm
+        from NoWires.algorithm.p2p import P2PAlgorithm
         alg = P2PAlgorithm()
         alg.initAlgorithm({})
         assert alg.name() == "p2p_analysis"
@@ -41,7 +41,7 @@ class TestAlgorithmParameterConsistency:
             assert required in params, f"P2P missing param: {required}"
 
     def test_coverage_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm_coverage import CoverageAlgorithm
+        from NoWires.algorithm.coverage import CoverageAlgorithm
         alg = CoverageAlgorithm()
         alg.initAlgorithm({})
         assert alg.name() == "coverage_analysis"
@@ -51,7 +51,7 @@ class TestAlgorithmParameterConsistency:
             assert required in params, f"Coverage missing param: {required}"
 
     def test_contour_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm_contour import ContourLinesAlgorithm
+        from NoWires.algorithm.contour import ContourLinesAlgorithm
         alg = ContourLinesAlgorithm()
         alg.initAlgorithm({})
         assert alg.name() == "contour_lines"
@@ -60,7 +60,7 @@ class TestAlgorithmParameterConsistency:
             assert required in params, f"Contour missing param: {required}"
 
     def test_batch_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm_batch import BatchAnalysisAlgorithm
+        from NoWires.algorithm.batch import BatchAnalysisAlgorithm
         alg = BatchAnalysisAlgorithm()
         alg.initAlgorithm({})
         assert alg.name() == "batch_p2p_analysis"

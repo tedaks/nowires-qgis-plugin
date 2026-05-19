@@ -8,7 +8,7 @@ import math
 import numpy as np
 import pytest
 
-from p2108_height_gain import (
+from clutter.p2108_height_gain import (
     _J_nu,
     height_gain_loss,
     height_gain_loss_vec,

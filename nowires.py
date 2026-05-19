@@ -35,12 +35,12 @@ from qgis.PyQt.QtWidgets import QInputDialog
 
 from qgis.core import QgsApplication
 
-from .coverage_legend import remove_coverage_legend
-from .coverage_opacity import find_latest_coverage_layer, CoverageOpacityDialog
-from .provider import NoWiresProvider
-from .three_d import SCENE_MODE_GLOBE, SCENE_MODE_LOCAL, open_nowires_3d_view
-from .cache_manager import clear_dem_cache, format_cache_size, get_cache_size
-from .constants import BYTES_PER_MEBIBYTE
+from NoWires.coverage.legend import remove_coverage_legend
+from NoWires.coverage.opacity import find_latest_coverage_layer, CoverageOpacityDialog
+from NoWires.provider import NoWiresProvider
+from NoWires.three_d import SCENE_MODE_GLOBE, SCENE_MODE_LOCAL, open_nowires_3d_view
+from NoWires.cache_manager import clear_dem_cache, format_cache_size, get_cache_size
+from NoWires.constants import BYTES_PER_MEBIBYTE
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ def _stale_temp_dir_count(max_entries: int = 1000) -> int:
         except OSError:
             pass
     try:
-        from .dem_downloader import get_temp_dir
+        from NoWires.dem_downloader import get_temp_dir
         user_dir = get_temp_dir()
         for e in os.listdir(user_dir):
             if any(e.startswith(p) for p in prefixes) and e not in entries:
@@ -155,7 +155,7 @@ class NoWiresPlugin:
         if not hasattr(os, "geteuid"):
             return
         try:
-            from .shared_dem_grid import cleanup_stale_shm_entries
+            from NoWires.shared_dem_grid import cleanup_stale_shm_entries
             cleanup_stale_shm_entries("/dev/shm", os.geteuid())
         except OSError as exc:
             logger.debug("shared memory cleanup: %s", exc)
@@ -254,7 +254,7 @@ class NoWiresPlugin:
         processing.execAlgorithmDialog("nowires:batch_p2p_analysis")
 
     def run_pattern_preview(self):
-        from .antenna_pattern_preview import AntennaPatternPreviewDialog
+        from NoWires.antenna_pattern_preview import AntennaPatternPreviewDialog
         if self._pattern_preview_dialog is not None:
             self._pattern_preview_dialog.close()
         dlg = AntennaPatternPreviewDialog(parent=self.iface.mainWindow())

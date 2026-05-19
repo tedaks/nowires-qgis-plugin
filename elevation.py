@@ -39,9 +39,9 @@ import numpy as np
 
 from osgeo import gdal
 
-from ._bilinear import bilinear_sample, bilinear_sample_grid
-from ._geo_utils import _interpolate_longitudes_shortest, sample_line_from_grid  # noqa: F401 re-export
-from .constants import BYTES_PER_MEBIBYTE, EARTH_RADIUS_M
+from NoWires._bilinear import bilinear_sample, bilinear_sample_grid
+from NoWires._geo_utils import _interpolate_longitudes_shortest, sample_line_from_grid  # noqa: F401 re-export
+from NoWires.constants import BYTES_PER_MEBIBYTE, EARTH_RADIUS_M
 
 logger = logging.getLogger(__name__)
 

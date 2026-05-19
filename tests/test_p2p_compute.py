@@ -18,7 +18,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from NoWires.p2p_analysis_params import P2PAnalysisParams
+from NoWires.p2p.analysis_params import P2PAnalysisParams
 from NoWires.radio import ITMResult
 from NoWires.constants import ITM_LOSS_UPPER_BOUND
 from nan_utils import interpolate_nan_elevations, interpolate_nan_array
@@ -171,16 +171,16 @@ def _load_p2p_compute_with_test_stubs(monkeypatch):
     dem_stub = types.ModuleType("NoWires.dem_downloader")
     dem_stub.ensure_dem_for_area = lambda *args, **kwargs: "/tmp/dem.tif"
     dem_stub.get_temp_dir = lambda: "/tmp/nowires_test"
-    p2p_params_stub = types.ModuleType("NoWires.p2p_params")
+    p2p_params_stub = types.ModuleType("NoWires.p2p.params")
     p2p_params_stub.report_p2p_results = lambda *args, **kwargs: None
     processing_utils_stub = types.ModuleType("NoWires.processing_utils")
     processing_utils_stub.queue_layer_for_loading = lambda *args, **kwargs: None
     processing_utils_stub.register_destination_layer = lambda *args, **kwargs: None
     monkeypatch.setitem(sys.modules, "NoWires.dem_downloader", dem_stub)
-    monkeypatch.setitem(sys.modules, "NoWires.p2p_params", p2p_params_stub)
+    monkeypatch.setitem(sys.modules, "NoWires.p2p.params", p2p_params_stub)
     monkeypatch.setitem(sys.modules, "NoWires.processing_utils", processing_utils_stub)
     module_name = "NoWires._test_p2p_compute"
-    module_path = os.path.join(os.path.dirname(__file__), "..", "p2p_compute.py")
+    module_path = os.path.join(os.path.dirname(__file__), "..", "p2p/compute.py")
     spec = importlib.util.spec_from_file_location(module_name, module_path)
     p2p_compute = importlib.util.module_from_spec(spec)
     monkeypatch.setitem(sys.modules, module_name, p2p_compute)
@@ -470,7 +470,7 @@ class TestP2PITMLossCapConsistency:
         assert write_args.get("itm_loss_db") == ITM_LOSS_UPPER_BOUND
 
     def test_feedback_log_shows_capped_loss(self):
-        from NoWires.p2p_report_display import report_p2p_results
+        from NoWires.p2p.report_display import report_p2p_results
 
         class _CapturingFeedback:
             def __init__(self):
@@ -504,7 +504,7 @@ class TestP2PITMLossCapConsistency:
         assert "999" not in itm_lines[0]
 
     def test_chart_status_text_uses_capped_loss(self):
-        from NoWires.p2p_chart_format import build_chart_status_text
+        from NoWires.p2p.chart_format import build_chart_status_text
         result = SimpleNamespace(loss_db=999.0)
         text = build_chart_status_text(result, prx_dbm=-63.0, margin_db=27.0,
                                        itm_loss_db=ITM_LOSS_UPPER_BOUND)
@@ -512,7 +512,7 @@ class TestP2PITMLossCapConsistency:
         assert "999" not in text
 
     def test_chart_status_text_falls_back_without_itm_loss_db(self):
-        from NoWires.p2p_chart_format import build_chart_status_text
+        from NoWires.p2p.chart_format import build_chart_status_text
         result = SimpleNamespace(loss_db=150.0)
         text = build_chart_status_text(result, prx_dbm=-80.0, margin_db=10.0)
         assert "150.0" in text

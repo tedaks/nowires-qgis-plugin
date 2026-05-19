@@ -5,7 +5,7 @@
 """Tests for _coverage_executor sequential mode and chunk sizing."""
 
 
-from coverage_pool import _dynamic_chunk_size, _MIN_CHUNK_SIZE, _MAX_CHUNK_SIZE
+from coverage.pool import _dynamic_chunk_size, _MIN_CHUNK_SIZE, _MAX_CHUNK_SIZE
 
 
 class TestDynamicChunkSize:

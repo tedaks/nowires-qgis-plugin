@@ -13,12 +13,12 @@ COMP_SOURCES = [
     for f in (
         "base_algorithm.py",
         "raster_io.py",
-        "algorithm_coverage_comparison.py",
-        "comparison_params.py",
-        "comparison_add_params.py",
-        "comparison_outputs.py",
-        "comparison_panel.py",
-        "comparison_reporting.py",
+        "algorithm/coverage_comparison.py",
+        "comparison/params.py",
+        "comparison/add_params.py",
+        "comparison/outputs.py",
+        "comparison/panel.py",
+        "comparison/reporting.py",
     )
 ]
 
