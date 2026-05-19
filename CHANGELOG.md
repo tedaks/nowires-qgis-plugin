@@ -7,6 +7,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Planned for v1.7.0 (PATCH — tech-debt / cleanup, zero behavior change)
+
+- Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 35 params, `build_p2p_report_payload` carries 35, `build_coverage_report_payload_for_grid` carries 31. Most natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist; the work is wiring them through.
+
+### Planned for v1.7.0 (MINOR — additive features)
+
+- Extend PDF report output (`OUTPUT_REPORT_PDF`) from Coverage Analysis to Point-to-Point Analysis and Coverage Comparison. The shared `report.pdf.write_report_pdf()` writer is already in place; remaining work is parameter registration and `_write_*_outputs` wiring in `algorithm.p2p` and `algorithm.coverage_comparison`.
+- Promote the standalone "Preview Antenna Pattern" dialog into an inline `QgsProcessingParameterWidgetFactoryInterface` so the polar plot renders directly in the Coverage / P2P parameter dialog next to the pattern-file picker.
+- Audit `report.pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks. Resolve before or during PDF parity work.
+- Add a radio preset library. Today every `tx_power` / `rx_sens` / `f_mhz` / `polarization` value is typed by hand from a vendor datasheet. Mirror the existing `ANTENNA_PRESETS` pattern in `antenna.py:84-90`: add a `RADIO_PRESETS` dict in a new `radio_presets.py` keyed by manufacturer + model, each entry a frozen dataclass (`label`, `f_mhz_min`, `f_mhz_max`, `tx_power_options_dbm`, `rx_sens_dbm`, `polarization`, `notes`). Add a `RADIO_PRESET` enum parameter to P2P, Batch, Coverage, and Coverage Comparison; selecting one populates the relevant numeric fields. Seed the library with the most common tactical / commercial radios (e.g. L3Harris RF-7800V-HH, AN/PRC-152, Motorola APX, Tait TM9400, Codan Envoy). Optionally extend with a `*.radio.json` drop-in folder so users can add their own without code changes. Skip PDF-parsing approaches — datasheet layouts vary enough between vendors that regex/heuristic extraction fails silently in dangerous ways for engineering work; LLM-based extraction is out of scope for the plugin runtime. Pre-flight grep on `tx_power` / `rx_sens` to ensure no callers bypass the new dialog flow; this touches the parameter-registration surface so it's a MINOR bump.
+
 ## [1.6.0] - 2026-05-19
 
 ### Refactor
@@ -20,17 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **NOTE FOR USERS:** Restart QGIS after upgrading. Do not use Plugin
   Reloader, which retains references to deleted flat modules and will
   raise ImportError on first invocation post-upgrade.
-
-### Planned for v1.7.0 (PATCH — tech-debt / cleanup, zero behavior change)
-
-- Bundle parameter explosion into frozen dataclasses. `compute_coverage` carries 35 params, `build_p2p_report_payload` carries 35, `build_coverage_report_payload_for_grid` carries 31. Most natural groupings (`AntennaConfig`, clutter bundle, link budget, BEL settings) already exist; the work is wiring them through.
-
-### Planned for v1.7.0 (MINOR — additive features)
-
-- Extend PDF report output (`OUTPUT_REPORT_PDF`) from Coverage Analysis to Point-to-Point Analysis and Coverage Comparison. The shared `report_pdf.write_report_pdf()` writer is already in place; remaining work is parameter registration and `_write_*_outputs` wiring in `algorithm_p2p` and `algorithm_coverage_comparison`.
-- Promote the standalone "Preview Antenna Pattern" dialog into an inline `QgsProcessingParameterWidgetFactoryInterface` so the polar plot renders directly in the Coverage / P2P parameter dialog next to the pattern-file picker.
-- Audit `report_pdf.write_report_pdf()` for paged-table behaviour on long reports — current implementation lets `QTextDocument` decide page breaks. Resolve before or during PDF parity work.
-- Add a radio preset library. Today every `tx_power` / `rx_sens` / `f_mhz` / `polarization` value is typed by hand from a vendor datasheet. Mirror the existing `ANTENNA_PRESETS` pattern in `antenna.py:84-90`: add a `RADIO_PRESETS` dict in a new `radio_presets.py` keyed by manufacturer + model, each entry a frozen dataclass (`label`, `f_mhz_min`, `f_mhz_max`, `tx_power_options_dbm`, `rx_sens_dbm`, `polarization`, `notes`). Add a `RADIO_PRESET` enum parameter to P2P, Batch, Coverage, and Coverage Comparison; selecting one populates the relevant numeric fields. Seed the library with the most common tactical / commercial radios (e.g. L3Harris RF-7800V-HH, AN/PRC-152, Motorola APX, Tait TM9400, Codan Envoy). Optionally extend with a `*.radio.json` drop-in folder so users can add their own without code changes. Skip PDF-parsing approaches — datasheet layouts vary enough between vendors that regex/heuristic extraction fails silently in dangerous ways for engineering work; LLM-based extraction is out of scope for the plugin runtime. Pre-flight grep on `tx_power` / `rx_sens` to ensure no callers bypass the new dialog flow; this touches the parameter-registration surface so it's a MINOR bump.
 
 ## [1.5.12] - 2026-05-18
 
