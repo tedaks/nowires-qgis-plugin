@@ -80,7 +80,7 @@ def _create_lines_gpkg(path, field_defs):
 
 class TestFresnelPolygonSymbology:
     def test_apply_polygon_symbology_sets_renderer(self, qgis_app, tmp_path):
-        from NoWires.p2p_symbology import apply_fresnel_polygon_symbology
+        from NoWires.p2p.symbology import apply_fresnel_polygon_symbology
         gpkg = str(tmp_path / "fresnel_poly.gpkg")
         _create_polygon_gpkg(gpkg)
         layer = QgsVectorLayer(gpkg, "Fresnel Polygons", "ogr")
@@ -91,7 +91,7 @@ class TestFresnelPolygonSymbology:
             "Expected QgsRuleBasedRenderer, got {}".format(type(renderer).__name__)
 
     def test_polygon_renderer_has_type_rules(self, qgis_app, tmp_path):
-        from NoWires.p2p_symbology import apply_fresnel_polygon_symbology
+        from NoWires.p2p.symbology import apply_fresnel_polygon_symbology
         gpkg = str(tmp_path / "fresnel_poly_rules.gpkg")
         _create_polygon_gpkg(gpkg)
         layer = QgsVectorLayer(gpkg, "FP Rules", "ogr")
@@ -106,7 +106,7 @@ class TestFresnelPolygonSymbology:
 
 class TestFresnelLinesSymbology:
     def test_apply_lines_symbology_sets_renderer(self, qgis_app, tmp_path):
-        from NoWires.p2p_symbology import apply_fresnel_lines_symbology
+        from NoWires.p2p.symbology import apply_fresnel_lines_symbology
         gpkg = str(tmp_path / "fresnel_lines.gpkg")
         _create_lines_gpkg(gpkg, [("type", "string"), ("blocked", "integer")])
         layer = QgsVectorLayer(gpkg, "Fresnel Lines", "ogr")
@@ -116,7 +116,7 @@ class TestFresnelLinesSymbology:
         assert isinstance(renderer, QgsRuleBasedRenderer)
 
     def test_lines_renderer_has_expected_rules(self, qgis_app, tmp_path):
-        from NoWires.p2p_symbology import apply_fresnel_lines_symbology
+        from NoWires.p2p.symbology import apply_fresnel_lines_symbology
         gpkg = str(tmp_path / "fresnel_lines_rules.gpkg")
         _create_lines_gpkg(gpkg, [("type", "string"), ("blocked", "integer")])
         layer = QgsVectorLayer(gpkg, "FL Rules", "ogr")
@@ -131,7 +131,7 @@ class TestFresnelLinesSymbology:
 
 class TestProfileLineSymbology:
     def test_apply_profile_line_symbology_sets_renderer(self, qgis_app, tmp_path):
-        from NoWires.p2p_symbology import apply_profile_line_symbology
+        from NoWires.p2p.symbology import apply_profile_line_symbology
         gpkg = str(tmp_path / "profile_line.gpkg")
         _create_lines_gpkg(gpkg, [("mode", "integer"), ("mode_name", "string")])
         layer = QgsVectorLayer(gpkg, "Profile Line", "ogr")
@@ -141,7 +141,7 @@ class TestProfileLineSymbology:
         assert isinstance(renderer, QgsRuleBasedRenderer)
 
     def test_profile_line_renderer_has_mode_rules(self, qgis_app, tmp_path):
-        from NoWires.p2p_symbology import apply_profile_line_symbology
+        from NoWires.p2p.symbology import apply_profile_line_symbology
         gpkg = str(tmp_path / "profile_modes.gpkg")
         _create_lines_gpkg(gpkg, [("mode", "integer"), ("mode_name", "string")])
         layer = QgsVectorLayer(gpkg, "PL Modes", "ogr")

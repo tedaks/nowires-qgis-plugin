@@ -19,9 +19,9 @@ The following files are derived from or inspired by the nowires project (adapted
 
 | Plugin file | Original source |
 |---|---|
-| `algorithm_coverage.py` | `apps/api/app/coverage.py`, `apps/api/app/coverage_render.py` |
-| `algorithm_coverage_comparison.py` | `apps/api/app/coverage.py`, `apps/api/app/coverage_render.py` |
-| `algorithm_p2p.py` | `apps/api/app/p2p.py` |
+| `algorithm/coverage.py` | `apps/api/app/coverage.py`, `apps/api/app/coverage_render.py` |
+| `algorithm/coverage_comparison.py` | `apps/api/app/coverage.py`, `apps/api/app/coverage_render.py` |
+| `algorithm/p2p.py` | `apps/api/app/p2p.py` |
 
 | `coverage_engine.py` | `apps/api/app/coverage_workers.py`, `apps/api/app/coverage_render.py` |
 | `radio.py` (ITM bridge, Fresnel, signal levels) | `apps/api/app/itm_bridge.py`, `apps/api/app/math_kernels.py`, `apps/api/app/signal_levels.py` |
@@ -91,13 +91,13 @@ The following files are derived from the ContourLines plugin:
 
 | Plugin file | Original source |
 |---|---|
-| `algorithm_contour.py` | `contour_lines_algorithm.py` |
+| `algorithm/contour.py` | `contour_lines_algorithm.py` |
 | `dem_downloader.py` (DEM download, clip, merge logic) | `contour_lines_algorithm.py` (tile download and processing sections) |
-| `contour_generation.py` | `contour_lines_algorithm.py` (contour generation and export sections) |
-| `contour_pipeline.py` | `contour_lines_algorithm.py` (proxy, AOI, DEM pipeline, and layer-loading sections) |
-| `contour_symbology.py` | `contour_lines_algorithm.py` (rule-based contour renderer and labels) |
-| `contour_overlay.py` | `contour_lines_algorithm.py` (hillshade/elevation overlay sections) |
-| `contour_smoothing.py` | `contour_lines_algorithm.py` (smoothing sections) |
+| `contour/generation.py` | `contour_lines_algorithm.py` (contour generation and export sections) |
+| `contour/pipeline.py` | `contour_lines_algorithm.py` (proxy, AOI, DEM pipeline, and layer-loading sections) |
+| `contour/symbology.py` | `contour_lines_algorithm.py` (rule-based contour renderer and labels) |
+| `contour/overlay.py` | `contour_lines_algorithm.py` (hillshade/elevation overlay sections) |
+| `contour/smoothing.py` | `contour_lines_algorithm.py` (smoothing sections) |
 
 ---
 

@@ -47,7 +47,7 @@ def _create_contour_gpkg(path):
 
 class TestContourSymbology:
     def test_apply_contour_symbology_sets_renderer(self, qgis_app, tmp_path):
-        from NoWires.contour_symbology import apply_contour_symbology
+        from NoWires.contour.symbology import apply_contour_symbology
         gpkg = str(tmp_path / "contours.gpkg")
         _create_contour_gpkg(gpkg)
         layer = QgsVectorLayer(gpkg, "Contours", "ogr")
@@ -61,7 +61,7 @@ class TestContourSymbology:
             "Expected QgsRuleBasedRenderer, got {}".format(type(renderer).__name__)
 
     def test_contour_renderer_has_index_and_normal_rules(self, qgis_app, tmp_path):
-        from NoWires.contour_symbology import apply_contour_symbology
+        from NoWires.contour.symbology import apply_contour_symbology
         gpkg = str(tmp_path / "contours_rules.gpkg")
         _create_contour_gpkg(gpkg)
         layer = QgsVectorLayer(gpkg, "Contours", "ogr")
@@ -75,7 +75,7 @@ class TestContourSymbology:
             "Expected >= 2 rules (index + normal), got {}".format(len(child_count))
 
     def test_contour_labels_enabled(self, qgis_app, tmp_path):
-        from NoWires.contour_symbology import apply_contour_symbology
+        from NoWires.contour.symbology import apply_contour_symbology
         gpkg = str(tmp_path / "contours_labels.gpkg")
         _create_contour_gpkg(gpkg)
         layer = QgsVectorLayer(gpkg, "Contours", "ogr")
@@ -85,7 +85,7 @@ class TestContourSymbology:
         assert layer.labelsEnabled(), "Labels should be enabled after applying symbology"
 
     def test_contour_labeling_is_simple_labeling(self, qgis_app, tmp_path):
-        from NoWires.contour_symbology import apply_contour_symbology
+        from NoWires.contour.symbology import apply_contour_symbology
         from qgis.core import QgsVectorLayerSimpleLabeling
         gpkg = str(tmp_path / "contours_simple.gpkg")
         _create_contour_gpkg(gpkg)

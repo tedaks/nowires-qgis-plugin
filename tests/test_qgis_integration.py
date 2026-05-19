@@ -78,7 +78,7 @@ class TestProviderRegistryIntegration:
 class TestCoverageStyleIntegration:
     def test_apply_coverage_style_on_real_raster_layer(self, qgis_app):
         """Verify apply_coverage_style works on a real QgsRasterLayer."""
-        from coverage_palette import apply_coverage_style
+        from coverage.palette import apply_coverage_style
         from osgeo import gdal, osr
         tmp = tempfile.mktemp(suffix=".tif")
         driver = gdal.GetDriverByName("GTiff")

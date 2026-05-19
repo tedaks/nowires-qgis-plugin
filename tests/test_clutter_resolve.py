@@ -6,17 +6,17 @@
 
 from unittest.mock import MagicMock
 
-from clutter_resolve import (
+from clutter.resolve import (
     _maybe_warn_low_vhf_p2108_combined,
     _resolve_category,
     resolve_category_advanced,
 )
-from clutter_categories import legacy_to_advanced_override
+from clutter.categories import legacy_to_advanced_override
 
 
 class TestMaybeWarnLowVhfP2108Combined:
     def test_emits_warning_on_first_call(self, caplog):
-        import clutter_resolve
+        import clutter.resolve as clutter_resolve
         clutter_resolve._STATE.warned_low_vhf = False
         import logging
         with caplog.at_level(logging.WARNING, logger="clutter_resolve"):
@@ -25,7 +25,7 @@ class TestMaybeWarnLowVhfP2108Combined:
         assert len(warns) == 1
 
     def test_suppresses_warning_on_second_call(self, caplog):
-        import clutter_resolve
+        import clutter.resolve as clutter_resolve
         clutter_resolve._STATE.warned_low_vhf = False
         import logging
         with caplog.at_level(logging.WARNING, logger="clutter_resolve"):
@@ -35,7 +35,7 @@ class TestMaybeWarnLowVhfP2108Combined:
         assert len(warns) == 1
 
     def test_resets_after_manual_reset(self, caplog):
-        import clutter_resolve
+        import clutter.resolve as clutter_resolve
         clutter_resolve._STATE.warned_low_vhf = False
         import logging
         with caplog.at_level(logging.WARNING, logger="clutter_resolve"):
@@ -47,7 +47,7 @@ class TestMaybeWarnLowVhfP2108Combined:
         assert len(warns) == 2
 
     def test_returns_early_without_warning_when_latch_set(self, caplog):
-        import clutter_resolve
+        import clutter.resolve as clutter_resolve
         clutter_resolve._STATE.warned_low_vhf = True
         import logging
         with caplog.at_level(logging.WARNING, logger="clutter_resolve"):

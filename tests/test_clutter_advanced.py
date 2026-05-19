@@ -7,7 +7,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-from clutter_advanced import (
+from clutter.advanced import (
     ClutterComponents,
     _category_height_m,
     compute_advanced_loss,
@@ -15,13 +15,13 @@ from clutter_advanced import (
     compute_terminal_clutter_loss,
     compute_path_clutter_loss,
 )
-from clutter_resolve import (
+from clutter.resolve import (
     _resolve_category,
     resolve_category_advanced,
 )
-from clutter_categories import legacy_to_advanced_override
-from clutter_categories import CLUTTER_CATEGORY_PARAMS
-from clutter_context import ClutterLossContext
+from clutter.categories import legacy_to_advanced_override
+from clutter.categories import CLUTTER_CATEGORY_PARAMS
+from clutter.context import ClutterLossContext
 
 
 def _ctx(**overrides):
@@ -117,7 +117,7 @@ class TestComputeAdvancedLoss:
         assert comp.path_loss_db == 0.0
         assert comp.model == "p2108_combined"
 
-    @patch("clutter_advanced.clutter_loss_saalos", return_value=8.5)
+    @patch("clutter.advanced.clutter_loss_saalos", return_value=8.5)
     def test_model_saalos_calls_saalos(self, mock_saalos):
         ctx = _ctx(frequency_mhz=900.0)
         comp = compute_advanced_loss("vegetation", "rx", ctx)
@@ -126,7 +126,7 @@ class TestComputeAdvancedLoss:
         assert comp.model == "saalos"
         mock_saalos.assert_called_once()
 
-    @patch("clutter_advanced.height_gain_loss", return_value=3.2)
+    @patch("clutter.advanced.height_gain_loss", return_value=3.2)
     def test_model_p2108_height_gain_calls_height_gain(self, mock_hg):
         ctx = _ctx(frequency_mhz=1000.0, rx_height_m=1.0)
         comp = compute_advanced_loss("open_rural", "rx", ctx)
@@ -135,8 +135,8 @@ class TestComputeAdvancedLoss:
         assert comp.model == "p2108_height_gain"
         mock_hg.assert_called_once()
 
-    @patch("clutter_advanced.clutter_loss_p2108_terrestrial_stat", return_value=5.0)
-    @patch("clutter_advanced.height_gain_loss", return_value=3.0)
+    @patch("clutter.advanced.clutter_loss_p2108_terrestrial_stat", return_value=5.0)
+    @patch("clutter.advanced.height_gain_loss", return_value=3.0)
     def test_p2108_combined_mid_band_dispatches_hg_and_stat(self, mock_hg, mock_stat):
         ctx = _ctx(frequency_mhz=1500.0)
         comp = compute_advanced_loss("suburban", "rx", ctx)
@@ -145,8 +145,8 @@ class TestComputeAdvancedLoss:
         assert "§3.1" in comp.model
         assert "§3.2" in comp.model
 
-    @patch("clutter_advanced.clutter_loss_p2108_terrestrial_stat", return_value=5.0)
-    @patch("clutter_advanced.height_gain_loss", return_value=0.0)
+    @patch("clutter.advanced.clutter_loss_p2108_terrestrial_stat", return_value=5.0)
+    @patch("clutter.advanced.height_gain_loss", return_value=0.0)
     def test_p2108_combined_mid_band_hg_zero_skips_31(self, mock_hg, mock_stat):
         ctx = _ctx(frequency_mhz=1500.0)
         comp = compute_advanced_loss("suburban", "rx", ctx)
@@ -154,8 +154,8 @@ class TestComputeAdvancedLoss:
         assert "§3.2" in comp.model
         assert comp.path_loss_db == 5.0
 
-    @patch("clutter_advanced.clutter_loss_p2108_terrestrial_stat", return_value=0.0)
-    @patch("clutter_advanced.height_gain_loss", return_value=0.0)
+    @patch("clutter.advanced.clutter_loss_p2108_terrestrial_stat", return_value=0.0)
+    @patch("clutter.advanced.height_gain_loss", return_value=0.0)
     def test_p2108_combined_mid_band_both_zero_returns_zero(self, mock_hg, mock_stat):
         ctx = _ctx(frequency_mhz=1500.0)
         comp = compute_advanced_loss("suburban", "rx", ctx)
@@ -163,7 +163,7 @@ class TestComputeAdvancedLoss:
         assert comp.path_loss_db == 0.0
         assert comp.model == "p2108_combined(0)"
 
-    @patch("clutter_advanced.clutter_loss_p2108_terrestrial_stat", return_value=6.0)
+    @patch("clutter.advanced.clutter_loss_p2108_terrestrial_stat", return_value=6.0)
     def test_p2108_combined_high_band_uses_stat_only(self, mock_stat):
         ctx = _ctx(frequency_mhz=10000.0)
         comp = compute_advanced_loss("urban", "rx", ctx)
@@ -171,7 +171,7 @@ class TestComputeAdvancedLoss:
         assert comp.path_loss_db == 6.0
         assert comp.model == "§3.2"
 
-    @patch("clutter_advanced.clutter_loss_p2108_terrestrial_stat", return_value=4.0)
+    @patch("clutter.advanced.clutter_loss_p2108_terrestrial_stat", return_value=4.0)
     def test_p2108_combined_very_high_band_clamps_frequency(self, mock_stat):
         ctx = _ctx(frequency_mhz=100000.0)
         comp = compute_advanced_loss("urban", "rx", ctx)
@@ -182,7 +182,7 @@ class TestComputeAdvancedLoss:
     def test_p2108_combined_low_band_warns_once(self, caplog):
         import logging as _logging
         # Reset the module-level latch so this test is independent of order.
-        import clutter_resolve
+        import clutter.resolve as clutter_resolve
         clutter_resolve._STATE.warned_low_vhf = False
         with caplog.at_level(_logging.WARNING, logger="clutter_advanced"):
             compute_advanced_loss("urban", "rx", _ctx(frequency_mhz=47.0))
@@ -198,7 +198,7 @@ class TestComputeAdvancedLoss:
         assert comp.path_loss_db == 0.0
         assert comp.model == "p2108_combined(0)"
 
-    @patch("clutter_advanced.height_gain_loss", return_value=2.0)
+    @patch("clutter.advanced.height_gain_loss", return_value=2.0)
     def test_p2108_combined_s32_not_applicable(self, mock_hg):
         ctx = _ctx(frequency_mhz=1500.0, rx_height_m=1.0)
         comp = compute_advanced_loss("open_rural", "rx", ctx)
@@ -208,7 +208,7 @@ class TestComputeAdvancedLoss:
 
     def test_unknown_model_returns_zero_unknown(self):
         with patch.dict(
-            CLUTTER_CATEGORY_PARAMS,
+            "clutter.categories.CLUTTER_CATEGORY_PARAMS",
             {"fake_cat": {"height_m": 10.0, "model": "bad_model", "p2108_3_2_applicable": False}},
         ):
             ctx = _ctx(rx_height_m=2.0)
@@ -219,7 +219,7 @@ class TestComputeAdvancedLoss:
 
 
 class TestComputeTerminalClutterLoss:
-    @patch("clutter_advanced.compute_advanced_loss",
+    @patch("clutter.advanced.compute_advanced_loss",
            return_value=ClutterComponents(5.0, 2.5, "p2108_combined"))
     def test_delegates_tocompute_advanced_loss_for_p2108(self, mock_adv):
         ctx = _ctx()
@@ -239,7 +239,7 @@ class TestComputeTerminalClutterLoss:
         ctx = _ctx(distance_m=-100.0)
         assert compute_terminal_clutter_loss("urban", "rx", ctx) == 0.0
 
-    @patch("clutter_advanced.clutter_loss_saalos", return_value=5.0)
+    @patch("clutter.advanced.clutter_loss_saalos", return_value=5.0)
     def test_saalos_model_calls_saalos_directly(self, mock_saalos):
         ctx = _ctx(frequency_mhz=900.0)
         result = compute_terminal_clutter_loss("vegetation", "rx", ctx)

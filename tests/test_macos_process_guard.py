@@ -15,7 +15,7 @@ from macos_compat import (
     find_macos_python_executable,
     is_subprocess,
 )
-from coverage_pool import should_use_multiprocessing
+from coverage.pool import should_use_multiprocessing
 
 
 def _load_init_module():

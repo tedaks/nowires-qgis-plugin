@@ -399,67 +399,99 @@ def install_qgis_mocks():
 
 _TOP_LEVEL_SUBMODULES = (
     "antenna",
-    "coverage_palette",
+    "constants",
     "macos_compat",
     "reliability",
-    "p2p_report_display",
-    "comparison_reporting",
-    "report_markers",
-    "report_export",
     "overlay_raster",
     "nan_utils",
 )
-
 _PACKAGE_SUBMODULES = (
-    "radio",
-    "coverage_analysis_params",
-    "batch_analysis_params",
-    "coverage_compute",
-    "coverage_summary",
-    "fresnel",
-    "elevation",
-    "coverage_engine",
-    "report_payloads",
+    # algorithm/
+    "algorithm.p2p",
+    "algorithm.coverage",
+    "algorithm.coverage_comparison",
+    "algorithm.contour",
+    "algorithm.batch",
+    # batch/
+    "batch.outputs",
+    "batch.params",
+    "batch.writer",
+    "batch.analysis_params",
+    # comparison/
+    "comparison.outputs",
+    "comparison.panel",
+    "comparison.params",
+    "comparison.reporting",
+    "comparison.add_params",
+    # contour/
+    "contour.generation",
+    "contour.overlay",
+    "contour.pipeline",
+    "contour.smoothing",
+    "contour.symbology",
+    "contour._smoothing_vrt",
+    # coverage/
+    "coverage.compute",
+    "coverage.engine",
+    "coverage.pool",
+    "coverage.tasks",
+    "coverage.summary",
+    "coverage.params",
+    "coverage.analysis_params",
+    "coverage.palette",
+    "coverage.legend",
+    "coverage.opacity",
+    "coverage.reporting",
+    "coverage.dem_validate",
+    "coverage._executor",
+    "coverage._result_dispatch",
+    # clutter/ — package is registered as "clutter" (its __init__.py is the
+    # facade); list only submodules below. Do NOT list "clutter.__init__".
     "clutter",
-    "clutter_saalos",
-    "clutter_categories",
-    "clutter_constants",
-    "clutter_context",
-    "clutter_advanced",
-    "clutter_resolve",
-    "p2108_common",
-    "p2108_terrestrial_stat",
-    "p2108_height_gain",
-    "p2109_bel",
-    "tile_download_base",
-    "worldcover_downloader",
-    "p2p_outputs",
-    "p2p_chart",
-    "coverage_pool",
-    "coverage_tasks",
-    "contour_overlay",
-    "contour_generation",
-    "contour_smoothing",
-    "geo_bounds",
-    "comparison_outputs",
-    "coverage_opacity",
-    "coverage_legend",
-    "dem_downloader",
-    "batch_params",
-    "batch_writer",
-    "cache_manager",
+    "clutter.advanced",
+    "clutter.categories",
+    "clutter.constants",
+    "clutter.context",
+    "clutter.grid",
+    "clutter.resolve",
+    "clutter.saalos",
+    "clutter.p2108_common",
+    "clutter.p2108_height_gain",
+    "clutter.p2108_terrestrial_stat",
+    "clutter.p2109_bel",
+    # p2p/
+    "p2p.compute",
+    "p2p.outputs",
+    "p2p.params",
+    "p2p.chart",
+    "p2p.chart_format",
+    "p2p.symbology",
+    "p2p.report_display",
+    "p2p.analysis_params",
+    "p2p._outputs_internal",
+    # report/
+    "report.export",
+    "report.markers",
+    "report.payloads",
+    "report.pdf",
+    # benchmarks/ (unchanged)
     "benchmarks.coverage_runtime",
     "benchmarks.p2p_runtime",
     "benchmarks.reference_cases",
-    "_coverage_executor",
-    "comparison_panel",
-    "comparison_params",
-    "report_pdf",
-    "windows_compat",
+    # root-staying modules
+    "radio",
+    "fresnel",
+    "elevation",
+    "geo_bounds",
     "_geo_utils",
     "_bilinear",
     "shared_params",
-    "p2p_analysis_params",
+    "shared_dem_grid",
+    "dem_downloader",
+    "worldcover_downloader",
+    "tile_download_base",
+    "cache_manager",
+    "windows_compat",
 )
 
 
@@ -487,6 +519,45 @@ def register_nowires_package():
         if hasattr(_init_mod, _attr):
             setattr(_no_wires_pkg, _attr, getattr(_init_mod, _attr))
 
+    # Register subpackage __init__.py modules as packages first, so
+    # that importing their children finds a proper parent package.
+    _SUBPKG_DIRS = (
+        "algorithm",
+        "batch",
+        "comparison",
+        "contour",
+        "coverage",
+        "clutter",
+        "p2p",
+        "report",
+    )
+    _SUBPKG_DIR_SET = set(_SUBPKG_DIRS)
+    for _subpkg in _SUBPKG_DIRS:
+        _subpkg_dir = os.path.join(plugin_dir, _subpkg)
+        _subpkg_mod = types.ModuleType(f"NoWires.{_subpkg}")
+        _subpkg_mod.__path__ = [_subpkg_dir]
+        _subpkg_mod.__package__ = f"NoWires.{_subpkg}"
+        _subpkg_mod.__name__ = f"NoWires.{_subpkg}"
+        # Load and exec the subpackage __init__.py
+        _subpkg_init = os.path.join(_subpkg_dir, "__init__.py")
+        if os.path.isfile(_subpkg_init):
+            _spec = _ilu.spec_from_file_location(
+                f"NoWires.{_subpkg}", _subpkg_init,
+                submodule_search_locations=[_subpkg_dir],
+            )
+            _mod = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(_mod)
+            _subpkg_mod = _mod
+            _subpkg_mod.__path__ = [_subpkg_dir]
+        sys.modules[f"NoWires.{_subpkg}"] = _subpkg_mod
+        setattr(_no_wires_pkg, _subpkg, _subpkg_mod)
+        # Register subpkg as top-level name so bare imports
+        # (e.g. "from coverage.pool import X") resolve.
+        # We must override any existing module (e.g. pytest-cov
+        # "coverage" package) so that bare imports like
+        # "from coverage.engine import ..." find our subpackage.
+        sys.modules[_subpkg] = _subpkg_mod
+
     for _submodule_name in _TOP_LEVEL_SUBMODULES:
         _mod = __import__(_submodule_name, fromlist=[""])
         sys.modules[f"NoWires.{_submodule_name}"] = _mod
@@ -496,6 +567,22 @@ def register_nowires_package():
         _mod = __import__(f"NoWires.{_pkg_sub}", fromlist=[""])
         _leaf = _pkg_sub.split(".")[-1]
         sys.modules[f"NoWires.{_pkg_sub}"] = _mod
-        setattr(_no_wires_pkg, _leaf, _mod)
-        if _leaf not in sys.modules:
-            sys.modules[_leaf] = _mod
+        # Also register under the bare dotted path (e.g. "clutter.categories")
+        # so that "from clutter.categories import X" resolves correctly.
+        # Python's __import__ only caches under "NoWires.clutter.categories".
+        sys.modules[_pkg_sub] = _mod
+        # Set module as attribute on parent package so that
+        # getattr(parent_mod, _leaf) works (needed for monkeypatch).
+        _parent_name = _pkg_sub.rsplit(".", 1)[0] if "." in _pkg_sub else None
+        if _parent_name is not None:
+            _parent_mod = sys.modules.get(f"NoWires.{_parent_name}")
+            if _parent_mod is not None:
+                setattr(_parent_mod, _leaf, _mod)
+        # Do NOT overwrite subpackage entries on _no_wires_pkg:
+        # e.g. _pkg_sub="algorithm.coverage" has _leaf="coverage", which would
+        # clobber the coverage/ subpackage registered in the _SUBPKG_DIRS loop.
+        _parent = _pkg_sub.split(".")[0] if "." in _pkg_sub else None
+        if _parent not in _SUBPKG_DIR_SET:
+            setattr(_no_wires_pkg, _leaf, _mod)
+            if _leaf not in sys.modules:
+                sys.modules[_leaf] = _mod

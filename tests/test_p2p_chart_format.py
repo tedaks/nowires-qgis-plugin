@@ -9,7 +9,7 @@ import types
 import numpy as np
 import pytest
 
-from p2p_chart_format import build_obstruction_data, build_chart_status_text
+from p2p.chart_format import build_obstruction_data, build_chart_status_text
 
 
 class TestBuildObstructionDataNoObstructions:

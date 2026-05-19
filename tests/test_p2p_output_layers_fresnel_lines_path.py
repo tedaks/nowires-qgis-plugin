@@ -14,7 +14,7 @@ import ast
 
 def test_write_p2p_output_layers_returns_four_values():
     """_write_p2p_output_layers must return a 4-tuple including fresnel_lines_path."""
-    with open("_p2p_outputs_internal.py") as f:
+    with open("p2p/_outputs_internal.py") as f:
         source = f.read()
     tree = ast.parse(source)
     func = None
@@ -37,7 +37,7 @@ def test_write_p2p_output_layers_returns_four_values():
 def test_caller_unpacks_four_values():
     """p2p_compute.py must unpack all 4 return values, not reconstruct
     fresnel_lines_path from fresnel_poly_path."""
-    with open("p2p_compute.py") as f:
+    with open("p2p/compute.py") as f:
         source = f.read()
     assert "fresnel_lines_path" in source, (
         "p2p_compute.py must unpack fresnel_lines_path from the return value"
@@ -59,7 +59,7 @@ def test_caller_unpacks_four_values():
 def test_no_path_reconstruction_in_caller():
     """The caller must not reconstruct fresnel_lines_path from fresnel_poly_path,
     which would be a DRY violation."""
-    with open("p2p_compute.py") as f:
+    with open("p2p/compute.py") as f:
         source = f.read()
     assert '_lines' not in [
         line for line in source.splitlines()

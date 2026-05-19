@@ -4,12 +4,12 @@
 """Tests for coverage_params.py — extract_coverage_params and add_coverage_params."""
 
 
-from NoWires.coverage_params import (
+from NoWires.coverage.params import (
     extract_coverage_params,
     add_coverage_params,
     PARAM_CONSTANTS,
 )
-from NoWires.coverage_analysis_params import CoverageAnalysisParams
+from NoWires.coverage.analysis_params import CoverageAnalysisParams
 
 
 class _Alg:

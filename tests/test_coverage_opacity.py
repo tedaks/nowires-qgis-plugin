@@ -8,10 +8,10 @@ import os
 
 
 PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
-OPACITY_SOURCE = os.path.join(PLUGIN_DIR, "coverage_opacity.py")
+OPACITY_SOURCE = os.path.join(PLUGIN_DIR, "coverage/opacity.py")
 PLUGIN_SOURCE = os.path.join(PLUGIN_DIR, "nowires.py")
-COVERAGE_SOURCE = os.path.join(PLUGIN_DIR, "algorithm_coverage.py")
-LEGEND_SOURCE = os.path.join(PLUGIN_DIR, "coverage_legend.py")
+COVERAGE_SOURCE = os.path.join(PLUGIN_DIR, "algorithm/coverage.py")
+LEGEND_SOURCE = os.path.join(PLUGIN_DIR, "coverage/legend.py")
 
 
 def _text(path):
@@ -101,7 +101,7 @@ def test_opacity_dialog_refreshes_map_canvas():
 def test_plugin_imports_opacity_module():
     source = _text(PLUGIN_SOURCE)
     assert (
-        "from NoWires.coverage_opacity import find_latest_coverage_layer, CoverageOpacityDialog"
+        "from NoWires.coverage.opacity import find_latest_coverage_layer, CoverageOpacityDialog"
         in source
     )
 

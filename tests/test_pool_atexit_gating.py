@@ -13,7 +13,7 @@ import os
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PLUGIN_DIR = os.path.join(_HERE, os.pardir)
-_SOURCE_FILE = os.path.normpath(os.path.join(_PLUGIN_DIR, "coverage_pool.py"))
+_SOURCE_FILE = os.path.normpath(os.path.join(_PLUGIN_DIR, "coverage/pool.py"))
 
 
 def test_atexit_gated_by_module_flag():
@@ -30,5 +30,5 @@ def test_atexit_gated_by_module_flag():
 
 def test_atexit_registered_flag_exists():
     """The module must export _cov_pool_atexit_registered."""
-    from coverage_pool import _cov_pool_atexit_registered
+    from coverage.pool import _cov_pool_atexit_registered
     assert isinstance(_cov_pool_atexit_registered, bool)

@@ -5,7 +5,7 @@
 
 import pytest
 
-from p2108_common import (
+from clutter.p2108_common import (
     f_inv_normal,
     q_inv_complementary_normal,
     validate_distance_km,
