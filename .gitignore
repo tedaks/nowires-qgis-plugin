@@ -34,6 +34,9 @@ Thumbs.db
 .coverage
 htmlcov/
 
+# Hypothesis
+.hypothesis/
+
 # GIS output (runtime generated data layers)
 *.tif
 *.tiff
@@ -48,6 +51,20 @@ htmlcov/
 
 # Docs
 /docs
+
+# Ad-hoc analysis/export scripts
+/analyze_coverage.py
+/audit_cache.py
+/export_portable.py
+/export_project.py
+/package_gpkg.py
+/run_coverage.py
+
+# Generated output data
+/output/
+
+# Runtime cache (DEM/clutter downloads)
+/dem_cache/
 
 # Temporary
 todo_improved_clutterloss.md
