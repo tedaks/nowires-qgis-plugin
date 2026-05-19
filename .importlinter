@@ -1,0 +1,15 @@
+[importlinter]
+root_package = NoWires
+include_external_packages = True
+
+[importlinter:contract:itm-no-qgis]
+# The ITM propagation module must remain free of QGIS dependencies so it
+# can be used for pure-computation outside the QGIS runtime.
+name = ITM must not depend on qgis or PyQt
+type = forbidden
+source_modules =
+    NoWires.itm
+forbidden_modules =
+    qgis
+    PyQt5
+    PyQt6
