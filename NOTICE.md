@@ -23,13 +23,13 @@ The following files are derived from or inspired by the nowires project (adapted
 | `algorithm/coverage_comparison.py` | `apps/api/app/coverage.py`, `apps/api/app/coverage_render.py` |
 | `algorithm/p2p.py` | `apps/api/app/p2p.py` |
 
-| `coverage_engine.py` | `apps/api/app/coverage_workers.py`, `apps/api/app/coverage_render.py` |
+| `coverage/engine.py` | `apps/api/app/coverage_workers.py`, `apps/api/app/coverage_render.py` |
 | `radio.py` (ITM bridge, Fresnel, signal levels) | `apps/api/app/itm_bridge.py`, `apps/api/app/math_kernels.py`, `apps/api/app/signal_levels.py` |
 | `antenna.py` | `apps/api/app/antenna.py` |
-| `clutter.py`, `clutter_advanced.py`, `clutter_categories.py`, `clutter_constants.py`, `clutter_context.py`, `clutter_p2108.py` | `apps/api/app/clutter.py` |
-| `clutter_saalos.py` | clutterloss-itm Rust crate (see section 7 below) |
+| `clutter/__init__.py`, `clutter/advanced.py`, `clutter/categories.py`, `clutter/constants.py`, `clutter/context.py`, `clutter_p2108.py` | `apps/api/app/clutter/__init__.py` |
+| `clutter/saalos.py` | clutterloss-itm Rust crate (see section 7 below) |
 | `elevation.py` (terrain utilities, ElevationGrid) | `apps/api/app/elevation_grid.py`, `apps/api/app/terrain.py` |
-| `coverage_palette.py` (signal level palette) | `apps/api/app/signal_levels.py`, `apps/api/app/coverage_render.py` |
+| `coverage/palette.py` (signal level palette) | `apps/api/app/signal_levels.py`, `apps/api/app/coverage_render.py` |
 
 Original MIT license text:
 
@@ -152,7 +152,7 @@ The Irregular Terrain Model was originally developed by:
 **License:** MIT License  
 **Copyright:** © 2026 Bortre Tenamo (Python port), © 2026 Bortre Tenamo (Rust crate)
 
-`clutter_saalos.py` is a Python port of the saalos vegetation clutter loss algorithm from the MIT-licensed `clutterloss-itm` Rust crate. ITWOM is a derivative of the public-domain Longley-Rice ITM model.
+`clutter/saalos.py` is a Python port of the saalos vegetation clutter loss algorithm from the MIT-licensed `clutterloss-itm` Rust crate. ITWOM is a derivative of the public-domain Longley-Rice ITM model.
 
 MIT license text:
 
