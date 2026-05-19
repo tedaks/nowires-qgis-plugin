@@ -35,8 +35,8 @@ from qgis.PyQt.QtWidgets import QInputDialog
 
 from qgis.core import QgsApplication
 
-from NoWires.coverage_legend import remove_coverage_legend
-from NoWires.coverage_opacity import find_latest_coverage_layer, CoverageOpacityDialog
+from NoWires.coverage.legend import remove_coverage_legend
+from NoWires.coverage.opacity import find_latest_coverage_layer, CoverageOpacityDialog
 from NoWires.provider import NoWiresProvider
 from NoWires.three_d import SCENE_MODE_GLOBE, SCENE_MODE_LOCAL, open_nowires_3d_view
 from NoWires.cache_manager import clear_dem_cache, format_cache_size, get_cache_size

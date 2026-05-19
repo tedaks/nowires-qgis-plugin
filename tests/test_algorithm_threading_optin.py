@@ -27,19 +27,19 @@ def test_base_algorithm_defaults_threading_off():
 
 
 def test_coverage_algorithm_opts_into_threading():
-    assert "ALLOW_THREADING = True" in _source("algorithm_coverage.py")
+    assert "ALLOW_THREADING = True" in _source("algorithm/coverage.py")
 
 
 def test_batch_algorithm_opts_into_threading():
-    assert "ALLOW_THREADING = True" in _source("algorithm_batch.py")
+    assert "ALLOW_THREADING = True" in _source("algorithm/batch.py")
 
 
 def test_coverage_comparison_algorithm_opts_into_threading():
-    assert "ALLOW_THREADING = True" in _source("algorithm_coverage_comparison.py")
+    assert "ALLOW_THREADING = True" in _source("algorithm/coverage_comparison.py")
 
 
 def test_p2p_and_contour_keep_no_threading():
     # Quick-compute algorithms intentionally stay on the main thread; they
     # must NOT set ALLOW_THREADING.
-    for name in ("algorithm_p2p.py", "algorithm_contour.py"):
+    for name in ("algorithm/p2p.py", "algorithm/contour.py"):
         assert "ALLOW_THREADING = True" not in _source(name), name

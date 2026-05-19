@@ -6,9 +6,9 @@
 import numpy as np
 import pytest
 
-from NoWires.clutter_grid import LandCoverGrid
-from NoWires.clutter_categories import LEGACY_CLUTTER_CATEGORIES, LEGACY_CLUTTER_LOSS_DB
-from NoWires.clutter_categories import ADVANCED_CLUTTER_CATEGORIES
+from NoWires.clutter.grid import LandCoverGrid
+from NoWires.clutter.categories import LEGACY_CLUTTER_CATEGORIES, LEGACY_CLUTTER_LOSS_DB
+from NoWires.clutter.categories import ADVANCED_CLUTTER_CATEGORIES
 
 
 _OPEN_RURAL = "open_rural"
@@ -123,7 +123,7 @@ class TestLandCoverGridSampleCategoryGrid:
         assert result[0, 0] == LEGACY_CLUTTER_LOSS_DB["urban"]
 
     def test_advanced_mode_returns_category_array(self):
-        from NoWires.clutter_context import ClutterLossContext
+        from NoWires.clutter.context import ClutterLossContext
         data = np.full((5, 5), 50, dtype=np.uint8)
         g = _make_grid(data=data)
         lats = np.array([0.0])
@@ -138,7 +138,7 @@ class TestLandCoverGridSampleCategoryGrid:
         assert result[0, 0] in ADVANCED_CLUTTER_CATEGORIES
 
     def test_advanced_mode_with_rx_override(self):
-        from NoWires.clutter_context import ClutterLossContext
+        from NoWires.clutter.context import ClutterLossContext
         data = np.full((5, 5), 10, dtype=np.uint8)
         g = _make_grid(data=data)
         lats = np.array([0.0, 8.0])
@@ -169,7 +169,7 @@ class TestLandCoverGridSampleCategoryGrid:
             g.sample_category_grid(lats, lons)
 
     def test_advanced_mode_oob_returns_open(self):
-        from NoWires.clutter_context import ClutterLossContext
+        from NoWires.clutter.context import ClutterLossContext
         data = np.full((5, 5), 50, dtype=np.uint8)
         g = _make_grid(data=data)
         lats = np.array([90.0])

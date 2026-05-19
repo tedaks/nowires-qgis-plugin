@@ -32,7 +32,6 @@ Thumbs.db
 
 # Coverage
 .coverage
-coverage/
 htmlcov/
 
 # GIS output (runtime generated data layers)
@@ -51,4 +50,5 @@ htmlcov/
 /docs
 
 # Temporary
-todo_improved_clutterloss.md.worktrees/
+todo_improved_clutterloss.md
+.worktrees/

@@ -39,13 +39,13 @@ def _code_only(name):
 
 
 def test_executor_does_not_use_plain_multiprocessing_event():
-    code = _code_only("_coverage_executor.py")
+    code = _code_only("coverage/_executor.py")
     assert "= multiprocessing.Event()" not in code
 
 
 def test_executor_does_not_use_manager_event():
     """Manager().Event() died on macOS QGIS with EOFError."""
-    code = _code_only("_coverage_executor.py")
+    code = _code_only("coverage/_executor.py")
     assert "multiprocessing.Manager()" not in code
     assert ".Event()" not in code or "multiprocessing.Event" in code, \
         "no .Event() call should remain in the executor"
@@ -53,7 +53,7 @@ def test_executor_does_not_use_manager_event():
 
 def test_worker_batch_takes_plain_chunk_argument():
     """_itm_worker_batch must accept a plain batch arg, not a (batch, event) tuple."""
-    code = _code_only("coverage_pool.py")
+    code = _code_only("coverage/pool.py")
     # The function signature is now `def _itm_worker_batch(batch):`
     assert "def _itm_worker_batch(batch):" in code
     # And the cancel-event check is gone.

@@ -10,10 +10,10 @@ from pathlib import Path
 PLUGIN_DIR = Path(__file__).resolve().parent.parent
 
 _CONTOUR_SOURCES = [
-    "algorithm_contour.py",
-    "contour_pipeline.py",
-    "contour_overlay.py",
-    "contour_smoothing.py",
+    "algorithm/contour.py",
+    "contour/pipeline.py",
+    "contour/overlay.py",
+    "contour/smoothing.py",
 ]
 
 

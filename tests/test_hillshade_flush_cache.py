@@ -13,7 +13,7 @@ import os
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PLUGIN_DIR = os.path.join(_HERE, os.pardir)
-_SOURCE_FILE = os.path.normpath(os.path.join(_PLUGIN_DIR, "contour_overlay.py"))
+_SOURCE_FILE = os.path.normpath(os.path.join(_PLUGIN_DIR, "contour/overlay.py"))
 
 
 def test_hillshade_flush_cache_source_present():

@@ -6,7 +6,7 @@
 
 from pathlib import Path
 
-from report_export import write_report_csv, write_report_html, write_report_json
+from report.export import write_report_csv, write_report_html, write_report_json
 
 
 def test_write_report_csv_outputs_section_key_value_rows(tmp_path: Path):

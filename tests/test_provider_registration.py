@@ -94,11 +94,11 @@ class TestProviderAlgorithmSource:
         """Verify the provider source code references all 5 algorithm modules."""
         source = open("provider.py").read()
         for module_name, class_name in [
-            ("algorithm_p2p", "P2PAlgorithm"),
-            ("algorithm_coverage", "CoverageAlgorithm"),
-            ("algorithm_coverage_comparison", "CoverageComparisonAlgorithm"),
-            ("algorithm_contour", "ContourLinesAlgorithm"),
-            ("algorithm_batch", "BatchAnalysisAlgorithm"),
+            ("algorithm.p2p", "P2PAlgorithm"),
+            ("algorithm.coverage", "CoverageAlgorithm"),
+            ("algorithm.coverage_comparison", "CoverageComparisonAlgorithm"),
+            ("algorithm.contour", "ContourLinesAlgorithm"),
+            ("algorithm.batch", "BatchAnalysisAlgorithm"),
         ]:
             assert module_name in source, \
                 "provider.py must reference {}".format(module_name)
@@ -108,42 +108,42 @@ class TestProviderAlgorithmSource:
     def test_each_algorithm_class_inherits_qgsprocessing(self):
         """Each algorithm class must inherit from NoWiresAlgorithm."""
         algorithms = [
-            ("algorithm_p2p", "P2PAlgorithm"),
-            ("algorithm_coverage", "CoverageAlgorithm"),
-            ("algorithm_coverage_comparison", "CoverageComparisonAlgorithm"),
-            ("algorithm_contour", "ContourLinesAlgorithm"),
-            ("algorithm_batch", "BatchAnalysisAlgorithm"),
+            ("algorithm.p2p", "P2PAlgorithm"),
+            ("algorithm.coverage", "CoverageAlgorithm"),
+            ("algorithm.coverage_comparison", "CoverageComparisonAlgorithm"),
+            ("algorithm.contour", "ContourLinesAlgorithm"),
+            ("algorithm.batch", "BatchAnalysisAlgorithm"),
         ]
         for module_name, class_name in algorithms:
-            source = open("{}.py".format(module_name)).read()
+            source = open("{}.py".format(module_name.replace(".", "/"))).read()
             assert "NoWiresAlgorithm" in source, \
                 "{} must inherit from NoWiresAlgorithm".format(class_name)
 
     def test_each_algorithm_class_has_name_method(self):
         """Each algorithm module must define a name() method."""
         algorithms = [
-            ("algorithm_p2p", "P2PAlgorithm"),
-            ("algorithm_coverage", "CoverageAlgorithm"),
-            ("algorithm_coverage_comparison", "CoverageComparisonAlgorithm"),
-            ("algorithm_contour", "ContourLinesAlgorithm"),
-            ("algorithm_batch", "BatchAnalysisAlgorithm"),
+            ("algorithm.p2p", "P2PAlgorithm"),
+            ("algorithm.coverage", "CoverageAlgorithm"),
+            ("algorithm.coverage_comparison", "CoverageComparisonAlgorithm"),
+            ("algorithm.contour", "ContourLinesAlgorithm"),
+            ("algorithm.batch", "BatchAnalysisAlgorithm"),
         ]
         for module_name, class_name in algorithms:
-            source = open("{}.py".format(module_name)).read()
+            source = open("{}.py".format(module_name.replace(".", "/"))).read()
             assert "def name(" in source, \
                 "{} must define a name() method".format(class_name)
 
     def test_each_algorithm_class_has_createinstance(self):
         """Each algorithm module must define a createInstance() method."""
         algorithms = [
-            ("algorithm_p2p", "P2PAlgorithm"),
-            ("algorithm_coverage", "CoverageAlgorithm"),
-            ("algorithm_coverage_comparison", "CoverageComparisonAlgorithm"),
-            ("algorithm_contour", "ContourLinesAlgorithm"),
-            ("algorithm_batch", "BatchAnalysisAlgorithm"),
+            ("algorithm.p2p", "P2PAlgorithm"),
+            ("algorithm.coverage", "CoverageAlgorithm"),
+            ("algorithm.coverage_comparison", "CoverageComparisonAlgorithm"),
+            ("algorithm.contour", "ContourLinesAlgorithm"),
+            ("algorithm.batch", "BatchAnalysisAlgorithm"),
         ]
         for module_name, class_name in algorithms:
-            source = open("{}.py".format(module_name)).read()
+            source = open("{}.py".format(module_name.replace(".", "/"))).read()
             assert "def createInstance(" in source, \
                 "{} must define a createInstance() method".format(class_name)
 

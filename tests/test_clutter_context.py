@@ -4,7 +4,7 @@
 # This program is free software under GPLv3 or later. See LICENSE.
 from types import SimpleNamespace
 
-from clutter_context import (
+from clutter.context import (
     ClutterLossContext,
     build_initial_clutter_context,
     build_link_clutter_context,

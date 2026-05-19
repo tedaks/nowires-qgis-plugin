@@ -30,10 +30,10 @@ import math
 
 import pytest
 
-from clutter_saalos import clutter_loss_saalos
-from p2108_height_gain import height_gain_loss
-from p2108_terrestrial_stat import clutter_loss_p2108_terrestrial_stat
-from p2109_bel import building_entry_loss
+from clutter.saalos import clutter_loss_saalos
+from clutter.p2108_height_gain import height_gain_loss
+from clutter.p2108_terrestrial_stat import clutter_loss_p2108_terrestrial_stat
+from clutter.p2109_bel import building_entry_loss
 
 
 _REL_TOL = 1e-9

@@ -15,7 +15,7 @@
 """
 import inspect
 
-from p2p_chart import show_profile_chart
+from p2p.chart import show_profile_chart
 
 
 def test_draw_idle_called_in_visibility_update():

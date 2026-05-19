@@ -7,8 +7,8 @@
 import csv
 import json
 
-from NoWires.batch_writer import write_batch_csv, write_batch_json
-from batch_params import BATCH_MODE_OPTIONS
+from NoWires.batch.writer import write_batch_csv, write_batch_json
+from batch.params import BATCH_MODE_OPTIONS
 
 SAMPLE_RESULTS = [
     {

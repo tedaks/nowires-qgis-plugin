@@ -24,7 +24,7 @@ pytestmark = [
 
 
 def _write_profile_line(path, srs):
-    from NoWires.p2p_outputs import write_profile_line
+    from NoWires.p2p.outputs import write_profile_line
     from NoWires.radio import ITMResult
     result = ITMResult(loss_db=120.5, mode=1, warnings=0)
     dist_m = 5000.0
@@ -32,7 +32,7 @@ def _write_profile_line(path, srs):
 
 
 def _write_fresnel_zone(poly_path, lines_path, srs):
-    from NoWires.p2p_outputs import write_fresnel_zone
+    from NoWires.p2p.outputs import write_fresnel_zone
     distances = np.array([0.0, 2500.0, 5000.0])
     terrain_bulge = np.array([300.0, 350.0, 320.0])
     los_h = np.array([400.0, 380.0, 360.0])

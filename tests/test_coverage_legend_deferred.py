@@ -24,7 +24,7 @@ def test_coverage_does_not_show_legend_inside_process_algorithm():
     """No direct show_coverage_legend(...) call inside _write_coverage_outputs
     or processAlgorithm — must be deferred to postProcessAlgorithm.
     """
-    src = _source("algorithm_coverage.py")
+    src = _source("algorithm/coverage.py")
     # _write_coverage_outputs writes to _pending_legend_rx_sens; the actual
     # show() happens later, on the main thread.
     assert "show_coverage_legend(rx_sensitivity_dbm=p.rx_sens)" not in src
@@ -32,12 +32,12 @@ def test_coverage_does_not_show_legend_inside_process_algorithm():
 
 
 def test_coverage_post_process_shows_legend():
-    src = _source("algorithm_coverage.py")
+    src = _source("algorithm/coverage.py")
     assert "def postProcessAlgorithm" in src
     # postProcessAlgorithm must call show_coverage_legend when pending.
     assert "show_coverage_legend(rx_sensitivity_dbm=rx)" in src
 
 
 def test_coverage_legend_import_present():
-    src = _source("algorithm_coverage.py")
-    assert "from NoWires.coverage_legend import show_coverage_legend" in src
+    src = _source("algorithm/coverage.py")
+    assert "from NoWires.coverage.legend import show_coverage_legend" in src

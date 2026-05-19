@@ -8,14 +8,14 @@ Reported on Windows after the v1.5.5 pythonw.exe switch made the MP gate
 succeed where it had been silently returning None:
 
     _pickle.PicklingError: Can't pickle <function _init_cov_pool at 0x...>:
-    it's not the same object as NoWires.coverage_pool._init_cov_pool
+    it's not the same object as NoWires.coverage.pool._init_cov_pool
 
 Cause: ``_coverage_executor`` captured ``_init_cov_pool`` /
-``_itm_worker_batch`` at module import time via ``from NoWires.coverage_pool
-import ...``. If anything subsequently replaced ``NoWires.coverage_pool``
+``_itm_worker_batch`` at module import time via ``from NoWires.coverage.pool
+import ...``. If anything subsequently replaced ``NoWires.coverage.pool``
 in ``sys.modules`` (QGIS plugin reload, the Plugin Reloader plugin, any
 manual ``importlib.reload``), the cached attribute on the executor module
-diverged from ``sys.modules["NoWires.coverage_pool"].<name>``, and
+diverged from ``sys.modules["NoWires.coverage.pool"].<name>``, and
 ``pickle``'s identity check raised.
 
 Fix: resolve both functions through the package import at call time, so
@@ -79,16 +79,16 @@ def test_executor_handles_coverage_pool_reload(monkeypatch):
     pre-reload functions; pickle would compare them against the new
     module's attributes and raise PicklingError.
     """
-    coverage_engine = importlib.import_module("NoWires.coverage_engine")
-    coverage_executor = importlib.import_module("NoWires._coverage_executor")
-    coverage_pool = importlib.import_module("NoWires.coverage_pool")
+    coverage_engine = importlib.import_module("NoWires.coverage.engine")
+    coverage_executor = importlib.import_module("NoWires.coverage._executor")
+    coverage_pool = importlib.import_module("NoWires.coverage.pool")
 
     # Simulate a reload: replace the in-cache module with a freshly
     # executed version. The functions on the new module are distinct
     # Python objects from the pre-reload ones still cached on
     # _coverage_executor's globals (if it had imported them by name).
     coverage_pool = importlib.reload(coverage_pool)
-    sys.modules["NoWires.coverage_pool"] = coverage_pool
+    sys.modules["NoWires.coverage.pool"] = coverage_pool
 
     class _FakeSharedGrid:
         def __init__(self):
@@ -144,9 +144,9 @@ def test_init_cov_pool_picklable_after_reload():
     survive ``pickle.dumps`` in the parent process. This is the exact
     operation ProcessPoolExecutor performs when spawning a worker.
     """
-    coverage_pool = importlib.import_module("NoWires.coverage_pool")
+    coverage_pool = importlib.import_module("NoWires.coverage.pool")
     coverage_pool = importlib.reload(coverage_pool)
-    sys.modules["NoWires.coverage_pool"] = coverage_pool
+    sys.modules["NoWires.coverage.pool"] = coverage_pool
 
     # Both functions need to be picklable by reference for spawn workers.
     pickle.dumps(coverage_pool._init_cov_pool)
@@ -158,7 +158,7 @@ def test_executor_does_not_import_init_cov_pool_at_module_level():
     level would resurrect the bug. ``_coverage_executor`` must reach them
     through the package at call time instead.
     """
-    src_path = os.path.join(PLUGIN_DIR, "_coverage_executor.py")
+    src_path = os.path.join(PLUGIN_DIR, "coverage/_executor.py")
     with open(src_path, "r", encoding="utf-8") as f:
         src = f.read()
     # Strip comment lines so docstrings/comments mentioning the names

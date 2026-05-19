@@ -47,7 +47,7 @@ import numpy as np
 
 # --- Signal Level Definitions ---
 
-from NoWires.coverage_palette import SIGNAL_LEVELS
+from NoWires.coverage.palette import SIGNAL_LEVELS
 
 THRESHOLDS = np.array([t for t, _, _ in SIGNAL_LEVELS], dtype=np.float64)
 COLORS = np.array(

@@ -30,7 +30,7 @@ qgis_core.QgsSingleBandPseudoColorRenderer = MagicMock
 sys.modules.setdefault("qgis", qgis)
 sys.modules.setdefault("qgis.core", qgis_core)
 
-from NoWires.comparison_outputs import compute_delta_summary
+from NoWires.comparison.outputs import compute_delta_summary
 
 
 class TestComputeDeltaSummary:

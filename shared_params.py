@@ -10,7 +10,7 @@ from qgis.core import (
     QgsProcessingParameterNumber,
 )
 
-from NoWires.clutter_context import ClutterModel, BuildingType
+from NoWires.clutter.context import ClutterModel, BuildingType
 from NoWires.clutter import (
     CLUTTER_MODEL_OPTIONS, CLUTTER_OVERRIDE_OPTIONS,
     LandCoverGrid, clutter_override_value,

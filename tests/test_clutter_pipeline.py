@@ -13,8 +13,8 @@ from clutter import (
     compute_terminal_clutter_loss,
     compute_terminal_clutter_losses,
 )
-from clutter_context import ClutterLossContext
-from p2108_terrestrial_stat import clutter_loss_p2108_terrestrial_stat
+from clutter.context import ClutterLossContext
+from clutter.p2108_terrestrial_stat import clutter_loss_p2108_terrestrial_stat
 
 
 def test_advanced_per_pixel_distance_reaches_terrestrial_stat(monkeypatch):
@@ -27,7 +27,7 @@ def test_advanced_per_pixel_distance_reaches_terrestrial_stat(monkeypatch):
         return real(d_km, f_ghz, p)
 
     monkeypatch.setattr(
-        "clutter_advanced.clutter_loss_p2108_terrestrial_stat", spy
+        "NoWires.clutter.advanced.clutter_loss_p2108_terrestrial_stat", spy
     )
 
     grid = LandCoverGrid(
