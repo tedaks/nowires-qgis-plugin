@@ -18,7 +18,7 @@ def test_should_use_multiprocessing_disabled_on_windows():
 
 
 def test_should_use_multiprocessing_enabled_on_non_windows():
-    assert should_use_multiprocessing(os_name="posix") is True
+    assert should_use_multiprocessing(os_name="posix", platform_name="linux") is True
 
 
 def test_build_coverage_tasks_skips_near_tx_pixel():
