@@ -135,8 +135,10 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
         )
     )
 
-    tx_gain_eff = tx_def["gain_db"] if tx_def["gain_db"] is not None else params.tx_gain_default
-    rx_gain_eff = rx_def["gain_db"] if rx_def["gain_db"] is not None else params.rx_gain_default
+    tx_gain_db = tx_def.get("gain_db")
+    tx_gain_eff = tx_gain_db if tx_gain_db is not None else params.tx_gain_default
+    rx_gain_db = rx_def.get("gain_db")
+    rx_gain_eff = rx_gain_db if rx_gain_db is not None else params.rx_gain_default
 
     tx_preset_key = tx_def.get("antenna_preset", params.tx_default_preset_key)
     if tx_preset_key not in ANTENNA_PRESET_KEYS:
