@@ -82,6 +82,84 @@ docker run --rm \
     pytest -m gdal_integration -v --tb=short'
 ```
 
+## Integration Testing (Local macOS QGIS)
+
+The macOS QGIS app bundle has hardened runtime and a non-standard Python
+stdlib layout. Four setup steps are required:
+
+1. **Create stdlib symlinks** — the bundled Python 3.12 binary expects its
+   stdlib at `$PYTHONHOME/lib/python3.12/`, but QGIS stores it flat under
+   `Resources/python3.11/` (the `3.11` directory name is misleading; the
+   `.so` files are `cpython-312`). Create a `lib/python3.12` subtree with
+   symlinks back to the flat directory:
+
+   ```bash
+   QGIS_STDLIB=/Applications/QGIS-final-4_0_2.app/Contents/Resources/python3.11
+   mkdir -p "$QGIS_STDLIB/lib/python3.12"
+   for item in "$QGIS_STDLIB"/*; do
+     name=$(basename "$item")
+     [ "$name" = "lib" ] || [ "$name" = "site-packages" ] && continue
+     [ -e "$QGIS_STDLIB/lib/python3.12/$name" ] || ln -sf "$item" "$QGIS_STDLIB/lib/python3.12/$name"
+   done
+   ln -sf "$QGIS_STDLIB/site-packages" "$QGIS_STDLIB/lib/python3.12/site-packages"
+   ```
+
+2. **Re-sign python3.12** — add the `disable-library-validation` entitlement so
+   pip-installed packages (e.g. pytest) can load alongside QGIS-signed ones:
+
+   ```bash
+   codesign -f -s - --entitlements /path/to/entitlement.plist \
+     /Applications/QGIS-final-4_0_2.app/Contents/MacOS/python3.12
+   ```
+
+   where `entitlement.plist` contains:
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+     "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+   <plist version="1.0">
+   <dict>
+     <key>com.apple.security.cs.disable-library-validation</key>
+     <true/>
+   </dict>
+   </plist>
+   ```
+
+3. **Restore numpy 1.26.4** — pip may replace it with a newer major version;
+   QGIS-bundled packages (shapely, etc.) are compiled against 1.26.4 and struct
+   sizes changed between major versions:
+
+   ```bash
+   QGIS_PYTHON=/Applications/QGIS-final-4_0_2.app/Contents/MacOS/python3.12
+   PYTHONHOME=/Applications/QGIS-final-4_0_2.app/Contents/Resources/python3.11 \
+   DYLD_FRAMEWORK_PATH=/Applications/QGIS-final-4_0_2.app/Contents/Frameworks \
+   QGIS_PREFIX_PATH=/Applications/QGIS-final-4_0_2.app/Contents/MacOS \
+   PROJ_LIB=/Applications/QGIS-final-4_0_2.app/Contents/Resources/qgis/proj \
+   PROJ_DATA=/Applications/QGIS-final-4_0_2.app/Contents/Resources/qgis/proj \
+   "$QGIS_PYTHON" -m pip install --break-system-packages numpy==1.26.4 pytest-cov
+   ```
+
+4. **Run the tests** with PYTHONHOME, DYLD_FRAMEWORK_PATH, and PROJ paths set:
+
+   ```bash
+   PYTHONHOME=/Applications/QGIS-final-4_0_2.app/Contents/Resources/python3.11 \
+   DYLD_FRAMEWORK_PATH=/Applications/QGIS-final-4_0_2.app/Contents/Frameworks \
+   QGIS_PREFIX_PATH=/Applications/QGIS-final-4_0_2.app/Contents/MacOS \
+   PROJ_LIB=/Applications/QGIS-final-4_0_2.app/Contents/Resources/qgis/proj \
+   PROJ_DATA=/Applications/QGIS-final-4_0_2.app/Contents/Resources/qgis/proj \
+   QT_QPA_PLATFORM=offscreen \
+   PYTHONPATH=/Applications/QGIS-final-4_0_2.app/Contents/Resources/python3.11/site-packages:$(pwd) \
+   /Applications/QGIS-final-4_0_2.app/Contents/MacOS/python3.12 \
+     -m pytest -m qgis_integration -v --tb=short && \
+   /Applications/QGIS-final-4_0_2.app/Contents/MacOS/python3.12 \
+     -m pytest tests/test_gdal_compat.py -v --tb=short && \
+   /Applications/QGIS-final-4_0_2.app/Contents/MacOS/python3.12 \
+     -m pytest tests/test_raster_io_integration.py -v --tb=short && \
+   /Applications/QGIS-final-4_0_2.app/Contents/MacOS/python3.12 \
+     -m pytest -m gdal_integration -v --tb=short
+   ```
+
 ## Manual Testing
 
 For UI and Processing integration checks, copy the `NoWires` folder into your QGIS plugins directory and test inside QGIS.
