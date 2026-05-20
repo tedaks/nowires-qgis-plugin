@@ -67,11 +67,11 @@ All Python source files in this project must strictly adhere to a maximum of **3
 
 ## Changelog Structure
 
-`CHANGELOG.md` must always have `## [Unreleased]` as the first versioned section (after the header), before any released version sections. Planned or deferred work lives under `### Planned` subsections within `[Unreleased]`. When cutting a release, move completed items from `[Unreleased]` into a new dated `## [X.Y.Z] - YYYY-MM-DD` section that goes immediately after `[Unreleased]`.
+`CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions. It must always have `## [Unreleased]` as the first versioned section (after the header), before any released version sections. Planned or deferred work lives under `### Planned` subsections within `[Unreleased]`. When cutting a release, move completed items from `[Unreleased]` into a new dated `## [X.Y.Z] - YYYY-MM-DD` section that goes immediately after `[Unreleased]`.
 
 ## Release Process
 
-This project adheres to [Semantic Versioning](https://semver.org). Bugfixes, refactors, and features ship in separate releases — never mix categories in one version.
+This project adheres to [Semantic Versioning](https://semver.org). The version bump reflects the most significant change in the release: MAJOR for breaking API changes, MINOR for new backwards-compatible functionality, PATCH for backwards-compatible bug fixes and zero-behavior-change refactors. A single release may include changes across multiple categories (e.g., PATCH-level cleanups bundled with MINOR-level features) — the bump is determined by the highest-impact change per the classification table below.
 
 ### Classification
 
@@ -86,11 +86,11 @@ Refactors that touch the public API surface escalate to MINOR. Before merging an
 
 ### Release shape
 
-Each release is one or more focused PRs, sequenced by risk:
+Releases are planned in `CHANGELOG.md` `[Unreleased]` subsections and shipped as one or more focused PRs, sequenced by risk. The preferred organization within a release version follows these shapes:
 
-- **Bugfix release**: one PR per category, in order — security → resource leaks → correctness/robustness. Each fix lands with a regression test that fails without the patch (TDD convention since v1.5.0).
-- **Cleanup release**: one PR per theme — constants, dedup, decomposition, polish. Golden-file tests (`tests/test_report_export_golden.py`) must produce byte-identical output; zero behavior change is verified, not asserted.
-- **Feature release**: one PR per feature. Scope via brainstorm before code; manual QGIS UI test before tagging (CI cannot validate Qt widgets).
+- **Bugfixes** (PATCH): group by category — security → resource leaks → correctness/robustness. Each fix lands with a regression test that fails without the patch (TDD convention since v1.5.0).
+- **Cleanups** (PATCH): group by theme — constants, dedup, decomposition, polish. Golden-file tests (`tests/test_report_export_golden.py`) must produce byte-identical output; zero behavior change is verified, not asserted. Small, tightly-scoped cleanups may be included in a feature-bearing MINOR release.
+- **Features** (MINOR or MAJOR): one PR per feature. Scope via brainstorm before code; manual QGIS UI test before tagging (CI cannot validate Qt widgets).
 
 ### Pre-flight greps
 
