@@ -48,7 +48,7 @@ class TestShouldUseMultiprocessing:
         assert should_use_multiprocessing(os_name="nt") is False
 
     def test_enables_on_posix(self):
-        assert should_use_multiprocessing(os_name="posix") is True
+        assert should_use_multiprocessing(os_name="posix", platform_name="linux") is True
 
 
 class TestNoOpPlugin:

@@ -52,7 +52,7 @@ class TestShouldUseMultiprocessing:
         assert should_use_multiprocessing(os_name="nt") is False
 
     def test_posix_returns_true(self):
-        assert should_use_multiprocessing(os_name="posix") is True
+        assert should_use_multiprocessing(os_name="posix", platform_name="linux") is True
 
     def test_darwin_falls_back_when_no_python_exe(self):
         with patch.object(sys, "platform", "darwin"), \

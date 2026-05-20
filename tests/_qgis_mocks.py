@@ -263,6 +263,10 @@ class _FakeQgsApplication:
     def processingRegistry():
         return _mock_registry
 
+    @staticmethod
+    def instance():
+        return None
+
 
 _QGIS_CORE_ATTRS = {
     "QgsProcessingException": _FakeProcessingException,
@@ -313,6 +317,7 @@ _QGIS_PYQT_WIDGETS_ATTRS = {
             "__init__": lambda self, parent=None: None,
             "setModal": lambda self, m: None,
             "setWindowTitle": lambda self, t: None,
+            "setWindowFlag": lambda self, *a, **kw: None,
             "setMinimumWidth": lambda self, w: None,
             "show": lambda self: None,
             "close": lambda self: None,
