@@ -71,7 +71,7 @@ _cov_grid_meta: dict = {}
 _cov_pool_atexit_registered: bool = False
 
 
-def should_use_multiprocessing(os_name=None):
+def should_use_multiprocessing(os_name=None, platform_name=None):
     """Return whether process-based parallelism is safe in this runtime.
 
     On macOS and Windows the platform-specific ``find_*_python_executable``
@@ -81,13 +81,15 @@ def should_use_multiprocessing(os_name=None):
     import sys
     if os_name is None:
         os_name = os.name
+    if platform_name is None:
+        platform_name = sys.platform
     if os_name == "nt":
         from NoWires.windows_compat import find_windows_python_executable
         if find_windows_python_executable() is None:
             logger.warning("Windows: no usable Python for multiprocessing; "
                            "falling back to sequential mode.")
             return False
-    if sys.platform == "darwin" and find_macos_python_executable() is None:
+    if platform_name == "darwin" and find_macos_python_executable() is None:
         logger.warning("macOS: no usable Python for multiprocessing; "
                        "falling back to sequential mode.")
         return False
