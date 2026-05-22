@@ -72,11 +72,11 @@ def resolve_output_paths(
     if not out_a or not out_b or not out_delta:
         tmpdir = tmp_mgr.make_dir("comp", persistent=True)
     if not out_a:
-        out_a = os.path.join(tmpdir, "coverage_a.tif")
+        out_a = os.path.join(tmpdir, "coverage_a.tif")  # type: ignore[arg-type]
     if not out_b:
-        out_b = os.path.join(tmpdir, "coverage_b.tif")
+        out_b = os.path.join(tmpdir, "coverage_b.tif")  # type: ignore[arg-type]
     if not out_delta:
-        out_delta = os.path.join(tmpdir, "coverage_delta.tif")
+        out_delta = os.path.join(tmpdir, "coverage_delta.tif")  # type: ignore[arg-type]
     return out_a, out_b, out_delta, out_report, tmpdir
 
 
