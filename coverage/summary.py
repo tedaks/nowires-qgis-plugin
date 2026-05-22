@@ -69,6 +69,7 @@ def summarize_coverage_grid(
     a = np.sin(dphi / 2) ** 2 + np.cos(lat1_r) * np.cos(lat2_r) * np.sin(dlam / 2) ** 2
     a = np.clip(a, 0.0, 1.0)
     dist_grid_km = (2 * R * np.arcsin(np.sqrt(a))) / 1000.0  # (n_rows, n_cols)
+    dist_grid_km = np.where(np.isnan(prx_grid), np.nan, dist_grid_km)
 
     # Mask: usable cells above sensitivity
     usable_mask = (~np.isnan(prx_grid)) & (prx_grid >= rx_sensitivity_dbm)
