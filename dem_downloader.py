@@ -115,6 +115,7 @@ def get_temp_dir():
 
 
 def tile_name_for(lat, lon):
+    lat, lon = math.floor(lat), math.floor(lon)
     ns = "N" if lat >= 0 else "S"
     ew = "E" if lon >= 0 else "W"
     return "Copernicus_DSM_COG_10_{}{:02d}_00_{}{:03d}_00_DEM".format(
