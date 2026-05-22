@@ -26,7 +26,7 @@ The following files are derived from or inspired by the nowires project (adapted
 | `coverage/engine.py` | `apps/api/app/coverage_workers.py`, `apps/api/app/coverage_render.py` |
 | `radio.py` (ITM bridge, Fresnel, signal levels) | `apps/api/app/itm_bridge.py`, `apps/api/app/math_kernels.py`, `apps/api/app/signal_levels.py` |
 | `antenna.py` | `apps/api/app/antenna.py` |
-| `clutter/__init__.py`, `clutter/advanced.py`, `clutter/categories.py`, `clutter/constants.py`, `clutter/context.py`, `clutter_p2108.py` | `apps/api/app/clutter/__init__.py` |
+| `clutter/__init__.py`, `clutter/advanced.py`, `clutter/categories.py`, `clutter/constants.py`, `clutter/context.py`, `clutter/grid.py`, `clutter/resolve.py` | `apps/api/app/clutter/__init__.py` |
 | `clutter/saalos.py` | clutterloss-itm Rust crate (see section 7 below) |
 | `elevation.py` (terrain utilities, ElevationGrid) | `apps/api/app/elevation_grid.py`, `apps/api/app/terrain.py` |
 | `coverage/palette.py` (signal level palette) | `apps/api/app/signal_levels.py`, `apps/api/app/coverage_render.py` |
