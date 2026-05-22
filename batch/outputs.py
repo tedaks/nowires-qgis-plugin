@@ -37,7 +37,7 @@ except ImportError:
 
 from NoWires.batch.analysis_params import BatchAnalysisParams
 from NoWires.batch.writer import write_batch_marker_layer, write_batch_csv, write_batch_json
-from NoWires.constants import DEFAULT_PROFILE_STEP_M
+from NoWires.constants import DEFAULT_PROFILE_STEP_M, CLIMATE_NAMES
 from NoWires.elevation import bearing_deg, haversine_m
 from NoWires.fresnel import C_LIGHT, fresnel_profile_analysis
 from NoWires.radio import (
@@ -106,6 +106,9 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
         location_pct=params.location_pct,
         situation_pct=params.situation_pct,
     )
+
+    if itm_result.failed or not math.isfinite(itm_result.loss_db):
+        return None
 
     clutter_context = None
     if params.clutter_enabled:
@@ -193,6 +196,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
         "status": "VIABLE" if margin_db >= 0 else "NOT VIABLE",
         "tx_height": tx_h_eff,
         "rx_height": rx_h_eff,
+        "climate": CLIMATE_NAMES.get(params.climate, str(params.climate)),
     }
 
 def compute_batch_links(params: BatchAnalysisParams, feedback):
