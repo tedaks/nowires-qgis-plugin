@@ -133,9 +133,10 @@ class TestP2PAlgorithmExecution:
 
 class TestCoverageAlgorithmExecution:
     def test_coverage_process_algorithm_runs_with_synthetic_dem(
-        self, qgis_app, processing_context, feedback, patch_dem_download, tmp_path,
+        self, qgis_app, processing_context, feedback, patch_dem_download, monkeypatch, tmp_path,
     ):
         from NoWires.algorithm.coverage import CoverageAlgorithm
+        from NoWires import clutter as clutter_mod
 
         dem_path = patch_dem_download
         _create_synthetic_dem(
@@ -143,7 +144,9 @@ class TestCoverageAlgorithmExecution:
             west=120.9, east=121.1, nx=20, ny=20,
         )
 
-        alg = P2PAlgorithm()
+        monkeypatch.setattr(clutter_mod, "ensure_clutter_grid_for_area", lambda *a, **kw: None)
+
+        alg = CoverageAlgorithm()
         alg.initAlgorithm({})
 
         params = {
