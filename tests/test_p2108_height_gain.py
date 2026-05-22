@@ -95,10 +95,13 @@ class TestHeightGainLoss:
     def test_zero_height_method_2b_no_log10_crash(self):
         assert height_gain_loss(0.0, 1.0, "open_rural") == 0.0
 
+    def test_below_min_height_returns_zero_scalar(self):
+        assert height_gain_loss(1e-10, 1.0, "urban") == 0.0
+        assert height_gain_loss(1e-10, 1.0, "open_rural") == 0.0
+
     def test_very_small_height_method_2b_finite_result(self):
         result = height_gain_loss(1e-6, 1.0, "open_rural")
-        assert math.isfinite(result)
-        assert result > 0.0
+        assert result == 0.0
 
     def test_negative_height_method_2b_finite_result(self):
         result = height_gain_loss(-0.001, 1.0, "open_rural")
@@ -133,7 +136,16 @@ class TestHeightGainLossVec:
         result = height_gain_loss_vec(h, 1.0, cats)
         assert result[0] == 0.0
         assert result[1] == 0.0
+        assert result[2] == 0.0
         assert np.isfinite(result).all()
+
+    def test_vectorized_below_min_height_returns_zero(self):
+        h = [1e-10, 0.05, 0.099, 0.1, 0.5]
+        cats = ["urban", "open_rural", "suburban", "urban", "open_rural"]
+        result = height_gain_loss_vec(h, 1.0, cats)
+        assert result[0] == 0.0
+        assert result[1] == 0.0
+        assert result[2] == 0.0
 
     def test_vectorized_method_2b_matches_scalar(self):
         h = [1.0, 3.0, 5.0, 8.0]
