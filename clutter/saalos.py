@@ -124,6 +124,8 @@ def clutter_loss_saalos(d__meter, cch__meter, h_tx__meter, h_rx__meter,
                 ) / math.sqrt(hone)
             arte = arte + q
     else:
+        # Below-canopy path: exp(1/cch - htx) matches ITWOM 3.0 itwom3.0.cpp:410
+        # and Rust clutterloss-itm-addon-rust/src/lib.rs:186.
         q1 = (cch__meter - h_tx__meter) * (
             2.06943 - 1.56184 * math.exp(1.0 / cch__meter - h_tx__meter))
         q2 = (17.98 - 0.84224 * (cch__meter - h_tx__meter)) * math.exp(-0.00000061 * pd)
@@ -278,8 +280,10 @@ def _saalos_vec_above(result, mask, pd, pdk, cch, htx, hrx, hrx_gnd, pol, wn):
 
 
 def _saalos_vec_below(result, mask, pd, pdk, cch, htx, hrx, wn):
+    # Below-canopy path: exp(1/cch - htx) matches ITWOM 3.0 itwom3.0.cpp:410
+    # and Rust clutterloss-itm-addon-rust/src/lib.rs:186.
     m_cch_h = np.maximum(cch - htx, 1e-10)
-    q1 = m_cch_h * (2.06943 - 1.56184 * np.exp(1.0 / m_cch_h))
+    q1 = m_cch_h * (2.06943 - 1.56184 * np.exp(1.0 / cch - htx))
     q2 = (17.98 - 0.84224 * m_cch_h) * np.exp(-0.00000061 * pd)
     arte = q1 + q2 + 1.34795 * 20.0 * np.log10(pd + 1.0)
     arte -= np.maximum(0.01, np.log10(wn * 47.7) - 2.0) * (hrx / np.maximum(htx, 1e-10))

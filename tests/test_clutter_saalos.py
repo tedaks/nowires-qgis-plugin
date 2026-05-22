@@ -138,3 +138,28 @@ def test_vec_matches_scalar_above_clutter_various_distances():
         assert float(vec) == pytest.approx(scalar, abs=1e-6), (
             f"Mismatch at d={d}, cch={cch}, htx={htx}, hrx={hrx}, pol={pol}, f={f}"
         )
+
+
+def test_vec_below_canopy_small_canopy():
+    cch, htx, hrx, d = 0.5, 0.1, 0.001, 0.1
+    scalar = clutter_loss_saalos(d, cch, htx, hrx, 1000.0, 0, 10.0)
+    vec = clutter_loss_saalos_vec(d, cch, htx, hrx, 1000.0, 0, 10.0)
+    assert float(vec) == pytest.approx(scalar, abs=1e-4), (
+        f"Small-canopy divergence: scalar={scalar:.4f} vec={float(vec):.4f}"
+    )
+
+
+def test_vec_below_canopy_near_canopy():
+    cch, htx, hrx, d = 5.0, 4.9, 0.001, 0.1
+    scalar = clutter_loss_saalos(d, cch, htx, hrx, 1000.0, 0, 10.0)
+    vec = clutter_loss_saalos_vec(d, cch, htx, hrx, 1000.0, 0, 10.0)
+    assert float(vec) == pytest.approx(scalar, abs=1e-4), (
+        f"Near-canopy divergence: scalar={scalar:.4f} vec={float(vec):.4f}"
+    )
+
+
+def test_vec_below_canopy_uncapped_d_small():
+    cch, htx, hrx, d = 5.0, 3.0, 0.5, 1.0
+    scalar = clutter_loss_saalos(d, cch, htx, hrx, 1000.0, 0, 1000.0)
+    vec = clutter_loss_saalos_vec(d, cch, htx, hrx, 1000.0, 0, 1000.0)
+    assert float(vec) == pytest.approx(scalar, abs=1e-4)
