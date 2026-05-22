@@ -162,9 +162,8 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
                 self.temp_dir, aoi_shp_path, proxy_opener,
                 feedback, self.progress, self.status_total)
             if merged_path is None:
-                feedback.reportError(
+                raise QgsProcessingException(
                     "DEM download/merge failed for the selected area.")
-                return {}
             for _cf in clip_temps:
                 self._tmp.add_file(_cf)
             self.progress += 2
