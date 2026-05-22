@@ -62,6 +62,16 @@ class TestBuildingEntryLoss:
         unknown = building_entry_loss(1.0, "nonexistent", theta_deg=0.0, p=50.0)
         assert unknown == pytest.approx(trad, abs=0.01)
 
+    def test_theta_above_90_clamped(self):
+        loss_120 = building_entry_loss(1.0, "traditional", theta_deg=120.0, p=50.0)
+        loss_90 = building_entry_loss(1.0, "traditional", theta_deg=90.0, p=50.0)
+        assert loss_120 == pytest.approx(loss_90, abs=0.01)
+
+    def test_theta_negative_clamped(self):
+        loss_neg10 = building_entry_loss(1.0, "traditional", theta_deg=-10.0, p=50.0)
+        loss_pos10 = building_entry_loss(1.0, "traditional", theta_deg=10.0, p=50.0)
+        assert loss_neg10 == pytest.approx(loss_pos10, abs=0.01)
+
 
 class TestBuildingEntryLossVec:
     def test_vectorized_matches_scalar(self):

@@ -63,6 +63,7 @@ def building_entry_loss(f_ghz, building_type: BuildingType = "traditional", thet
             "P.2109-2: unknown building type '%s', defaulting to traditional",
             building_type)
         coeffs = _COEFFS["traditional"]
+    theta_deg = max(0.0, min(abs(theta_deg), 90.0))
     log_f = math.log10(f_ghz)
     L_h = coeffs["r"] + coeffs["s"] * log_f + coeffs["t"] * log_f ** 2
     L_e = 0.212 * abs(theta_deg)
