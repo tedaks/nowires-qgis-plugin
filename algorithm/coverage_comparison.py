@@ -98,6 +98,15 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
         south, north, west, east = coverage_bounds(
             tx_lat_center, tx_lon_center, radius_km, padding_deg=pad_deg)
 
+        gs_a = GRID_SIZE_PRESETS[
+            self.parameterAsEnum(parameters, self.PANEL_A_GRID_SIZE, context)]
+        gs_b = GRID_SIZE_PRESETS[
+            self.parameterAsEnum(parameters, self.PANEL_B_GRID_SIZE, context)]
+        if gs_a != gs_b:
+            raise QgsProcessingException(
+                "Panel A grid size ({}) and Panel B grid size ({}) "
+                "must match.".format(gs_a, gs_b))
+
         feedback.pushInfo("Downloading DEM data...")
         feedback.setProgress(2)
         dem_path = ensure_dem_for_area(south, north, west, east, feedback=feedback)
@@ -166,15 +175,6 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
 
                 feedback.pushInfo("Computing delta raster...")
                 feedback.setProgress(80)
-
-                if prx_grid_a.shape != prx_grid_b.shape:
-                    gs_a = GRID_SIZE_PRESETS[
-                        self.parameterAsEnum(parameters, self.PANEL_A_GRID_SIZE, context)]
-                    gs_b = GRID_SIZE_PRESETS[
-                        self.parameterAsEnum(parameters, self.PANEL_B_GRID_SIZE, context)]
-                    raise QgsProcessingException(
-                        "Panel A grid size ({}) and Panel B grid size ({}) "
-                        "must match.".format(gs_a, gs_b))
 
                 ds = compute_delta_summary(loss_grid_a, loss_grid_b, threshold_db)
                 loss_delta_grid = ds["loss_delta_grid"]
