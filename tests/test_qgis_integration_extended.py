@@ -58,19 +58,17 @@ def feedback():
 
 class TestP2PAlgorithmExecution:
     def test_p2p_process_algorithm_runs_with_synthetic_dem(
-        self, qgis_app, processing_context, feedback, monkeypatch, tmp_path,
+        self, qgis_app, processing_context, feedback, patch_dem_download, monkeypatch, tmp_path,
     ):
         from NoWires.algorithm.p2p import P2PAlgorithm
-        from NoWires import dem_downloader as dd_mod
         from NoWires import clutter as clutter_mod
 
-        dem_path = str(tmp_path / "dem.tif")
+        dem_path = patch_dem_download
         _create_synthetic_dem(
             dem_path, south=13.9, north=14.1,
             west=120.9, east=121.1, nx=20, ny=20,
         )
 
-        monkeypatch.setattr(dd_mod, "ensure_dem_for_area", lambda *a, **kw: dem_path)
         monkeypatch.setattr(clutter_mod, "ensure_clutter_grid_for_area", lambda *a, **kw: None)
 
         alg = P2PAlgorithm()
@@ -135,20 +133,17 @@ class TestP2PAlgorithmExecution:
 
 class TestCoverageAlgorithmExecution:
     def test_coverage_process_algorithm_runs_with_synthetic_dem(
-        self, qgis_app, processing_context, feedback, monkeypatch, tmp_path,
+        self, qgis_app, processing_context, feedback, patch_dem_download, tmp_path,
     ):
         from NoWires.algorithm.coverage import CoverageAlgorithm
-        from NoWires import dem_downloader as dd_mod
 
-        dem_path = str(tmp_path / "dem.tif")
+        dem_path = patch_dem_download
         _create_synthetic_dem(
             dem_path, south=13.9, north=14.1,
-            west=120.9, east=121.1, nx=30, ny=30,
+            west=120.9, east=121.1, nx=20, ny=20,
         )
 
-        monkeypatch.setattr(dd_mod, "ensure_dem_for_area", lambda *a, **kw: dem_path)
-
-        alg = CoverageAlgorithm()
+        alg = P2PAlgorithm()
         alg.initAlgorithm({})
 
         params = {
@@ -245,19 +240,16 @@ class TestAlgorithmParameterConsistency:
 
 class TestBatchAlgorithmExecution:
     def test_batch_one_to_many_process_algorithm_runs(
-        self, qgis_app, processing_context, feedback, monkeypatch, tmp_path,
+        self, qgis_app, processing_context, feedback, patch_dem_download, tmp_path,
     ):
         from NoWires.algorithm.batch import BatchAnalysisAlgorithm
-        from NoWires import dem_downloader as dd_mod
         from osgeo import ogr, osr
 
-        dem_path = str(tmp_path / "dem.tif")
+        dem_path = patch_dem_download
         _create_synthetic_dem(
             dem_path, south=13.9, north=14.1,
             west=120.9, east=121.1, nx=20, ny=20,
         )
-
-        monkeypatch.setattr(dd_mod, "ensure_dem_for_area", lambda *a, **kw: dem_path)
 
         rx_path = str(tmp_path / "rx_points.gpkg")
         driver = ogr.GetDriverByName("GPKG")
