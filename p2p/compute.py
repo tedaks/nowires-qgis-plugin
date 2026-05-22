@@ -46,7 +46,8 @@ def _interpolate_nan_elevations(elevations):
 
 
 def _load_p2p_qgis_layers(context, profile_path, fresnel_poly_path,
-        fresnel_lines_path, markers_path, show_chart, chart_kwargs, sink):
+        fresnel_lines_path, markers_path, show_chart, chart_kwargs, sink,
+        feedback=None):
     from qgis.core import QgsVectorLayer
     from NoWires.p2p.symbology import (
         apply_fresnel_polygon_symbology, apply_fresnel_lines_symbology,
@@ -78,6 +79,8 @@ def _load_p2p_qgis_layers(context, profile_path, fresnel_poly_path,
             show_profile_chart(**chart_kwargs)
         except Exception:
             logger.warning("P2P profile chart failed", exc_info=True)
+            if feedback is not None:
+                feedback.pushWarning("P2P profile chart creation failed")
 
 
 def run_p2p_analysis(params: P2PAnalysisParams):
@@ -233,7 +236,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             prx_dbm=prx_dbm, margin_db=margin_db, itm_loss_db=loss_db)
         _load_p2p_qgis_layers(p.context, profile_path, fresnel_poly_path,
             fresnel_lines_path, markers_path, p.show_chart, chart_kwargs,
-            p.post_processor_sink)
+            p.post_processor_sink, feedback=p.feedback)
         p.feedback.setProgress(100)
         report_p2p_results(p.feedback, dist_m, p.f_mhz, result,
                            report_payload, p.k_factor, los_blocked,
