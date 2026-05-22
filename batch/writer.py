@@ -95,7 +95,7 @@ def write_batch_csv(path, results, mode):
         writer = csv.writer(f)
         headers = ["Point Id", "rank", "tx_lat", "tx_lon", "rx_lat", "rx_lon",
                    "dist_km", "itm_loss_db", "total_loss_db",
-                   "margin_db", "clearance_pct", "status"]
+                   "margin_db", "clearance_pct", "status", "climate"]
         writer.writerow(headers)
         for rank, r in enumerate(results, 1):
             if mode == 1:
@@ -115,6 +115,7 @@ def write_batch_csv(path, results, mode):
                 round(r["margin_db"], 2),
                 round(r["clearance_pct"], 1),
                 r["status"],
+                r.get("climate", ""),
             )])
 
 
@@ -138,6 +139,7 @@ def write_batch_json(path, results, mode):
                 "margin_db": round(r["margin_db"], 2),
                 "clearance_pct": round(r["clearance_pct"], 1),
                 "status": r["status"],
+                "climate": r.get("climate", ""),
             }
             for rank, r in enumerate(results, 1)
         ],
