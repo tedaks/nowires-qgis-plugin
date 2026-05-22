@@ -2,8 +2,8 @@ ruff==0.15.13
 mypy==2.1.0
 pytest==9.0.3
 pytest-cov==7.1.0
-hypothesis==6.152.7
-numpy==2.4.4
+hypothesis==6.152.9
+numpy==2.4.6
 defusedxml==0.7.1
 pip-audit==2.10.0
 import-linter==2.11
