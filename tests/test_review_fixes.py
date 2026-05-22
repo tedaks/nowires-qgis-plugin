@@ -113,24 +113,36 @@ def _install_qgis_stubs():
     sys.modules["qgis.PyQt.QtWidgets"] = qtwidgets
 
 
-_HAS_REAL_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
-
 # Don't poison sys.modules["qgis.core"] when a real QGIS runtime is present;
 # its `__getattr__ = lambda _name: MagicMock()` would make integration tests
 # elsewhere see MagicMocks for QGIS classes (e.g. QgsProcessingProvider),
 # breaking provider instantiation in collection-shared state.
-if not _HAS_REAL_QGIS:
-    _install_qgis_stubs()
+# The autouse fixture below installs stubs per-test and restores originals.
+_HAS_REAL_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
 
 pytestmark = pytest.mark.skipif(
     _HAS_REAL_QGIS,
     reason="Mock-based regression tests must not run against real QGIS extensions",
 )
 
+_saved_qgis_modules = {}
+
 
 @pytest.fixture(autouse=True)
 def qgis_stubs():
-    _install_qgis_stubs()
+    for key in ("qgis", "qgis.core", "qgis.PyQt", "qgis.PyQt.QtCore",
+                "qgis.PyQt.QtGui", "qgis.PyQt.QtWidgets"):
+        if key in sys.modules and key not in _saved_qgis_modules:
+            _saved_qgis_modules[key] = sys.modules[key]
+    if not _HAS_REAL_QGIS:
+        _install_qgis_stubs()
+    yield
+    for key in ("qgis", "qgis.core", "qgis.PyQt", "qgis.PyQt.QtCore",
+                "qgis.PyQt.QtGui", "qgis.PyQt.QtWidgets"):
+        if key in _saved_qgis_modules:
+            sys.modules[key] = _saved_qgis_modules[key]
+        elif key in sys.modules:
+            del sys.modules[key]
 
 
 class Feedback:
