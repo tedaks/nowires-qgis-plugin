@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 _FREQ_MIN_GHZ = 0.03
 _FREQ_MAX_GHZ = 3.0
 _DEFAULT_STREET_WIDTH_M = 27.0
+_MIN_HEIGHT_M = 0.1
 
 _CATEGORY_PARAMS: dict[str, dict[str, int | float | str]] = {
     cat: {"R_m": params["R_m"], "method": params["p2108_3_1_method"]}
@@ -72,7 +73,7 @@ def height_gain_loss(h_m: float, f_ghz: float, category: str,
         return 0.0
     R = float(params["R_m"])
     method = str(params["method"])
-    if h_m <= 0.0 or h_m >= R:
+    if h_m < _MIN_HEIGHT_M or h_m >= R:
         return 0.0
     h_dif = R - h_m
     theta_clut = math.degrees(math.atan(h_dif / w_s_m))
@@ -113,7 +114,7 @@ def height_gain_loss_vec(h_m_arr, f_ghz, categories, w_s_m=_DEFAULT_STREET_WIDTH
             continue
         R = float(params["R_m"])
         method = params["method"]
-        mask = (cats == cat_name) & (h > 0) & (h < R)
+        mask = (cats == cat_name) & (h >= _MIN_HEIGHT_M) & (h < R)
         if not mask.any():
             continue
         h_dif = R - h[mask]
