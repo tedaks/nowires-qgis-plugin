@@ -24,7 +24,7 @@ All Python source files in this project must strictly adhere to a maximum of **3
 
 ## CI Pipeline
 
-The project uses three GitHub Actions workflows run on every push and pull request:
+The project uses six GitHub Actions workflows run on every push and pull request:
 
 ### tests.yml — Lint, Type-Check, Audit, Unit Tests
 
@@ -33,9 +33,8 @@ The project uses three GitHub Actions workflows run on every push and pull reque
 | `lint` | Runs `ruff check .` and enforces the 300-line file limit |
 | `audit` | Runs `pip-audit --requirement constraints-ci.txt` against the pinned dependency list |
 | `mypy` | Runs `mypy . --config-file mypy.ini` for static type checking |
+| `import-linter` | Runs `lint-imports` to check import architecture rules |
 | `pytest` | Runs `pytest -m "not benchmark and not qgis_integration" --cov` on Python 3.12. Coverage threshold lives in `pyproject.toml` (currently 59%). |
-
-Tool versions are pinned in `constraints-ci.txt`. Each job installs only its role's deps via `requirements-{lint,typecheck,test}.txt` using `pip install -c constraints-ci.txt -r requirements-<role>.txt`.
 
 ### integration.yml — QGIS Integration Tests (Docker)
 
@@ -44,6 +43,10 @@ Runs inside the `qgis/qgis:4.0` container on every push/PR. Runs the QGIS integr
 ### benchmark.yml — Benchmark Smoke Tests
 
 Runs `pytest -m benchmark` with a 15-minute timeout on every push/PR (and `workflow_dispatch`).
+
+### codeql.yml — CodeQL Static Analysis
+
+Runs on push/PR to `main` and weekly cron. Performs Python static analysis via CodeQL.
 
 ### version-check.yml — Version and Changelog Gate
 
@@ -61,7 +64,7 @@ ruff check .
 mypy . --config-file mypy.ini
 
 # Unit and contract tests with coverage (threshold from pyproject.toml)
-pytest -q -m "not benchmark and not qgis_integration" --cov
+PYTHONPATH="$(pwd)" pytest -q -m "not benchmark and not qgis_integration" --cov
 
 # File-size enforcement
 find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}'

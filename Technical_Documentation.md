@@ -57,6 +57,10 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   Coverage parameter definitions and defaults
 - [coverage/pool.py](coverage/pool.py)
   Coverage multiprocessing pool and shared-memory management
+- [coverage/_executor.py](coverage/_executor.py)
+  Coverage multiprocessing executor (extracted from coverage_pool)
+- [coverage/_result_dispatch.py](coverage/_result_dispatch.py)
+  Batch result dispatch and failure logging (extracted from coverage_pool)
 - [coverage/tasks.py](coverage/tasks.py)
   Per-pixel coverage task definitions
 - [coverage/summary.py](coverage/summary.py)
@@ -93,10 +97,12 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   Shared clutter constants (simple loss table, limits)
 - [clutter/context.py](clutter/context.py)
   ClutterLossContext dataclass
+- [clutter/grid.py](clutter/grid.py)
+  LandCoverGrid class for WorldCover raster sampling
+- [clutter/resolve.py](clutter/resolve.py)
+  Clutter resolution logic (grid acquisition and category dispatch)
 - [cache_manager.py](cache_manager.py)
   DEM and WorldCover tile cache cleanup utilities
-- [clutter_p2108.py](clutter_p2108.py)
-  Deprecation shim delegating to `p2108_terrestrial_stat`
 - [clutter/p2108_common.py](clutter/p2108_common.py)
   Shared inverse-normal CDF helpers (`Q⁻¹`, `F⁻¹`) and validation for P.2108/P.2109
 - [clutter/p2108_height_gain.py](clutter/p2108_height_gain.py)
@@ -131,6 +137,10 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   Geographic bounds and padding helpers
 - [nan_utils.py](nan_utils.py)
   NaN-safe array utilities
+- [_bilinear.py](_bilinear.py)
+  Shared bilinear interpolation (scalar, line, grid paths)
+- [_geo_utils.py](_geo_utils.py)
+  Geography utility helpers
 - [temp_manager.py](temp_manager.py)
   Temporary directory management with cleanup
 - [macos_compat.py](macos_compat.py)
@@ -153,8 +163,12 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   P2P algorithm parameter registration
 - [p2p/outputs.py](p2p/outputs.py)
   P2P vector output helpers
+- [p2p/_outputs_internal.py](p2p/_outputs_internal.py)
+  P2P output layer and report writing (extracted from compute.py)
 - [p2p/chart.py](p2p/chart.py)
   Interactive profile chart with hover, callouts, and export
+- [p2p/chart_helpers.py](p2p/chart_helpers.py)
+  Chart helper functions extracted from chart.py
 - [p2p/chart_format.py](p2p/chart_format.py)
   Chart axis and label formatting
 - [p2p/symbology.py](p2p/symbology.py)
@@ -187,6 +201,8 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   Contour processing pipeline
 - [contour/smoothing.py](contour/smoothing.py)
   VRT Gaussian smoothing for contour DEM
+- [contour/_smoothing_vrt.py](contour/_smoothing_vrt.py)
+  Gaussian kernel, raster calc, and blur VRT helpers (extracted from smoothing.py)
 - [contour/symbology.py](contour/symbology.py)
   Rule-based contour symbology
 
@@ -590,7 +606,7 @@ Out-of-band frequencies are clamped to the nearest valid range, with a warning l
 `clutter/p2108_height_gain.py` implements the ITU-R P.2108-1 §3.1 height-gain terminal correction.
 
 - **Validity:** 0.03–3 GHz, antenna height h below representative clutter height R.
-- **Per-category** (from P.2108-1 Table 3)：categories `open`, `open_rural`, and `dense_rural` use method (2b) — `Ah = −Kh2 · log10(h/R)`; categories `suburban`, `urban`, and `vegetation` use method (2a) — `Ah = J(ν) − 6.03` with knife-edge diffraction `J(ν)`.
+- Per-category** (from P.2108-1 Table 3): categories `open`, `open_rural`, and `dense_rural` use method (2b) -- `Ah = -Kh2 * log10(h/R)`; categories `suburban`, `urban`, and `vegetation` use method (2a) -- `Ah = J(v) - 6.03` with knife-edge diffraction `J(v)`.
 - **Not a function of distance or percentile** — depends only on h, f, R, and street width w_s.
 - **Gated to zero** when antenna height ≥ representative clutter height R.
 
@@ -700,12 +716,12 @@ Simple mode:
 
 | WorldCover class | Category |
 |---|---|
-| 10, 95, 100 | vegetation |
-| 20, 30, 40 | open_rural |
+| 10, 95 | vegetation |
+| 20, 30, 40, 100 | rural |
 | 50 | urban |
 | 60, 70, 80, 90 | open |
 
-Advanced mode uses the same mapping but with `open_rural` and `dense_rural` replacing `rural`.
+Advanced mode splits `rural` into `open_rural` (classes 40, 90) and `dense_rural` (classes 20, 30, 100), with classes 10, 95 mapping to `vegetation` and class 50 to `urban` as in simple mode.
 
 ### Clutter Reporting
 
@@ -745,7 +761,7 @@ project between QGIS sessions. The marker shapefile is written to
 - The `NOWIRES_MAX_WORKERS` env var caps worker count (default `min(os.cpu_count(), 16)`).
 - The `NOWIRES_WINDOWS_MP=1` env-var opt-in present in v1.5.3 is **removed in v1.5.5**; the new validating helper is the gate.
 - No cross-process cancel signal is used. Cancellation flows from the main thread breaking out of `pool.map` between batches; in-flight batches finish naturally (~64 tasks × ~5 ms ≈ 320 ms worst-case wait at default chunk size). Earlier attempts to share a cancel signal via `multiprocessing.Event()` and `multiprocessing.Manager().Event()` both broke on macOS QGIS under spawn-mode pickling.
-- The functions handed to `ProcessPoolExecutor` (`_init_cov_pool` as `initializer`, `_itm_worker_batch` as the `pool.map` callable) are resolved by a **function-local** `from .coverage_pool import _init_cov_pool, _itm_worker_batch` inside `execute_coverage_tasks`, not by a module-scope import in `_coverage_executor`. Reason: `pickle` verifies a function reference by `getattr(sys.modules[fn.__module__], fn.__qualname__) is fn`. A module-scope import freezes the reference to whichever function object existed the *first* time `_coverage_executor` loaded; if `NoWires.coverage_pool` is later replaced in `sys.modules` (QGIS plugin reload, the "Plugin Reloader" plugin, any `importlib.reload` of just that file) the cached reference diverges from the current module's attribute and pickle raises `PicklingError: ... it's not the same object as NoWires.coverage_pool._init_cov_pool`. The bug was latent on Windows through v1.5.4 because `should_use_multiprocessing()` returned False on most installs; v1.5.5's `pythonw.exe` detection made the gate succeed and exposed it. Fixed in v1.5.6 — see `tests/test_coverage_executor_reload_pickle.py` for the regression guard.
+- The functions handed to `ProcessPoolExecutor` (`_init_cov_pool` as `initializer`, `_itm_worker_batch` as the `pool.map` callable) are resolved by a **function-local** `from .coverage_pool import _init_cov_pool, _itm_worker_batch` inside `execute_coverage_tasks`, not by a module-scope import in `coverage/_executor.py`. Reason: `pickle` verifies a function reference by `getattr(sys.modules[fn.__module__], fn.__qualname__) is fn`. A module-scope import freezes the reference to whichever function object existed the *first* time `coverage/_executor.py` loaded; if `NoWires.coverage_pool` is later replaced in `sys.modules` (QGIS plugin reload, the "Plugin Reloader" plugin, any `importlib.reload` of just that file) the cached reference diverges from the current module's attribute and pickle raises `PicklingError: ... it's not the same object as NoWires.coverage_pool._init_cov_pool`. The bug was latent on Windows through v1.5.4 because `should_use_multiprocessing()` returned False on most installs; v1.5.5's `pythonw.exe` detection made the gate succeed and exposed it. Fixed in v1.5.6 — see `tests/test_coverage_executor_reload_pickle.py` for the regression guard.
 - When the multiprocessing branch raises, the fallback path calls `feedback.pushWarning("Multiprocessing unavailable ({}: {}), ...".format(type(exc).__name__, exc))` so the exception type and message surface in the QGIS Processing log panel. Earlier versions only logged via Python `logger.warning` and then `feedback.pushInfo("Multiprocessing unavailable, ...")` with no exception details; on GUI-subsystem QGIS builds (Windows `pythonw.exe`-bundled, some macOS configurations) the `logger.warning` `StreamHandler` can have `stream=None` and silently drop the diagnostic, leaving the user with an opaque "unavailable" message and no trail back to the underlying cause.
 
 Raster positioning details:
@@ -1083,10 +1099,10 @@ Test coverage includes:
 
 - source-based regression checks for Processing contracts
 - unit tests for pure Python helpers
-- P.2108-1 §3.1 height-gain terminal correction (14 tests in `test_clutter/p2108_height_gain.py`)
-- P.2108-1 §3.2 statistical clutter loss (14 tests in `test_clutter/p2108_terrestrial_stat.py`)
-- P.2109-2 building entry loss (10 tests in `test_clutter/p2109_bel.py`)
-- P.2108/P.2109 shared inverse-normal helpers and sign-convention guards (24 tests in `test_clutter/p2108_common.py`)
+- P.2108-1 §3.1 height-gain terminal correction (14 tests in `tests/test_p2108_height_gain.py`)
+- P.2108-1 §3.2 statistical clutter loss (14 tests in `tests/test_p2108_terrestrial_stat.py`)
+- P.2109-2 building entry loss (10 tests in `tests/test_p2109_bel.py`)
+- P.2108/P.2109 shared inverse-normal helpers and sign-convention guards (24 tests in `tests/test_p2108_common.py`)
 - coverage-engine behavior checks
 - benchmark and module-split regressions
 - 3D support contract checks
@@ -1132,7 +1148,6 @@ A `postProcessAlgorithm` override in `base_algorithm.py` reorders raster layers 
 - The repository test suite does not substitute for in-QGIS manual validation.
 - P.2108-1 §3.2 is a combined urban+suburban statistic; it should not be applied to open or rural categories (the plugin enforces this by only invoking §3.2 for suburban and urban categories).
 - P.2109-2 BEL elevation angle in coverage analysis is a fixed user-set value per run; per-pixel elevation computation is out of scope for the current version.
-- `clutter_p2108.py` is a deprecation shim that delegates to `p2108_terrestrial_stat` with a `DeprecationWarning`; it will be removed after one release cycle.
 
 ## ITM Propagation Edge Cases
 
