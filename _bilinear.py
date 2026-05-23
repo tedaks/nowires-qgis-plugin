@@ -35,8 +35,8 @@ def _bilinear_scalar(data: np.ndarray, gm: dict, lat: float, lon: float) -> floa
     if fy < -0.5 or fx < -0.5 or fy > n_rows - 0.5 or fx > n_cols - 0.5:
         logger.debug("Bilinear sample out of bounds: lat=%s lon=%s", lat, lon)
         return float("nan")
-    fy = max(0.0, min(n_rows - 1.0, fy))
-    fx = max(0.0, min(n_cols - 1.0, fx))
+    fy = max(0.0, min(n_rows - 1.0 - 1e-9, fy))
+    fx = max(0.0, min(n_cols - 1.0 - 1e-9, fx))
     y0 = int(fy)
     x0 = int(fx)
     y1 = min(y0 + 1, n_rows - 1)

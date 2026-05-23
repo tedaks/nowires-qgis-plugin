@@ -32,8 +32,8 @@ def temp_cache_dir():
     import cache_manager as cm
     original_ddl = ddl.get_temp_dir
     original_cm = cm.get_temp_dir
-    ddl.get_temp_dir = lambda: tmp
-    cm.get_temp_dir = lambda: tmp
+    ddl.get_temp_dir = lambda create=True: tmp
+    cm.get_temp_dir = lambda create=True: tmp
     # Also monkey-patch worldcover dir helpers
     import worldcover_downloader as wcd
     original_wc = wcd.get_worldcover_dir
@@ -65,8 +65,8 @@ class TestClearDemCache:
         original_ddl = ddl.get_temp_dir
         original_cm = cm.get_temp_dir
         try:
-            ddl.get_temp_dir = lambda: "/nonexistent/path/nowires_test"
-            cm.get_temp_dir = lambda: "/nonexistent/path/nowires_test"
+            ddl.get_temp_dir = lambda create=True: "/nonexistent/path/nowires_test"
+            cm.get_temp_dir = lambda create=True: "/nonexistent/path/nowires_test"
             removed, freed = clear_dem_cache()
             assert removed == 0
             assert freed == 0

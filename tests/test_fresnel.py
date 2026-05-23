@@ -255,30 +255,25 @@ class TestFresnelProfileAnalysis:
         f1_indices = set(np.where(vf1)[0])
         assert f60_indices.issubset(f1_indices)
 
-    def test_dist_m_zero_t_is_zero(self):
+    def test_dist_m_zero_raises_value_error(self):
+        """dist_m <= 0 is physically meaningless; raise ValueError."""
         n = 20
         distances = np.linspace(0, 100, n)
         elevations = np.full(n, 50.0)
-        tx_h = 80.0
-        rx_h = 80.0
-        terrain_bulge, los_h, fr, obstructs, vf1, vf60 = (
+        with pytest.raises(ValueError, match="dist_m > 0"):
             fresnel_profile_analysis(
-                distances, elevations, tx_h, rx_h, 0, 1.0
+                distances, elevations, 80.0, 80.0, 0, 1.0
             )
-        )
-        assert los_h[0] == pytest.approx(tx_h, rel=1e-10)
-        assert np.all(los_h == pytest.approx(tx_h, rel=1e-10))
 
-    def test_dist_m_zero_fresnel_radius_zero(self):
+    def test_dist_m_negative_raises_value_error(self):
+        """Negative dist_m is physically meaningless; raise ValueError."""
         n = 20
         distances = np.linspace(0, 100, n)
         elevations = np.full(n, 10.0)
-        terrain_bulge, los_h, fr, obstructs, vf1, vf60 = (
+        with pytest.raises(ValueError, match="dist_m > 0"):
             fresnel_profile_analysis(
-                distances, elevations, 50.0, 50.0, 0, 1.0
+                distances, elevations, 50.0, 50.0, -10, 1.0
             )
-        )
-        assert np.all(fr == 0.0)
 
     def test_two_point_profile(self):
         distances = np.array([0.0, 1000.0])

@@ -135,7 +135,6 @@ def download_and_merge_tiles(
             return None, [], None, 0
         base = os.path.splitext(os.path.basename(tile_path))[0]
         fn_clip = os.path.join(temp_dir, base + "_clip.tif")
-        temp_files.append(fn_clip)
         feedback.pushInfo("Clipping: " + os.path.basename(tile_path))
         clip_result = gdal.Warp(
             fn_clip, tile_path,
@@ -144,6 +143,7 @@ def download_and_merge_tiles(
             format="GTiff", callback=gdal_callback,
         )
         if clip_result is not None:
+            temp_files.append(fn_clip)
             clip_result = None
         else:
             continue

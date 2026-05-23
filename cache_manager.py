@@ -30,7 +30,7 @@ def _entry_size(entry):
 
 
 def _iter_cache_entries():
-    temp_dir = get_temp_dir()
+    temp_dir = get_temp_dir(create=False)
     if not os.path.isdir(temp_dir):
         return
     for pat in _DEM_PATTERNS:
