@@ -58,10 +58,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fix CCH override treating explicit `0.0` as "no override".
   - Centralize remaining magic numbers (DEM nodata, FSPL constant, MHz-to-Hz, directory permissions, k-factor).
   - Wire `antenna.clear_pattern_cache()` into `antenna_pattern_preview.py`.
-- **Test coverage expansion (3 waves, ~100 tests, 66%→80%)**
-  - Wave 1 (~30 unit tests, 66%→72%): `batch/writer.py` (26%), `p2p/chart_helpers.py` (41%), `p2p/_outputs_internal.py` (43%), `report/pdf.py` (39%), `raster_io.py` (21%), `processing_utils.py` (20%), `p2p/params.py` (33%), `base_algorithm.py` (44%).
-  - Wave 2 (~55 Docker tests, 72%→80%): `nowires.py` (45%), `algorithm/*` (17–27%), `p2p/chart.py` (13%), `comparison/add_params.py` (20%), `report/markers.py` (15%), `contour/*` (5–30%).
-  - Wave 3 (~15 Qt UI tests, low priority): `antenna_pattern_preview.py` (0%), `three_d.py` (18%), `coverage/legend.py` (19%).
+- **Test coverage expansion (~106 tests, 62%→80%)**
+  - **Quick wins** (22 tests, pure Python, ~30 min): `clutter/saalos.py` 99%→100% (tvsr>1000 + NaN guard, 2 tests), `clutter/categories.py` 96%→100% (invalid class ID exception, 1 test), `clutter/advanced.py` 96%→100% (unknown-model fallback + dual-saalos zero attribution, 3 tests), `p2p/chart_helpers.py::_nan_safe_fmt` (pure function, 2 tests), `base_algorithm.py::install_constants` iterable path (1 test), `batch/writer.py` 26%→48% (`write_batch_csv`/`write_batch_json` both modes + empty results, 5 tests), `nowires.py` 45%→52% (`_stale_temp_dir_count` + `_NoOpPlugin.__getattr__`, 5 tests), `report/markers.py::_remove_shapefile_sidecars` (pure filesystem, 2 tests), `report/pdf.py` ImportError guard (1 test).
+  - **Medium effort** (15 tests, need MagicMock): `processing_utils.py` 20%→45% (guard clauses: None layer, missing temp store, `willLoadLayerOnCompletion` exception, 5 tests), `p2p/_outputs_internal.py` 43%→55% (all-None conditional dispatch, 2 tests), `shared_dem_grid.py` 75%→82% (`cleanup_stale_shm_entries` PermissionError/OSError branches, 4 tests), `clutter/grid.py` 75%→82% (sampling on closed grid + `sample_class`, 3 tests), `elevation.py` 66%→72% (closed-grid RuntimeError guards, 3 tests — requires GDAL markup).
+  - **QGIS/Docker** (15 tests): `contour/generation.py` 11%→25% (extract pure validation from processAlgorithm, ~10 tests), `three_d.py` 18%→35% (terrain/scene construction, 5 tests), `coverage/legend.py` 19%→40% (dialog lifecycle, 5 tests).
+  - **Baseline 62% was measured 2026-05-23** — `--cov` currently broken on host due to `coverage/` subpackage shadowing (see Refactors); workaround: prepend site-packages to PYTHONPATH.
+- **Delivery (3 focused PRs, sequenced by risk)**
+  - **PR 1 — Security + leaks** (9 fixes): TOCTOU, max_bytes, cache integrity, `_csv_safe`, 3 OGR datasource leaks, `TempDirManager` leak, shared-memory cleanup. One regression test per fix.
+  - **PR 2 — Correctness + quick-win coverage** (17 fixes + 22 tests): climate validation, pool globals lock, TX elevation, antenna height val, LRU eviction, `os.lstat`, driver guards, ITMResult sentinel, `np.copy`, zero-array copies, `bool` guard, `ValueError` log, float64 intermediates, NaN guard, singleton guard, PANEL_A_CONSTANTS crash. All quick-win coverage tests ship here.
+  - **PR 3 — Cleanup + medium/QGIS coverage** (8 refactors + 30 tests): `coverage/` rename, `fs_utils.py`, CI gates, magic numbers, CCH override, batch `with` context manager, test helper centralization, `CLIMATE_OPTIONS`, `clear_pattern_cache`. Medium-effort + QGIS/Docker coverage tests ship here.
 
 ## [1.6.1] - 2026-05-23
 
