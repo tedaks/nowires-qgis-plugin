@@ -4,7 +4,6 @@
 # This program is free software under GPLv3 or later. See LICENSE.
 """Behavioral tests for comparison_reporting: build_panel_info and build_delta_info."""
 
-import math
 
 import numpy as np
 import pytest
@@ -100,7 +99,7 @@ class TestBuildDeltaInfo:
         assert info["degraded_pct"] == pytest.approx(20.0)
         assert info["unchanged_pct"] == pytest.approx(50.0)
 
-    def test_zero_valid_count_does_not_divide_by_zero(self):
+    def test_zero_valid_count_returns_zero_pcts(self):
         ds = {
             "valid_count": 0,
             "improved": 0,
@@ -111,5 +110,6 @@ class TestBuildDeltaInfo:
             "mean_delta": 0.0,
         }
         info = build_delta_info("diverging", 5.0, ds)
-        assert math.isnan(info["improved_pct"])
-        assert math.isnan(info["degraded_pct"])
+        assert info["improved_pct"] == 0.0
+        assert info["degraded_pct"] == 0.0
+        assert info["unchanged_pct"] == 0.0

@@ -141,7 +141,7 @@ def execute_coverage_tasks(
         seq_cancelled, seq_failed, seq_done = _run_sequential(
             tasks, grid_data, grid_meta, feedback, prx_grid, loss_grid,
             itm_loss_grid, clutter_loss_grid, clutter_rx_db_grid, bel_rx_db_grid)
-        pixels_failed += seq_failed
-        pixels_done += seq_done
+        pixels_failed = seq_failed
+        pixels_done = seq_done
         cancelled = cancelled or seq_cancelled
     return cancelled, pixels_failed, pixels_done

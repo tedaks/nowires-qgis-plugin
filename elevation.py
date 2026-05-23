@@ -84,7 +84,7 @@ def bearing_destination(lat, lon, bearing_deg_val, dist_m) -> tuple[float, float
         math.sin(brng) * math.sin(d_r) * math.cos(lat_r),
         math.cos(d_r) - math.sin(lat_r) * math.sin(lat2),
     )
-    lon_deg = (math.degrees(lon2) + 540.0) % 360.0 - 180.0
+    lon_deg = ((math.degrees(lon2) + 180.0) % 360.0) - 180.0
     return math.degrees(lat2), lon_deg
 
 
