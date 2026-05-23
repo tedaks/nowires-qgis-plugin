@@ -121,6 +121,7 @@ def show_profile_chart(
     fig.tight_layout()
     toggle_state = {"terrain": True, "los": True, "fresnel": True,
                     "violation_band": True, "antennas": True, "obstructions": True}
+    _destroyed = False
 
     def _set_obstructions_visible(visible):
         # Qt6 workaround: defer annotation removal so the paint cycle finishes.
@@ -140,6 +141,8 @@ def show_profile_chart(
             Qt_rm.singleShot(0, _rm)
 
     def update_visibility():
+        if _destroyed:
+            return
         from qgis.PyQt.QtCore import QTimer
         def _a():
             try:
@@ -185,6 +188,8 @@ def show_profile_chart(
 
     _tooltip_cid = [None]
     def _on_destroy():
+        nonlocal _destroyed
+        _destroyed = True
         if _tooltip_cid[0] is not None:
             with contextlib.suppress(Exception):
                 fig.canvas.mpl_disconnect(_tooltip_cid[0])
