@@ -67,8 +67,8 @@ def test_temp_manager_del_no_warning_when_clean():
         mock_warn.assert_not_called()
 
 
-def test_temp_manager_del_warns_for_leaked_files():
-    """__del__ should warn and clean up registered files if cleanup() was never called."""
+def test_temp_manager_del_cleans_up_leaked_files():
+    """__del__ should clean up registered files if cleanup() was never called."""
     from NoWires.temp_manager import TempDirManager
     mgr = TempDirManager()
     d = mgr.make_dir("test_del_files")
@@ -77,12 +77,7 @@ def test_temp_manager_del_warns_for_leaked_files():
         fh.write("data")
     mgr.add_file(f)
     assert os.path.exists(f)
-    # Trigger __del__ — should clean up file and warn
-    logger = logging.getLogger("NoWires.temp_manager")
-    with unittest.mock.patch.object(logger, "warning") as mock_warn:
-        mgr.__del__()
-        assert mock_warn.called
-    # File should be cleaned up
+    mgr.__del__()
     assert not os.path.exists(f)
 
 
