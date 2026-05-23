@@ -192,6 +192,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         if needs_temp_dir:
             temp_dir = os.path.join(get_temp_dir(), "p2p_outputs")
             os.makedirs(temp_dir, exist_ok=True)
+            tmp_mgr.add_dir(temp_dir, persistent=True)
         else:
             temp_dir = None
         profile_path, fresnel_poly_path, fresnel_lines_path, markers_path = _write_p2p_output_layers(

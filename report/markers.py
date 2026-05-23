@@ -135,50 +135,54 @@ def write_p2p_marker_layer(
     driver = ogr.GetDriverByName(ogr_driver_for_path(path))
     remove_existing_ogr_dataset(driver, path)
 
-    ds = driver.CreateDataSource(str(path))
-    if ds is None:
-        raise RuntimeError("Failed to create dataset at {}".format(path))
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(4326)
-    srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-
-    layer = ds.CreateLayer("markers", srs=srs, geom_type=ogr.wkbPoint)
-    layer.CreateField(ogr.FieldDefn("role", ogr.OFTString))
-    layer.CreateField(ogr.FieldDefn("latitude", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("longitude", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("height_m", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("gain_dbi", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("power_dbm", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("sens_dbm", ogr.OFTReal))
-
-    for row in build_p2p_marker_records(
-        tx_lat=tx_lat,
-        tx_lon=tx_lon,
-        rx_lat=rx_lat,
-        rx_lon=rx_lon,
-        tx_h=tx_h,
-        rx_h=rx_h,
-        tx_gain=tx_gain,
-        rx_gain=rx_gain,
-        tx_power_dbm=tx_power_dbm,
-        rx_sensitivity_dbm=rx_sensitivity_dbm,
-    ):
-        feature = ogr.Feature(layer.GetLayerDefn())
-        geometry = ogr.Geometry(ogr.wkbPoint)
-        geometry.AddPoint(row["longitude"], row["latitude"])
-        feature.SetGeometry(geometry)
-        feature.SetField("role", row["role"])
-        feature.SetField("latitude", row["latitude"])
-        feature.SetField("longitude", row["longitude"])
-        feature.SetField("height_m", row["height_m"])
-        feature.SetField("gain_dbi", row["gain_dbi"])
-        if row["power_dbm"] is not None:
-            feature.SetField("power_dbm", row["power_dbm"])
-        if row["sensitivity_dbm"] is not None:
-            feature.SetField("sens_dbm", row["sensitivity_dbm"])
-        layer.CreateFeature(feature)
-
     ds = None
+    try:
+        ds = driver.CreateDataSource(str(path))
+        if ds is None:
+            raise RuntimeError("Failed to create dataset at {}".format(path))
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+        srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+
+        layer = ds.CreateLayer("markers", srs=srs, geom_type=ogr.wkbPoint)
+        layer.CreateField(ogr.FieldDefn("role", ogr.OFTString))
+        layer.CreateField(ogr.FieldDefn("latitude", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("longitude", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("height_m", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("gain_dbi", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("power_dbm", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("sens_dbm", ogr.OFTReal))
+
+        for row in build_p2p_marker_records(
+            tx_lat=tx_lat,
+            tx_lon=tx_lon,
+            rx_lat=rx_lat,
+            rx_lon=rx_lon,
+            tx_h=tx_h,
+            rx_h=rx_h,
+            tx_gain=tx_gain,
+            rx_gain=rx_gain,
+            tx_power_dbm=tx_power_dbm,
+            rx_sensitivity_dbm=rx_sensitivity_dbm,
+        ):
+            feature = ogr.Feature(layer.GetLayerDefn())
+            geometry = ogr.Geometry(ogr.wkbPoint)
+            geometry.AddPoint(row["longitude"], row["latitude"])
+            feature.SetGeometry(geometry)
+            feature.SetField("role", row["role"])
+            feature.SetField("latitude", row["latitude"])
+            feature.SetField("longitude", row["longitude"])
+            feature.SetField("height_m", row["height_m"])
+            feature.SetField("gain_dbi", row["gain_dbi"])
+            if row["power_dbm"] is not None:
+                feature.SetField("power_dbm", row["power_dbm"])
+            if row["sensitivity_dbm"] is not None:
+                feature.SetField("sens_dbm", row["sensitivity_dbm"])
+            layer.CreateFeature(feature)
+            feature = None
+            geometry = None
+    finally:
+        ds = None
     return str(path)
 
 def write_single_marker(path, lat, lon, height_m, gain_dbi, power_dbm, label="TX"):
@@ -191,31 +195,36 @@ def write_single_marker(path, lat, lon, height_m, gain_dbi, power_dbm, label="TX
     path = Path(path)
     driver = ogr.GetDriverByName(ogr_driver_for_path(path))
     remove_existing_ogr_dataset(driver, path)
-    ds = driver.CreateDataSource(str(path))
-    if ds is None:
-        raise RuntimeError("Failed to create dataset at {}".format(path))
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(4326)
-    srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-    layer = ds.CreateLayer("marker", srs=srs, geom_type=ogr.wkbPoint)
-    layer.CreateField(ogr.FieldDefn("label", ogr.OFTString))
-    layer.CreateField(ogr.FieldDefn("lat", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("lon", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("h_m", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("gain_dbi", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("pwr_dbm", ogr.OFTReal))
-    feature = ogr.Feature(layer.GetLayerDefn())
-    geom = ogr.Geometry(ogr.wkbPoint)
-    geom.AddPoint(lon, lat)
-    feature.SetGeometry(geom)
-    feature.SetField("label", label)
-    feature.SetField("lat", lat)
-    feature.SetField("lon", lon)
-    feature.SetField("h_m", height_m)
-    feature.SetField("gain_dbi", gain_dbi)
-    if power_dbm is not None:
-        feature.SetField("pwr_dbm", power_dbm)
-    layer.CreateFeature(feature)
     ds = None
+    try:
+        ds = driver.CreateDataSource(str(path))
+        if ds is None:
+            raise RuntimeError("Failed to create dataset at {}".format(path))
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+        srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        layer = ds.CreateLayer("marker", srs=srs, geom_type=ogr.wkbPoint)
+        layer.CreateField(ogr.FieldDefn("label", ogr.OFTString))
+        layer.CreateField(ogr.FieldDefn("lat", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("lon", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("h_m", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("gain_dbi", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("pwr_dbm", ogr.OFTReal))
+        feature = ogr.Feature(layer.GetLayerDefn())
+        geom = ogr.Geometry(ogr.wkbPoint)
+        geom.AddPoint(lon, lat)
+        feature.SetGeometry(geom)
+        feature.SetField("label", label)
+        feature.SetField("lat", lat)
+        feature.SetField("lon", lon)
+        feature.SetField("h_m", height_m)
+        feature.SetField("gain_dbi", gain_dbi)
+        if power_dbm is not None:
+            feature.SetField("pwr_dbm", power_dbm)
+        layer.CreateFeature(feature)
+        feature = None
+        geom = None
+    finally:
+        ds = None
     return str(path)
 

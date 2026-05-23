@@ -33,60 +33,62 @@ from osgeo import ogr, osr
 from NoWires.report.markers import ogr_driver_for_path, remove_existing_ogr_dataset
 from NoWires.batch.params import BATCH_MODE_OPTIONS
 from NoWires.processing_utils import queue_layer_for_loading
-from NoWires.report.export import _csv_safe
+from NoWires.report.export import _csv_safe, _sanitize_json
 
 
 def write_batch_marker_layer(path, results, feedback, mode):
     driver = ogr.GetDriverByName(ogr_driver_for_path(path))
     remove_existing_ogr_dataset(driver, path)
-    ds = driver.CreateDataSource(str(path))
-    if ds is None:
-        raise RuntimeError("Failed to create dataset at {}".format(path))
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(4326)
-    srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-
-    layer = ds.CreateLayer("batch_markers", srs=srs, geom_type=ogr.wkbPoint)
-    layer.CreateField(ogr.FieldDefn("rank", ogr.OFTInteger))
-    layer.CreateField(ogr.FieldDefn("point_id", ogr.OFTString))
-    layer.CreateField(ogr.FieldDefn("margin_db", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("loss_db", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("itm_loss_db", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("dist_km", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("clearance_pct", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("status", ogr.OFTString))
-    layer.CreateField(ogr.FieldDefn("tx_lat", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("tx_lon", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("rx_lat", ogr.OFTReal))
-    layer.CreateField(ogr.FieldDefn("rx_lon", ogr.OFTReal))
-
-    for rank, r in enumerate(results, 1):
-        feat = ogr.Feature(layer.GetLayerDefn())
-        if mode == 1:
-            geom = ogr.Geometry(ogr.wkbPoint)
-            geom.AddPoint(r["tx_lon"], r["tx_lat"])
-            point_id = "TX({}, {:.5f}, {:.5f})".format(rank, r["tx_lat"], r["tx_lon"])
-        else:
-            geom = ogr.Geometry(ogr.wkbPoint)
-            geom.AddPoint(r["rx_lon"], r["rx_lat"])
-            point_id = "RX({}, {:.5f}, {:.5f})".format(rank, r["rx_lat"], r["rx_lon"])
-        feat.SetGeometry(geom)
-        feat.SetField("rank", rank)
-        feat.SetField("point_id", point_id)
-        feat.SetField("margin_db", r["margin_db"])
-        feat.SetField("loss_db", r["total_loss_db"])
-        feat.SetField("itm_loss_db", r["itm_loss_db"])
-        feat.SetField("dist_km", round(r["dist_km"], 3))
-        feat.SetField("clearance_pct", round(r["clearance_pct"], 1))
-        feat.SetField("status", r["status"])
-        feat.SetField("tx_lat", r["tx_lat"])
-        feat.SetField("tx_lon", r["tx_lon"])
-        feat.SetField("rx_lat", r["rx_lat"])
-        feat.SetField("rx_lon", r["rx_lon"])
-        layer.CreateFeature(feat)
-        feat = None
-
     ds = None
+    try:
+        ds = driver.CreateDataSource(str(path))
+        if ds is None:
+            raise RuntimeError("Failed to create dataset at {}".format(path))
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+        srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+
+        layer = ds.CreateLayer("batch_markers", srs=srs, geom_type=ogr.wkbPoint)
+        layer.CreateField(ogr.FieldDefn("rank", ogr.OFTInteger))
+        layer.CreateField(ogr.FieldDefn("point_id", ogr.OFTString))
+        layer.CreateField(ogr.FieldDefn("margin_db", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("loss_db", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("itm_loss_db", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("dist_km", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("clearance_pct", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("status", ogr.OFTString))
+        layer.CreateField(ogr.FieldDefn("tx_lat", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("tx_lon", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("rx_lat", ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn("rx_lon", ogr.OFTReal))
+
+        for rank, r in enumerate(results, 1):
+            feat = ogr.Feature(layer.GetLayerDefn())
+            if mode == 1:
+                geom = ogr.Geometry(ogr.wkbPoint)
+                geom.AddPoint(r["tx_lon"], r["tx_lat"])
+                point_id = "TX({}, {:.5f}, {:.5f})".format(rank, r["tx_lat"], r["tx_lon"])
+            else:
+                geom = ogr.Geometry(ogr.wkbPoint)
+                geom.AddPoint(r["rx_lon"], r["rx_lat"])
+                point_id = "RX({}, {:.5f}, {:.5f})".format(rank, r["rx_lat"], r["rx_lon"])
+            feat.SetGeometry(geom)
+            feat.SetField("rank", rank)
+            feat.SetField("point_id", point_id)
+            feat.SetField("margin_db", r["margin_db"])
+            feat.SetField("loss_db", r["total_loss_db"])
+            feat.SetField("itm_loss_db", r["itm_loss_db"])
+            feat.SetField("dist_km", round(r["dist_km"], 3))
+            feat.SetField("clearance_pct", round(r["clearance_pct"], 1))
+            feat.SetField("status", r["status"])
+            feat.SetField("tx_lat", r["tx_lat"])
+            feat.SetField("tx_lon", r["tx_lon"])
+            feat.SetField("rx_lat", r["rx_lat"])
+            feat.SetField("rx_lon", r["rx_lon"])
+            layer.CreateFeature(feat)
+            feat = None
+    finally:
+        ds = None
     feedback.pushInfo("Wrote ranked marker layer to: {}".format(path))
 
 
@@ -145,7 +147,7 @@ def write_batch_json(path, results, mode):
         ],
     }
     with open(str(path), "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2, sort_keys=True)
+        json.dump(_sanitize_json(payload), f, indent=2, sort_keys=True, allow_nan=False)
         f.write("\n")
 
 
