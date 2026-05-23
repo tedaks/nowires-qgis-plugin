@@ -86,7 +86,7 @@ def fresnel_profile_analysis(
         n = len(distances) if hasattr(distances, '__len__') else 1
         z = np.zeros(n, dtype=np.float64)
         zb = np.zeros(n, dtype=bool)
-        return z.copy(), z.copy(), z.copy(), zb.copy(), zb.copy(), zb.copy()
+        return z, z, z, zb, zb, zb
     if dist_m <= 0:
         raise ValueError(
             "fresnel_profile_analysis requires dist_m > 0, got {}".format(dist_m)

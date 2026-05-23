@@ -73,6 +73,8 @@ ITM_MAX_FREQUENCY_MHZ = 20000.0
 ITM_MIN_N0 = 250.0
 ITM_MAX_N0 = 400.0
 ITM_MIN_SIGMA = 1e-6
+ITM_MIN_CLIMATE = 0
+ITM_MAX_CLIMATE = 6
 
 
 def resolve_k_factor(
@@ -94,6 +96,7 @@ def validate_itm_input_ranges(
     frequency_mhz,
     surface_refractivity_n0,
     earth_conductivity_sigma,
+    climate=0,
 ):
     """Validate user inputs against the bundled ITM model's hard limits."""
     checks = [
@@ -124,6 +127,13 @@ def validate_itm_input_ranges(
             ITM_MIN_N0,
             ITM_MAX_N0,
             "N-units",
+        ),
+        (
+            "Climate zone",
+            climate,
+            ITM_MIN_CLIMATE,
+            ITM_MAX_CLIMATE,
+            "",
         ),
     ]
     for label, value, min_value, max_value, unit in checks:
@@ -239,7 +249,7 @@ def itm_p2p_loss(
         )
     except (ValueError, RuntimeError, FloatingPointError) as exc:
         logger.warning("ITM call failed: %s", exc, exc_info=True)
-        return ITMResult(loss_db=float('nan'), mode=0, warnings=1, failed=True)
+        return ITMResult(loss_db=float('nan'), mode=-1, warnings=1, failed=True)
 
     inter = result.intermediate
     mode = 0

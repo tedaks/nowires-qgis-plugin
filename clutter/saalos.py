@@ -290,3 +290,4 @@ def _saalos_vec_below(result, mask, pd, pdk, cch, htx, hrx, wn):
     arte = q1 + q2 + 1.34795 * 20.0 * np.log10(pd + 1.0)
     arte -= np.maximum(0.01, np.log10(wn * 47.7) - 2.0) * (hrx / np.maximum(htx, 1e-10))
     result[mask] = arte[mask]
+    result[mask & np.isnan(arte)] = MAX_CLUTTER_LOSS

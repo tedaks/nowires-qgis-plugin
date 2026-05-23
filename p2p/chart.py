@@ -68,6 +68,15 @@ def show_profile_chart(
         logger.warning("matplotlib not available, skipping profile chart")
         return
 
+    existing = getattr(show_profile_chart, "_dock", None)
+    if existing is not None:
+        try:
+            if existing.isVisible():
+                logger.debug("P2P chart already open; skipping duplicate")
+                return
+        except RuntimeError:
+            pass
+
     import qgis.utils
     if qgis.utils.iface is None:
         logger.debug("P2P chart skipped: QGIS iface not available (headless mode)")
@@ -160,6 +169,7 @@ def show_profile_chart(
 
     from qgis.utils import iface as qgis_iface
     dock = QDockWidget("P2P Profile Chart", qgis_iface.mainWindow())
+    setattr(show_profile_chart, "_dock", dock)
     dock.setFloating(True)
     dock.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
     dock.setWindowFlag(Qt.WindowType.Tool)
@@ -190,6 +200,7 @@ def show_profile_chart(
     def _on_destroy():
         nonlocal _destroyed
         _destroyed = True
+        setattr(show_profile_chart, "_dock", None)
         if _tooltip_cid[0] is not None:
             with contextlib.suppress(Exception):
                 fig.canvas.mpl_disconnect(_tooltip_cid[0])
