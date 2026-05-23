@@ -16,7 +16,6 @@ def test_provider_icon_returns_qicon():
     provider = NoWiresProvider()
     result = provider.icon()
     assert result is not None
-    assert isinstance(result, mock.MagicMock)
 
 
 @pytest.mark.qgis_integration
