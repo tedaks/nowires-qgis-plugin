@@ -52,7 +52,7 @@ changelog=
     - Add threading.Lock around _pending_releases mutations in shared_dem_grid.py to prevent data races
     - Skip pre-allocation of prx_grid, loss_grid, and 4 other arrays when coverage tasks list is empty (~20 MB saved)
     - Fix dem_downloader.tile_name_for(lat, lon) raising ValueError on float input; add math.floor cast
-    - Mask dist_grid_km to NaN where prx_grid is NaN in coverage/summary.py
+    - Mask dist_grid_km to NaN where prx_grid is NaN in radio_coverage/summary.py
     - Add debug logging for out-of-bounds bilinear samples in _bilinear.py
     - Fix ITM finite-loss guard in batch/outputs.py — NaN/Inf loss now returns None instead of corrupting results
     - Fix tmpdir=None assert crash in comparison/reporting.py when all three output paths are explicit

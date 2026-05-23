@@ -9,7 +9,7 @@ from concurrent.futures import ProcessPoolExecutor  # noqa: F401 re-exported for
 
 import numpy as np
 
-from NoWires.coverage.pool import (
+from NoWires.radio_coverage.pool import (
     apply_batch_results,
     _dynamic_chunk_size,
     _itm_worker,
@@ -79,13 +79,13 @@ def execute_coverage_tasks(
         # machinery at call time rather than holding references frozen at
         # module-import time. pickle's identity check
         # (`getattr(sys.modules[fn.__module__], fn.__qualname__) is fn`)
-        # fails if coverage_pool is re-imported under the same name after
+        # fails if radio_coverage_pool is re-imported under the same name after
         # _coverage_executor was loaded — e.g., during a QGIS plugin reload
         # that touches only some plugin modules. A function-local
-        # `from .coverage_pool import ...` re-binds these names against
+        # `from .radio_coverage_pool import ...` re-binds these names against
         # the current sys.modules entry each call, so the references handed
         # to ProcessPoolExecutor are exactly the ones pickle finds.
-        from NoWires.coverage.pool import _init_cov_pool, _itm_worker_batch
+        from NoWires.radio_coverage.pool import _init_cov_pool, _itm_worker_batch
         shared_grid = None
         try:
             shared_grid = _make_shared_grid(grid_data)

@@ -435,21 +435,21 @@ _PACKAGE_SUBMODULES = (
     "contour.smoothing",
     "contour.symbology",
     "contour._smoothing_vrt",
-    # coverage/
-    "coverage.compute",
-    "coverage.engine",
-    "coverage.pool",
-    "coverage.tasks",
-    "coverage.summary",
-    "coverage.params",
-    "coverage.analysis_params",
-    "coverage.palette",
-    "coverage.legend",
-    "coverage.opacity",
-    "coverage.reporting",
-    "coverage.dem_validate",
-    "coverage._executor",
-    "coverage._result_dispatch",
+    # radio_coverage/
+    "radio_coverage.compute",
+    "radio_coverage.engine",
+    "radio_coverage.pool",
+    "radio_coverage.tasks",
+    "radio_coverage.summary",
+    "radio_coverage.params",
+    "radio_coverage.analysis_params",
+    "radio_coverage.palette",
+    "radio_coverage.legend",
+    "radio_coverage.opacity",
+    "radio_coverage.reporting",
+    "radio_coverage.dem_validate",
+    "radio_coverage._executor",
+    "radio_coverage._result_dispatch",
     # clutter/ — package is registered as "clutter" (its __init__.py is the
     # facade); list only submodules below. Do NOT list "clutter.__init__".
     "clutter",
@@ -531,7 +531,7 @@ def register_nowires_package():
         "batch",
         "comparison",
         "contour",
-        "coverage",
+        "radio_coverage",
         "clutter",
         "p2p",
         "report",
@@ -557,10 +557,9 @@ def register_nowires_package():
         sys.modules[f"NoWires.{_subpkg}"] = _subpkg_mod
         setattr(_no_wires_pkg, _subpkg, _subpkg_mod)
         # Register subpkg as top-level name so bare imports
-        # (e.g. "from coverage.pool import X") resolve.
-        # We must override any existing module (e.g. pytest-cov
-        # "coverage" package) so that bare imports like
-        # "from coverage.engine import ..." find our subpackage.
+        # (e.g. "from radio_coverage.pool import X") resolve.
+        # This ensures bare imports like "from radio_coverage.engine import ..."
+        # find our subpackage.
         sys.modules[_subpkg] = _subpkg_mod
 
     for _submodule_name in _TOP_LEVEL_SUBMODULES:
@@ -584,8 +583,8 @@ def register_nowires_package():
             if _parent_mod is not None:
                 setattr(_parent_mod, _leaf, _mod)
         # Do NOT overwrite subpackage entries on _no_wires_pkg:
-        # e.g. _pkg_sub="algorithm.coverage" has _leaf="coverage", which would
-        # clobber the coverage/ subpackage registered in the _SUBPKG_DIRS loop.
+        # e.g. _pkg_sub="algorithm.coverage" has _leaf="coverage", which has
+        # historically been a potential collision point with subpackage names.
         _parent = _pkg_sub.split(".")[0] if "." in _pkg_sub else None
         if _parent not in _SUBPKG_DIR_SET:
             setattr(_no_wires_pkg, _leaf, _mod)

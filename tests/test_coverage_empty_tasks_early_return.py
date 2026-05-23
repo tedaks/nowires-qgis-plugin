@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 
 def test_compute_coverage_returns_none_on_empty_tasks():
-    from NoWires.coverage.engine import compute_coverage
+    from NoWires.radio_coverage.engine import compute_coverage
     mock_elev = MagicMock()
     mock_elev.grid = np.zeros((5, 5), dtype=np.float32)
     mock_elev.sample = MagicMock(return_value=10.0)

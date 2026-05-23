@@ -5,7 +5,7 @@ from osgeo import gdal, osr
 from qgis.core import QgsProcessingException
 
 from NoWires.constants import COVERAGE_NODATA
-from NoWires.coverage.compute import grid_to_raster_array
+from NoWires.radio_coverage.compute import grid_to_raster_array
 
 
 def write_geotiff(path, grid, min_lat, max_lat, min_lon, max_lon, nodata=COVERAGE_NODATA):

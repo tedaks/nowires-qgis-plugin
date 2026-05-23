@@ -17,7 +17,7 @@ import numpy as np
 
 def test_haversine_clip_prevents_nan_at_antipodes():
     """haversine distance must not produce NaN for antipodal points."""
-    from NoWires.coverage.summary import summarize_coverage_grid
+    from NoWires.radio_coverage.summary import summarize_coverage_grid
 
     tx_lat, tx_lon = 0.0, 0.0
     min_lat, max_lat = -89.0, 89.0
@@ -33,7 +33,7 @@ def test_haversine_clip_prevents_nan_at_antipodes():
 
 def test_haversine_clip_prevents_nan_at_coincident_points():
     """haversine distance must not produce NaN when TX equals cell center."""
-    from NoWires.coverage.summary import summarize_coverage_grid
+    from NoWires.radio_coverage.summary import summarize_coverage_grid
 
     tx_lat, tx_lon = 45.0, 10.0
     prx = np.full((5, 5), -50.0, dtype=np.float32)

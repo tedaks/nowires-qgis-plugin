@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
 # This program is free software under GPLv3 or later. See LICENSE.
-"""Tests covering coverage/pool.py, coverage/_executor.py, coverage/_result_dispatch.py,
+"""Tests covering radio_coverage/pool.py, radio_coverage/_executor.py, radio_coverage/_result_dispatch.py,
 and contour/pipeline.py."""
 
 import os
@@ -12,9 +12,9 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from NoWires.coverage._executor import execute_coverage_tasks
-from NoWires.coverage._result_dispatch import apply_batch_results
-from NoWires.coverage.pool import _make_shared_grid, _release_shared_memory
+from NoWires.radio_coverage._executor import execute_coverage_tasks
+from NoWires.radio_coverage._result_dispatch import apply_batch_results
+from NoWires.radio_coverage.pool import _make_shared_grid, _release_shared_memory
 from NoWires.contour.pipeline import setup_proxy_opener, write_aoi_shapefile
 
 
@@ -79,22 +79,22 @@ class TestExecutorPropagatesWorkerException:
                 2.0, 3.0, 1.0)
 
         with patch(
-            "NoWires.coverage._executor.should_use_multiprocessing", return_value=True,
+            "NoWires.radio_coverage._executor.should_use_multiprocessing", return_value=True,
         ), patch(
-            "NoWires.coverage._executor.ProcessPoolExecutor",
+            "NoWires.radio_coverage._executor.ProcessPoolExecutor",
         ) as mock_ppe, patch(
-            "NoWires.coverage._executor.ensure_spawn_start_method",
+            "NoWires.radio_coverage._executor.ensure_spawn_start_method",
         ), patch(
-            "NoWires.coverage._executor.configure_macos_multiprocessing",
+            "NoWires.radio_coverage._executor.configure_macos_multiprocessing",
         ), patch(
-            "NoWires.coverage._executor.configure_windows_multiprocessing",
+            "NoWires.radio_coverage._executor.configure_windows_multiprocessing",
         ), patch(
-            "NoWires.coverage._executor._make_shared_grid",
+            "NoWires.radio_coverage._executor._make_shared_grid",
             return_value=MagicMock(),
         ), patch(
-            "NoWires.coverage._executor._release_shared_memory",
+            "NoWires.radio_coverage._executor._release_shared_memory",
         ), patch(
-            "NoWires.coverage._executor._run_sequential",
+            "NoWires.radio_coverage._executor._run_sequential",
             return_value=(False, 0, 0),
         ) as mock_seq:
             mock_ppe.return_value.__enter__.side_effect = RuntimeError(
