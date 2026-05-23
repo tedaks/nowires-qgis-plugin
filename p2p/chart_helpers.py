@@ -122,7 +122,7 @@ def make_export_csv(distances, terrain_bulge, los_h, fresnel_r, f_mhz, dist_m, d
                 if not path.lower().endswith(".csv"):
                     path += ".csv"
                 obstructs_los = terrain_bulge > los_h
-                with open(path, "w", newline="") as f:
+                with open(path, "w", encoding="utf-8", newline="") as f:
                     f.write("distance_m,terrain_elevation_m,los_m,"
                             "fresnel_radius_m,clearance_m,obstructs_los\n")
                     for i in range(len(distances)):

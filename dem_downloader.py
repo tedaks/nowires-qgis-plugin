@@ -64,53 +64,54 @@ _SOCKET_TIMEOUT = 60
 _VALID_TILE_RE = re.compile(r"^Copernicus_DSM_COG_10_[NS]\d{2}_00_[EW]\d{3}_00_DEM$")
 
 
-def get_temp_dir():
+def get_temp_dir(create=True):
     try:
         username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
     except (OSError, KeyError):
         username = "nowires"
     base = tempfile.gettempdir()
     target = os.path.join(base, "NoWires-" + username)
-    try:
-        st = os.lstat(target)
-        if stat.S_ISLNK(st.st_mode):
-            logger.warning("Removing symlink at %s", target)
-            os.unlink(target)
-        elif not os.path.isdir(target):
-            logger.warning("Removing non-directory at %s", target)
-            os.unlink(target)
-        else:
-            dir_flag = getattr(os, "O_DIRECTORY", None)
-            nofollow_flag = getattr(os, "O_NOFOLLOW", None)
-            if dir_flag is not None and nofollow_flag is not None:
-                try:
-                    fd = os.open(target, os.O_RDONLY | dir_flag | nofollow_flag)
-                    os.close(fd)
-                except OSError:
-                    logger.warning("Removing unsafe directory at %s", target)
-                    os.unlink(target)
-    except OSError:
-        pass
-    if not os.path.isdir(target):
+    if create:
         try:
-            os.makedirs(target, mode=0o700, exist_ok=True)
+            st = os.lstat(target)
+            if stat.S_ISLNK(st.st_mode):
+                logger.warning("Removing symlink at %s", target)
+                os.unlink(target)
+            elif not os.path.isdir(target):
+                logger.warning("Removing non-directory at %s", target)
+                os.unlink(target)
+            else:
+                dir_flag = getattr(os, "O_DIRECTORY", None)
+                nofollow_flag = getattr(os, "O_NOFOLLOW", None)
+                if dir_flag is not None and nofollow_flag is not None:
+                    try:
+                        fd = os.open(target, os.O_RDONLY | dir_flag | nofollow_flag)
+                        os.close(fd)
+                    except OSError:
+                        logger.warning("Removing unsafe directory at %s", target)
+                        os.unlink(target)
         except OSError:
-            tmp = tempfile.mkdtemp(prefix="NoWires-", dir=base)
+            pass
+        if not os.path.isdir(target):
             try:
-                os.chmod(tmp, 0o700)
+                os.makedirs(target, mode=0o700, exist_ok=True)
             except OSError:
-                pass
-            try:
-                os.rename(tmp, target)
-            except OSError:
-                logger.debug("Could not rename %s to %s; using temp path", tmp, target)
-                target = tmp
-    try:
-        st = os.stat(target)
-        if st.st_mode & 0o777 != 0o700:
-            os.chmod(target, 0o700)
-    except OSError:
-        pass
+                tmp = tempfile.mkdtemp(prefix="NoWires-", dir=base)
+                try:
+                    os.chmod(tmp, 0o700)
+                except OSError:
+                    pass
+                try:
+                    os.rename(tmp, target)
+                except OSError:
+                    logger.debug("Could not rename %s to %s; using temp path", tmp, target)
+                    target = tmp
+        try:
+            st = os.stat(target)
+            if st.st_mode & 0o777 != 0o700:
+                os.chmod(target, 0o700)
+        except OSError:
+            pass
     return target
 
 
@@ -171,7 +172,7 @@ def download_tiles(tile_list: list[str], temp_dir: str | None = None,
         if feedback and feedback.isCanceled():
             return available
 
-        local_tif = os.path.join(temp_dir, tile_name + ".tif")
+        local_tif = os.path.join(temp_dir, os.path.basename(tile_name) + ".tif")
         tile_url = "{}{}/{}.tif".format(COPERNICUS_BASE_URL, tile_name, tile_name)
 
         result = download_tile_with_retry(

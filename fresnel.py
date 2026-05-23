@@ -83,9 +83,13 @@ def fresnel_profile_analysis(
     """
     if k_factor <= 0:
         n = len(distances) if hasattr(distances, '__len__') else 1
-        zeros = np.zeros(n, dtype=np.float64)
-        return zeros, zeros.copy(), zeros.copy(), np.zeros(n, dtype=bool), \
-            np.zeros(n, dtype=bool), np.zeros(n, dtype=bool)
+        z = np.zeros(n, dtype=np.float64)
+        zb = np.zeros(n, dtype=bool)
+        return z.copy(), z.copy(), z.copy(), zb.copy(), zb.copy(), zb.copy()
+    if dist_m <= 0:
+        raise ValueError(
+            "fresnel_profile_analysis requires dist_m > 0, got {}".format(dist_m)
+        )
     a_eff = k_factor * EARTH_RADIUS_M
 
     d = np.asarray(distances, dtype=np.float64)

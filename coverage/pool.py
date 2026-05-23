@@ -173,7 +173,7 @@ def _itm_worker(args, grid_data=None, grid_meta=None):
         return None
     nan_count = int(np.isnan(elevs).sum())
     if nan_count > 0:
-        logger.warning(
+        logger.debug(
             "Interpolating %d NaN elevation value(s) from nearest valid "
             "samples (missing DEM data)",
             nan_count,
@@ -265,7 +265,7 @@ def _make_shared_grid(grid_data):
     return SharedDEMGrid(grid_data)
 
 
-def _release_shared_memory(shared_grid, unlink=True):
+def _release_shared_memory(shared_grid):
     if shared_grid is None:
         return
     shared_grid.release()

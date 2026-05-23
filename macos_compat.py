@@ -77,7 +77,9 @@ def _can_spawn(py_exe, env):
     try:
         result = subprocess.run(
             [py_exe, "-c", "import encodings"],
-            capture_output=True, text=True, timeout=5, env=env,
+            capture_output=True, text=True,
+            timeout=int(os.environ.get("NOWIRES_SPAWN_TIMEOUT", "5")),
+            env=env,
         )
         return result.returncode == 0
     except (OSError, subprocess.TimeoutExpired):
