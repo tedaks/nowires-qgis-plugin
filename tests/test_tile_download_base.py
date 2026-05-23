@@ -6,6 +6,7 @@
 
 import re
 import urllib.error
+import hashlib
 
 import tile_download_base as tdb
 
@@ -89,6 +90,7 @@ class SequenceOpener:
 def test_valid_cached_tile_with_constant_stats_is_reused(tmp_path, monkeypatch):
     local_tif = tmp_path / "tile.tif"
     local_tif.write_bytes(b"cached")
+    (tmp_path / "tile.tif.sha256").write_text(hashlib.sha256(b"cached").hexdigest())
     feedback = Feedback()
     opener = FakeOpener(FakeResponse("https://example.test/tile.tif", [b"new"]))
 

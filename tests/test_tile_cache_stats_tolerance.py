@@ -10,6 +10,7 @@ ComputeStatistics fails. The previous behaviour purged otherwise-valid files on
 any stats-read failure, causing unnecessary re-downloads.
 """
 
+import hashlib
 import tile_download_base as tdb
 
 
@@ -67,6 +68,8 @@ def test_cache_hit_when_compute_statistics_raises(tmp_path, monkeypatch):
     """RuntimeError from ComputeStatistics must not invalidate a structurally-valid cache."""
     local_tif = tmp_path / "tile.tif"
     local_tif.write_bytes(b"cached content")
+    _sidecar = tmp_path / "tile.tif.sha256"
+    _sidecar.write_text(hashlib.sha256(b"cached content").hexdigest())
 
     monkeypatch.setattr(tdb.gdal, "Open", lambda _path: _ds_with_broken_stats())
 
@@ -89,6 +92,8 @@ def test_cache_hit_when_compute_statistics_returns_none(tmp_path, monkeypatch):
     """A None return from ComputeStatistics must not invalidate a structurally-valid cache."""
     local_tif = tmp_path / "tile.tif"
     local_tif.write_bytes(b"cached content")
+    _sidecar = tmp_path / "tile.tif.sha256"
+    _sidecar.write_text(hashlib.sha256(b"cached content").hexdigest())
 
     monkeypatch.setattr(tdb.gdal, "Open", lambda _path: _ds_stats_returns_none())
 

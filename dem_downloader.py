@@ -93,19 +93,16 @@ def get_temp_dir(create=True):
         except OSError:
             pass
         if not os.path.isdir(target):
+            tmp = tempfile.mkdtemp(prefix="NoWires-", dir=base)
             try:
-                os.makedirs(target, mode=0o700, exist_ok=True)
+                os.chmod(tmp, 0o700)
             except OSError:
-                tmp = tempfile.mkdtemp(prefix="NoWires-", dir=base)
-                try:
-                    os.chmod(tmp, 0o700)
-                except OSError:
-                    pass
-                try:
-                    os.rename(tmp, target)
-                except OSError:
-                    logger.debug("Could not rename %s to %s; using temp path", tmp, target)
-                    target = tmp
+                pass
+            try:
+                os.rename(tmp, target)
+            except OSError:
+                logger.debug("Could not rename %s to %s; using temp path", tmp, target)
+                target = tmp
         try:
             st = os.stat(target)
             if st.st_mode & 0o777 != 0o700:
