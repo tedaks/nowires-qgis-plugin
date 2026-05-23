@@ -44,6 +44,18 @@ changelog=
     - Fix TestCoverageAlgorithmExecution using P2PAlgorithm instead of CoverageAlgorithm
     - Fix test_p2p_chart_contract.py stale references after chart.py decomposition
     - Add testpaths = ["tests"] to pyproject.toml to prevent nested NoWires test discovery via symlink
+    - Add theta clamping to vectorized building_entry_loss_vec() in clutter/p2109_bel.py matching scalar path
+    - Fix nan_utils.interpolate_nan_array() all-NaN branch returning reference instead of copy
+    - Add _destroyed guard flag in p2p/chart.py to prevent stale closures after figure destruction
+    - Tighten validate_panels() TX position tolerance from 1e-3° (~111 m) to 1e-4° (~11 m)
+    - Restore defensive assert tmpdir is not None in resolve_output_paths() (regression fix)
+    - Remove unreachable h_m <= 0.0 dead code in clutter/p2108_height_gain.py
+    - Replace explicit f.close() with idiomatic f.flush() on download cancel to avoid double-close
+    - Accept float timeout values via float() in macos_compat.py::_can_spawn()
+    - Use DEFAULT_K_FACTOR constant in fresnel.py instead of hardcoded 4.0/3.0
+    - Add FlushCache() on gdal.Translate result in contour/pipeline.py before setting to None
+    - Replace NaN with empty string in p2p/chart_helpers.py CSV export
+    - Wrap clutter_grid_resolved.close() in try/except in algorithm/coverage.py except block
     Version 1.6.0
     - Fix AttributeError on Windows: module 'os' has no attribute 'geteuid' — guard /dev/shm cleanup with hasattr check; skip POSIX-only regression test on Windows
     - Fix P2P profile chart checkbox toggles having no visible effect — add fig.canvas.draw_idle() after artist-visibility loop in deferred callback
