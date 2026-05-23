@@ -13,6 +13,14 @@ from NoWires.clutter.constants import MAX_CLUTTER_LOSS
 # A translation function (_saalos_pol) maps from the ITM convention
 # (0=H, 1=V) used by the rest of the plugin.
 
+# WGS-84 equatorial radius (GRS-80 semi-major axis), in meters.
+# Matches the hardcoded 6378137.0 literals in upstream SPLAT/ITWOM
+# (itwom3.0.cpp, saalos() at lines 296-315). Deliberately NOT the same
+# as constants.EARTH_RADIUS_M (6371000.0, IUGG mean radius) used by the
+# rest of the plugin for ITU-R P.526 / 4/3-Earth k-factor math. The ~7 km
+# (~0.11%) delta is negligible inside SAALOS's clutter-loss noise floor,
+# but keeping this value preserves bit-for-bit parity with the reference
+# C implementation. Do not unify with EARTH_RADIUS_M.
 EARTH_RADIUS = 6378137.0
 
 
