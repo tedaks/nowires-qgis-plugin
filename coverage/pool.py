@@ -115,13 +115,14 @@ def _ensure_path():
 
 
 def _final_cov_pool():
-    """Finalizer: close the per-worker shared-memory handle on pool shutdown."""
+    """Finalizer: close and unlink the per-worker shared-memory handle on pool shutdown."""
     global _cov_shm, _cov_grid_data, _cov_grid_meta
     if _cov_grid_data is not None:
         _cov_grid_data = None
     if _cov_shm is not None:
         try:
             _cov_shm.close()
+            _cov_shm.unlink()
         except Exception:
             pass
         _cov_shm = None
