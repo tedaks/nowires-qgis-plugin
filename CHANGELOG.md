@@ -9,7 +9,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- No unreleased changes yet.
+### Fixes
+
+- Fix `_final_cov_pool` shared-memory cleanup — worker atexit handler now calls `shm.close()` only, not `shm.unlink()`. Only the parent process that created the segment should unlink it, preventing `FileNotFoundError` when workers exit before others finish initialization and preventing inherited fork-atexit handlers from unlinking the parent's segment.
+- Add zero-dimension guards to `_bilinear.py` — `bilinear_sample`, `bilinear_sample_line`, and `bilinear_sample_grid` now return `NaN` when `grid_meta["n_lat"] <= 0` or `grid_meta["n_lon"] <= 0`, preventing `ZeroDivisionError` on degenerate grid metadata.
+- Capture and release `gdal.Translate` return value in `package_gpkg.py` — the dataset handle was discarded without closing, leaking a GDAL dataset.
+- Fix `fs_utils.safe_create_dir()` returning an unregistered temporary directory on `os.rename` failure — when rename fails (cross-device, permissions), the function returned the raw `mkdtemp` path without registering it for cleanup, leaking the directory permanently.
+- Fix contour algorithm silently returning `{}` on `ENOSPC` (disk full) during reprojection — calls `feedback.reportError()` but returns empty dict instead of raising `QgsProcessingException`, suppressing the failure from the QGIS processing log.
+- Add `logger.debug(..., exc_info=True)` to `contour/pipeline.py` proxy-auth exception handler — only `type(e).__name__` was used for feedback; the full exception value and traceback were discarded, losing diagnostic information.
+- Clamp scalar below-canopy exponent to `[-700.0, 700.0]` in `clutter/saalos.py` `compute_terminal_clutter_loss` — the scalar path only clamped the upper bound of `exp(min(..., 700.0))` while the vector path used `np.clip(..., -700.0, 700.0)`. Practically safe (large negative → exp ≈ 0) but inconsistent.
+
+### Changes
+
+- Replace `except Exception: pass` with `logger.debug(..., exc_info=True)` in `coverage/pool.py` `_final_cov_pool` and `_init_cov_pool` for shared-memory cleanup diagnostics.
+- Add `logging.debug` calls to `_final_cov_pool` close/unlink steps for observability.
+
+### Security
+
+- Replace `os.makedirs(exist_ok=True)` with `fs_utils.safe_create_dir()` in `p2p/compute.py`, `algorithm/contour.py`, and `comparison/reporting.py` for TOCTOU-safe directory creation, eliminating symlink attacks on hardcoded subdirectory paths in shared `/tmp`.
+
+### Plans
+
+- Add import-linter contracts for layering violations: `radio` must not depend on `coverage`, `raster_io` must not depend on `coverage`, `tile_download_base` must not depend on `report`.
+- Extract `_csv_safe` and `_sanitize_json` from `report/export.py` to a shared utility module, removing cross-subpackage private-symbol imports in `batch/writer.py`.
+- Add `GDAL_DRIVER_NAME = "GTiff"` and `AOI_PADDING_FRACTION = 0.1` to `constants.py`, replacing 8 and 4 hardcoded occurrences respectively.
+- Extract duplicated AOI padding formula (`max(DEGREE_PADDING, ... * METERS_PER_DEGREE_LAT * 0.1)`) into a shared utility function.
+- Pre-emptively split `tile_download_base.py` (currently at 300-line project limit).
+- Clamp `math.asin` argument in `elevation.py:bearing_destination` to `[-1.0, 1.0]` for large distances.
+- Replace `itm_p2p_loss()` hardcoded parameter defaults (`301.0`, `300.0`, `15.0`, `0.005`) with imports from `defaults.py`.
+- Increase `mypy` strictness: replace `type: ignore[arg-type]` suppressions in `comparison/reporting.py` with explicit `assert` guards.
+- Write unit tests for `comparison/add_params.py` (298 lines, currently untested).
+- Remove stale test comment at `test_algorithms_integration.py:90-100` documenting the pre-v1.6.2 PANEL_A/PANEL_B bug that is now fixed.
+- Add `__all__` to top-level `__init__.py` for explicit public API surface.
+- Make `clutter/__init__.py` stop re-exporting underscore-prefixed private symbols (`_category_height_m`, `_resolve_category`).
+- Move orphaned standalone scripts (`export_portable.py`, `export_project.py`, `run_coverage.py`, `audit_cache.py`, `analyze_coverage.py`, `package_gpkg.py`) to a `scripts/` directory.
+- Increase `fail_under` coverage threshold from 59% to 65%.
+- Add `reviewers` and `labels` to `.github/dependabot.yml`.
+- Move `from urllib.parse import urlsplit` from inside `download_tile_with_retry` loop to module level in `tile_download_base.py` — lazy import executes on every tile download attempt.
+- Replace hardcoded `earth_r = 6371000.0` in `package_gpkg.py:96` with `EARTH_RADIUS_M` from `constants.py` — same value defined locally instead of importing the shared constant.
+- Remove redundant `shared_clutter_grid = None` at `algorithm/coverage_comparison.py:124` — dead store immediately following the same assignment at line 119.
+- Remove unnecessary `Qt_rm = QTimer` alias at `p2p/chart.py:149` — `QTimer.singleShot` is a static method; the alias adds no value and the same function calls `QTimer.singleShot` directly at line 168.
+- Update bumpversion configuration to add release dates to CHANGELOG headers per Keep a Changelog format.
 
 ## [1.6.2] - 2026-05-23
 
