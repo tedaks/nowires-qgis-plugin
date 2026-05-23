@@ -46,25 +46,26 @@ def generate_contour_lines(merged_path, interval, temp_dir, gdal_callback):
     srs_4326 = osr.SpatialReference()
     srs_4326.ImportFromEPSG(4326)
     srs_4326.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-    contour_layer = shp_ds.CreateLayer("Contour Lines", srs=srs_4326)
-    contour_layer.CreateField(ogr.FieldDefn("ID", ogr.OFTInteger))
-    contour_layer.CreateField(ogr.FieldDefn("ELEV", ogr.OFTReal))
-    merged_ds = gdal.Open(merged_path)
-    if merged_ds is None:
-        shp_ds = None
-        raise RuntimeError("Cannot open merged DEM for contour generation: {}".format(merged_path))
     try:
-        merged_band = merged_ds.GetRasterBand(1)
-        nodata_val = merged_band.GetNoDataValue()
-        gdal.ContourGenerate(
-            merged_band, interval, 0, [],
-            1 if nodata_val is not None else 0,
-            nodata_val if nodata_val is not None else -32768,
-            contour_layer, 0, 1, callback=gdal_callback,
-        )
+        contour_layer = shp_ds.CreateLayer("Contour Lines", srs=srs_4326)
+        contour_layer.CreateField(ogr.FieldDefn("ID", ogr.OFTInteger))
+        contour_layer.CreateField(ogr.FieldDefn("ELEV", ogr.OFTReal))
+        merged_ds = gdal.Open(merged_path)
+        if merged_ds is None:
+            raise RuntimeError("Cannot open merged DEM for contour generation: {}".format(merged_path))
+        try:
+            merged_band = merged_ds.GetRasterBand(1)
+            nodata_val = merged_band.GetNoDataValue()
+            gdal.ContourGenerate(
+                merged_band, interval, 0, [],
+                1 if nodata_val is not None else 0,
+                nodata_val if nodata_val is not None else -32768,
+                contour_layer, 0, 1, callback=gdal_callback,
+            )
+        finally:
+            merged_ds = None
     finally:
         shp_ds = None
-        merged_ds = None
     return contour_shp_path, tmp_shp_dir
 
 

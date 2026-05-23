@@ -141,6 +141,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
         self._contour_layer_id = None
         self.status_total = 0.0
         self.progress = 0.0
+        self._tmp.cleanup()
         self._tmp = TempDirManager()
         if self._owns_temp_dir:
             self._tmp.add_dir(self.temp_dir)

@@ -85,16 +85,18 @@ def write_aoi_shapefile(aoi_geometry, aoi_shp_path):
     aoi_datasource = shp_driver.CreateDataSource(aoi_shp_path)
     if aoi_datasource is None:
         raise RuntimeError("Failed to create dataset at {}".format(aoi_shp_path))
-    aoi_layer = aoi_datasource.CreateLayer("layer", geom_type=ogr.wkbPolygon)
-    feat_defn = aoi_layer.GetLayerDefn()
-    feature = ogr.Feature(feat_defn)
-    wkt = aoi_geometry.asWkt()
-    ogr_geom = ogr.CreateGeometryFromWkt(wkt)
-    if ogr_geom is None:
-        raise RuntimeError("Failed to convert geometry to OGR format.")
-    feature.SetGeometry(ogr_geom)
-    aoi_layer.CreateFeature(feature)
-    aoi_datasource = None
+    try:
+        aoi_layer = aoi_datasource.CreateLayer("layer", geom_type=ogr.wkbPolygon)
+        feat_defn = aoi_layer.GetLayerDefn()
+        feature = ogr.Feature(feat_defn)
+        wkt = aoi_geometry.asWkt()
+        ogr_geom = ogr.CreateGeometryFromWkt(wkt)
+        if ogr_geom is None:
+            raise RuntimeError("Failed to convert geometry to OGR format.")
+        feature.SetGeometry(ogr_geom)
+        aoi_layer.CreateFeature(feature)
+    finally:
+        aoi_datasource = None
 
 
 def download_and_merge_tiles(
