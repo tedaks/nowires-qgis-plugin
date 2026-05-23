@@ -41,14 +41,18 @@ class TestComparisonParamsConstants:
         for t in DELTA_THRESHOLD_DEFAULTS:
             assert t > 0.0
 
-    def test_panel_a_and_b_have_same_keys(self):
-        from NoWires.comparison.params import PANEL_A_CONSTANTS, PANEL_B_CONSTANTS
-        assert set(PANEL_A_CONSTANTS.keys()) == set(PANEL_B_CONSTANTS.keys())
+    def test_panel_a_and_b_have_same_structure(self):
+        from NoWires.comparison.params import PANEL_A_CONSTANTS, PANEL_B_CONSTANTS, _PANEL_KEYS
+        a_keys = set(f"PANEL_A_{k}" for k in _PANEL_KEYS)
+        b_keys = set(f"PANEL_B_{k}" for k in _PANEL_KEYS)
+        assert set(PANEL_A_CONSTANTS.keys()) == a_keys
+        assert set(PANEL_B_CONSTANTS.keys()) == b_keys
 
     def test_panel_keys_contain_expected_fields(self):
         from NoWires.comparison.params import PANEL_A_CONSTANTS
-        expected_keys = {"POINT", "TX_HEIGHT", "RX_HEIGHT", "FREQ_MHZ",
-                        "RADIUS_KM", "POLARIZATION", "CLIMATE"}
+        expected_keys = {"PANEL_A_POINT", "PANEL_A_TX_HEIGHT", "PANEL_A_RX_HEIGHT",
+                         "PANEL_A_FREQ_MHZ", "PANEL_A_RADIUS_KM",
+                         "PANEL_A_POLARIZATION", "PANEL_A_CLIMATE"}
         assert expected_keys.issubset(set(PANEL_A_CONSTANTS.keys()))
 
 

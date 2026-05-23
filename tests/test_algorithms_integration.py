@@ -50,14 +50,16 @@ def feedback():
 
 
 def test_comparison_algorithm_attribute_registration():
-    """CoverageComparisonAlgorithm has OUTPUT and comparison constants after import."""
+    """CoverageComparisonAlgorithm has PANEL_A_, PANEL_B_, and OUTPUT constants after import."""
     from NoWires.algorithm.coverage_comparison import CoverageComparisonAlgorithm
 
     alg = CoverageComparisonAlgorithm()
-    assert hasattr(alg, "GRID_SIZE")
+    assert hasattr(alg, "PANEL_A_GRID_SIZE")
+    assert hasattr(alg, "PANEL_B_GRID_SIZE")
     assert hasattr(alg, "OUTPUT_DELTA")
     assert hasattr(alg, "DELTA_STYLE")
-    assert isinstance(alg.GRID_SIZE, str)
+    assert isinstance(alg.PANEL_A_GRID_SIZE, str)
+    assert isinstance(alg.PANEL_B_GRID_SIZE, str)
     assert alg.OUTPUT_DELTA == "OUTPUT_DELTA"
     assert alg.DELTA_STYLE == "DELTA_STYLE"
 
