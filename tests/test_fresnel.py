@@ -11,6 +11,7 @@ import pytest
 
 from fresnel import fresnel_radius, earth_bulge, fresnel_profile_analysis
 from constants import EARTH_RADIUS_M, FRESNEL_60PCT_FACTOR
+from NoWires.defaults import DEFAULT_K_FACTOR
 
 C_LIGHT = 299792458.0
 
@@ -23,6 +24,10 @@ class TestFresnelRadius:
 
     def test_zero_d2_returns_zero(self):
         assert fresnel_radius(100, 0, 300) == 0.0
+
+    def test_negative_frequency_returns_zero(self):
+        assert fresnel_radius(100, 100, -10) == 0.0
+        assert fresnel_radius(100, 100, 0) == 0.0
 
     def test_negative_d1_returns_zero(self):
         assert fresnel_radius(-10, 100, 300) == 0.0
@@ -164,6 +169,19 @@ class TestEarthBulge:
         default_result = earth_bulge(d, d_total)
         explicit_result = earth_bulge(d, d_total, k_factor=4.0 / 3.0)
         assert default_result == pytest.approx(explicit_result, rel=1e-10)
+
+    def test_default_k_factor_uses_constant(self):
+        d = 5000.0
+        d_total = 10000.0
+        default_result = earth_bulge(d, d_total)
+        explicit_result = earth_bulge(d, d_total, k_factor=DEFAULT_K_FACTOR)
+        assert default_result == pytest.approx(explicit_result, rel=1e-10)
+
+    def test_k_factor_zero_returns_zero(self):
+        assert earth_bulge(1000, 10000, k_factor=0.0) == 0.0
+
+    def test_k_factor_negative_returns_zero(self):
+        assert earth_bulge(1000, 10000, k_factor=-1.0) == 0.0
 
 
 class TestFresnelProfileAnalysis:
@@ -445,6 +463,60 @@ class TestFresnelProfileAnalysis:
             )
         )
         assert obstructs.sum() > 0
+
+    def test_k_factor_zero_returns_all_zeros(self):
+        n = 10
+        distances = np.linspace(0, 1000, n)
+        elevations = np.full(n, 50.0)
+        terrain_bulge, los_h, fr, obstructs, vf1, vf60 = (
+            fresnel_profile_analysis(
+                distances, elevations, 50.0, 50.0, 1000, 1.0, k_factor=0.0
+            )
+        )
+        np.testing.assert_array_equal(terrain_bulge, np.zeros(n))
+        np.testing.assert_array_equal(los_h, np.zeros(n))
+        np.testing.assert_array_equal(fr, np.zeros(n))
+        assert not obstructs.any()
+        assert not vf1.any()
+
+    def test_k_factor_negative_returns_all_zeros(self):
+        n = 10
+        distances = np.linspace(0, 500, n)
+        elevations = np.full(n, 30.0)
+        terrain_bulge, los_h, fr, obstructs, vf1, vf60 = (
+            fresnel_profile_analysis(
+                distances, elevations, 40.0, 40.0, 500, 1.0, k_factor=-1.0
+            )
+        )
+        np.testing.assert_array_equal(terrain_bulge, np.zeros(n))
+
+    def test_dist_m_zero_raises_with_k_positive(self):
+        n = 10
+        distances = np.linspace(0, 100, n)
+        elevations = np.full(n, 50.0)
+        with pytest.raises(ValueError, match="dist_m > 0"):
+            fresnel_profile_analysis(
+                distances, elevations, 80.0, 80.0, 0, 1.0, k_factor=1.0
+            )
+
+    def test_dist_m_negative_raises_with_k_positive(self):
+        n = 10
+        distances = np.linspace(0, 100, n)
+        elevations = np.full(n, 10.0)
+        with pytest.raises(ValueError, match="dist_m > 0"):
+            fresnel_profile_analysis(
+                distances, elevations, 50.0, 50.0, -5, 1.0, k_factor=1.0
+            )
+
+    def test_single_point_profile(self):
+        distances = np.array([500.0])
+        elevations = np.array([10.0])
+        terrain_bulge, los_h, fr, obstructs, vf1, vf60 = (
+            fresnel_profile_analysis(
+                distances, elevations, 50.0, 50.0, 1000, 1.0
+            )
+        )
+        assert len(terrain_bulge) == 1
 
 
 if __name__ == "__main__":
