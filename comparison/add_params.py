@@ -87,7 +87,8 @@ def _add_panel_advanced_params(algorithm, prefix, config, panel_label):
 
 
 def add_panel_params(algorithm, prefix, config):
-    panel_label = prefix.split("_")[1]
+    parts = prefix.split("_")
+    panel_label = parts[1] if len(parts) > 1 else prefix
     algorithm.addParameter(
         config["point_param"](f"{prefix}_POINT", f"Panel {panel_label} Transmitter (TX) point")
     )
