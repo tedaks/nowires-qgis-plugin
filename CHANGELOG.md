@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixes
+### Fixed (v1.6.3)
 
 - Fix `_final_cov_pool` shared-memory cleanup — worker atexit handler now calls `shm.close()` only, not `shm.unlink()`. Only the parent process that created the segment should unlink it, preventing `FileNotFoundError` when workers exit before others finish initialization and preventing inherited fork-atexit handlers from unlinking the parent's segment.
 - Add zero-dimension guards to `_bilinear.py` — `bilinear_sample`, `bilinear_sample_line`, and `bilinear_sample_grid` now return `NaN` when `grid_meta["n_lat"] <= 0` or `grid_meta["n_lon"] <= 0`, preventing `ZeroDivisionError` on degenerate grid metadata.
@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `logger.debug(..., exc_info=True)` to `contour/pipeline.py` proxy-auth exception handler — only `type(e).__name__` was used for feedback; the full exception value and traceback were discarded, losing diagnostic information.
 - Clamp scalar below-canopy exponent to `[-700.0, 700.0]` in `clutter/saalos.py` `compute_terminal_clutter_loss` — the scalar path only clamped the upper bound of `exp(min(..., 700.0))` while the vector path used `np.clip(..., -700.0, 700.0)`. Practically safe (large negative → exp ≈ 0) but inconsistent.
 
-### Changes
+### Changed
 
 - Rename `coverage/` subpackage to `radio_coverage/` to eliminate shadow conflict with Python's `coverage` test-coverage package. All imports change from `NoWires.coverage.xxx` to `NoWires.radio_coverage.xxx`.
 - Replace `except Exception: pass` with `logger.debug(..., exc_info=True)` in `radio_coverage/pool.py` `_final_cov_pool` and `_init_cov_pool` for shared-memory cleanup diagnostics.
@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Replace `os.makedirs(exist_ok=True)` with `fs_utils.safe_create_dir()` in `p2p/compute.py`, `algorithm/contour.py`, and `comparison/reporting.py` for TOCTOU-safe directory creation, eliminating symlink attacks on hardcoded subdirectory paths in shared `/tmp`.
 
-### Plans
+### Planned (v1.6.3)
 
 - Add import-linter contracts for layering violations: `radio` must not depend on `radio_coverage`, `raster_io` must not depend on `radio_coverage`, `tile_download_base` must not depend on `report`.
 - Extract `_csv_safe` and `_sanitize_json` from `report/export.py` to a shared utility module, removing cross-subpackage private-symbol imports in `batch/writer.py`.
@@ -44,13 +44,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `__all__` to top-level `__init__.py` for explicit public API surface.
 - Make `clutter/__init__.py` stop re-exporting underscore-prefixed private symbols (`_category_height_m`, `_resolve_category`).
 - Move orphaned standalone scripts (`export_portable.py`, `export_project.py`, `run_coverage.py`, `audit_cache.py`, `analyze_coverage.py`, `package_gpkg.py`) to a `scripts/` directory.
-- Increase `fail_under` coverage threshold from 59% to 65%.
 - Add `reviewers` and `labels` to `.github/dependabot.yml`.
 - Move `from urllib.parse import urlsplit` from inside `download_tile_with_retry` loop to module level in `tile_download_base.py` — lazy import executes on every tile download attempt.
 - Replace hardcoded `earth_r = 6371000.0` in `package_gpkg.py:96` with `EARTH_RADIUS_M` from `constants.py` — same value defined locally instead of importing the shared constant.
 - Remove redundant `shared_clutter_grid = None` at `algorithm/coverage_comparison.py:124` — dead store immediately following the same assignment at line 119.
 - Remove unnecessary `Qt_rm = QTimer` alias at `p2p/chart.py:149` — `QTimer.singleShot` is a static method; the alias adds no value and the same function calls `QTimer.singleShot` directly at line 168.
 - Update bumpversion configuration to add release dates to CHANGELOG headers per Keep a Changelog format.
+
+### Coverage Push (v1.6.4)
+
+- Increase `fail_under` coverage threshold from 59% to 65% in `pyproject.toml`.
+- Move orphaned standalone scripts (`run_coverage.py`, `analyze_coverage.py`, `export_portable.py`, `export_project.py`, `package_gpkg.py`, `audit_cache.py`) to `scripts/` directory and add `scripts/*` to `[tool.coverage.run] omit` to exclude zero-coverage utility scripts from the denominator.
+- Add unit tests for high-value uncovered modules: `elevation.py` bearing-destination paths, `tile_download_base.py` retry/cancel/corruption branches, `nowires.py` plugin lifecycle/init paths, `batch/outputs.py` ITM result handling, `batch/writer.py` CSV edge cases, `radio_coverage/pool.py` close/unlink/fallback, `contour/smoothing.py` and `_smoothing_vrt.py` kernel/VRT helpers.
+- Add Docker-based QGIS integration tests for algorithm orchestration: `algorithm/batch.py` full processAlgorithm, `algorithm/coverage_comparison.py` panel execution, `algorithm/contour.py` pipeline integration, `algorithm/coverage.py` clutter context/outputs, `comparison/outputs.py` full output writing.
+- Add unit tests for non-Qt paths in GUI modules: `three_d.py` terrain configuration, `report/markers.py` marker parameterization, `radio_coverage/legend.py` legend data builders, `p2p/chart.py` chart data assembly.
+- Target: 85% combined unit + integration test coverage (current: 63% unit, ~68% combined).
 
 ## [1.6.2] - 2026-05-23
 
