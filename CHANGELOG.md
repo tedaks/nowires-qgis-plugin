@@ -51,7 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI: enforce coverage threshold on main test pass (was disabled with `--cov-fail-under=0`).
 - CI: add version downgrade guard to `version-check.yml`.
 - CI: gate `release.yml` on lint job; add full-dependency `pip-audit` step to `tests.yml`.
-- CI: add `clutter-no-qgis` and `p2p-no-qgis` contracts to `.importlinter`.
 - `.gitignore`: add `.env`, `*.pem`, `*.key`, `credentials*`, `*.zip`, `**/*.prj`.
 - Centralize magic numbers: `DEM_NODATA`, `FSPL_CONSTANT`, `MHZ_TO_HZ`, `DIR_PERMISSIONS`, `K_FACTOR` in `constants.py`.
 - Fix CCH override treating explicit `0.0` as "no override" — `0.0` now means zero canopy height.
