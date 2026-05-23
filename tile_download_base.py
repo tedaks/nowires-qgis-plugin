@@ -102,7 +102,8 @@ def download_tile_with_retry(
                 with open(tmp_path, "wb") as f:
                     while True:
                         if feedback and feedback.isCanceled():
-                            f.close()
+                            f.flush()
+                            os.fsync(f.fileno())
                             try:
                                 os.unlink(tmp_path)
                             except OSError:

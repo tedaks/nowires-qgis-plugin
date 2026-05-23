@@ -34,6 +34,12 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
+def _nan_safe_fmt(value, fmt_str):
+    if np.isnan(value):
+        return ""
+    return format(value, fmt_str)
+
+
 def add_obstruction_annotations(ax, d_km, terrain_bulge, los_h, fresnel_r):
     from NoWires.p2p.chart_format import build_obstruction_data
     annotations = []
@@ -126,9 +132,13 @@ def make_export_csv(distances, terrain_bulge, los_h, fresnel_r, f_mhz, dist_m, d
                     f.write("distance_m,terrain_elevation_m,los_m,"
                             "fresnel_radius_m,clearance_m,obstructs_los\n")
                     for i in range(len(distances)):
-                        f.write("{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.0f}\n".format(
-                            distances[i], terrain_bulge[i], los_h[i],
-                            fresnel_r[i], clearances[i], 1 if obstructs_los[i] else 0,
+                        f.write("{},{},{},{},{},{:.0f}\n".format(
+                            _nan_safe_fmt(distances[i], ".2f"),
+                            _nan_safe_fmt(terrain_bulge[i], ".2f"),
+                            _nan_safe_fmt(los_h[i], ".2f"),
+                            _nan_safe_fmt(fresnel_r[i], ".2f"),
+                            _nan_safe_fmt(clearances[i], ".2f"),
+                            1 if obstructs_los[i] else 0,
                         ))
                 QMessageBox.information(dock, "Exported", "Data exported to:\n" + path)
         except Exception as e:

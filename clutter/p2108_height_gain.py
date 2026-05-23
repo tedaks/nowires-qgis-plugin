@@ -82,7 +82,7 @@ def height_gain_loss(h_m: float, f_ghz: float, category: str,
     if method == "2a":
         J = _J_nu(nu)
         return max(0.0, J - 6.03)
-    if h_m <= 0.0 or R <= 0.0:
+    if R <= 0.0:
         return 0.0
     Kh2 = 21.8 + 6.2 * math.log10(f_ghz)
     Ah = -Kh2 * math.log10(h_m / R)

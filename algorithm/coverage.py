@@ -71,7 +71,10 @@ def _build_clutter_context(p, clutter_grid, elev):
             context=clutter_context)
     except Exception:
         if owns_grid:
-            clutter_grid_resolved.close()
+            try:
+                clutter_grid_resolved.close()
+            except Exception:
+                pass
         raise
     return clutter_grid_resolved, clutter_context, clutter_source, tx_clutter_for_report, owns_grid
 
