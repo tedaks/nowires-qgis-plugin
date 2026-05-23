@@ -88,6 +88,22 @@ jobs:
             echo "ERROR: metadata.txt version ($pr_version) has not been bumped from base ($base_version)"
             exit 1
           fi
+          pr_parts=$(echo "$pr_version" | tr '.' ' ')
+          base_parts=$(echo "$base_version" | tr '.' ' ')
+          IFS=' ' read -ra pr_arr <<< "$pr_parts"
+          IFS=' ' read -ra base_arr <<< "$base_parts"
+          downgraded=false
+          for i in 0 1 2; do
+            if [ "${pr_arr[i]}" -lt "${base_arr[i]}" ]; then
+              downgraded=true; break
+            elif [ "${pr_arr[i]}" -gt "${base_arr[i]}" ]; then
+              break
+            fi
+          done
+          if [ "$downgraded" = "true" ]; then
+            echo "ERROR: metadata.txt version ($pr_version) is a downgrade from base ($base_version)"
+            exit 1
+          fi
           echo "Version bump OK: $base_version -> $pr_version"
 
       - name: Check changelog has unreleased entries

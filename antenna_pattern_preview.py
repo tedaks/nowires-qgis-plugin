@@ -23,6 +23,7 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from NoWires.antenna import _read_pattern_points
+from NoWires.antenna import clear_pattern_cache
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,7 @@ class AntennaPatternPreviewDialog(QDialog):
             self._load(initial_path)
 
     def _on_pick(self):
+        clear_pattern_cache()
         path, _ = QFileDialog.getOpenFileName(
             self, "Select antenna pattern CSV", "", "CSV files (*.csv)")
         if path:

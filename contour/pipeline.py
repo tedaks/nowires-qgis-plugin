@@ -31,6 +31,8 @@ import tempfile
 
 from osgeo import gdal, ogr
 
+from NoWires.constants import DEM_NODATA
+
 from qgis.PyQt.QtGui import QPainter
 from qgis.core import QgsApplication, QgsAuthMethodConfig, QgsProject, QgsRasterLayer
 
@@ -141,7 +143,7 @@ def download_and_merge_tiles(
         clip_result = gdal.Warp(
             fn_clip, tile_path,
             cutlineDSName=aoi_shp_path, cropToCutline=True,
-            dstNodata=-32768, srcSRS="EPSG:4326", dstSRS="EPSG:4326",
+            dstNodata=DEM_NODATA, srcSRS="EPSG:4326", dstSRS="EPSG:4326",
             format="GTiff", callback=gdal_callback,
         )
         if clip_result is not None:
@@ -166,7 +168,7 @@ def download_and_merge_tiles(
     temp_files.append(merged_path)
     merge_result = gdal.Warp(
         merged_path, clipped_rasters,
-        dstNodata=-32768, format="GTiff", callback=gdal_callback,
+        dstNodata=DEM_NODATA, format="GTiff", callback=gdal_callback,
     )
     if merge_result is None:
         raise RuntimeError(
