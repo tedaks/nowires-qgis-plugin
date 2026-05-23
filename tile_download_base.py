@@ -21,7 +21,6 @@
  *                                                                         *
  ***************************************************************************/
 
-
 Shared tile download logic with retry, validation, and caching for DEM and WorldCover downloaders.
 """
 
@@ -71,7 +70,6 @@ def download_tile_with_retry(
             os.unlink(local_tif)
         except OSError:
             pass
-
     if feedback:
         feedback.pushInfo("Downloading: " + tile_url)
     downloaded = False
@@ -103,6 +101,13 @@ def download_tile_with_retry(
                 bytes_received = 0
                 with open(tmp_path, "wb") as f:
                     while True:
+                        if feedback and feedback.isCanceled():
+                            f.close()
+                            try:
+                                os.unlink(tmp_path)
+                            except OSError:
+                                pass
+                            return None
                         chunk = response.read(65536)
                         if not chunk:
                             break
@@ -226,18 +231,22 @@ def clip_and_merge_tiles(
     from NoWires.report.markers import remove_existing_ogr_dataset
     shp_driver = ogr.GetDriverByName("ESRI Shapefile")
     remove_existing_ogr_dataset(shp_driver, aoi_shp)
-    ds = shp_driver.CreateDataSource(aoi_shp)
-    if ds is None:
-        raise RuntimeError("Failed to create dataset at {}".format(aoi_shp))
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(4326)
-    srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-    layer = ds.CreateLayer("aoi", srs=srs, geom_type=ogr.wkbPolygon)
-    feat_defn = layer.GetLayerDefn()
-    feature = ogr.Feature(feat_defn)
-    feature.SetGeometry(_aoi_geometry_for_bounds(south, north, west, east))
-    layer.CreateFeature(feature)
     ds = None
+    try:
+        ds = shp_driver.CreateDataSource(aoi_shp)
+        if ds is None:
+            raise RuntimeError("Failed to create dataset at {}".format(aoi_shp))
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+        srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        layer = ds.CreateLayer("aoi", srs=srs, geom_type=ogr.wkbPolygon)
+        feat_defn = layer.GetLayerDefn()
+        feature = ogr.Feature(feat_defn)
+        feature.SetGeometry(_aoi_geometry_for_bounds(south, north, west, east))
+        layer.CreateFeature(feature)
+        feature = None
+    finally:
+        ds = None
 
     clipped = []
     for path in tile_paths:
@@ -266,8 +275,9 @@ def clip_and_merge_tiles(
         result = None  # Release GDAL dataset handle promptly
 
         check = gdal.Open(clip_path)
-        if check is None:
-            logger.warning("Empty clip result for %s", os.path.basename(path))
+        if check is None or check.GetRasterBand(1).ComputeStatistics(False) is None:
+            logger.warning("Empty or invalid clip for %s", os.path.basename(path))
+            check = None
             continue
         check = None
         clipped.append(clip_path)
@@ -286,4 +296,5 @@ def clip_and_merge_tiles(
         logger.error("Merge Warp failed")
         return None
     result = None  # Release GDAL dataset handle promptly
+    remove_existing_ogr_dataset(shp_driver, aoi_shp)
     return merged_path

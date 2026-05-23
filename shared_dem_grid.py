@@ -111,6 +111,7 @@ class SharedDEMGrid:
         self._shm: multiprocessing.shared_memory.SharedMemory | None = None
         self._name: str | None = None
         self._unlinked = False
+        self._release_lock = threading.Lock()
         self._create(grid_data)
 
     def _create(self, grid_data: np.ndarray) -> None:
@@ -158,15 +159,16 @@ class SharedDEMGrid:
         """Close and unlink the shared-memory segment."""
         with _pending_releases_lock:
             _pending_releases.pop(id(self), None)
-        if self._shm is not None and not self._unlinked:
+        with self._release_lock:
+            if self._shm is None or self._unlinked:
+                return
             try:
                 self._shm.close()
             except OSError as exc:
                 logger.debug("shm.close() failed: %s", exc)
             try:
-                if not self._unlinked:
-                    self._shm.unlink()
-                    self._unlinked = True
+                self._shm.unlink()
+                self._unlinked = True
             except OSError as exc:
                 logger.debug("shm.unlink() failed: %s", exc)
             self._shm = None
@@ -182,5 +184,8 @@ class SharedDEMGrid:
         return False
 
     def __del__(self):
-        if self._shm is not None and not self._unlinked:
-            self.release()
+        try:
+            if self._shm is not None and not self._unlinked:
+                self.release()
+        except TypeError:
+            pass

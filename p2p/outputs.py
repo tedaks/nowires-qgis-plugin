@@ -68,6 +68,8 @@ def write_profile_line(path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result
         feat.SetField("mode_name", PROP_MODE_NAMES.get(result.mode, "Unknown"))
         layer.CreateFeature(feat)
     finally:
+        feat = None
+        geom = None
         ds = None
 
 
@@ -144,6 +146,10 @@ def write_fresnel_zone(
         feat_band.SetField("blocked", 0)
         layer_poly.CreateFeature(feat_band)
     finally:
+        feat_f1 = None
+        poly_f1 = None
+        feat_band = None
+        poly_band = None
         ds_poly = None
 
     ds_lines = None
@@ -179,5 +185,9 @@ def write_fresnel_zone(
         feat_los.SetField("blocked", 0)
         layer_lines.CreateFeature(feat_los)
     finally:
+        feat_ter = None
+        terrain_line = None
+        feat_los = None
+        los_line = None
         ds_lines = None
     return poly_path, lines_path
