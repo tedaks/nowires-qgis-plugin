@@ -48,8 +48,8 @@ def _csv_safe(value):
     s = str(value)
     # Strip newlines that could break row structure
     s = s.replace("\r", " ").replace("\n", " ")
-    # Prefix dangerous formula-triggering characters with a single quote
-    if s and s[0] in ('=', '+', '@', '\t', '\r'):
+    s = s.lstrip("\t\r")
+    if s and s[0] in ('=', '+', '@'):
         return "'" + s
     if s.startswith('-') and len(s) > 1:
         try:

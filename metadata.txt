@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.6.0
+version=1.6.1
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,16 +14,37 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
+    Version 1.6.1
+    - Fix CSV formula-injection bypass via leading whitespace in report/export.py::_csv_safe
+    - Add threading.Lock around _pending_releases mutations in shared_dem_grid.py to prevent data races
+    - Skip pre-allocation of prx_grid, loss_grid, and 4 other arrays when coverage tasks list is empty (~20 MB saved)
+    - Fix dem_downloader.tile_name_for(lat, lon) raising ValueError on float input; add math.floor cast
+    - Mask dist_grid_km to NaN where prx_grid is NaN in coverage/summary.py
+    - Add debug logging for out-of-bounds bilinear samples in _bilinear.py
+    - Fix ITM finite-loss guard in batch/outputs.py — NaN/Inf loss now returns None instead of corrupting results
+    - Fix tmpdir=None assert crash in comparison/reporting.py when all three output paths are explicit
+    - Relax validate_panels() TX position tolerance from 1e-5° to 1e-3° in comparison/reporting.py
+    - Fix contour algorithm silently returning {} on DEM failure; raise QgsProcessingException instead
+    - Fix comparison/panel.py raising bare ValueError instead of QgsProcessingException
+    - Fix matplotlib figure memory leak in p2p/chart.py — _on_destroy now calls fig.clear() and plt.close(fig)
+    - Add headless QGIS guard in p2p/chart.py::show_profile_chart(); return early when iface is None
+    - Add FlushCache() on hillshade GDAL dataset before release in contour/overlay.py
+    - Fix P2P chart failure not surfaced to user; add feedback.pushWarning() alongside logger.warning
+    - Fix P.2109-2 theta_deg not clamped to 0-90° validity range; add min/max clamp
+    - Fix P.2108-1 near-zero height producing implausibly large loss; add _MIN_HEIGHT_M = 0.1 m floor
+    - Validate panel grid sizes early in algorithm/coverage_comparison.py before expensive computation
+    - Add climate zone line to P2P console feedback in p2p/report_display.py
+    - Add climate zone to batch CSV/JSON output and build_panel_info() in comparison/reporting.py
+    - Fix scalar/vector formula divergence in clutter/saalos.py below-canopy path (exp(1/(cch-htx)) → exp(1/cch - htx))
+    - Add shared patch_dem_download fixture to tests/conftest.py
+    - Refactor: extract helpers from p2p/chart.py into p2p/chart_helpers.py (298 → 201 + 136 lines)
+    - Fix macOS test_plugin_load.py failures — monkeypatch sys.platform to skip darwin-specific code
+    - Fix broken monkeypatch in test_qgis_integration_extended.py — use shared fixture for DEM download mock
+    - Fix sys.modules pollution in test_dem_downloader.py and test_review_fixes.py breaking downstream tests
+    - Fix TestCoverageAlgorithmExecution using P2PAlgorithm instead of CoverageAlgorithm
+    - Fix test_p2p_chart_contract.py stale references after chart.py decomposition
+    - Add testpaths = ["tests"] to pyproject.toml to prevent nested NoWires test discovery via symlink
     Version 1.6.0
-    - Refactor: extract build_link_clutter_context() factory in clutter_context — consolidates the 14-field ClutterLossContext construction duplicated in p2p_compute.run_p2p_analysis and batch_outputs._compute_single_link
-    - Refactor: use existing fresnel.fresnel_profile_analysis in batch_outputs._compute_single_link instead of an inline (mathematically equivalent) reimplementation; drops the EARTH_RADIUS_M import and the tx_h_eff_actual alias
-    - Refactor: use existing build_initial_clutter_context() factory in comparison_panel.run_panel_coverage instead of inline placeholder-context construction; consolidates the third call site (alongside algorithm_coverage and coverage_engine)
-    - Refactor: extract ComparisonPanelParams dataclass + collect_panel_params() factory in comparison_params; run_panel_coverage drops from 227 lines to ~107 lines and comparison_panel.py from 276 to 163
-    - Refactor: consolidate the tx_def["height"] resolution in _compute_single_link to a single tx_h_eff local at the top (was repeated three times under two different aliases)
-    - Add 17 new unit tests across test_clutter_context.py (4 for build_link_clutter_context) and a new test_collect_panel_params.py (13 for the collector + derivation rules)
-    - Add test_clutter_math_snapshot.py — 32 drift-guard snapshot tests for p2108_height_gain, p2108_terrestrial_stat, p2109_bel, and clutter_saalos; pins (inputs -> output) tuples per module at rel_tol=1e-9 to catch accidental coefficient drift
-    - Register comparison_params in tests/_qgis_mocks.py _PACKAGE_SUBMODULES so unit tests can import it through the NoWires package without the qgis_integration marker
-    Version 1.5.10
     - Fix AttributeError on Windows: module 'os' has no attribute 'geteuid' — guard /dev/shm cleanup with hasattr check; skip POSIX-only regression test on Windows
     - Fix P2P profile chart checkbox toggles having no visible effect — add fig.canvas.draw_idle() after artist-visibility loop in deferred callback
     - Fix latent NameError in P2P chart visibility toggle when tx_marker/rx_marker are undefined — initialise to None and skip in toggle loop

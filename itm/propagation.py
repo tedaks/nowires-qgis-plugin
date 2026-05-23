@@ -64,6 +64,9 @@ def knife_edge_diffraction(
     theta_nlos = d__meter / a_e__meter - theta_los
     d_nlos__meter = d__meter - d_ML__meter
 
+    if d_nlos__meter <= 0.0:
+        return 0.0
+
     v_1 = (
         0.0795775
         * (f__mhz / WN_DENOM)
@@ -547,28 +550,32 @@ def longley_rice(
                 f__mhz,
             )
             q = math.log(d_sML__meter / d_0__meter)
-            kHat_2 = max(
-                0.0,
-                (
-                    (d_sML__meter - d_0__meter) * (A_1__db - A_0__db)
-                    - (d_1__meter - d_0__meter) * (A_sML__db - A_0__db)
+            if abs(q) < 1e-10:
+                # d_sML ≈ d_0: avoid 0/0, fall through to flag=False path
+                pass
+            else:
+                kHat_2 = max(
+                    0.0,
+                    (
+                        (d_sML__meter - d_0__meter) * (A_1__db - A_0__db)
+                        - (d_1__meter - d_0__meter) * (A_sML__db - A_0__db)
+                    )
+                    / (
+                        (d_sML__meter - d_0__meter) * math.log(d_1__meter / d_0__meter)
+                        - (d_1__meter - d_0__meter) * q
+                    ),
                 )
-                / (
-                    (d_sML__meter - d_0__meter) * math.log(d_1__meter / d_0__meter)
-                    - (d_1__meter - d_0__meter) * q
-                ),
-            )
-            flag = A_d0__db > 0.0 or kHat_2 > 0.0
+                flag = A_d0__db > 0.0 or kHat_2 > 0.0
 
-            if flag:
-                kHat_1 = (A_sML__db - A_0__db - kHat_2 * q) / (
-                    d_sML__meter - d_0__meter
-                )
-                if kHat_1 < 0.0:
-                    kHat_1 = 0.0
-                    kHat_2 = max(A_sML__db - A_0__db, 0.0) / q
-                    if kHat_2 == 0.0:
-                        kHat_1 = M_d
+                if flag:
+                    kHat_1 = (A_sML__db - A_0__db - kHat_2 * q) / (
+                        d_sML__meter - d_0__meter
+                    )
+                    if kHat_1 < 0.0:
+                        kHat_1 = 0.0
+                        kHat_2 = max(A_sML__db - A_0__db, 0.0) / q
+                        if kHat_2 == 0.0:
+                            kHat_1 = M_d
 
         if not flag:
             kHat_1 = max(A_sML__db - A_1__db, 0.0) / (d_sML__meter - d_1__meter)

@@ -9,9 +9,10 @@ __pycache__/
 *.egg
 
 # Virtual environments
-.venv/
-venv/
-env/
+.venv
+.ci-venv
+venv
+env
 
 # Build
 build/

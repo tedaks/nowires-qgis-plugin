@@ -119,11 +119,6 @@ def compute_coverage(
     eirp_dbm = tx_power_dbm + tx_gain_dbi - cable_loss_db
     lats = _coverage_axis_centers(min_lat, max_lat, grid_size)
     lons = _coverage_axis_centers(min_lon, max_lon, grid_size)
-    gs, nan32 = (grid_size, grid_size), np.float32(np.nan)
-    prx_grid, loss_grid = np.full(gs, nan32, dtype=np.float32), np.full(gs, nan32, dtype=np.float32)
-    itm_loss_grid = np.full(gs, nan32, dtype=np.float32)
-    clutter_loss_grid, clutter_rx_db_grid = np.full(gs, nan32, dtype=np.float32), np.full(gs, nan32, dtype=np.float32)
-    bel_rx_db_grid = np.full(gs, nan32, dtype=np.float32)
 
     tx_ground_elev_m = _get_tx_ground_elevation(elev_grid, tx_lat, tx_lon)
     rx_ground_grid = _build_rx_ground_grid(elev_grid, clutter_enabled, clutter_model, lats, lons, grid_size)
@@ -164,6 +159,12 @@ def compute_coverage(
                 "coordinates are outside the DEM extent.", fatalError=False,
             )
         return None
+
+    gs, nan32 = (grid_size, grid_size), np.float32(np.nan)
+    prx_grid, loss_grid = np.full(gs, nan32, dtype=np.float32), np.full(gs, nan32, dtype=np.float32)
+    itm_loss_grid = np.full(gs, nan32, dtype=np.float32)
+    clutter_loss_grid, clutter_rx_db_grid = np.full(gs, nan32, dtype=np.float32), np.full(gs, nan32, dtype=np.float32)
+    bel_rx_db_grid = np.full(gs, nan32, dtype=np.float32)
     grid_meta = elev_grid.grid_meta_dict()
     grid_meta["tx_lat"] = tx_lat
     grid_meta["tx_lon"] = tx_lon

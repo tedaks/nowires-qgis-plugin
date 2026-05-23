@@ -12,13 +12,14 @@ import-level invariants and the pure data-preparation parts only.
 
 class TestP2pChartModuleContract:
     def test_module_imports(self):
-        import p2p.chart as p2p_chart
-        assert hasattr(p2p_chart, "show_profile_chart")
-        assert hasattr(p2p_chart, "_add_obstruction_annotations")
-        assert hasattr(p2p_chart, "_setup_tooltip")
+        from NoWires.p2p.chart import show_profile_chart
+        from NoWires.p2p.chart_helpers import add_obstruction_annotations, setup_tooltip
+        assert callable(show_profile_chart)
+        assert callable(add_obstruction_annotations)
+        assert callable(setup_tooltip)
 
     def test_all_declared_exports(self):
-        import p2p.chart as p2p_chart
+        from NoWires.p2p import chart as p2p_chart
         assert p2p_chart.__all__ == ["show_profile_chart"]
 
     def test_fresnel_60pct_factor_import(self):

@@ -118,6 +118,16 @@ LEGACY_CLUTTER_LOSS_DB: dict[str, float] = {
     "suburban": 8.0, "urban": 10.0,
 }
 
+SIMPLE_MODE_REMAP: dict[str, str] = {
+    "open_rural": "rural",
+    "dense_rural": "vegetation",
+}
+
+
+def remap_simple_category(category: str) -> str:
+    return SIMPLE_MODE_REMAP.get(category, category)
+
+
 _LEGACY_CAT_IDX = {k: i for i, k in enumerate(LEGACY_CLUTTER_CATEGORIES)}
 _LEGACY_CLUTTER_LOSS_ARRAY = np.array([
     LEGACY_CLUTTER_LOSS_DB["open"],

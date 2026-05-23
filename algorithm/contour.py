@@ -74,9 +74,11 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
         fallback_dir = get_temp_dir()
         if fallback_dir:
             self.temp_dir = fallback_dir
+            self._owns_temp_dir = False
         else:
             self.temp_dir = tempfile.mkdtemp(prefix="nowires_contour_")
             self._tmp.add_dir(self.temp_dir)
+            self._owns_temp_dir = True
         self.status_total = 0.0
         self.progress = 0.0
         self._raster_layer_ids = []
@@ -140,6 +142,8 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
         self.status_total = 0.0
         self.progress = 0.0
         self._tmp = TempDirManager()
+        if self._owns_temp_dir:
+            self._tmp.add_dir(self.temp_dir)
         os.makedirs(self.temp_dir, exist_ok=True)
         feedback.pushInfo("\nTemporary folder: " + self.temp_dir)
         try:
@@ -162,9 +166,8 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
                 self.temp_dir, aoi_shp_path, proxy_opener,
                 feedback, self.progress, self.status_total)
             if merged_path is None:
-                feedback.reportError(
+                raise QgsProcessingException(
                     "DEM download/merge failed for the selected area.")
-                return {}
             for _cf in clip_temps:
                 self._tmp.add_file(_cf)
             self.progress += 2
@@ -243,7 +246,6 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
                     elevation_dem_path, self.temp_dir, context, feedback)
                 if lid:
                     self._raster_layer_ids.append(lid)
-                self._tmp.make_dir("overlay_persistent", persistent=True)
 
             def _style_contour(loaded):
                 apply_contour_symbology(loaded, color, interval)

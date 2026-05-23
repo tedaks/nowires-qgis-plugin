@@ -22,6 +22,7 @@ SAMPLE_RESULTS = [
         "margin_db": 10.234,
         "clearance_pct": 45.67,
         "status": "VIABLE",
+        "climate": "Continental Temperate",
     },
     {
         "tx_lat": 14.5,
@@ -34,13 +35,14 @@ SAMPLE_RESULTS = [
         "margin_db": -2.345,
         "clearance_pct": 20.89,
         "status": "NOT VIABLE",
+        "climate": "Continental Temperate",
     },
 ]
 
 EXPECTED_HEADERS = [
     "Point Id", "rank", "tx_lat", "tx_lon", "rx_lat", "rx_lon",
     "dist_km", "itm_loss_db", "total_loss_db",
-    "margin_db", "clearance_pct", "status",
+    "margin_db", "clearance_pct", "status", "climate",
 ]
 
 
@@ -183,6 +185,7 @@ class TestWriteBatchJson:
                 "dist_km": 1.5, "itm_loss_db": 130.0,
                 "total_loss_db": 140.0, "margin_db": -5.0,
                 "clearance_pct": 10.0, "status": "NOT VIABLE",
+                "climate": "Equatorial",
             },
             {
                 "tx_lat": 14.5, "tx_lon": 121.5,
@@ -190,6 +193,7 @@ class TestWriteBatchJson:
                 "dist_km": 2.0, "itm_loss_db": 140.0,
                 "total_loss_db": 150.0, "margin_db": -10.0,
                 "clearance_pct": 5.0, "status": "NOT VIABLE",
+                "climate": "Equatorial",
             },
         ]
         path = tmp_path / "out.json"
@@ -207,6 +211,7 @@ class TestWriteBatchJson:
                 "dist_km": 1.5, "itm_loss_db": 100.0,
                 "total_loss_db": 110.0, "margin_db": 15.0,
                 "clearance_pct": 80.0, "status": "VIABLE",
+                "climate": "Maritime Temperate",
             },
             {
                 "tx_lat": 14.5, "tx_lon": 121.5,
@@ -214,6 +219,7 @@ class TestWriteBatchJson:
                 "dist_km": 2.0, "itm_loss_db": 105.0,
                 "total_loss_db": 115.0, "margin_db": 12.0,
                 "clearance_pct": 70.0, "status": "VIABLE",
+                "climate": "Maritime Temperate",
             },
         ]
         path = tmp_path / "out.json"
