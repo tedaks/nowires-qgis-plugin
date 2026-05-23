@@ -33,6 +33,7 @@ import numpy as np
 
 from NoWires.constants import EARTH_RADIUS_M
 from NoWires.constants import FRESNEL_60PCT_FACTOR
+from NoWires.constants import MHZ_TO_HZ
 from NoWires.defaults import DEFAULT_K_FACTOR
 
 C_LIGHT = 299792458.0
@@ -44,7 +45,7 @@ def fresnel_radius(d1_m, d2_m, f_mhz):
         return 0.0
     if d1_m <= 0 or d2_m <= 0:
         return 0.0
-    wavelength_m = C_LIGHT / (f_mhz * 1e6)
+    wavelength_m = C_LIGHT / (f_mhz * MHZ_TO_HZ)
     return math.sqrt(wavelength_m * d1_m * d2_m / (d1_m + d2_m))
 
 

@@ -44,6 +44,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from NoWires.defaults import DEFAULT_K_FACTOR
+
 
 # --- Signal Level Definitions ---
 
@@ -65,7 +67,7 @@ PROP_MODE_NAMES = {
 
 # Earth-radius factor (k) presets exposed by the P2P algorithm UI.
 # Index 2 (4/3) is the standard-atmosphere default.
-K_FACTOR_PRESETS = [0.67, 1.0, 4.0 / 3.0, 2.0, 4.0]
+K_FACTOR_PRESETS = [0.67, 1.0, DEFAULT_K_FACTOR, 2.0, 4.0]
 ITM_MIN_TERMINAL_HEIGHT_M = 0.5
 ITM_MAX_TERMINAL_HEIGHT_M = 3000.0
 ITM_MIN_FREQUENCY_MHZ = 20.0

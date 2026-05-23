@@ -10,6 +10,8 @@ import xml.etree.ElementTree as ET  # nosec B405
 import numpy as np
 from osgeo import gdal
 
+from NoWires.constants import DEM_NODATA
+
 try:
     from defusedxml.ElementTree import parse as _safe_parse  # nosec B405
     _XML_SAFE = True
@@ -22,7 +24,7 @@ def _parse_xml(path):  # explicit call avoids a global ET.parse monkey-patch
 
 logger = logging.getLogger(__name__)
 
-def _raster_calc(calc_func, output_path, nodata=-32768, overwrite=False, **inputs):
+def _raster_calc(calc_func, output_path, nodata=DEM_NODATA, overwrite=False, **inputs):
     arrays = {}
     datasets = []
     geo_transform = None

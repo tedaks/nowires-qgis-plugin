@@ -13,3 +13,22 @@ forbidden_modules =
     qgis
     PyQt5
     PyQt6
+
+[importlinter:contract:clutter-no-qgis]
+name = clutter-no-qgis
+type = forbidden
+source_modules =
+    NoWires.clutter
+forbidden_modules =
+    qgis
+    PyQt5
+    PyQt6
+
+[importlinter:contract:p2p-no-qgis]
+name = p2p-no-qgis
+type = forbidden
+source_modules =
+    NoWires.p2p
+forbidden_modules =
+    qgis.core
+    qgis.PyQt

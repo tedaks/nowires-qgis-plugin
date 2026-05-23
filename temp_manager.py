@@ -35,6 +35,8 @@ import os
 import shutil
 import tempfile
 
+from NoWires.constants import DIR_PERMISSIONS
+
 logger = logging.getLogger(__name__)
 
 
@@ -82,7 +84,7 @@ class TempDirManager:
         path = tempfile.mkdtemp(prefix="nowires_{}-".format(prefix), dir=base_dir)
         if sys.platform != "win32":
             try:
-                os.chmod(path, 0o700)
+                os.chmod(path, DIR_PERMISSIONS)
             except OSError:
                 pass
         if persistent:
