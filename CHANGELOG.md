@@ -38,7 +38,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add 15 p2p chart extended tests (`test_p2p_chart_extended.py`): obstruction annotations, CSV NaN export, status text variants, obstruction data edge cases.
 - Add 3 legend/marker tests (`test_legend_and_markers.py`): `show_coverage_legend` dialog, `write_single_marker` GPKG, `remove_existing_ogr_dataset`.
 - Add 3 3D/preview tests (`test_three_d_and_preview.py`): `open_nowires_3d_view`, `AntennaPatternPreviewDialog` creation + synthetic pattern file load.
-- Overall test coverage increased from 59% to 66% (+114 tests, +456 covered statements).
+- Overall test coverage increased from 59% to 66% (+134 tests, +483 covered statements).
+- Add 7 cache manager tests (`test_cache_manager.py`): OSError suppression, `shutil.rmtree`, `format_cache_size` empty/non-empty, empty temp dir (89% → 100%).
+- Add 13 dem downloader edge-case tests (`test_dem_downloader_extended.py`): symlink removal, O_DIRECTORY, chmod/stat failure, `tile_name_for` float/negative (84% → 100%).
+- Add 5 coverage opacity tests (`test_coverage_opacity_extended.py`): `find_latest_coverage_layer` by settings/name, slider refresh, layer removal guard (qgis_integration).
+- Add 8 coverage params validation tests (`test_coverage_params_validation.py`): TX point None, grid_size > 1024, radius/freq <= 0, ITM error propagation (qgis_integration).
+- Add 6 provider lifecycle tests (`test_provider_extended.py`): icon, name/id/longName, load failure logging, unload (qgis_integration).
 
 ### Changed
 
