@@ -93,3 +93,12 @@ def test_interpolate_nan_array_does_not_modify_original():
     original = arr.copy()
     interpolate_nan_array(arr)
     np.testing.assert_array_equal(arr, original)
+
+
+def test_interpolate_nan_array_all_nan_returns_copy():
+    from NoWires.nan_utils import interpolate_nan_array
+    arr = np.array([float("nan"), float("nan")])
+    result = interpolate_nan_array(arr)
+    result[0] = 42.0
+    assert np.isnan(arr[0]), (
+        "All-NaN branch must return a copy, not a reference to input")

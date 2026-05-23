@@ -182,6 +182,7 @@ def load_dem_output(dem_output, elevation_dem_path, context, feedback):
     """Export raw DEM to *dem_output* and return (layer_id_or_None)."""
     translate_ds = gdal.Translate(dem_output, elevation_dem_path)
     if translate_ds is not None:
+        translate_ds.FlushCache()
         translate_ds = None
     layer = QgsRasterLayer(dem_output, "NoWires DEM")
     if not layer.isValid():
