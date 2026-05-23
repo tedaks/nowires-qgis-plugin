@@ -103,7 +103,6 @@ def download_tile_with_retry(
                     while True:
                         if feedback and feedback.isCanceled():
                             f.flush()
-                            os.fsync(f.fileno())
                             try:
                                 os.unlink(tmp_path)
                             except OSError:
