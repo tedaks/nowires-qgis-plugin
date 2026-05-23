@@ -6,11 +6,17 @@ import builtins
 import sys
 from unittest import mock
 
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+
+try:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    _HAS_MPL = True
+except ImportError:
+    _HAS_MPL = False
+    plt = None
 
 from NoWires.p2p.chart_helpers import (
     add_obstruction_annotations,
@@ -29,6 +35,9 @@ def _make_axes():
     fig = plt.Figure(figsize=(6, 4))
     ax = fig.add_subplot(111)
     return ax
+
+
+_skip_no_mpl = pytest.mark.skipif(not _HAS_MPL, reason="matplotlib not available")
 
 
 def _install_qgis_mocks(qt_widgets_overrides=None):
@@ -52,6 +61,7 @@ def _install_qgis_mocks(qt_widgets_overrides=None):
 # ---------------------------------------------------------------------------
 
 
+@_skip_no_mpl
 def test_add_obstruction_annotations_empty_path():
     ax = _make_axes()
     empty = np.array([], dtype=np.float64)
@@ -60,6 +70,7 @@ def test_add_obstruction_annotations_empty_path():
     plt.close("all")
 
 
+@_skip_no_mpl
 def test_add_obstruction_annotations_no_obstruction():
     ax = _make_axes()
     d_km = np.array([0.0, 1.0, 2.0], dtype=np.float64)
@@ -71,6 +82,7 @@ def test_add_obstruction_annotations_no_obstruction():
     plt.close("all")
 
 
+@_skip_no_mpl
 def test_add_obstruction_annotations_with_obstruction():
     ax = _make_axes()
     d_km = np.array([0.0, 1.0, 2.0, 3.0, 4.0], dtype=np.float64)
@@ -150,7 +162,6 @@ def test_make_export_csv_header_and_format(tmp_path):
     assert row0[0] == "0.00"
     assert row0[1] == "10.00"
     assert row0[5] == "0"
-    plt.close("all")
 
 
 # ---------------------------------------------------------------------------
