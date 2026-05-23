@@ -51,7 +51,7 @@ def interpolate_nan_array(arr):
         return arr.copy()
     valid_mask = ~nan_mask
     if not valid_mask.any():
-        return arr
+        return arr.copy()
     valid_indices = np.where(valid_mask)[0]
     result = arr.copy()
     nan_indices = np.where(nan_mask)[0]
