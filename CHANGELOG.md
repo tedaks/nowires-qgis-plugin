@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changes
 
-- Replace `except Exception: pass` with `logger.debug(..., exc_info=True)` in `coverage/pool.py` `_final_cov_pool` and `_init_cov_pool` for shared-memory cleanup diagnostics.
+- Rename `coverage/` subpackage to `radio_coverage/` to eliminate shadow conflict with Python's `coverage` test-coverage package. All imports change from `NoWires.coverage.xxx` to `NoWires.radio_coverage.xxx`.
+- Replace `except Exception: pass` with `logger.debug(..., exc_info=True)` in `radio_coverage/pool.py` `_final_cov_pool` and `_init_cov_pool` for shared-memory cleanup diagnostics.
 - Add `logging.debug` calls to `_final_cov_pool` close/unlink steps for observability.
 
 ### Security
@@ -30,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Plans
 
-- Add import-linter contracts for layering violations: `radio` must not depend on `coverage`, `raster_io` must not depend on `coverage`, `tile_download_base` must not depend on `report`.
+- Add import-linter contracts for layering violations: `radio` must not depend on `radio_coverage`, `raster_io` must not depend on `radio_coverage`, `tile_download_base` must not depend on `report`.
 - Extract `_csv_safe` and `_sanitize_json` from `report/export.py` to a shared utility module, removing cross-subpackage private-symbol imports in `batch/writer.py`.
 - Add `GDAL_DRIVER_NAME = "GTiff"` and `AOI_PADDING_FRACTION = 0.1` to `constants.py`, replacing 8 and 4 hardcoded occurrences respectively.
 - Extract duplicated AOI padding formula (`max(DEGREE_PADDING, ... * METERS_PER_DEGREE_LAT * 0.1)`) into a shared utility function.
@@ -100,7 +101,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known issues
 
-- `--cov` broken on host due to `coverage/` subpackage shadowing pip-installed `coverage` — workaround: prepend site-packages to PYTHONPATH.
 - Baseline coverage 62%; medium-effort and QGIS/Docker coverage tests deferred to future release.
 
 ## [1.6.1] - 2026-05-23

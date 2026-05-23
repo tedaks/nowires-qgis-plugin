@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Tests for coverage/legend.py (show_coverage_legend) and report/markers.py
+"""Tests for radio_coverage/legend.py (show_coverage_legend) and report/markers.py
 (write_single_marker, remove_existing_ogr_dataset).
 
 Marker tests require a real GDAL/OGR runtime. Legend tests gracefully
@@ -27,11 +27,11 @@ if _REAL_GDAL:
     from NoWires.report.markers import remove_existing_ogr_dataset, write_single_marker
 
 # --- Legend import works with or without QGIS (mocked PyQt) ---
-from NoWires.coverage.legend import show_coverage_legend
+from NoWires.radio_coverage.legend import show_coverage_legend
 
 
 class TestShowCoverageLegend:
-    """Covers coverage/legend.py lines 147-165 (show_coverage_legend)."""
+    """Covers radio_coverage/legend.py lines 147-165 (show_coverage_legend)."""
 
     @pytest.mark.qgis_integration
     def test_show_coverage_legend_does_not_crash(self):

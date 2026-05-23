@@ -18,13 +18,13 @@ if __package__ in (None, ""):
     _package = sys.modules.setdefault("NoWires", types.ModuleType("NoWires"))
     _package.__path__ = [_plugin_dir]
     _package.__package__ = "NoWires"
-    from NoWires.coverage.compute import compute_itm_p2p
+    from NoWires.radio_coverage.compute import compute_itm_p2p
     from NoWires.benchmarks.reference_cases import (
         P2PCase,
         P2P_CASES,
     )
 else:
-    from NoWires.coverage.compute import compute_itm_p2p
+    from NoWires.radio_coverage.compute import compute_itm_p2p
     from .reference_cases import P2PCase, P2P_CASES
 
 

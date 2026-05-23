@@ -19,7 +19,7 @@ import os
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PLUGIN_DIR = os.path.join(_HERE, os.pardir)
-_SOURCE_FILE = os.path.normpath(os.path.join(_PLUGIN_DIR, "coverage/_executor.py"))
+_SOURCE_FILE = os.path.normpath(os.path.join(_PLUGIN_DIR, "radio_coverage/_executor.py"))
 
 
 def test_sequential_fallback_accumulates_not_overwrites():

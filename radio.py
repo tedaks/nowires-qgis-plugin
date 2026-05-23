@@ -49,7 +49,7 @@ from NoWires.defaults import DEFAULT_K_FACTOR
 
 # --- Signal Level Definitions ---
 
-from NoWires.coverage.palette import SIGNAL_LEVELS
+from NoWires.radio_coverage.palette import SIGNAL_LEVELS
 
 THRESHOLDS = np.array([t for t, _, _ in SIGNAL_LEVELS], dtype=np.float64)
 COLORS = np.array(

@@ -27,11 +27,11 @@ Coverage Comparison Algorithm — Panel coverage runner.
 Standalone function to run compute_coverage for one panel of the comparison.
 """
 
-from NoWires.coverage.compute import (
+from NoWires.radio_coverage.compute import (
     DEFAULT_MAX_PROFILE_PTS,
     coverage_profile_step_m,
 )
-from NoWires.coverage.engine import compute_coverage
+from NoWires.radio_coverage.engine import compute_coverage
 from NoWires.clutter import (
     LandCoverGrid,
     clutter_source_label,

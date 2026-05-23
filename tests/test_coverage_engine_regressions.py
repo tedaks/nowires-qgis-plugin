@@ -15,7 +15,7 @@ import numpy as np
 
 
 PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
-ENGINE_SOURCE = os.path.join(PLUGIN_DIR, "coverage/engine.py")
+ENGINE_SOURCE = os.path.join(PLUGIN_DIR, "radio_coverage/engine.py")
 
 
 def test_coverage_engine_source_compiles():
@@ -37,8 +37,8 @@ def _import_coverage_engine(monkeypatch):
     package.__name__ = "NoWires"
     monkeypatch.setitem(sys.modules, "NoWires", package)
 
-    engine = importlib.import_module("NoWires.coverage.engine")
-    executor = importlib.import_module("NoWires.coverage._executor")
+    engine = importlib.import_module("NoWires.radio_coverage.engine")
+    executor = importlib.import_module("NoWires.radio_coverage._executor")
     return engine, executor
 
 

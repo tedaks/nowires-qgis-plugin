@@ -23,7 +23,7 @@ def test_run_case_reports_elapsed_and_pixels(monkeypatch):
     calls = {}
 
     def fake_compute_coverage(**kwargs):
-        from coverage.engine import CoverageResult
+        from radio_coverage.engine import CoverageResult
         calls["kwargs"] = kwargs
         grid_size = kwargs["grid_size"]
         return CoverageResult(

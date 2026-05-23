@@ -14,11 +14,11 @@ COVERAGE_SOURCES = [
         "base_algorithm.py",
         "constants.py",
         "algorithm/coverage.py",
-        "coverage/params.py",
+        "radio_coverage/params.py",
         "shared_params.py",
-        "coverage/reporting.py",
-        "coverage/pool.py",
-        "coverage/tasks.py",
+        "radio_coverage/reporting.py",
+        "radio_coverage/pool.py",
+        "radio_coverage/tasks.py",
     )
 ]
 
@@ -39,7 +39,7 @@ def test_coverage_algorithm_uses_new_processing_id_and_label():
 
 def test_coverage_algorithm_uses_raster_summary_helper_for_range_metrics():
     source = _coverage_source()
-    assert "from NoWires.coverage.summary import summarize_coverage_grid" in source
+    assert "from NoWires.radio_coverage.summary import summarize_coverage_grid" in source
     assert "summary = summarize_coverage_grid(" in source
     assert (
         'feedback.pushInfo("Max usable distance:' in source
@@ -79,7 +79,7 @@ def test_coverage_algorithm_defaults_polarization_to_vertical():
 
 def test_coverage_algorithm_shows_map_legend():
     source = _coverage_source()
-    assert "from NoWires.coverage.legend import show_coverage_legend" in source
+    assert "from NoWires.radio_coverage.legend import show_coverage_legend" in source
     assert "show_coverage_legend(" in source
     assert "rx_sensitivity_dbm" in source
 
@@ -112,7 +112,7 @@ def test_coverage_profile_step_helper_returns_finer_sampling():
     in ``coverage_compute``. We verify the helper's contract directly so
     the test survives source reformatting and frequency-aware tuning.
     """
-    from coverage.compute import (
+    from radio_coverage.compute import (
         DEFAULT_MAX_PROFILE_PTS,
         coverage_profile_step_m,
     )
@@ -127,7 +127,7 @@ def test_coverage_profile_step_helper_returns_finer_sampling():
 def test_coverage_algorithm_wires_profile_step_helper():
     """The algorithm must call the helper rather than baking in a literal."""
     source = _coverage_source()
-    assert "from NoWires.coverage.compute import" in source
+    assert "from NoWires.radio_coverage.compute import" in source
     assert "coverage_profile_step_m" in source
     assert "DEFAULT_MAX_PROFILE_PTS" in source
     assert "profile_step_m=coverage_profile_step_m(" in source

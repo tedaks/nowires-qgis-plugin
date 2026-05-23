@@ -16,8 +16,8 @@ from typing import Optional
 import numpy as np
 
 from NoWires.antenna import antenna_gain_adjustment_db
-from NoWires.coverage.compute import compute_itm_p2p
-from NoWires.coverage._result_dispatch import WorkerError, apply_batch_results, log_coverage_failures
+from NoWires.radio_coverage.compute import compute_itm_p2p
+from NoWires.radio_coverage._result_dispatch import WorkerError, apply_batch_results, log_coverage_failures
 from NoWires._geo_utils import sample_line_from_grid
 from NoWires.macos_compat import find_macos_python_executable
 from NoWires.shared_dem_grid import SharedDEMGrid

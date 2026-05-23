@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-from coverage._result_dispatch import WorkerError, apply_batch_results
+from radio_coverage._result_dispatch import WorkerError, apply_batch_results
 import numpy as np
 
 
