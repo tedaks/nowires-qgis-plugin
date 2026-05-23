@@ -30,5 +30,6 @@ type = forbidden
 source_modules =
     NoWires.p2p
 forbidden_modules =
-    qgis.core
-    qgis.PyQt
+    qgis
+    PyQt5
+    PyQt6
