@@ -9,22 +9,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v1.6.2 (PATCH — tech-debt / cleanup, zero behavior change)
+### Planned for v1.6.2 (PATCH — security, correctness, and tech-debt)
 
-- Rename the project's `coverage/` subpackage (suggest `coverage_analysis/`) to stop shadowing the installed `coverage` pip package.
-- Extract `safe_create_dir(target, parent=None)` to a new `fs_utils.py` and call it from both `dem_downloader.get_temp_dir` and `worldcover_downloader._safe_create_dir`.
-- `.gitignore`: add `.env`, `*.pem`, `*.key`, `credentials*`, `*.zip`, and `**/*.prj`.
-- `.github/workflows/release.yml`: gate the `release` job on a green test run.
-- `.github/workflows/integration.yml`: gate `qgis-integration` on `tests.yml` success.
-- Wire `antenna.clear_pattern_cache()` into `antenna_pattern_preview.py`.
-- `.github/workflows/tests.yml`: generate a full lockfile for `pip-audit`.
-- `.importlinter`: add forbidden-import contracts beyond the single `itm-no-qgis` rule.
-- Switch `algorithm/batch.py` from manual construction + `try/finally: elev.close()` to `with ElevationGrid(dem_path) as elev:`.
-- Centralize shared test helpers (`_create_synthetic_dem`, `_write_point_gpkg`, `_patch_dem_download`) into `tests/conftest.py`.
-- Harden `CLIMATE_OPTIONS` ordering in `constants.py`.
-- Fix CCH override treating explicit 0.0 as "no override".
-- Centralize remaining magic numbers (DEM nodata, FSPL constant, MHz-to-Hz, directory permissions, k-factor).
-- **Test coverage expansion (3 waves):**
+- **Security**
+  - `dem_downloader.get_temp_dir()`: replace TOCTOU-vulnerable `os.makedirs` with the atomic `tempfile.mkdtemp` + `os.rename` pattern already used by `worldcover_downloader._safe_create_dir`. The existing `os.lstat`/`os.path.isdir` checks have a symlink-following window before directory creation.
+  - `tile_download_base.download_tile_with_retry()`: add a configurable `max_bytes` download cap (suggest 250 MiB) for chunked-transfer responses that lack a `Content-Length` header, preventing resource exhaustion from unbounded downloads.
+  - `tile_download_base.download_tile_with_retry()`: add cache integrity verification (SHA-256 checksum or HTTP ETag/If-None-Match revalidation). Cached tiles are currently accepted based on dimensions alone; modified/poisoned tiles are silently reused.
+  - `report/export._csv_safe()`: broaden CSV formula-injection character coverage. Current guard checks `=`, `+`, `@` but misses en-dash (U+2013), minus sign (U+2212), and Unicode whitespace characters that some spreadsheet applications interpret as formula triggers.
+- **Resource leaks**
+  - `algorithm/contour.py`: clean up `__init__`-created `TempDirManager` when `processAlgorithm` creates a replacement instance, preventing leaked `tempfile.mkdtemp` directories when the algorithm is never executed.
+  - `coverage/pool.py`: register shared-memory cleanup for worker-crash paths. When a subprocess crashes between `_init_cov_pool` opening shared memory and the parent calling `release()`, the `/dev/shm` segment persists until OS reboot.
+  - `contour/pipeline.write_aoi_shapefile()`: wrap lines 88–96 (`CreateLayer` through `CreateFeature`) in try/finally so the OGR datasource handle is released on error. Currently `aoi_datasource = None` at line 97 is dead code if any intermediate OGR call raises.
+  - `contour/generation.generate_contour_lines()`: move the try/finally start to line 43 so it covers `CreateLayer` (L49) and `CreateField` (L50–51) calls. These execute before the existing guard; an exception at those points leaves `shp_ds` unreleased.
+  - `algorithm/coverage_comparison.py`: defensively guard against the `__init__`-created `TempDirManager` (line 68) being replaced in `processAlgorithm` (line 79) without cleanup. Currently harmless (no dirs added in __init__) but mirrors the contour algorithm pattern already fixed above.
+- **Correctness / robustness**
+  - `radio.validate_itm_input_ranges()`: add climate index range check (0–6). Every other ITM parameter is validated; an out-of-range climate produces a cryptic `ValueError` from the bundled `Climate` enum.
+  - `coverage/pool.py`: protect module-level globals (`_cov_shm`, `_cov_grid_data`, `_cov_grid_meta`) against concurrent access. `CoverageAlgorithm.ALLOW_THREADING = True` drops the `NoThreading` shield; two coverage runs in the same process can corrupt shared state.
+  - `comparison/panel.py`: sample TX ground elevation from the DEM instead of hardcoding `tx_ground_elevation_m=0.0` in `build_initial_clutter_context`. Standalone coverage (`algorithm/coverage.py`) already does this; the comparison panel hardcode produces slightly different terminal clutter loss for elevated TX sites.
+  - `batch/outputs._compute_single_link()`: validate per-feature antenna height attributes against `ITM_MIN_TERMINAL_HEIGHT_M` / `ITM_MAX_TERMINAL_HEIGHT_M` before passing to the ITM model.
+  - `cache_manager.py`: implement LRU cache eviction with a configurable size cap (suggest 2 GiB). GLO-30 tiles are ~70 MB each; the cache currently grows unbounded and can consume all available disk space.
+  - `shared_dem_grid.cleanup_stale_shm_entries()`: use `os.lstat` instead of `os.stat` to detect symlinks and skip them, preventing symlink-following race during `/dev/shm` cleanup.
+  - `raster_io.write_geotiff()`: guard against `gdal.GetDriverByName("GTiff")` returning `None` before calling `driver.Create()`, replacing a cryptic `AttributeError` with a clear `QgsProcessingException`.
+  - `radio.ITMResult`: use `mode=-1` (or `mode=None`) for the ITM failure sentinel instead of `mode=0`, which is ambiguous with a valid line-of-sight result.
+  - `elevation.ElevationGrid`: avoid memory-doubling on south-up raster flip by computing min/max lat from the geotransform without `np.copy`.
+  - `fresnel.fresnel_profile_analysis()`: reduce six zero-array copies (48 MB for 1M-point profiles) when `k_factor <= 0` by broadcasting a single allocation.
+  - `antenna.antenna_preset_key()`: add explicit `bool` type guard so a caller accidentally passing `True`/`False` gets a clear error instead of silently casting to index 1.
+  - `antenna._read_pattern_points()`: log a warning for each skipped malformed CSV row instead of `except ValueError: continue` silently discarding data.
+  - `_bilinear`: keep interpolation intermediates in float64 instead of casting to float32 to avoid precision loss when the source DEM is float64.
+  - `clutter/saalos._saalos_vec_below()`: add NaN guard matching the scalar `clutter_loss_saalos` path so NaN from exp underflow at extreme input combinations doesn't propagate silently.
+  - `p2p/chart.show_profile_chart()`: add singleton guard to prevent multiple floating chart docks accumulating on repeated P2P runs.
+  - `contour/_smoothing_vrt._raster_calc()`: guard against `gdal.GetDriverByName("GTiff")` returning `None` before calling `driver.Create()`. Same bug pattern as `raster_io.write_geotiff()` above.
+  - `comparison/params.py`: fix `PANEL_A_CONSTANTS` and `PANEL_B_CONSTANTS` dicts so `install_constants` creates attributes named `PANEL_A_POINT` (etc.) instead of `POINT`. Currently `{k: f"PANEL_A_{k}" for k in _PANEL_KEYS}` puts the short key as the attribute name, causing PANEL_B to overwrite all PANEL_A entries and leaving `self.PANEL_A_POINT` unset (raises `AttributeError` at `algorithm/coverage_comparison.py:86`).
+- **CI / tooling**
+  - `.github/workflows/tests.yml`: enforce coverage threshold on the main test pass (currently `--cov-fail-under=0` disables it). Only the isolation-sensitive step at L147 checks the threshold; if that step fails for a non-coverage reason, the check is silently skipped.
+  - `.github/workflows/version-check.yml`: guard against version downgrades in addition to no-change; the current check passes when `pr_version < base_version`.
+  - `pyproject.toml`: raise coverage `fail_under` from 59% to ≥80% once the 3-wave test expansion below is complete.
+  - `.github/workflows/integration.yml`: gate `qgis-integration` on `tests.yml` success.
+  - `.github/workflows/release.yml`: gate the `release` job on a green test run.
+  - `.github/workflows/tests.yml`: generate a full lockfile for `pip-audit`.
+  - `.importlinter`: add forbidden-import contracts beyond the single `itm-no-qgis` rule.
+  - `.gitignore`: add `.env`, `*.pem`, `*.key`, `credentials*`, `*.zip`, and `**/*.prj`.
+- **Refactors / cleanup** (zero behavior change)
+  - Rename the project's `coverage/` subpackage (suggest `coverage_analysis/`) to stop shadowing the installed `coverage` pip package.
+  - Extract `safe_create_dir(target, parent=None)` to a new `fs_utils.py` and call it from both `dem_downloader.get_temp_dir` and `worldcover_downloader._safe_create_dir`.
+  - Switch `algorithm/batch.py` from manual construction + `try/finally: elev.close()` to `with ElevationGrid(dem_path) as elev:`.
+  - Centralize shared test helpers (`_create_synthetic_dem`, `_write_point_gpkg`, `_patch_dem_download`) into `tests/conftest.py`.
+  - Harden `CLIMATE_OPTIONS` ordering in `constants.py`.
+  - Fix CCH override treating explicit `0.0` as "no override".
+  - Centralize remaining magic numbers (DEM nodata, FSPL constant, MHz-to-Hz, directory permissions, k-factor).
+  - Wire `antenna.clear_pattern_cache()` into `antenna_pattern_preview.py`.
+- **Test coverage expansion (3 waves, ~100 tests, 66%→80%)**
   - Wave 1 (~30 unit tests, 66%→72%): `batch/writer.py` (26%), `p2p/chart_helpers.py` (41%), `p2p/_outputs_internal.py` (43%), `report/pdf.py` (39%), `raster_io.py` (21%), `processing_utils.py` (20%), `p2p/params.py` (33%), `base_algorithm.py` (44%).
   - Wave 2 (~55 Docker tests, 72%→80%): `nowires.py` (45%), `algorithm/*` (17–27%), `p2p/chart.py` (13%), `comparison/add_params.py` (20%), `report/markers.py` (15%), `contour/*` (5–30%).
   - Wave 3 (~15 Qt UI tests, low priority): `antenna_pattern_preview.py` (0%), `three_d.py` (18%), `coverage/legend.py` (19%).
