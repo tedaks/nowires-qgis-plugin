@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v1.7.0 (PATCH — tech-debt / cleanup, zero behavior change)
+### Planned for v1.6.2 (PATCH — tech-debt / cleanup, zero behavior change)
 
 - Rename the project's `coverage/` subpackage (suggest `coverage_analysis/`) to stop shadowing the installed `coverage` pip package.
 - Extract `safe_create_dir(target, parent=None)` to a new `fs_utils.py` and call it from both `dem_downloader.get_temp_dir` and `worldcover_downloader._safe_create_dir`.
