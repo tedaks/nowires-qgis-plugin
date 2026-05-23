@@ -9,30 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-> Planned/roadmap items for v1.6.3 and v1.6.4 moved to [ROADMAP.md](ROADMAP.md).
-
-### Fixed
-
-- Fix `_final_cov_pool` worker atexit handler unlinking the parent's shared-memory segment. Workers now call `shm.close()` only; only the parent process that created the segment calls `unlink()`.
-- Prevent `FileNotFoundError` from inherited fork-atexit handlers when workers exit before peers finish initializing the shared-memory pool.
-- Add zero-dimension guards to `_bilinear.py` — `bilinear_sample`, `bilinear_sample_line`, and `bilinear_sample_grid` now return `NaN` when `grid_meta["n_lat"] <= 0` or `grid_meta["n_lon"] <= 0`, preventing `ZeroDivisionError` on degenerate grid metadata.
-- Capture and release `gdal.Translate` return value in `package_gpkg.py` — the dataset handle was discarded without closing, leaking a GDAL dataset.
-- Fix `fs_utils.safe_create_dir()` returning an unregistered temporary directory on `os.rename` failure — when rename fails (cross-device, permissions), the function returned the raw `mkdtemp` path without registering it for cleanup, leaking the directory permanently.
-- Fix contour algorithm silently returning `{}` on `ENOSPC` (disk full) during reprojection — calls `feedback.reportError()` but returns empty dict instead of raising `QgsProcessingException`, suppressing the failure from the QGIS processing log.
-- Add `logger.debug(..., exc_info=True)` to `contour/pipeline.py` proxy-auth exception handler — only `type(e).__name__` was used for feedback; the full exception value and traceback were discarded, losing diagnostic information.
-- Clamp scalar below-canopy exponent to `[-700.0, 700.0]` in `clutter/saalos.py` `compute_terminal_clutter_loss` — the scalar path only clamped the upper bound of `exp(min(..., 700.0))` while the vector path used `np.clip(..., -700.0, 700.0)`. Practically safe (large negative → exp ≈ 0) but inconsistent.
-
-### Changed
-
-- **Breaking**: Rename `coverage/` subpackage to `radio_coverage/` to eliminate shadow conflict with Python's `coverage` test-coverage package. All imports change from `NoWires.coverage.xxx` to `NoWires.radio_coverage.xxx`. Downstream code importing `NoWires.coverage` will break — consider releasing this as **1.7.0** per SemVer rather than 1.6.3.
-- Replace `except Exception: pass` with `logger.debug(..., exc_info=True)` in `radio_coverage/pool.py` `_final_cov_pool` and `_init_cov_pool` for shared-memory cleanup diagnostics.
-- Add `logging.debug` calls to `_final_cov_pool` close/unlink steps for observability.
-
-### Security
-
-- Replace `os.makedirs(exist_ok=True)` with `fs_utils.safe_create_dir()` in `p2p/compute.py`, `algorithm/contour.py`, and `comparison/reporting.py` for TOCTOU-safe directory creation, eliminating symlink attacks on hardcoded subdirectory paths in shared `/tmp`.
+Planned items for v1.6.3 and v1.6.4 are tracked in [ROADMAP.md](ROADMAP.md).
 
 ## [1.6.2] - 2026-05-23
+
+> **Breaking**: this release renames the `coverage/` subpackage to `radio_coverage/`. Consider releasing as **1.7.0** per SemVer instead.
 
 ### Fixed
 
@@ -59,6 +40,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add NaN guard matching the scalar path in `clutter/saalos._saalos_vec_below`.
 - Add singleton guard to `p2p/chart.show_profile_chart()` to prevent duplicate floating chart docks.
 - Fix `PANEL_A_CONSTANTS` and `PANEL_B_CONSTANTS` dict keys so `install_constants` creates attributes named `PANEL_A_POINT` etc. instead of `POINT` (fixes AttributeError at `coverage_comparison.py:86`).
+- Fix `_final_cov_pool` worker atexit handler unlinking the parent's shared-memory segment. Workers now call `shm.close()` only; only the parent process that created the segment calls `unlink()`.
+- Prevent `FileNotFoundError` from inherited fork-atexit handlers when workers exit before peers finish initializing the shared-memory pool.
+- Add zero-dimension guards to `_bilinear.py` — `bilinear_sample`, `bilinear_sample_line`, and `bilinear_sample_grid` now return `NaN` when `grid_meta["n_lat"] <= 0` or `grid_meta["n_lon"] <= 0`, preventing `ZeroDivisionError` on degenerate grid metadata.
+- Capture and release `gdal.Translate` return value in `package_gpkg.py` — the dataset handle was discarded without closing, leaking a GDAL dataset.
+- Fix `fs_utils.safe_create_dir()` returning an unregistered temporary directory on `os.rename` failure — when rename fails (cross-device, permissions), the function returned the raw `mkdtemp` path without registering it for cleanup, leaking the directory permanently.
+- Fix contour algorithm silently returning `{}` on `ENOSPC` (disk full) during reprojection — calls `feedback.reportError()` but returns empty dict instead of raising `QgsProcessingException`, suppressing the failure from the QGIS processing log.
+- Add `logger.debug(..., exc_info=True)` to `contour/pipeline.py` proxy-auth exception handler — only `type(e).__name__` was used for feedback; the full exception value and traceback were discarded, losing diagnostic information.
+- Clamp scalar below-canopy exponent to `[-700.0, 700.0]` in `clutter/saalos.py` `compute_terminal_clutter_loss` — the scalar path only clamped the upper bound of `exp(min(..., 700.0))` while the vector path used `np.clip(..., -700.0, 700.0)`. Practically safe (large negative → exp ≈ 0) but inconsistent.
 
 ### Added
 
@@ -78,6 +67,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Wire `antenna.clear_pattern_cache()` into `antenna_pattern_preview.py` file picker.
 - Centralize `create_synthetic_dem` test helper into `tests/conftest.py`.
 - `dem_downloader` and `worldcover_downloader` now both use `fs_utils.safe_create_dir` for atomic directory creation.
+- **Breaking**: Rename `coverage/` subpackage to `radio_coverage/` to eliminate shadow conflict with Python's `coverage` test-coverage package. All imports change from `NoWires.coverage.xxx` to `NoWires.radio_coverage.xxx`.
+- Replace `except Exception: pass` with `logger.debug(..., exc_info=True)` in `radio_coverage/pool.py` `_final_cov_pool` and `_init_cov_pool` for shared-memory cleanup diagnostics.
+- Add `logging.debug` calls to `_final_cov_pool` close/unlink steps for observability.
+
+### Security
+
+- Replace `os.makedirs(exist_ok=True)` with `fs_utils.safe_create_dir()` in `p2p/compute.py`, `algorithm/contour.py`, and `comparison/reporting.py` for TOCTOU-safe directory creation, eliminating symlink attacks on hardcoded subdirectory paths in shared `/tmp`.
 
 ### Known issues
 
