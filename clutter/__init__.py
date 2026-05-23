@@ -14,6 +14,7 @@ from NoWires.clutter.categories import (  # noqa: F401
     _LEGACY_CAT_IDX,
     _LEGACY_CLUTTER_LOSS_ARRAY,
     legacy_to_advanced_override,
+    remap_simple_category,
 )
 from NoWires.clutter.context import TerminalClutterLosses  # noqa: F401
 from NoWires.clutter.advanced import (  # noqa: F401
@@ -61,7 +62,8 @@ def worldcover_class_to_clutter_category(class_id) -> str:
 
 def clutter_loss_db(category, frequency_mhz) -> float:
     del frequency_mhz
-    return CLUTTER_LOSS_DB.get(category, 0.0)
+    remapped = remap_simple_category(category)
+    return CLUTTER_LOSS_DB.get(remapped, 0.0)
 
 
 def clutter_override_value(index_or_category) -> str | None:
