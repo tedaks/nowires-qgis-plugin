@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Add theta clamping to vectorized `building_entry_loss_vec()` in `clutter/p2109_bel.py` matching scalar path. Scalar clamped to `[0, 90]` but vector used raw value, producing higher BEL for `theta_deg > 90°`.
+- Fix `nan_utils.interpolate_nan_array()` all-NaN branch returning reference instead of copy. Both the no-NaN and all-NaN branches now return `arr.copy()`, matching the documented contract.
+- Add `_destroyed` guard flag in `p2p/chart.py::show_profile_chart()` to prevent stale closures (`update_visibility`, `_set_obstructions_visible`) from manipulating a cleared figure after `_on_destroy` runs.
+- Tighten `validate_panels()` TX position tolerance from 1e-3° (~111 m) to 1e-4° (~11 m) in `comparison/reporting.py`. Original 1e-5° was too strict, 1e-3° could match genuinely different positions.
+- Restore defensive `assert tmpdir is not None` inside the tmpdir-creation block in `resolve_output_paths()`, replacing `type: ignore[arg-type]` suppressions.
+- Remove unreachable `h_m <= 0.0` dead code in `clutter/p2108_height_gain.py::height_gain_loss()`. Condition already caught by `h_m < _MIN_HEIGHT_M` guard.
+- Replace explicit `f.close()` with idiomatic `f.flush()` on download cancel in `tile_download_base.py::download_tile_with_retry()` to avoid double-close from `with` block `__exit__`.
+- Accept float timeout values via `float()` in `macos_compat.py::_can_spawn()` instead of `int()` which rejected `"2.5"`.
+- Import and use `DEFAULT_K_FACTOR` constant in `fresnel.py::earth_bulge()` and `fresnel_profile_analysis()` instead of hardcoded `4.0 / 3.0`.
+- Add `FlushCache()` on `gdal.Translate` result in `contour/pipeline.py::load_dem_output()` before setting to `None`, consistent with other GDAL cleanup patterns.
+- Replace NaN with empty string in `p2p/chart_helpers.py::make_export_csv()` CSV export to avoid producing literal `"nan"` string for downstream parsers.
+- Wrap `clutter_grid_resolved.close()` in try/except within `algorithm/coverage.py::_build_clutter_context()` except block to preserve original exception if `.close()` fails.
+
+### Added
+
+- Add 7 edge-case regression tests to `test_fresnel.py`: `f_mhz <= 0`, `k_factor <= 0`, `dist_m <= 0`, `DEFAULT_K_FACTOR` verification, single-point profile.
+- Add 15 clutter edge-case tests (`test_clutter_edge_cases.py`): p2108 `R <= 0` guard, p2109 scalar+vector frequency clamp, p2108_common `f_inv_normal` bounds, context unknown model, terrestrial_stat vec clamp.
+- Add 5 behavioral tests to `test_comparison_reporting.py`: TX tolerance boundary, radius mismatch, None panel points, zero `valid_count` division guard, climate key presence.
+- Add 15 coverage algorithm tests (`test_coverage_algorithm.py`): `_build_clutter_context` exception/close paths, `elev.sample()` inf guard, output constants, post-process legend, finally-close on None/MemoryError.
+- Add 10 algorithm integration tests (`test_algorithms_integration.py`): coverage_comparison, batch, contour, p2p parameter registration and `initAlgorithm` verification.
+- Add 7 batch infrastructure tests (`test_batch_infrastructure.py`): `_compute_single_link` ITM failure/NaN/success, batch writer CSV header/NaN rows, panel coverage success/None paths.
+- Add 8 coverage infrastructure tests (`test_coverage_infrastructure.py`): executor empty task list/exception fallback, `_result_dispatch` key presence, pool lifecycle, proxy opener None/empty auth.
+- Add 6 clutter grid tests (`test_clutter_grid_extended.py`): raster construction, `sample_category`, bounds, advanced clutter context + CCH override.
+- Add 10 tile download tests (`test_tile_download_base_download.py`): cancel mid-download flush, valid tile name reject, cache hit/degenerate/corrupt, wall clock budget, HTTP 404/500/403, redirect validation.
+- Add 15 p2p chart extended tests (`test_p2p_chart_extended.py`): obstruction annotations, CSV NaN export, status text variants, obstruction data edge cases.
+- Add 3 legend/marker tests (`test_legend_and_markers.py`): `show_coverage_legend` dialog, `write_single_marker` GPKG, `remove_existing_ogr_dataset`.
+- Add 3 3D/preview tests (`test_three_d_and_preview.py`): `open_nowires_3d_view`, `AntennaPatternPreviewDialog` creation + synthetic pattern file load.
+- Overall test coverage increased from 59% to 66% (+114 tests, +456 covered statements).
+
+### Changed
+
+- Convert `test_p2p_chart_headless_guard.py` from fragile `inspect.getsource()` check to behavioral test calling `show_profile_chart()` with mocked `qgis.utils.iface = None`.
+- Convert `test_coverage_comparison_grid_size_early_validate.py` from source-ordering check to QGIS integration test verifying `CoverageComparisonAlgorithm` param registration.
+- Strengthen `test_coverage_dist_nan_mask.py` assertion from `min_distance_km > 0 or isnan` to specific checks on `min_distance_km > 0`, not NaN, and `usable_cell_count == 2`.
+
 ### Planned for v1.7.0 (PATCH — tech-debt / cleanup, zero behavior change)
 
 - Rename the project's `coverage/` subpackage (suggest `coverage_analysis/`) to stop shadowing the installed `coverage` pip package.
