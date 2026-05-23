@@ -32,6 +32,7 @@ import numpy as np
 from osgeo import gdal
 
 from NoWires.contour._smoothing_vrt import _gaussian_kernel_2d, _make_blur_vrt, _raster_calc  # noqa: F401
+from NoWires.constants import DEM_NODATA
 
 SMOOTHING_NONE = "None"
 SMOOTHING_LOW = "Low"
@@ -69,13 +70,13 @@ def smooth_contour_dem(smoothing, input_dem, temp_dir, feedback, progress, statu
         raise RuntimeError("Cannot open input DEM for smoothing: " + input_dem)
     src_nd = src_ds_check.GetRasterBand(1).GetNoDataValue()
     src_ds_check = None
-    if src_nd is not None and src_nd != -32768:
+    if src_nd is not None and src_nd != DEM_NODATA:
         translate_ds = gdal.Warp(
             dem_tif, input_dem, format='GTiff', outputType=gdal.GDT_Float32,
-            dstNodata=-32768, srcNodata=src_nd, creationOptions=['COMPRESS=LZW'])
+            dstNodata=DEM_NODATA, srcNodata=src_nd, creationOptions=['COMPRESS=LZW'])
     else:
         translate_ds = gdal.Translate(
-            dem_tif, input_dem, outputType=gdal.GDT_Float32, noData=-32768)
+            dem_tif, input_dem, outputType=gdal.GDT_Float32, noData=DEM_NODATA)
     if translate_ds is not None:
         translate_ds = None
 
@@ -92,7 +93,7 @@ def smooth_contour_dem(smoothing, input_dem, temp_dir, feedback, progress, statu
     _raster_calc(
         lambda A: np.abs(A),
         output_path=os.path.join(path, "tpi_pos.tif"),
-        nodata=-32768,
+        nodata=DEM_NODATA,
         overwrite=True,
         A=os.path.join(path, "dem_tpi.tif"),
     )
@@ -120,7 +121,7 @@ def smooth_contour_dem(smoothing, input_dem, temp_dir, feedback, progress, statu
             _raster_calc(
                 lambda A: A / max_val,
                 output_path=os.path.join(path, "tpi_norm.tif"),
-                nodata=-32768,
+                nodata=DEM_NODATA,
                 overwrite=True,
                 A=vrt_path,
             )
@@ -149,7 +150,7 @@ def smooth_contour_dem(smoothing, input_dem, temp_dir, feedback, progress, statu
         _raster_calc(
             lambda A, B, C: A * B + (1 - A) * C,
             output_path=merged_out,
-            nodata=-32768,
+            nodata=DEM_NODATA,
             overwrite=True,
             A=tpi_norm,
             B=blur_3x3,
@@ -165,7 +166,7 @@ def smooth_contour_dem(smoothing, input_dem, temp_dir, feedback, progress, statu
         _raster_calc(
             lambda A, B, C: A * B + (1 - A) * C,
             output_path=merged_out,
-            nodata=-32768,
+            nodata=DEM_NODATA,
             overwrite=True,
             A=tpi_norm,
             B=blur_3x3,
@@ -181,7 +182,7 @@ def smooth_contour_dem(smoothing, input_dem, temp_dir, feedback, progress, statu
         _raster_calc(
             lambda A, B, C: A * B + (1 - A) * C,
             output_path=merged_out,
-            nodata=-32768,
+            nodata=DEM_NODATA,
             overwrite=True,
             A=tpi_norm,
             B=blur_3x3,

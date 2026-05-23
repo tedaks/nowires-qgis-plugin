@@ -179,36 +179,30 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
     feedback.pushInfo("Building elevation grid...")
     feedback.setProgress(15)
     try:
-        elev = ElevationGrid(dem_path)
+        with ElevationGrid(dem_path) as elev:
+            total = len(candidate_tx) * len(rx_points)
+            return BatchAnalysisParams(
+                mode=mode, candidate_tx=candidate_tx, rx_points=rx_points, elev=elev,
+                total=total, tx_h=rp["tx_h"], rx_h=rp["rx_h"], f_mhz=rp["f_mhz"],
+                polarization=rp["polarization"], climate=rp["climate"],
+                time_pct=rp["time_pct"], location_pct=rp["location_pct"],
+                situation_pct=rp["situation_pct"], tx_power=rp["tx_power"],
+                tx_gain_default=rp["tx_gain_d"], rx_gain_default=rp["rx_gain_d"],
+                cable_loss=rp["cable_loss"], rx_sens=rp["rx_sens"],
+                tx_default_preset_key=rp["tx_pk"], rx_default_preset_key=rp["rx_pk"],
+                tx_default_az=rp["tx_az"], rx_default_az=rp["rx_az"],
+                tx_front_back_db=rp["tfb"], rx_front_back_db=rp["rfb"],
+                k_factor=rp["kf"], n0=rp["n0"], epsilon=rp["epsilon"], sigma=rp["sigma"],
+                clutter_enabled=rp["ce"], clutter_grid=rp["cg"],
+                tx_clutter_override=rp["tco"], rx_clutter_override=rp["rco"],
+                clutter_model=rp["clutter_model"], cch_override_m=rp["cch_override_m"],
+                clutter_percentile=rp["clutter_percentile"],
+                street_width_m=rp["street_width_m"],
+                bel_enabled=rp["bel_enabled"],
+                bel_building_type=rp["bel_building_type"],
+                bel_elevation_angle_deg=rp["bel_elevation_angle_deg"],
+                owns_clutter_grid=owns_clutter_grid)
     except Exception:
-        if rp["cg"] is not None:
-            rp["cg"].close()
-        raise
-    try:
-        total = len(candidate_tx) * len(rx_points)
-        return BatchAnalysisParams(
-            mode=mode, candidate_tx=candidate_tx, rx_points=rx_points, elev=elev,
-            total=total, tx_h=rp["tx_h"], rx_h=rp["rx_h"], f_mhz=rp["f_mhz"],
-            polarization=rp["polarization"], climate=rp["climate"],
-            time_pct=rp["time_pct"], location_pct=rp["location_pct"],
-            situation_pct=rp["situation_pct"], tx_power=rp["tx_power"],
-            tx_gain_default=rp["tx_gain_d"], rx_gain_default=rp["rx_gain_d"],
-            cable_loss=rp["cable_loss"], rx_sens=rp["rx_sens"],
-            tx_default_preset_key=rp["tx_pk"], rx_default_preset_key=rp["rx_pk"],
-            tx_default_az=rp["tx_az"], rx_default_az=rp["rx_az"],
-            tx_front_back_db=rp["tfb"], rx_front_back_db=rp["rfb"],
-            k_factor=rp["kf"], n0=rp["n0"], epsilon=rp["epsilon"], sigma=rp["sigma"],
-            clutter_enabled=rp["ce"], clutter_grid=rp["cg"],
-            tx_clutter_override=rp["tco"], rx_clutter_override=rp["rco"],
-            clutter_model=rp["clutter_model"], cch_override_m=rp["cch_override_m"],
-            clutter_percentile=rp["clutter_percentile"],
-            street_width_m=rp["street_width_m"],
-            bel_enabled=rp["bel_enabled"],
-            bel_building_type=rp["bel_building_type"],
-            bel_elevation_angle_deg=rp["bel_elevation_angle_deg"],
-            owns_clutter_grid=owns_clutter_grid)
-    except Exception:
-        elev.close()
         if owns_clutter_grid and rp["cg"] is not None:
             rp["cg"].close()
         raise

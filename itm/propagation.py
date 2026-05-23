@@ -12,6 +12,8 @@ from __future__ import annotations
 import math
 import cmath
 from ._constants import (
+    FSPL_CONSTANT,
+    K_FACTOR,
     PI,
     SQRT2,
     THIRD,
@@ -41,7 +43,7 @@ from .variability import terrain_roughness, sigma_h_function
 
 def free_space_loss(d__meter: float, f__mhz: float) -> float:
     """Free space basic transmission loss. [Algorithm]"""
-    return 32.45 + 20.0 * math.log10(f__mhz) + 20.0 * math.log10(d__meter / 1000.0)
+    return FSPL_CONSTANT + 20.0 * math.log10(f__mhz) + 20.0 * math.log10(d__meter / 1000.0)
 
 
 def fresnel_integral(v2: float) -> float:
@@ -140,7 +142,7 @@ def smooth_earth_diffraction(
         d_hzn__meter[1] / 1000.0,
     ]
 
-    C_0 = [pow((4.0 / 3.0) * a_0__meter / a__meter[i], THIRD) for i in range(3)]
+    C_0 = [pow(K_FACTOR * a_0__meter / a__meter[i], THIRD) for i in range(3)]
     # [Vogler 1964, Eqn 6a / 7a]
     K = [0.017778 * C_0[i] * pow(f__mhz, -THIRD) / abs(Z_g) for i in range(3)]
     # Clamp B_0 to a small positive minimum to prevent negative x__km values

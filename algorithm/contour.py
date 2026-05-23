@@ -31,7 +31,7 @@ from qgis.core import (
 )
 
 from NoWires.base_algorithm import NoWiresAlgorithm
-from NoWires.constants import MAX_AOI_EXTENT_DEGREES, FEET_PER_METER, WGS84_CRS
+from NoWires.constants import MAX_AOI_EXTENT_DEGREES, FEET_PER_METER, WGS84_CRS, DEM_NODATA
 
 from NoWires.contour.generation import generate_contour_lines, reproject_and_export
 from NoWires.contour.pipeline import (
@@ -196,7 +196,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
                 self._tmp.add_file(merged_metres)
                 os.replace(merged_path, merged_metres)
                 _raster_calc(lambda A: A * FEET_PER_METER,
-                             output_path=merged_path, nodata=-32768,
+                             output_path=merged_path, nodata=DEM_NODATA,
                              overwrite=True, A=merged_metres)
 
             feedback.pushInfo("\nGenerating contour lines")

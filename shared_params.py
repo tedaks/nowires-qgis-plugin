@@ -182,9 +182,7 @@ def extract_clutter_params(alg, parameters, context, attr_getter=None) -> Clutte
             p_enum(parameters, ag("TX_CLUTTER_OVERRIDE"), context)),
         rx_override=clutter_override_value(
             p_enum(parameters, ag("RX_CLUTTER_OVERRIDE"), context)),
-        # cch_raw == 0.0 means "auto" (use default canopy height from category);
-        # positive values override with a specific height.  See UI label "0 = auto".
-        cch_override_m=(cch_raw if cch_raw > 0.0 else None),
+        cch_override_m=cch_raw,
         percentile=p_dbl(parameters, ag("CLUTTER_PERCENTILE"), context),
         street_width_m=p_dbl(parameters, ag("STREET_WIDTH"), context),
         bel_enabled=alg.parameterAsBool(parameters, ag("BEL_ENABLED"), context),

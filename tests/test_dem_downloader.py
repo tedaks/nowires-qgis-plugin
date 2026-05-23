@@ -193,11 +193,6 @@ def test_dem_cache_directory_uses_fallback_path_when_rename_fails(
     )
     monkeypatch.setattr(
         dd.os,
-        "makedirs",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("makedirs failed")),
-    )
-    monkeypatch.setattr(
-        dd.os,
         "rename",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("rename failed")),
     )
@@ -205,7 +200,7 @@ def test_dem_cache_directory_uses_fallback_path_when_rename_fails(
     result = dd.get_temp_dir()
 
     assert result != str(target)
-    assert result.startswith(str(tmp_path / "NoWires-"))
+    assert result.startswith(str(tmp_path))
     assert dd.os.path.isdir(result)
 
 

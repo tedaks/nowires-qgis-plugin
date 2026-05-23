@@ -31,6 +31,8 @@ import tempfile
 
 from osgeo import gdal, ogr, osr
 
+from NoWires.constants import DEM_NODATA
+
 
 def generate_contour_lines(merged_path, interval, temp_dir, gdal_callback):
     """Generate contour shapefile from DEM raster using gdal.ContourGenerate.
@@ -59,7 +61,7 @@ def generate_contour_lines(merged_path, interval, temp_dir, gdal_callback):
             gdal.ContourGenerate(
                 merged_band, interval, 0, [],
                 1 if nodata_val is not None else 0,
-                nodata_val if nodata_val is not None else -32768,
+                nodata_val if nodata_val is not None else DEM_NODATA,
                 contour_layer, 0, 1, callback=gdal_callback,
             )
         finally:

@@ -21,6 +21,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from _qgis_mocks import install_qgis_mocks, register_nowires_package
 
+import numpy as np
 import pytest
 
 install_qgis_mocks()
@@ -61,6 +62,34 @@ def patch_dem_download(monkeypatch, tmp_path):
             pass
 
     return dem_path
+
+
+@pytest.fixture
+def create_synthetic_dem():
+    """Fixture factory returning a callable that creates a synthetic DEM GeoTIFF.
+
+    Returns a function that creates a GeoTIFF filled with constant elevation
+    values, suitable for algorithm integration tests.
+    """
+    def _create(path, south, north, west, east, nx=50, ny=50):
+        from osgeo import gdal, osr
+        driver = gdal.GetDriverByName("GTiff")
+        ds = driver.Create(path, nx, ny, 1, gdal.GDT_Float32)
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+        srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        ds.SetProjection(srs.ExportToWkt())
+        dx = (east - west) / nx
+        dy = (north - south) / ny
+        ds.SetGeoTransform([west, dx, 0, north, 0, -dy])
+        data = np.full((ny, nx), 100.0, dtype=np.float32)
+        band = ds.GetRasterBand(1)
+        band.WriteArray(data)
+        band.SetNoDataValue(-32768)
+        band.FlushCache()
+        ds = None
+        return path
+    return _create
 
 
 @pytest.fixture(scope="session")

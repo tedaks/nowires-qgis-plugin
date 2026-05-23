@@ -67,6 +67,12 @@ jobs:
       - name: Audit pinned dependencies
         run: pip-audit --requirement constraints-ci.txt
 
+      - name: Generate full dependency tree
+        run: pip install -c constraints-ci.txt -r requirements-test.txt
+
+      - name: Audit full dependency tree
+        run: pip-audit
+
   mypy:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -141,7 +147,7 @@ jobs:
         run: pip install -c constraints-ci.txt -r requirements-test.txt
 
       - name: Run main test suite (coverage collection only)
-        run: pytest -q -m "not benchmark and not qgis_integration and not gdal_integration" --ignore=tests/test_coverage_pool_extended.py --ignore=tests/test_plugin_load.py --cov --cov-fail-under=0 --cov-report=
+        run: pytest -q -m "not benchmark and not qgis_integration and not gdal_integration" --ignore=tests/test_coverage_pool_extended.py --ignore=tests/test_plugin_load.py --cov --cov-fail-under=59 --cov-report=
 
       - name: Run isolation-sensitive tests with combined coverage check
         run: pytest -q tests/test_coverage_pool_extended.py tests/test_plugin_load.py --cov --cov-append --cov-report=term-missing

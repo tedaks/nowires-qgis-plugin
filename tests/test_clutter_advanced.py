@@ -43,8 +43,8 @@ class TestCategoryHeightM:
     def test_override_none_falls_back_to_category(self):
         assert _category_height_m("urban", None) == 15.0
 
-    def test_override_zero_falls_back(self):
-        assert _category_height_m("urban", 0.0) == 15.0
+    def test_override_zero_uses_zero(self):
+        assert _category_height_m("urban", 0.0) == 0.0
 
     def test_override_negative_falls_back(self):
         assert _category_height_m("urban", -5.0) == 15.0
@@ -84,11 +84,12 @@ class TestComputeAdvancedLoss:
         assert comp.path_loss_db == 0.0
         assert comp.model == "none"
 
-    def test_cch_override_zero_falls_back_to_category_height(self):
+    def test_cch_override_zero_uses_zero_canopy(self):
         ctx = _ctx(cch_override_m=0.0)
         comp = compute_advanced_loss("urban", "rx", ctx)
-        assert comp.terminal_loss_db > 0.0 or comp.path_loss_db > 0.0
-        assert comp.model != "none"
+        assert comp.terminal_loss_db == 0.0
+        assert comp.path_loss_db == 0.0
+        assert comp.model == "none"
 
     def test_cch_override_negative_falls_back_to_category_height(self):
         ctx = _ctx(cch_override_m=-5.0)
