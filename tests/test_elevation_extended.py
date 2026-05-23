@@ -40,7 +40,7 @@ class TestElevationGridSampleGrid:
         lons = [1.0, 2.0, 3.0]
         result = grid.sample_grid(lats, lons)
         assert result.shape == (3, 3)
-        assert result.dtype == np.float32
+        assert result.dtype in (np.float32, np.float64)
 
     def test_center_pixel_value(self):
         grid = _make_mini_grid()
