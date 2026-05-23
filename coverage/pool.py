@@ -6,6 +6,7 @@ import atexit
 import logging
 import math
 import multiprocessing
+import threading
 import multiprocessing.shared_memory
 import os
 from collections import namedtuple
@@ -69,6 +70,7 @@ _cov_shm: Optional[multiprocessing.shared_memory.SharedMemory] = None
 _cov_grid_data: Optional[np.ndarray] = None
 _cov_grid_meta: dict = {}
 _cov_pool_atexit_registered: bool = False
+_cov_lock = threading.Lock()
 
 
 def should_use_multiprocessing(os_name=None, platform_name=None):
@@ -116,39 +118,38 @@ def _ensure_path():
 
 def _final_cov_pool():
     """Finalizer: close and unlink the per-worker shared-memory handle on pool shutdown."""
-    global _cov_shm, _cov_grid_data, _cov_grid_meta
-    if _cov_grid_data is not None:
-        _cov_grid_data = None
-    if _cov_shm is not None:
-        try:
-            _cov_shm.close()
-            _cov_shm.unlink()
-        except Exception:
-            pass
-        _cov_shm = None
+    with _cov_lock:
+        global _cov_shm, _cov_grid_data, _cov_grid_meta
+        if _cov_grid_data is not None:
+            _cov_grid_data = None
+        if _cov_shm is not None:
+            try:
+                _cov_shm.close()
+                _cov_shm.unlink()
+            except Exception:
+                pass
+            _cov_shm = None
 
 
 def _init_cov_pool(shm_name, shape, dtype_str, grid_meta):
     _ensure_path()
-    global _cov_shm, _cov_grid_data, _cov_grid_meta
-    # Reset stale state when a worker is reused across runs (rare under
-    # ProcessPoolExecutor; possible when threading is enabled). Previously
-    # this branch raised RuntimeError — friendlier to just rebind.
-    if _cov_grid_data is not None:
-        _cov_grid_data = None
-    if _cov_shm is not None:
-        try:
-            _cov_shm.close()
-        except Exception:
-            pass
-        _cov_shm = None
-    _cov_shm = multiprocessing.shared_memory.SharedMemory(name=shm_name)
-    _cov_grid_data = np.ndarray(shape, dtype=np.dtype(dtype_str), buffer=_cov_shm.buf)
-    _cov_grid_meta = grid_meta
-    global _cov_pool_atexit_registered
-    if not _cov_pool_atexit_registered:
-        atexit.register(_final_cov_pool)
-        _cov_pool_atexit_registered = True
+    with _cov_lock:
+        global _cov_shm, _cov_grid_data, _cov_grid_meta
+        if _cov_grid_data is not None:
+            _cov_grid_data = None
+        if _cov_shm is not None:
+            try:
+                _cov_shm.close()
+            except Exception:
+                pass
+            _cov_shm = None
+        _cov_shm = multiprocessing.shared_memory.SharedMemory(name=shm_name)
+        _cov_grid_data = np.ndarray(shape, dtype=np.dtype(dtype_str), buffer=_cov_shm.buf)
+        _cov_grid_meta = grid_meta
+        global _cov_pool_atexit_registered
+        if not _cov_pool_atexit_registered:
+            atexit.register(_final_cov_pool)
+            _cov_pool_atexit_registered = True
 
 
 def _itm_worker(args, grid_data=None, grid_meta=None):

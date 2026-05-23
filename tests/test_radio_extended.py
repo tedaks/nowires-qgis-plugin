@@ -177,7 +177,7 @@ class TestITMP2PLossExceptionHandling:
             )
             assert result.failed is True
             assert math.isnan(result.loss_db)
-            assert result.mode == 0
+            assert result.mode == -1
             assert result.warnings == 1
 
     def test_result_no_intermediate(self):
