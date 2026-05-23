@@ -8,12 +8,13 @@ import pytest
 @pytest.mark.qgis_integration
 def test_grid_size_validation_precedes_dem_download():
     """Behavioral: mismatched grid sizes cause early failure before downloads."""
-    from qgis.core import QgsProcessingException
+    from qgis.core import QgsProcessingContext, QgsProcessingException
 
     from NoWires.algorithm.coverage_comparison import CoverageComparisonAlgorithm
 
     alg = CoverageComparisonAlgorithm()
     alg.initAlgorithm({})
+    context = QgsProcessingContext()
 
     params = {
         "PANEL_A_GRID_SIZE": 1,
@@ -21,4 +22,4 @@ def test_grid_size_validation_precedes_dem_download():
         "OUTPUT_DELTA": "memory",
     }
     with pytest.raises(QgsProcessingException, match="must match"):
-        alg.processAlgorithm(params, None, None)
+        alg.processAlgorithm(params, context, None)
