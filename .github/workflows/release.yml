@@ -109,7 +109,7 @@ jobs:
           # Explicit include list: only matching paths ship in the bundle.
           # New dev files/dirs are excluded by default and must be added here.
           # Directories shipped recursively:
-          include_dirs=(itm algorithm batch comparison contour coverage clutter p2p report)
+          include_dirs=(itm algorithm batch comparison contour radio_coverage clutter p2p report)
           # Root-level files/patterns shipped (subdirectory matches are filtered out):
           include_root_files=(
             '*.py'
@@ -161,7 +161,7 @@ jobs:
             NoWires/batch/outputs.py
             NoWires/comparison/panel.py
             NoWires/contour/pipeline.py
-            NoWires/coverage/engine.py
+            NoWires/radio_coverage/engine.py
             NoWires/clutter/__init__.py
             NoWires/p2p/compute.py
             NoWires/report/export.py

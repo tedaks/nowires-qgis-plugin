@@ -7,7 +7,7 @@
 import numpy as np
 
 from NoWires.antenna import AntennaConfig
-from NoWires.coverage.engine import build_coverage_tasks, should_use_multiprocessing
+from NoWires.radio_coverage.engine import build_coverage_tasks, should_use_multiprocessing
 
 
 _OMNI_CONFIG = AntennaConfig(preset="omni")
@@ -103,7 +103,7 @@ def test_build_coverage_tasks_nearest_pixels_have_minimum_distance():
 
 
 def test_compute_coverage_samples_cell_centers_within_requested_extent(monkeypatch):
-    import coverage.engine as coverage_engine
+    import radio_coverage.engine as coverage_engine
 
     captured = {}
 

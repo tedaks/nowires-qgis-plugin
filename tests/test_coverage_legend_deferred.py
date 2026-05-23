@@ -40,4 +40,4 @@ def test_coverage_post_process_shows_legend():
 
 def test_coverage_legend_import_present():
     src = _source("algorithm/coverage.py")
-    assert "from NoWires.coverage.legend import show_coverage_legend" in src
+    assert "from NoWires.radio_coverage.legend import show_coverage_legend" in src

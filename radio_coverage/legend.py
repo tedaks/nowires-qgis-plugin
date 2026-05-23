@@ -28,7 +28,7 @@ Floating map-canvas legend for coverage analysis.
 from qgis.PyQt.QtCore import QEvent, Qt
 from qgis.PyQt.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
-from NoWires.coverage.palette import build_legend_entries
+from NoWires.radio_coverage.palette import build_legend_entries
 
 
 LEGEND_OBJECT_NAME = "NoWiresCoverageLegend"

@@ -14,7 +14,7 @@ import pytest
 
 # Ensure the coverage_analysis_params module can be imported
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from coverage.analysis_params import CoverageAnalysisParams
+from radio_coverage.analysis_params import CoverageAnalysisParams
 
 
 def _install_qgis_stubs():
@@ -330,7 +330,7 @@ def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypa
     monkeypatch.setattr(module, "ElevationGrid", lambda path: FakeElevationGrid())
     monkeypatch.setattr(module, "QgsRasterLayer", InvalidRasterLayer)
     def _fake_coverage_result(**_kw):
-        from coverage.engine import CoverageResult
+        from radio_coverage.engine import CoverageResult
         return CoverageResult(
             prx_grid=np.array([[-80.0, -90.0]], dtype=np.float32),
             loss_grid=np.array([[100.0, 110.0]], dtype=np.float32),

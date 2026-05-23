@@ -19,13 +19,13 @@ import pytest
 
 @pytest.mark.qgis_integration
 def test_find_latest_coverage_layer_by_settings():
-    from NoWires.coverage.opacity import find_latest_coverage_layer
+    from NoWires.radio_coverage.opacity import find_latest_coverage_layer
 
     layer_stub = mock.MagicMock()
     project = mock.MagicMock()
     project.readEntry.return_value = ("layer_abc", True)
     project.mapLayer.return_value = layer_stub
-    with mock.patch("NoWires.coverage.opacity.QgsProject") as mock_qgs:
+    with mock.patch("NoWires.radio_coverage.opacity.QgsProject") as mock_qgs:
         mock_qgs.instance.return_value = project
         result = find_latest_coverage_layer()
     assert result is layer_stub
@@ -33,7 +33,7 @@ def test_find_latest_coverage_layer_by_settings():
 
 @pytest.mark.qgis_integration
 def test_find_latest_coverage_layer_by_name_fallback():
-    from NoWires.coverage.opacity import find_latest_coverage_layer
+    from NoWires.radio_coverage.opacity import find_latest_coverage_layer
 
     layer_a = mock.MagicMock()
     layer_a.name.return_value = "Coverage (900 MHz, 5 km, 128x128)"
@@ -43,7 +43,7 @@ def test_find_latest_coverage_layer_by_name_fallback():
     project = mock.MagicMock()
     project.readEntry.return_value = ("", False)
     project.mapLayers.return_value = {"a": layer_a, "b": layer_b}
-    with mock.patch("NoWires.coverage.opacity.QgsProject") as mock_qgs:
+    with mock.patch("NoWires.radio_coverage.opacity.QgsProject") as mock_qgs:
         mock_qgs.instance.return_value = project
         result = find_latest_coverage_layer()
     assert result is layer_a
@@ -51,12 +51,12 @@ def test_find_latest_coverage_layer_by_name_fallback():
 
 @pytest.mark.qgis_integration
 def test_find_latest_coverage_layer_none():
-    from NoWires.coverage.opacity import find_latest_coverage_layer
+    from NoWires.radio_coverage.opacity import find_latest_coverage_layer
 
     project = mock.MagicMock()
     project.readEntry.return_value = ("", False)
     project.mapLayers.return_value = {}
-    with mock.patch("NoWires.coverage.opacity.QgsProject") as mock_qgs:
+    with mock.patch("NoWires.radio_coverage.opacity.QgsProject") as mock_qgs:
         mock_qgs.instance.return_value = project
         result = find_latest_coverage_layer()
     assert result is None

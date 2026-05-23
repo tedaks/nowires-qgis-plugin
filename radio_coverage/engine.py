@@ -10,12 +10,12 @@ import numpy as np
 from NoWires.antenna import antenna_config_from_values
 from NoWires.clutter import compute_terminal_clutter_losses
 from NoWires.clutter.context import ClutterLossContext, build_initial_clutter_context, ClutterModel, BuildingType  # noqa: F401
-from NoWires.coverage.pool import (  # noqa: F401
+from NoWires.radio_coverage.pool import (  # noqa: F401
     CoverageResult, log_coverage_failures, should_use_multiprocessing,
     _itm_worker, _make_shared_grid,
 )
-from NoWires.coverage._executor import execute_coverage_tasks
-from NoWires.coverage.tasks import _coverage_axis_centers, build_coverage_tasks
+from NoWires.radio_coverage._executor import execute_coverage_tasks
+from NoWires.radio_coverage.tasks import _coverage_axis_centers, build_coverage_tasks
 from NoWires.geo_bounds import coverage_bounds
 from NoWires.constants import BYTES_PER_MEBIBYTE
 from NoWires.defaults import DEFAULT_N0, DEFAULT_EPSILON, DEFAULT_SIGMA
