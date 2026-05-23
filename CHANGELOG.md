@@ -24,17 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Harden `CLIMATE_OPTIONS` ordering in `constants.py`.
 - Fix CCH override treating explicit 0.0 as "no override".
 - Centralize remaining magic numbers (DEM nodata, FSPL constant, MHz-to-Hz, directory permissions, k-factor).
-
-### Planned — Test Coverage Roadmap (66% → 80% target)
-
-**Wave 1 — Unit-testable quick wins (~30 tests, 66% → 72%):**
-`batch/writer.py` (26%), `p2p/chart_helpers.py` (41%), `p2p/_outputs_internal.py` (43%), `report/pdf.py` (39%), `raster_io.py` (21%), `processing_utils.py` (20%), `p2p/params.py` (33%), `base_algorithm.py` (44%).
-
-**Wave 2 — QGIS/GDAL Docker tests (~55 tests, 72% → 80%):**
-`nowires.py` (45%), `algorithm/coverage_comparison.py` (21%), `algorithm/batch.py` (17%), `algorithm/contour.py` (27%), `algorithm/p2p.py` (27%), `p2p/chart.py` (13%), `comparison/add_params.py` (20%), `report/markers.py` (15%), `contour/_smoothing_vrt.py` (30%), `contour/smoothing.py` (15%), `contour/generation.py` (11%), `contour/overlay.py` (11%), `contour/symbology.py` (5%).
-
-**Wave 3 — Qt UI tests (low priority, ~15 tests, 80% → 82%):**
-`antenna_pattern_preview.py` (0%), `three_d.py` (18%), `coverage/legend.py` (19%).
+- **Test coverage expansion (3 waves):**
+  - Wave 1 (~30 unit tests, 66%→72%): `batch/writer.py` (26%), `p2p/chart_helpers.py` (41%), `p2p/_outputs_internal.py` (43%), `report/pdf.py` (39%), `raster_io.py` (21%), `processing_utils.py` (20%), `p2p/params.py` (33%), `base_algorithm.py` (44%).
+  - Wave 2 (~55 Docker tests, 72%→80%): `nowires.py` (45%), `algorithm/*` (17–27%), `p2p/chart.py` (13%), `comparison/add_params.py` (20%), `report/markers.py` (15%), `contour/*` (5–30%).
+  - Wave 3 (~15 Qt UI tests, low priority): `antenna_pattern_preview.py` (0%), `three_d.py` (18%), `coverage/legend.py` (19%).
 
 ## [1.6.1] - 2026-05-23
 
