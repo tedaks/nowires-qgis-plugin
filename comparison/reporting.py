@@ -47,7 +47,7 @@ def validate_panels(tx_point_a, tx_point_b, radius_km_a, radius_km_b):
         raise QgsProcessingException(
             "Panel A and B TX positions differ. "
             "Delta comparison requires co-located transmitters.")
-    if abs(radius_km_a - radius_km_b) > 1e-9:
+    if abs(radius_km_a - radius_km_b) > 1e-6:
         raise QgsProcessingException(
             "Panel A and B radii differ. "
             "Delta comparison requires identical analysis radii.")
@@ -101,10 +101,7 @@ def build_delta_info(delta_style, threshold_db, ds):
     improved = ds["improved"]
     degraded = ds["degraded"]
     unchanged = ds["unchanged"]
-    if valid_count > 0:
-        pct_scale = 100.0 / valid_count
-    else:
-        pct_scale = float('nan')
+    pct_scale = 100.0 / valid_count if valid_count > 0 else 0.0
     return {
         "style": delta_style,
         "threshold_db": threshold_db,

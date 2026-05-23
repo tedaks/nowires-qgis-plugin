@@ -239,6 +239,7 @@ def build_empty_coverage_report_payload(
             "pct_above_sensitivity": 0.0, "usable_cell_count": 0,
             "min_distance_km": 0.0, "max_distance_km": 0.0,
             "average_distance_km": 0.0,
+            "bel_rx_db": bel_rx_db,
         },
     )
     return {

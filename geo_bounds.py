@@ -21,11 +21,13 @@ def coverage_bounds(tx_lat, tx_lon, radius_km, padding_deg=0.0):
     half_lon = radius_m * lon_per_m
     south = max(-90.0, tx_lat - half_lat - padding_deg)
     north = min(90.0, tx_lat + half_lat + padding_deg)
+    west = tx_lon - half_lon - padding_deg
+    east = tx_lon + half_lon + padding_deg
     return (
         south,
         north,
-        tx_lon - half_lon - padding_deg,
-        tx_lon + half_lon + padding_deg,
+        normalize_longitude(west),
+        normalize_longitude(east),
     )
 
 
