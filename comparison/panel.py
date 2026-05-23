@@ -38,6 +38,7 @@ from NoWires.clutter import (
     compute_terminal_clutter_losses,
     ensure_clutter_grid_for_area,
 )
+from qgis.core import QgsProcessingException
 from NoWires.radio import validate_itm_input_ranges
 from NoWires.comparison.params import collect_panel_params
 
@@ -80,7 +81,7 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
             south=south, north=north, west=west, east=east, feedback=feedback,
         )
     if clutter_grid is None and p.clutter_enabled:
-        raise ValueError(
+        raise QgsProcessingException(
             f"{prefix}: Failed to load clutter grid. Coverage comparison "
             "requires identical clutter data for both panels."
         )

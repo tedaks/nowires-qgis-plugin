@@ -11,6 +11,7 @@ per-pixel loop over the raster.
 from __future__ import annotations
 
 import logging
+import math
 
 import numpy as np
 from osgeo import gdal
@@ -21,6 +22,7 @@ from NoWires.clutter.categories import (
     _WORLDCOVER_TO_LEGACY_IDX,
     ADVANCED_CLUTTER_CATEGORIES,
     _WORLDCOVER_TO_ADVANCED_IDX,
+    remap_simple_category,
 )
 
 logger = logging.getLogger(__name__)
@@ -60,6 +62,10 @@ class LandCoverGrid:
                 raise RuntimeError("Failed to read land-cover raster: {}".format(path))
             data = np.asarray(data)
             n_rows, n_cols = data.shape
+            if n_rows == 0 or n_cols == 0:
+                raise RuntimeError(
+                    "Land-cover raster has zero dimension ({} rows x {} cols)".format(
+                        n_rows, n_cols))
             min_lon = transform[0]
             max_lon = min_lon + transform[1] * n_cols
             min_lat = transform[3] + transform[5] * n_rows
@@ -111,8 +117,13 @@ class LandCoverGrid:
         y = min(int((self.max_lat - lat) / d_lat), n_rows - 1)
         x = min(int((lon - self.min_lon) / d_lon), n_cols - 1)
         value = self.data[y, x]
-        if self.nodata is not None and float(value) == self.nodata:
-            return None
+        if self.nodata is not None:
+            nodata_is_nan = isinstance(self.nodata, float) and math.isnan(self.nodata)
+            if nodata_is_nan:
+                if math.isnan(float(value)):
+                    return None
+            elif float(value) == self.nodata:
+                return None
         return int(value)
 
     def sample_category(self, lat, lon) -> str | None:
@@ -192,5 +203,6 @@ class LandCoverGrid:
         cat_idx = np.where(out_of_bounds, 0, cat_idx)
         from NoWires.clutter.categories import _LEGACY_CAT_IDX
         if rx_override:
-            cat_idx[:] = _LEGACY_CAT_IDX.get(rx_override, 0)
+            remapped = remap_simple_category(rx_override)
+            cat_idx[:] = _LEGACY_CAT_IDX.get(remapped, 0)
         return _CLUTTER_LOSS_ARRAY[cat_idx]

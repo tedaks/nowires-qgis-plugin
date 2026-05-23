@@ -56,6 +56,9 @@ def report_p2p_results(feedback, dist_m, f_mhz, result, report_payload,
         "Distance: {:.1f} m ({:.2f} km)".format(dist_m, dist_m / 1000)
     )
     feedback.pushInfo("Frequency: {:.1f} MHz".format(f_mhz))
+    climate_name = inputs.get("climate", "")
+    if climate_name:
+        feedback.pushInfo("Climate: {}".format(climate_name))
     feedback.pushInfo(
         "Propagation mode: {} ({})".format(result.mode, mode_name)
     )

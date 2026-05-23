@@ -33,6 +33,8 @@ from typing import Any
 import numpy as np
 from qgis.core import QgsProcessingException
 
+from NoWires.constants import CLIMATE_NAMES
+
 
 def validate_panels(tx_point_a, tx_point_b, radius_km_a, radius_km_b):
     if tx_point_a is None:
@@ -41,11 +43,11 @@ def validate_panels(tx_point_a, tx_point_b, radius_km_a, radius_km_b):
         raise QgsProcessingException("Panel B TX point is required.")
     tx_lat_a, tx_lon_a = tx_point_a.y(), tx_point_a.x()
     tx_lat_b, tx_lon_b = tx_point_b.y(), tx_point_b.x()
-    if abs(tx_lat_a - tx_lat_b) > 1e-5 or abs(tx_lon_a - tx_lon_b) > 1e-5:
+    if abs(tx_lat_a - tx_lat_b) > 1e-4 or abs(tx_lon_a - tx_lon_b) > 1e-4:
         raise QgsProcessingException(
             "Panel A and B TX positions differ. "
             "Delta comparison requires co-located transmitters.")
-    if abs(radius_km_a - radius_km_b) > 1e-9:
+    if abs(radius_km_a - radius_km_b) > 1e-6:
         raise QgsProcessingException(
             "Panel A and B radii differ. "
             "Delta comparison requires identical analysis radii.")
@@ -69,13 +71,13 @@ def resolve_output_paths(
     tmpdir: str | None = None
     if not out_a or not out_b or not out_delta:
         tmpdir = tmp_mgr.make_dir("comp", persistent=True)
-    assert tmpdir is not None
+        assert tmpdir is not None
     if not out_a:
-        out_a = os.path.join(tmpdir, "coverage_a.tif")
+        out_a = os.path.join(tmpdir, "coverage_a.tif")  # type: ignore[arg-type]
     if not out_b:
-        out_b = os.path.join(tmpdir, "coverage_b.tif")
+        out_b = os.path.join(tmpdir, "coverage_b.tif")  # type: ignore[arg-type]
     if not out_delta:
-        out_delta = os.path.join(tmpdir, "coverage_delta.tif")
+        out_delta = os.path.join(tmpdir, "coverage_delta.tif")  # type: ignore[arg-type]
     return out_a, out_b, out_delta, out_report, tmpdir
 
 
@@ -87,6 +89,7 @@ def build_panel_info(panel, prx_grid):
         "f_mhz": panel["f_mhz"], "radius_km": panel["radius_km"],
         "tx_power": panel["tx_power"], "tx_gain": panel["tx_gain"],
         "rx_gain": panel["rx_gain"], "cable_loss": panel["cable_loss"],
+        "climate": CLIMATE_NAMES.get(panel.get("climate"), str(panel.get("climate", ""))),
         "valid_pixels": int(valid_mask.sum()),
         "total_pixels": int(prx_grid.size),
         "mean_prx": float(np.nanmean(prx_grid)) if valid_mask.any() else float("nan"),
@@ -99,10 +102,7 @@ def build_delta_info(delta_style, threshold_db, ds):
     improved = ds["improved"]
     degraded = ds["degraded"]
     unchanged = ds["unchanged"]
-    if valid_count > 0:
-        pct_scale = 100.0 / valid_count
-    else:
-        pct_scale = float('nan')
+    pct_scale = 100.0 / valid_count if valid_count > 0 else 0.0
     return {
         "style": delta_style,
         "threshold_db": threshold_db,

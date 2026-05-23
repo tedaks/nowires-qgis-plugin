@@ -56,6 +56,9 @@ class TempDirManager:
         self._dirs = []
         self._persistent_dirs = []
         self._files = []
+        self._rmtree = shutil.rmtree
+        self._unlink = os.unlink
+        self._exists = os.path.exists
 
     def make_dir(self, prefix, persistent=False):
         """Create a temporary directory and register it for later cleanup.
@@ -92,19 +95,28 @@ class TempDirManager:
         """Register a single file for deletion on cleanup()."""
         self._files.append(path)
 
-    def add_dir(self, path):
-        """Register an existing temporary directory for deletion on cleanup()."""
-        self._dirs.append(path)
+    def add_dir(self, path, persistent=False):
+        """Register an existing directory for lifecycle tracking.
+
+        Args:
+            path: Absolute path to the directory.
+            persistent: If True, kept after cleanup() and only logged via
+                warn_persistent() (not auto-deleted).
+        """
+        if persistent:
+            self._persistent_dirs.append(path)
+        else:
+            self._dirs.append(path)
 
     def cleanup(self):
         """Remove all non-persistent temporary directories and registered files."""
         for d in self._dirs:
-            shutil.rmtree(d, ignore_errors=True)
+            self._rmtree(d, ignore_errors=True)
         self._dirs.clear()
         for f in self._files:
             try:
-                if os.path.exists(f):
-                    os.unlink(f)
+                if self._exists(f):
+                    self._unlink(f)
             except OSError:
                 pass
         self._files.clear()
@@ -124,9 +136,7 @@ class TempDirManager:
     def __del__(self):
         """Safety net: clean up non-persistent dirs if cleanup() was not called."""
         if self._dirs or self._files:
-            logger.warning(
-                "TempDirManager.__del__ called with uncleaned resources; "
-                "calling cleanup() as safety net. Call cleanup() explicitly "
-                "to avoid this warning."
-            )
-            self.cleanup()
+            try:
+                self.cleanup()
+            except TypeError:
+                pass

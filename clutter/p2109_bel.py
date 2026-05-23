@@ -63,6 +63,7 @@ def building_entry_loss(f_ghz, building_type: BuildingType = "traditional", thet
             "P.2109-2: unknown building type '%s', defaulting to traditional",
             building_type)
         coeffs = _COEFFS["traditional"]
+    theta_deg = max(0.0, min(abs(theta_deg), 90.0))
     log_f = math.log10(f_ghz)
     L_h = coeffs["r"] + coeffs["s"] * log_f + coeffs["t"] * log_f ** 2
     L_e = 0.212 * abs(theta_deg)
@@ -96,6 +97,7 @@ def building_entry_loss_vec(f_ghz_arr, building_type: BuildingType = "traditiona
     if np.any(f_arr != f_clamped):
         logger.info("P.2109-2 vec: some frequencies clamped to %.2f–%.2f GHz",
                      _FREQ_MIN_GHZ, _FREQ_MAX_GHZ)
+    theta_deg = max(0.0, min(abs(theta_deg), 90.0))
     coeffs = _COEFFS.get(building_type, _COEFFS["traditional"])
     log_f = np.log10(f_clamped)
     L_h = coeffs["r"] + coeffs["s"] * log_f + coeffs["t"] * log_f ** 2

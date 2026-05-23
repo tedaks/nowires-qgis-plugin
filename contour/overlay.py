@@ -91,6 +91,7 @@ def prepare_elevation_overlay(source_dem_path, persistent_temp_dir, context, fee
     )
     if hillshade_result is None:
         raise RuntimeError("Failed to generate optimized hillshade overlay.")
+    hillshade_result.FlushCache()
     hillshade_result = None
 
     overview_levels = build_overview_levels(overlay_width, overlay_height)

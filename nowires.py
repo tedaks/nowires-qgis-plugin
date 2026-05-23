@@ -225,6 +225,7 @@ class NoWiresPlugin:
         self._opacity_dialog = CoverageOpacityDialog(
             layer, parent=parent
         )
+        self._opacity_dialog.destroyed.connect(lambda: setattr(self, '_opacity_dialog', None))
         self._opacity_dialog.show()
 
     def run_open_3d_view(self):
@@ -258,5 +259,6 @@ class NoWiresPlugin:
         if self._pattern_preview_dialog is not None:
             self._pattern_preview_dialog.close()
         dlg = AntennaPatternPreviewDialog(parent=self.iface.mainWindow())
+        dlg.destroyed.connect(lambda: setattr(self, '_pattern_preview_dialog', None))
         dlg.show()
         self._pattern_preview_dialog = dlg

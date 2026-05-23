@@ -4,7 +4,11 @@
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 def bilinear_sample(data: np.ndarray, grid_meta: dict, lats, lons):
@@ -29,9 +33,10 @@ def _bilinear_scalar(data: np.ndarray, gm: dict, lat: float, lon: float) -> floa
     fy = (gm["max_lat"] - lat) / d_lat - 0.5
     fx = (lon - gm["min_lon"]) / d_lon - 0.5
     if fy < -0.5 or fx < -0.5 or fy > n_rows - 0.5 or fx > n_cols - 0.5:
+        logger.debug("Bilinear sample out of bounds: lat=%s lon=%s", lat, lon)
         return float("nan")
-    fy = max(0.0, min(n_rows - 1.0, fy))
-    fx = max(0.0, min(n_cols - 1.0, fx))
+    fy = max(0.0, min(n_rows - 1.0 - 1e-9, fy))
+    fx = max(0.0, min(n_cols - 1.0 - 1e-9, fx))
     y0 = int(fy)
     x0 = int(fx)
     y1 = min(y0 + 1, n_rows - 1)
@@ -61,6 +66,8 @@ def _bilinear_line(data: np.ndarray, gm: dict, lats: np.ndarray, lons: np.ndarra
         (fy_raw < -0.5) | (fx_raw < -0.5)
         | (fy_raw > n_lat - 0.5) | (fx_raw > n_lon - 0.5)
     )
+    if np.any(oob):
+        logger.debug("Bilinear line sample: %d of %d out of bounds", int(np.sum(oob)), oob.size)
     fy = np.clip(fy_raw, 0.0, n_lat - 1.0 - 1e-9)
     fx = np.clip(fx_raw, 0.0, n_lon - 1.0 - 1e-9)
     y0 = np.floor(fy).astype(np.int32)
@@ -90,6 +97,8 @@ def _bilinear_grid(data: np.ndarray, gm: dict, lats: np.ndarray, lons: np.ndarra
         (fy_raw < -0.5) | (fx_raw < -0.5)
         | (fy_raw > n_lat - 0.5) | (fx_raw > n_lon - 0.5)
     )
+    if np.any(oob):
+        logger.debug("Bilinear grid sample: %d of %d out of bounds", int(np.sum(oob)), oob.size)
     fy = np.clip(fy_raw, 0.0, n_lat - 1.0 - 1e-9)
     fx = np.clip(fx_raw, 0.0, n_lon - 1.0 - 1e-9)
     y0 = np.floor(fy).astype(np.int32)

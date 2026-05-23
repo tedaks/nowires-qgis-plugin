@@ -4,11 +4,19 @@
 """Tests for cache_manager.py."""
 
 import os
+import shutil
 import tempfile
+from unittest import mock
 
 import pytest
 
-from cache_manager import clear_dem_cache, format_cache_size, get_cache_size
+from cache_manager import (
+    _entry_size,  # noqa: F401
+    _iter_cache_entries,  # noqa: F401
+    clear_dem_cache,
+    format_cache_size,
+    get_cache_size,
+)
 
 
 class _FeedbackStub:
@@ -32,8 +40,8 @@ def temp_cache_dir():
     import cache_manager as cm
     original_ddl = ddl.get_temp_dir
     original_cm = cm.get_temp_dir
-    ddl.get_temp_dir = lambda: tmp
-    cm.get_temp_dir = lambda: tmp
+    ddl.get_temp_dir = lambda create=True: tmp
+    cm.get_temp_dir = lambda create=True: tmp
     # Also monkey-patch worldcover dir helpers
     import worldcover_downloader as wcd
     original_wc = wcd.get_worldcover_dir
@@ -65,8 +73,8 @@ class TestClearDemCache:
         original_ddl = ddl.get_temp_dir
         original_cm = cm.get_temp_dir
         try:
-            ddl.get_temp_dir = lambda: "/nonexistent/path/nowires_test"
-            cm.get_temp_dir = lambda: "/nonexistent/path/nowires_test"
+            ddl.get_temp_dir = lambda create=True: "/nonexistent/path/nowires_test"
+            cm.get_temp_dir = lambda create=True: "/nonexistent/path/nowires_test"
             removed, freed = clear_dem_cache()
             assert removed == 0
             assert freed == 0
@@ -189,3 +197,132 @@ class TestGetCacheSize:
             f.write("data")
         get_cache_size()
         assert os.path.exists(tile)
+
+
+class TestGetCacheSizeOserrors:
+    """Tests for OSError suppression in get_cache_size()."""
+
+    def test_get_cache_size_oserror_suppressed(self):
+        """OSError from _entry_size during get_cache_size is caught, returns (0, 0)."""
+        tmp = tempfile.mkdtemp(prefix="nowires_test_oserror_")
+        try:
+            fake_entry = os.path.join(tmp, "nowires_dem_test.tif")
+            with open(fake_entry, "w") as f:
+                f.write("data")
+
+            import NoWires.dem_downloader as ddl_mod
+            import NoWires.cache_manager as cm_mod
+            orig_ddl = ddl_mod.get_temp_dir
+            orig_cm = cm_mod.get_temp_dir
+            ddl_mod.get_temp_dir = lambda create=True: tmp
+            cm_mod.get_temp_dir = lambda create=True: tmp
+            try:
+                with mock.patch(
+                    "NoWires.cache_manager._entry_size",
+                    side_effect=OSError("permission denied"),
+                ):
+                    count, total = get_cache_size()
+                assert count == 0
+                assert total == 0
+            finally:
+                ddl_mod.get_temp_dir = orig_ddl
+                cm_mod.get_temp_dir = orig_cm
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_get_cache_size_empty_temp_dir(self):
+        """get_cache_size returns (0, 0) when temp dir does not exist."""
+        with mock.patch(
+            "NoWires.dem_downloader.get_temp_dir",
+            return_value="/nonexistent/path/for/test",
+        ):
+            with mock.patch(
+                "NoWires.cache_manager.get_temp_dir",
+                return_value="/nonexistent/path/for/test",
+            ):
+                count, total = get_cache_size()
+        assert count == 0
+        assert total == 0
+
+
+class TestClearDemCacheEdgeCases:
+    """Tests for edge cases in clear_dem_cache()."""
+
+    def test_clear_dem_cache_removes_directory(self):
+        """Removes directory entries via shutil.rmtree."""
+        tmp = tempfile.mkdtemp(prefix="nowires_test_dir_")
+        try:
+            subdir = os.path.join(tmp, "nowires_dem_testdir")
+            os.mkdir(subdir)
+            fpath = os.path.join(subdir, "file.txt")
+            with open(fpath, "w") as f:
+                f.write("some data" * 100)
+            file_size = os.path.getsize(fpath)
+
+            with mock.patch(
+                "NoWires.cache_manager._iter_cache_entries",
+                return_value=iter([subdir]),
+            ):
+                removed, freed = clear_dem_cache()
+
+            assert removed == 1
+            assert freed >= file_size
+            assert not os.path.exists(subdir)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_clear_dem_cache_with_feedback(self):
+        """feedback.pushInfo is called with cache removal summary."""
+        fb = mock.MagicMock()
+        with mock.patch(
+            "NoWires.cache_manager._iter_cache_entries",
+            return_value=iter([]),
+        ):
+            removed, freed = clear_dem_cache(feedback=fb)
+        assert removed == 0
+        assert freed == 0
+        fb.pushInfo.assert_called_once()
+        msg = fb.pushInfo.call_args[0][0]
+        assert "removed" in msg
+
+    def test_clear_dem_cache_oserror_suppressed(self):
+        """OSError during _entry_size in clear_dem_cache is caught; partial counts returned."""
+        tmp = tempfile.mkdtemp(prefix="nowires_test_ose_")
+        try:
+            good_file = os.path.join(tmp, "nowires_dem_good.tif")
+            bad_file = os.path.join(tmp, "nowires_dem_bad.tif")
+            with open(good_file, "w") as f:
+                f.write("good" * 100)
+            good_size = os.path.getsize(good_file)
+            with open(bad_file, "w") as f:
+                f.write("bad" * 100)
+
+            with mock.patch(
+                "NoWires.cache_manager._iter_cache_entries",
+                return_value=iter([good_file, bad_file]),
+            ):
+                with mock.patch(
+                    "NoWires.cache_manager._entry_size",
+                    side_effect=[good_size, OSError("permission denied")],
+                ):
+                    removed, freed = clear_dem_cache()
+
+            assert removed == 1
+            assert freed >= good_size
+            assert os.path.exists(bad_file)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+class TestFormatCacheSizeEdgeCases:
+    """Tests for format_cache_size() covering edge cases."""
+
+    def test_format_cache_size_empty(self):
+        """format_cache_size(0, 0) returns 'Cache is empty.'"""
+        assert format_cache_size(0, 0) == "Cache is empty."
+
+    def test_format_cache_size_non_empty(self):
+        """format_cache_size(5, 1048576) returns string with file count and size."""
+        msg = format_cache_size(5, 1048576)
+        assert "5 file(s)" in msg
+        assert "1.0 MB" in msg

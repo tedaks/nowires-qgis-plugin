@@ -10,13 +10,21 @@ import types
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
+
 
 _dd = None
 _tile_base = None
+_saved_sys_modules = {}
 
 
 def _import_dem_downloader():
     global _dd, _tile_base
+    for key in ("qgis", "qgis.core", "NoWires", "NoWires.tile_download_base",
+                "tile_download_base", "osgeo.gdal", "osgeo", "osgeo.ogr", "osgeo.osr"):
+        if key in sys.modules and key not in _saved_sys_modules:
+            _saved_sys_modules[key] = sys.modules[key]
+
     qgis = types.ModuleType("qgis")
     qgis_core = types.ModuleType("qgis.core")
     qgis_core.QgsGeometry = MagicMock()
@@ -46,6 +54,19 @@ def _import_dem_downloader():
     _dd = importlib.import_module("NoWires.dem_downloader")
     setattr(no_wires_pkg, "dem_downloader", _dd)
     return _dd
+
+
+@pytest.fixture(autouse=True)
+def _restore_sys_modules():
+    yield
+    for key, val in _saved_sys_modules.items():
+        sys.modules[key] = val
+    for key in list(sys.modules):
+        if key not in _saved_sys_modules and key in (
+            "qgis", "qgis.core", "NoWires", "NoWires.tile_download_base",
+            "tile_download_base", "NoWires.dem_downloader",
+        ):
+            del sys.modules[key]
 
 
 def test_dem_cache_directory_is_per_user(tmp_path, monkeypatch):

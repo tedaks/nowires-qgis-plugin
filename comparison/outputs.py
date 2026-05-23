@@ -126,6 +126,8 @@ def write_comparison_html_report(path, panel_a_info, panel_b_info, delta_info):
     panel_b = panel_b_info
     delta = delta_info
 
+    # Numeric format specifiers (.1f, .2f, .5f) prevent HTML injection.
+    # html.escape is used for the sole string value (delta['style']).
     rows = []
     for panel, label in [(panel_a, "Panel A"), (panel_b, "Panel B")]:
         rows.append(f"<h3>{label}</h3>")

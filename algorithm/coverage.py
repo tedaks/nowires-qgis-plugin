@@ -42,32 +42,40 @@ def _build_clutter_context(p, clutter_grid, elev):
             p.tx_lat, p.tx_lon, p.radius_km, padding_deg=pad_deg)
         clutter_grid_resolved = ensure_clutter_grid_for_area(
             south=south, north=north, west=west, east=east)
-    clutter_source = clutter_source_label(
-        enabled=p.clutter_enabled, land_cover_grid=clutter_grid_resolved,
-        raster_path=p.clutter_raster_path,
-        tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override)
-    clutter_context = None
-    if p.clutter_enabled:
-        tx_ground = float(elev.sample(p.tx_lat, p.tx_lon))
-        if not math.isfinite(tx_ground):
-            tx_ground = 0.0
-        # rx_ground=0 is a placeholder — coverage_tasks.py fills the per-pixel
-        # value during task build; this context is for TX clutter + the report.
-        clutter_context = build_initial_clutter_context(
-            frequency_mhz=p.f_mhz, tx_height_m=p.tx_h, rx_height_m=p.rx_h,
-            tx_ground_elevation_m=tx_ground, polarization=p.polarization,
-            cch_override_m=p.cch_override_m, model=p.clutter_model,
-            percentile=p.clutter_percentile, street_width_m=p.street_width_m,
-            bel_enabled=p.bel_enabled, bel_building_type=p.bel_building_type,
-            bel_elevation_angle_deg=p.bel_elevation_angle_deg)
-    tx_clutter_for_report = compute_terminal_clutter_losses(
-        tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.tx_lat, rx_lon=p.tx_lon,
-        frequency_mhz=p.f_mhz, enabled=p.clutter_enabled,
-        land_cover_grid=clutter_grid_resolved,
-        tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override,
-        context=clutter_context)
     owns_grid = (clutter_grid_resolved is not None
                  and clutter_grid_resolved is not clutter_grid)
+    try:
+        clutter_source = clutter_source_label(
+            enabled=p.clutter_enabled, land_cover_grid=clutter_grid_resolved,
+            raster_path=p.clutter_raster_path,
+            tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override)
+        clutter_context = None
+        if p.clutter_enabled:
+            tx_ground = float(elev.sample(p.tx_lat, p.tx_lon))
+            if not math.isfinite(tx_ground):
+                tx_ground = 0.0
+            # rx_ground=0 is a placeholder — coverage_tasks.py fills the per-pixel
+            # value during task build; this context is for TX clutter + the report.
+            clutter_context = build_initial_clutter_context(
+                frequency_mhz=p.f_mhz, tx_height_m=p.tx_h, rx_height_m=p.rx_h,
+                tx_ground_elevation_m=tx_ground, polarization=p.polarization,
+                cch_override_m=p.cch_override_m, model=p.clutter_model,
+                percentile=p.clutter_percentile, street_width_m=p.street_width_m,
+                bel_enabled=p.bel_enabled, bel_building_type=p.bel_building_type,
+                bel_elevation_angle_deg=p.bel_elevation_angle_deg)
+        tx_clutter_for_report = compute_terminal_clutter_losses(
+            tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.tx_lat, rx_lon=p.tx_lon,
+            frequency_mhz=p.f_mhz, enabled=p.clutter_enabled,
+            land_cover_grid=clutter_grid_resolved,
+            tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override,
+            context=clutter_context)
+    except Exception:
+        if owns_grid:
+            try:
+                clutter_grid_resolved.close()
+            except Exception:
+                pass
+        raise
     return clutter_grid_resolved, clutter_context, clutter_source, tx_clutter_for_report, owns_grid
 
 
