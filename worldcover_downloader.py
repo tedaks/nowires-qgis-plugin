@@ -241,6 +241,7 @@ def ensure_worldcover_for_area(south, north, west, east, feedback=None):
         feedback.pushInfo("Clipping and merging WorldCover tiles")
 
     merge_temp_dir = tempfile.mkdtemp(prefix="nowires_worldcover_", dir=temp_dir)
+    os.chmod(merge_temp_dir, 0o700)
     if feedback:
         feedback.pushInfo(
             "Merged WorldCover outputs are kept in a per-run folder: "

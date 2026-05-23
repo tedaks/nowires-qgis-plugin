@@ -64,7 +64,7 @@ def test_notice_documents_logo_asset_origin():
 def test_python_sources_have_machine_readable_spdx_header():
     missing = []
     for path in sorted(PLUGIN_DIR.rglob("*.py")):
-        if "__pycache__" in path.parts or ".venv" in path.parts:
+        if "__pycache__" in path.parts or any(p.startswith(".") for p in path.parts):
             continue
         header = "\n".join(path.read_text(encoding="utf-8").splitlines()[:8])
         if "SPDX-License-Identifier:" not in header:

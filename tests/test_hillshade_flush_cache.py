@@ -46,3 +46,25 @@ def test_buildoverviews_followed_by_flushcache():
         assert found_flush_after_build, (
             "BuildOverviews must be followed by FlushCache() before hillshade_ds = None"
         )
+
+
+def test_hillshade_dem_processing_flushcache_before_release():
+    """hillshade_result.FlushCache() must be called before hillshade_result = None."""
+    with open(_SOURCE_FILE) as f:
+        lines = f.readlines()
+    found_dem_processing = False
+    found_flush_after_dem = False
+    for i, line in enumerate(lines):
+        if "gdal.DEMProcessing" in line:
+            found_dem_processing = True
+            for j in range(i + 1, len(lines)):
+                if "hillshade_result.FlushCache()" in lines[j]:
+                    found_flush_after_dem = True
+                    break
+                if "hillshade_result = None" in lines[j]:
+                    break
+    if found_dem_processing:
+        assert found_flush_after_dem, (
+            "gdal.DEMProcessing result must have FlushCache() called "
+            "before hillshade_result = None"
+        )

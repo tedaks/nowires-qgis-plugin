@@ -4,12 +4,17 @@
 # This program is free software under GPLv3 or later. See LICENSE.
 """Behavioral tests for comparison_reporting: build_panel_info and build_delta_info."""
 
-import math
 
 import numpy as np
 import pytest
 
-from comparison.reporting import build_panel_info, build_delta_info
+from comparison.reporting import (
+    build_panel_info,
+    build_delta_info,
+    validate_panels,
+    resolve_output_paths,
+    report_comparison_results,
+)
 
 
 class TestBuildPanelInfo:
@@ -59,6 +64,24 @@ class TestBuildPanelInfo:
         info = build_panel_info(panel, prx_grid)
         assert info["mean_prx"] == pytest.approx(15.0)
 
+    def test_climate_key_present(self):
+        panel = {"tx_lat": 0, "tx_lon": 0, "tx_h": 10, "rx_h": 5,
+                 "f_mhz": 900, "radius_km": 5, "tx_power": 43,
+                 "tx_gain": 8, "rx_gain": 2, "cable_loss": 2}
+        prx_grid = np.array([[1.0]])
+        info = build_panel_info(panel, prx_grid)
+        assert "climate" in info
+
+    def test_climate_key_resolves_name(self):
+        panel = {"tx_lat": 0, "tx_lon": 0, "tx_h": 10, "rx_h": 5,
+                 "f_mhz": 900, "radius_km": 5, "tx_power": 43,
+                 "tx_gain": 8, "rx_gain": 2, "cable_loss": 2,
+                 "climate": 1}
+        prx_grid = np.array([[1.0]])
+        from NoWires.constants import CLIMATE_NAMES
+        info = build_panel_info(panel, prx_grid)
+        assert info["climate"] == CLIMATE_NAMES[1]
+
 
 class TestBuildDeltaInfo:
     def test_returns_all_expected_keys(self):
@@ -100,7 +123,7 @@ class TestBuildDeltaInfo:
         assert info["degraded_pct"] == pytest.approx(20.0)
         assert info["unchanged_pct"] == pytest.approx(50.0)
 
-    def test_zero_valid_count_does_not_divide_by_zero(self):
+    def test_zero_valid_count_returns_zero_pcts(self):
         ds = {
             "valid_count": 0,
             "improved": 0,
@@ -111,5 +134,114 @@ class TestBuildDeltaInfo:
             "mean_delta": 0.0,
         }
         info = build_delta_info("diverging", 5.0, ds)
-        assert math.isnan(info["improved_pct"])
-        assert math.isnan(info["degraded_pct"])
+        assert info["improved_pct"] == 0.0
+        assert info["degraded_pct"] == 0.0
+        assert info["unchanged_pct"] == 0.0
+
+
+@pytest.mark.qgis_integration
+class TestValidatePanels:
+    def test_co_located_positions_pass(self):
+        from qgis.core import QgsPointXY
+        a = QgsPointXY(121.0, 14.5)
+        b = QgsPointXY(121.0, 14.5)
+        validate_panels(a, b, 5.0, 5.0)
+
+    def test_tx_positions_differ_beyond_tolerance_raises(self):
+        from qgis.core import QgsPointXY, QgsProcessingException
+        a = QgsPointXY(121.0, 14.5)
+        b = QgsPointXY(121.0005, 14.5)  # 5e-4 > 1e-4 tolerance
+        with pytest.raises(QgsProcessingException, match="TX positions differ"):
+            validate_panels(a, b, 5.0, 5.0)
+
+    def test_tx_positions_within_tolerance_pass(self):
+        from qgis.core import QgsPointXY
+        a = QgsPointXY(121.0, 14.5)
+        b = QgsPointXY(121.0 + 5e-5, 14.5)  # 5e-5 < 1e-4 tolerance
+        validate_panels(a, b, 5.0, 5.0)
+
+    def test_radius_mismatch_raises(self):
+        from qgis.core import QgsPointXY, QgsProcessingException
+        a = QgsPointXY(121.0, 14.5)
+        b = QgsPointXY(121.0, 14.5)
+        with pytest.raises(QgsProcessingException, match="radii differ"):
+            validate_panels(a, b, 5.0, 5.1)
+
+    def test_tx_point_a_none_raises(self):
+        from qgis.core import QgsPointXY, QgsProcessingException
+        b = QgsPointXY(121.0, 14.5)
+        with pytest.raises(QgsProcessingException, match="Panel A TX point"):
+            validate_panels(None, b, 5.0, 5.0)
+
+    def test_tx_point_b_none_raises(self):
+        from qgis.core import QgsPointXY, QgsProcessingException
+        a = QgsPointXY(121.0, 14.5)
+        with pytest.raises(QgsProcessingException, match="Panel B TX point"):
+            validate_panels(a, None, 5.0, 5.0)
+
+
+class TestResolveOutputPaths:
+    def test_asserts_tmpdir_not_none(self):
+        class FakeTmpMgr:
+            def make_dir(self, name, persistent=False):
+                return None
+        with pytest.raises(AssertionError):
+            resolve_output_paths(
+                None, None, None, None, None, FakeTmpMgr())
+
+    def test_output_dir_provides_all_paths(self):
+        import os
+        import tempfile
+        class FakeTmpMgr:
+            def make_dir(self, name, persistent=False):
+                return "/unused"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_a, out_b, out_d = os.path.join(tmpdir, "a.tif"), os.path.join(tmpdir, "b.tif"), os.path.join(tmpdir, "d.tif")
+            ra, rb, rd, _, _ = resolve_output_paths(
+                tmpdir, out_a, out_b, out_d, None, FakeTmpMgr())
+            assert ra == out_a
+            assert rb == out_b
+            assert rd == out_d
+
+
+class TestReportComparisonResults:
+    @staticmethod
+    def _make_feedback():
+        class FakeFeedback:
+            def __init__(self):
+                self.messages = []
+            def pushInfo(self, msg):
+                self.messages.append(msg)
+        return FakeFeedback()
+
+    @staticmethod
+    def _make_delta_info(improved=5, degraded=3, unchanged=92, min_d=-15.0, max_d=12.0, mean_d=-2.5):
+        return {
+            "improved_pixels": improved,
+            "improved_pct": 5.0,
+            "degraded_pixels": degraded,
+            "degraded_pct": 3.0,
+            "unchanged_pixels": unchanged,
+            "unchanged_pct": 92.0,
+            "min_delta": min_d,
+            "max_delta": max_d,
+            "mean_delta": mean_d,
+        }
+
+    def test_zero_valid_count_does_not_crash(self):
+        feedback = self._make_feedback()
+        delta_info = self._make_delta_info()
+        report_comparison_results(feedback, 0, 100, delta_info, 3.0)
+        assert any("0 / 100" in m for m in feedback.messages)
+
+    def test_with_valid_pixels_reports_all_sections(self):
+        feedback = self._make_feedback()
+        delta_info = self._make_delta_info()
+        report_comparison_results(feedback, 100, 102400, delta_info, 3.0)
+        body = "\n".join(feedback.messages)
+        assert "COVERAGE COMPARISON RESULTS" in body
+        assert "100 / 102400" in body
+        assert "Improved" in body
+        assert "Degraded" in body
+        assert "Unchanged" in body
+        assert "Delta range" in body

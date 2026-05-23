@@ -37,7 +37,9 @@ def write_geotiff(path, grid, min_lat, max_lat, min_lon, max_lon, nodata=COVERAG
         ds.SetProjection(srs.ExportToWkt())
         band = ds.GetRasterBand(1)
         band.SetNoDataValue(nodata)
-        band.WriteArray(raster)
+        if band.WriteArray(raster) != 0:
+            raise QgsProcessingException(
+                "WriteArray failed writing GeoTIFF: {}".format(path))
         band.FlushCache()
     finally:
         del band

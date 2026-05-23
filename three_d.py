@@ -155,7 +155,7 @@ def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
     """Create a new QGIS 3D map canvas using the latest NoWires layers."""
     is_windows = sys.platform == "win32"
     if is_windows:
-        dialog = Windows3DFallbackDialog()
+        dialog = Windows3DFallbackDialog(parent=iface.mainWindow())
         dialog.exec()
         if dialog.clickedButton() == dialog.highlight_button:
             if dialog.highlight_checkbox and dialog.highlight_checkbox.isChecked():

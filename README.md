@@ -4,7 +4,7 @@ Radio propagation analysis and terrain tools powered by NTIA's Irregular Terrain
 
 ## Status
 
-This repository contains the QGIS 4 plugin source for **NoWires** version 1.6.0.
+This repository contains the QGIS 4 plugin source for **NoWires** version 1.6.1.
 
 Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 SPDX-License-Identifier: GPL-3.0-or-later
@@ -93,6 +93,8 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 - `clutter/categories.py`: clutter category definitions, WorldCover class mapping, P.2108 model dispatch params
 - `clutter/constants.py`: shared clutter constants (simple loss table, limits)
 - `clutter/context.py`: ClutterLossContext dataclass definition
+- `clutter/grid.py`: LandCoverGrid class for WorldCover raster sampling
+- `clutter/resolve.py`: clutter resolution logic (grid acquisition and category dispatch)
 - `cache_manager.py`: DEM and WorldCover tile cache cleanup utilities
 - `clutter/p2108_common.py`: shared inverse-normal CDF helpers and validation for P.2108/P.2109
 - `clutter/p2108_height_gain.py`: ITU-R P.2108-1 §3.1 height-gain terminal correction
@@ -104,6 +106,8 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 - `coverage/analysis_params.py`: coverage algorithm parameter registration
 - `coverage/params.py`: coverage parameter definitions and defaults
 - `coverage/pool.py`: coverage multiprocessing pool and shared-memory management
+- `coverage/_executor.py`: coverage multiprocessing executor (extracted from pool)
+- `coverage/_result_dispatch.py`: batch result dispatch and failure logging (extracted from pool)
 - `coverage/tasks.py`: coverage per-pixel task definitions
 - `coverage/summary.py`: raster-derived usable-distance metrics
 - `coverage/palette.py`: heatmap stop definitions and coverage style renderer
@@ -120,7 +124,9 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 - `p2p/params.py`: P2P parameter definitions and defaults
 - `p2p/compute.py`: P2P ITM and link-budget computation
 - `p2p/outputs.py`: P2P vector output helpers
+- `p2p/_outputs_internal.py`: P2P output layer and report writing (extracted from compute.py)
 - `p2p/chart.py`: interactive profile chart with hover, callouts, and export
+- `p2p/chart_helpers.py`: chart helper functions extracted from chart.py
 - `p2p/chart_format.py`: chart axis and label formatting
 - `p2p/symbology.py`: P2P vector layer symbology
 - `p2p/report_display.py`: P2P report display in QGIS
@@ -132,6 +138,7 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 - `contour/overlay.py`: hillshade/elevation overlay helpers
 - `contour/pipeline.py`: contour processing pipeline
 - `contour/smoothing.py`: VRT Gaussian smoothing for contour DEM
+- `contour/_smoothing_vrt.py`: Gaussian kernel, raster calc, and blur VRT helpers (extracted from smoothing.py)
 - `contour/symbology.py`: rule-based contour symbology
 - `radio.py`: ITM bridge, Fresnel analysis, signal-level definitions
 - `fresnel.py`: Fresnel zone and LOS analysis
@@ -151,6 +158,8 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 - `raster_io.py`: shared GeoTIFF writer
 - `processing_utils.py`: QGIS Processing utility helpers
 - `geo_bounds.py`: geographic bounds and padding helpers
+- `_bilinear.py`: shared bilinear interpolation (scalar, line, grid paths)
+- `_geo_utils.py`: geography utility helpers
 - `nan_utils.py`: NaN-safe array utilities
 - `temp_manager.py`: temporary directory management with cleanup
 - `macos_compat.py`: macOS multiprocessing compatibility (find a real Python, set `PYTHONHOME` for spawned workers, validate via `_can_spawn`)

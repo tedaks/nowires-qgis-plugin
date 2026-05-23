@@ -48,10 +48,10 @@ def interpolate_nan_array(arr):
     arr = np.asarray(arr, dtype=np.float64)
     nan_mask = np.isnan(arr)
     if not nan_mask.any():
-        return arr
+        return arr.copy()
     valid_mask = ~nan_mask
     if not valid_mask.any():
-        return arr
+        return arr.copy()
     valid_indices = np.where(valid_mask)[0]
     result = arr.copy()
     nan_indices = np.where(nan_mask)[0]

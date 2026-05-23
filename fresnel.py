@@ -33,6 +33,7 @@ import numpy as np
 
 from NoWires.constants import EARTH_RADIUS_M
 from NoWires.constants import FRESNEL_60PCT_FACTOR
+from NoWires.defaults import DEFAULT_K_FACTOR
 
 C_LIGHT = 299792458.0
 
@@ -47,7 +48,7 @@ def fresnel_radius(d1_m, d2_m, f_mhz):
     return math.sqrt(wavelength_m * d1_m * d2_m / (d1_m + d2_m))
 
 
-def earth_bulge(d_m, total_dist_m, k_factor=4.0 / 3.0):
+def earth_bulge(d_m, total_dist_m, k_factor=DEFAULT_K_FACTOR):
     """Compute earth curvature bulge at distance d along a path."""
     if k_factor <= 0:
         return 0.0
@@ -62,7 +63,7 @@ def fresnel_profile_analysis(
     rx_antenna_h,
     dist_m,
     wavelength_m,
-    k_factor=4.0 / 3.0,
+    k_factor=DEFAULT_K_FACTOR,
 ):
     """Fresnel/earth-bulge/LOS analysis over a terrain profile.
 
@@ -83,9 +84,13 @@ def fresnel_profile_analysis(
     """
     if k_factor <= 0:
         n = len(distances) if hasattr(distances, '__len__') else 1
-        zeros = np.zeros(n, dtype=np.float64)
-        return zeros, zeros.copy(), zeros.copy(), np.zeros(n, dtype=bool), \
-            np.zeros(n, dtype=bool), np.zeros(n, dtype=bool)
+        z = np.zeros(n, dtype=np.float64)
+        zb = np.zeros(n, dtype=bool)
+        return z.copy(), z.copy(), z.copy(), zb.copy(), zb.copy(), zb.copy()
+    if dist_m <= 0:
+        raise ValueError(
+            "fresnel_profile_analysis requires dist_m > 0, got {}".format(dist_m)
+        )
     a_eff = k_factor * EARTH_RADIUS_M
 
     d = np.asarray(distances, dtype=np.float64)

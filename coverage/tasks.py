@@ -32,7 +32,7 @@ from NoWires.clutter.advanced import (
     compute_advanced_loss,
     compute_path_clutter_loss,
 )
-from NoWires.clutter.categories import legacy_to_advanced_override
+from NoWires.clutter.categories import legacy_to_advanced_override, remap_simple_category
 from NoWires.clutter.resolve import (
     resolve_category_advanced,
 )
@@ -157,11 +157,11 @@ def build_coverage_tasks(
             lats, lons, rx_override=rx_clutter_override)
         rx_category_grid = None
     elif clutter_enabled and rx_clutter_override is not None:
-        override_loss = CLUTTER_LOSS_DB.get(rx_clutter_override, 0.0)
+        override_loss = CLUTTER_LOSS_DB.get(remap_simple_category(rx_clutter_override), 0.0)
         rx_clutter_loss_grid = np.full((n_rows_lat, n_cols_lon), override_loss, dtype=np.float64)
         rx_category_grid = None
     elif clutter_enabled and clutter_grid is None:
-        fallback_loss = CLUTTER_LOSS_DB.get(rx_clutter_override or "open", 0.0)
+        fallback_loss = CLUTTER_LOSS_DB.get(remap_simple_category(rx_clutter_override or "open"), 0.0)
         rx_clutter_loss_grid = np.full((n_rows_lat, n_cols_lon), fallback_loss, dtype=np.float64)
         rx_category_grid = None
     else:
@@ -180,17 +180,16 @@ def build_coverage_tasks(
             d_m = float(dist_grid[i, j])
             if d_m < _MIN_COVERAGE_DISTANCE_M or d_m > radius_m:
                 continue
-            modeled_d_m = max(d_m, _MIN_COVERAGE_DISTANCE_M)
             b = float(bearing_grid[i, j])
             n_pts = max(
-                3, min(int(round(modeled_d_m / profile_step_m)) + 1, max_profile_pts)
+                3, min(int(round(d_m / profile_step_m)) + 1, max_profile_pts)
             )
-            step_m = modeled_d_m / (n_pts - 1)
+            step_m = d_m / (n_pts - 1)
             if advanced and rx_category_grid is not None:
                 rx_ground_m = (
                     float(rx_ground_grid[i, j]) if rx_ground_grid is not None else 0.0
                 )
-                bucket = _bucket_key(modeled_d_m, rx_ground_m)
+                bucket = _bucket_key(d_m, rx_ground_m)
                 tx_lut_key = ("tx", tx_category, bucket)
                 rx_cat = rx_category_grid[i, j]
                 rx_lut_key = ("rx", rx_cat, bucket)
@@ -198,7 +197,7 @@ def build_coverage_tasks(
                 rx_cached = _clutter_lut.get(rx_lut_key)
                 pixel_ctx = ClutterLossContext(
                     frequency_mhz=f_mhz,
-                    distance_m=modeled_d_m,
+                    distance_m=d_m,
                     tx_height_m=tx_h_m,
                     rx_height_m=rx_h_m,
                     rx_ground_elevation_m=rx_ground_m,
@@ -253,7 +252,7 @@ def build_coverage_tasks(
                     j=j,
                     target_lat=float(lats[i]),
                     target_lon=float(lons[j]),
-                    dist_m=modeled_d_m,
+                    dist_m=d_m,
                     bearing=b,
                     step_m=step_m,
                     n_pts=n_pts,
