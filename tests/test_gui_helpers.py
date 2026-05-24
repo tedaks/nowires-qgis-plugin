@@ -4,9 +4,7 @@
 """Unit tests for non-Qt paths in three_d, report/markers, and p2p/chart_format."""
 
 import os
-import tempfile
 
-import pytest
 
 
 class TestThreeDHelpers:
