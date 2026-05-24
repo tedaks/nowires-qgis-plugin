@@ -76,6 +76,7 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         self._raster_layer_ids = []
         self._comparison_post_processors = []
+        self._tmp.cleanup()
         self._tmp = TempDirManager()
         crs4326 = WGS84_CRS
         delta_style = DELTA_STYLE_OPTIONS[

@@ -14,7 +14,7 @@ import os
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PLUGIN_DIR = os.path.join(_HERE, os.pardir)
-_SOURCE_FILE = os.path.normpath(os.path.join(_PLUGIN_DIR, "coverage/params.py"))
+_SOURCE_FILE = os.path.normpath(os.path.join(_PLUGIN_DIR, "radio_coverage/params.py"))
 
 
 def test_add_pct_params_not_in_loop():

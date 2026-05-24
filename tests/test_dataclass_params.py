@@ -27,7 +27,7 @@ from defaults import (
     DEFAULT_TX_POWER_DBM,
 )
 
-from coverage.analysis_params import CoverageAnalysisParams
+from radio_coverage.analysis_params import CoverageAnalysisParams
 from p2p.analysis_params import P2PAnalysisParams
 from batch.analysis_params import BatchAnalysisParams
 

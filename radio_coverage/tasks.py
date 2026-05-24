@@ -38,7 +38,7 @@ from NoWires.clutter.resolve import (
 )
 from NoWires.clutter.context import ClutterLossContext
 from NoWires.constants import EARTH_RADIUS_M
-from NoWires.coverage.pool import _CoverageTask
+from NoWires.radio_coverage.pool import _CoverageTask
 
 _MIN_COVERAGE_DISTANCE_M = 1.0
 _DISTANCE_BUCKET_M = 10.0

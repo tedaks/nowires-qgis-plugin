@@ -10,21 +10,21 @@ from qgis.core import QgsVectorLayer
 from NoWires.base_algorithm import NoWiresAlgorithm, install_constants
 from NoWires.dem_downloader import ensure_dem_for_area
 from NoWires.elevation import ElevationGrid
-from NoWires.coverage.legend import show_coverage_legend
-from NoWires.coverage.compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
-from NoWires.coverage.dem_validate import validate_dem_coverage
-from NoWires.coverage.engine import compute_coverage
+from NoWires.radio_coverage.legend import show_coverage_legend
+from NoWires.radio_coverage.compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
+from NoWires.radio_coverage.dem_validate import validate_dem_coverage
+from NoWires.radio_coverage.engine import compute_coverage
 from NoWires.clutter import (
     CLUTTER_MODEL_OPTIONS, clutter_source_label, compute_terminal_clutter_losses,
     ensure_clutter_grid_for_area,
 )
 from NoWires.report.export import write_report_csv, write_report_html, write_report_json
 from NoWires.report.markers import write_single_marker
-from NoWires.coverage.params import PARAM_CONSTANTS, add_coverage_params, extract_coverage_params
+from NoWires.radio_coverage.params import PARAM_CONSTANTS, add_coverage_params, extract_coverage_params
 from NoWires.antenna import ANTENNA_PRESET_OPTIONS
 from NoWires.constants import DEGREE_PADDING, METERS_PER_DEGREE_LAT
 from NoWires.geo_bounds import coverage_bounds
-from NoWires.coverage.reporting import (
+from NoWires.radio_coverage.reporting import (
     build_coverage_report_payload_for_grid, report_coverage_results,
     write_coverage_geotiff,
 )
@@ -280,7 +280,7 @@ class CoverageAlgorithm(NoWiresAlgorithm):
             self._tmp.warn_persistent(feedback)
 
     def _on_coverage_loaded(self, layer):
-        from NoWires.coverage.palette import apply_coverage_style
+        from NoWires.radio_coverage.palette import apply_coverage_style
         apply_coverage_style(layer)
         layer.setOpacity(1.0)
         self._coverage_layer_id = layer.id()

@@ -33,7 +33,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from NoWires.defaults import DEFAULT_FREQ_MHZ
+from NoWires.defaults import DEFAULT_FREQ_MHZ, DEFAULT_K_FACTOR
 from NoWires.clutter.context import ClutterModel, BuildingType
 
 if TYPE_CHECKING:
@@ -65,7 +65,7 @@ class BatchAnalysisParams:
     rx_default_az: float | None = None
     tx_front_back_db: float = 25.0
     rx_front_back_db: float = 25.0
-    k_factor: float = 4.0 / 3.0
+    k_factor: float = DEFAULT_K_FACTOR
     n0: float = 301.0
     epsilon: float = 15.0
     sigma: float = 0.005

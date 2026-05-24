@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from coverage.summary import summarize_coverage_grid
+from radio_coverage.summary import summarize_coverage_grid
 
 
 def test_summarize_coverage_grid_reports_distances_for_usable_cells():

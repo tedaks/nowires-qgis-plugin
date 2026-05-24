@@ -14,7 +14,7 @@ import numpy as np
 
 def test_summarize_coverage_grid_zero_rows():
     """Empty grid with 0 rows must return zero-count summary, not raise."""
-    from NoWires.coverage.summary import summarize_coverage_grid
+    from NoWires.radio_coverage.summary import summarize_coverage_grid
 
     result = summarize_coverage_grid(
         np.array([], dtype=np.float32).reshape(0, 0),
@@ -28,7 +28,7 @@ def test_summarize_coverage_grid_zero_rows():
 
 def test_summarize_coverage_grid_zero_cols():
     """Empty grid with 0 cols must return zero-count summary, not raise."""
-    from NoWires.coverage.summary import summarize_coverage_grid
+    from NoWires.radio_coverage.summary import summarize_coverage_grid
 
     grid = np.array([], dtype=np.float32).reshape(5, 0)
     result = summarize_coverage_grid(
@@ -39,7 +39,7 @@ def test_summarize_coverage_grid_zero_cols():
 
 def test_summarize_coverage_grid_normal_grid():
     """Normal grid must still produce valid results."""
-    from NoWires.coverage.summary import summarize_coverage_grid
+    from NoWires.radio_coverage.summary import summarize_coverage_grid
 
     prx = np.full((10, 10), -50.0, dtype=np.float32)
     result = summarize_coverage_grid(

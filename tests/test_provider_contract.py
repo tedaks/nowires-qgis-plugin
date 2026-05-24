@@ -53,7 +53,7 @@ def test_metadata_about_mentions_qgis4_qt6_target():
 
 def test_plugin_unload_clears_coverage_legend():
     source = _text(PLUGIN_SOURCE)
-    assert "from NoWires.coverage.legend import remove_coverage_legend" in source
+    assert "from NoWires.radio_coverage.legend import remove_coverage_legend" in source
     assert "remove_coverage_legend()" in source
 
 

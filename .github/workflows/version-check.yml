@@ -28,6 +28,7 @@ jobs:
         id: gate
         if: github.event_name == 'pull_request'
         env:
+          GH_TOKEN: ${{ github.token }}
           PR_ACTOR: ${{ github.event.pull_request.user.login }}
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
         run: |
@@ -36,8 +37,16 @@ jobs:
             echo "enforce=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if echo "$LABELS" | grep -q '"no-version-bump"'; then
+          # Re-fetch labels via API so reruns and late-applied labels work.
+          CURRENT_LABELS=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/labels" \
+            --jq '.[].name' 2>/dev/null || echo "$LABELS")
+          if echo "$CURRENT_LABELS" | grep -q 'no-version-bump' || echo "$LABELS" | grep -q '"no-version-bump"'; then
             echo "Skipping: 'no-version-bump' label present"
+            echo "enforce=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if echo "$CURRENT_LABELS" | grep -q 'release'; then
+            echo "Skipping: 'release' label present"
             echo "enforce=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -86,6 +95,22 @@ jobs:
 
           if [ "$pr_version" = "$base_version" ]; then
             echo "ERROR: metadata.txt version ($pr_version) has not been bumped from base ($base_version)"
+            exit 1
+          fi
+          pr_parts=$(echo "$pr_version" | tr '.' ' ')
+          base_parts=$(echo "$base_version" | tr '.' ' ')
+          IFS=' ' read -ra pr_arr <<< "$pr_parts"
+          IFS=' ' read -ra base_arr <<< "$base_parts"
+          downgraded=false
+          for i in 0 1 2; do
+            if [ "${pr_arr[i]}" -lt "${base_arr[i]}" ]; then
+              downgraded=true; break
+            elif [ "${pr_arr[i]}" -gt "${base_arr[i]}" ]; then
+              break
+            fi
+          done
+          if [ "$downgraded" = "true" ]; then
+            echo "ERROR: metadata.txt version ($pr_version) is a downgrade from base ($base_version)"
             exit 1
           fi
           echo "Version bump OK: $base_version -> $pr_version"

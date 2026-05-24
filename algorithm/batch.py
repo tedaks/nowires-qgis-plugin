@@ -178,12 +178,7 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
         raise QgsProcessingException("Failed to obtain DEM data for the analysis area.")
     feedback.pushInfo("Building elevation grid...")
     feedback.setProgress(15)
-    try:
-        elev = ElevationGrid(dem_path)
-    except Exception:
-        if rp["cg"] is not None:
-            rp["cg"].close()
-        raise
+    elev = ElevationGrid(dem_path)
     try:
         total = len(candidate_tx) * len(rx_points)
         return BatchAnalysisParams(

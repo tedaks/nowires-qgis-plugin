@@ -5,7 +5,7 @@
 """Regression test for batch_writer.write_batch_csv CSV-injection guard (v1.5.7).
 
 The v1.4.0 fix that added _csv_safe() to report_export.write_report_csv was
-scoped to the coverage/P2P CSV path only; batch_writer wrote user-influenced
+scoped to the radio_coverage/P2P CSV path only; batch_writer wrote user-influenced
 status/point_id values verbatim. Any cell starting with =, +, @, tab, or CR
 would be interpreted as a formula by Excel/LibreOffice on CSV open.
 """

@@ -4,7 +4,7 @@
 # This program is free software under GPLv3 or later. See LICENSE.
 """Unit tests for coverage palette and legend entries."""
 
-from coverage.palette import SIGNAL_LEVELS, build_heatmap_stops, build_legend_entries
+from radio_coverage.palette import SIGNAL_LEVELS, build_heatmap_stops, build_legend_entries
 
 
 EXPECTED_SIGNAL_LEVELS = [

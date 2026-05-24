@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Validation tests for extract_coverage_params — input validation error paths.
 
-Exercises validation branches in coverage/params.py that are not reached by
+Exercises validation branches in radio_coverage/params.py that are not reached by
 the happy-path qgis_integration tests.  Requires QGIS runtime for imports.
 """
 
@@ -12,7 +12,7 @@ from unittest.mock import MagicMock
 
 pytestmark = pytest.mark.qgis_integration
 
-from NoWires.coverage.params import extract_coverage_params, PARAM_CONSTANTS
+from NoWires.radio_coverage.params import extract_coverage_params, PARAM_CONSTANTS
 from qgis.core import QgsProcessingException
 
 
@@ -101,7 +101,7 @@ class TestCoverageParamsValidation:
             extract_coverage_params(alg, params, context=None)
 
     def test_grid_size_exceeds_max(self, monkeypatch):
-        from NoWires.coverage import params as cp_params
+        from NoWires.radio_coverage import params as cp_params
         monkeypatch.setattr(cp_params, "GRID_SIZE_PRESETS", [2048])
         params = _default_params()
         params["GRID_SIZE"] = 0
@@ -138,7 +138,7 @@ class TestCoverageParamsValidation:
             extract_coverage_params(alg, params, context=None)
 
     def test_passes_itm_validation_error_as_qgs_exception(self, monkeypatch):
-        from NoWires.coverage import params as cp_params
+        from NoWires.radio_coverage import params as cp_params
 
         def _raise_value_error(*args, **kwargs):
             raise ValueError("TX height out of ITM range [0.5, 3000]")

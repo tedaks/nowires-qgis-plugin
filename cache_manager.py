@@ -83,6 +83,35 @@ def clear_dem_cache(feedback=None):
     return removed, freed_bytes
 
 
+def evict_cache_lru(max_bytes=2*1024*1024*1024):
+    """Evict least-recently-accessed cache entries until total size is under max_bytes.
+
+    Returns ``(freed_count, freed_bytes)``.
+    """
+    entries = list(_iter_cache_entries())
+    if not entries:
+        return 0, 0
+    entries.sort(key=os.path.getatime)
+    current_total = sum(_entry_size(e) for e in entries)
+    freed_count = 0
+    freed_bytes = 0
+    for entry in entries:
+        if current_total <= max_bytes:
+            break
+        try:
+            size = _entry_size(entry)
+            if os.path.isdir(entry):
+                shutil.rmtree(entry, ignore_errors=True)
+            else:
+                os.unlink(entry)
+            current_total -= size
+            freed_bytes += size
+            freed_count += 1
+        except OSError:
+            pass
+    return freed_count, freed_bytes
+
+
 def format_cache_size(file_count, total_bytes):
     """Human-readable summary used by UI confirmation prompts."""
     if file_count == 0:
