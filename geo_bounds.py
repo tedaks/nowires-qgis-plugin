@@ -4,7 +4,14 @@
 
 import math
 
-from NoWires.constants import METERS_PER_DEGREE_LAT
+from NoWires.constants import (
+    AOI_PADDING_FRACTION, DEGREE_PADDING, METERS_PER_DEGREE_LAT,
+)
+
+
+def aoi_padding_deg(radius_m: float) -> float:
+    """Return the standard AOI padding from a radius or distance in meters."""
+    return float(max(DEGREE_PADDING, radius_m / METERS_PER_DEGREE_LAT * AOI_PADDING_FRACTION))
 
 
 def coverage_bounds(tx_lat, tx_lon, radius_km, padding_deg=0.0):

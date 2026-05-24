@@ -23,9 +23,9 @@ CSV_SAFE_SOURCES = [
 @pytest.mark.parametrize(("payload", "_label"), CSV_SAFE_SOURCES)
 def test_formula_trigger_chars_are_sanitized(payload, _label):
     """Rows starting with formula-trigger characters must be escaped."""
-    from NoWires.report.export import _csv_safe
+    from NoWires.sanitizers import csv_safe
 
-    result = _csv_safe(payload)
+    result = csv_safe(payload)
     assert result.startswith("'"), (
         "_{}_ payload {!r} was not escaped; result was {!r}".format(
             _label, payload, result
@@ -35,15 +35,15 @@ def test_formula_trigger_chars_are_sanitized(payload, _label):
 
 def test_ordinary_strings_untouched():
     """Ordinary safe values must round-trip."""
-    from NoWires.report.export import _csv_safe
+    from NoWires.sanitizers import csv_safe
 
     for value in ("hello", "42.0", "-12.3", "line 1"):
-        assert _csv_safe(value) == value
+        assert csv_safe(value) == value
 
 
 def test_leading_lstrip_still_works():
     """Leading whitespace stripping before formula check must still work."""
-    from NoWires.report.export import _csv_safe
+    from NoWires.sanitizers import csv_safe
 
-    result = _csv_safe("\t=1+1")
+    result = csv_safe("\t=1+1")
     assert result.startswith("'")

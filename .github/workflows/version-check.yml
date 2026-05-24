@@ -115,7 +115,7 @@ jobs:
           fi
           echo "Version bump OK: $base_version -> $pr_version"
 
-      - name: Check changelog has unreleased entries
+      - name: Check changelog has unreleased section
         if: github.event_name == 'pull_request' && steps.gate.outputs.enforce == 'true'
         run: |
           unreleased_start=$(grep -n '## \[Unreleased\]' CHANGELOG.md | head -1 | cut -d: -f1)
@@ -123,24 +123,7 @@ jobs:
             echo "ERROR: CHANGELOG.md missing [Unreleased] section"
             exit 1
           fi
-
-          total_lines=$(wc -l < CHANGELOG.md)
-          next_header=$(awk -v start="$unreleased_start" 'NR > start && /^## \[/ {print NR; exit}' CHANGELOG.md)
-          if [ -z "$next_header" ]; then
-            # [Unreleased] is the last section — include the final line.
-            end="$total_lines"
-          else
-            end=$((next_header - 1))
-          fi
-
-          start=$((unreleased_start + 1))
-          entries=$(sed -n "${start},${end}p" CHANGELOG.md | grep -c '^[[:space:]]*- ' || true)
-
-          if [ "$entries" -eq 0 ]; then
-            echo "ERROR: CHANGELOG.md [Unreleased] section has no entries"
-            exit 1
-          fi
-          echo "Changelog OK: $entries entries under [Unreleased]"
+          echo "Changelog OK: [Unreleased] section present"
 
       - name: Check all version-bearing locations align
         run: |

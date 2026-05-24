@@ -55,7 +55,7 @@ class TestWriteGeotiffIntegration:
 
     def test_write_geotiff_handles_nodata(self):
         from NoWires.raster_io import write_geotiff
-        from NoWires.radio_coverage.compute import grid_to_raster_array
+        from NoWires.raster_io import grid_to_raster_array
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "test_nodata.tif")
             grid = np.full((4, 4), float("nan"), dtype=np.float64)
