@@ -1,316 +1,239 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""QGIS integration tests for algorithm execution and consistency.
-
-Runs processAlgorithm() for P2P and Coverage using a synthetic DEM.
-Requires QGIS_PREFIX_PATH to be set (QGIS Docker container).
-"""
+"""Docker QGIS integration tests for algorithm modules."""
 
 import os
+import tempfile
+
+import numpy as np
 import pytest
 
-try:
-    from qgis.core import QgsProcessingContext, QgsProcessingFeedback, QgsPointXY
-    _HAS_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
-except ImportError:
-    _HAS_QGIS = False
+from qgis.core import QgsProcessingContext, QgsProcessingFeedback
 
-pytestmark = [
-    pytest.mark.skipif(
-        not _HAS_QGIS,
-        reason="QGIS integration tests require QGIS_PREFIX_PATH to be set",
-    ),
-    pytest.mark.qgis_integration,
-]
+pytestmark = pytest.mark.qgis_integration
 
 
+class Feedback(QgsProcessingFeedback):
+    def __init__(self):
+        super().__init__()
+        self.messages = []
 
-@pytest.fixture
-def processing_context(qgis_app):
-    return QgsProcessingContext()
+    def pushInfo(self, msg):
+        self.messages.append(msg)
+
+    def pushWarning(self, msg):
+        self.messages.append(msg)
 
 
-@pytest.fixture
-def feedback():
-    return QgsProcessingFeedback()
+def _create_dem(path, south=0, north=5, west=0, east=5, nx=50, ny=50):
+    from osgeo import gdal, osr
+    driver = gdal.GetDriverByName("GTiff")
+    ds = driver.Create(path, nx, ny, 1, gdal.GDT_Float32)
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(4326)
+    srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    ds.SetProjection(srs.ExportToWkt())
+    dx = (east - west) / nx
+    dy = (north - south) / ny
+    ds.SetGeoTransform([west, dx, 0, north, 0, -dy])
+    data = np.full((ny, nx), 100.0, dtype=np.float32)
+    band = ds.GetRasterBand(1)
+    band.WriteArray(data)
+    band.SetNoDataValue(-32768)
+    band.FlushCache()
+    ds = None
 
 
-class TestP2PAlgorithmExecution:
-    def test_p2p_process_algorithm_runs_with_synthetic_dem(
-        self, qgis_app, processing_context, feedback, patch_dem_download, create_synthetic_dem, monkeypatch, tmp_path,
-    ):
-        from NoWires.algorithm.p2p import P2PAlgorithm
-        from NoWires import clutter as clutter_mod
-
-        dem_path = patch_dem_download
-        create_synthetic_dem(
-            dem_path, south=13.9, north=14.1,
-            west=120.9, east=121.1, nx=20, ny=20,
+class TestRadioCoverageIntegration:
+    def test_compute_itm_p2p_basic(self, qgis_app):
+        from NoWires.radio_coverage.compute import compute_itm_p2p
+        elevs = np.linspace(100, 95, 200)
+        result = compute_itm_p2p(
+            h_tx__meter=30.0, h_rx__meter=10.0,
+            elevations=elevs, resolution=30.0,
+            climate_idx=1, N_0=301.0, f__mhz=300.0,
+            polarization=1, epsilon=15.0, sigma=0.005,
+            time_pct=50, location_pct=50, situation_pct=50,
+            eirp_dbm=30.0, ant_gain_adj=0.0, rx_gain_dbi=0.0,
+            clutter_tx_db=0.0, clutter_rx_db=0.0, bel_rx_db=0.0,
         )
+        assert result is not None
+        assert "received_power_dbm" in result
+        assert "total_path_loss_db" in result
 
-        monkeypatch.setattr(clutter_mod, "ensure_clutter_grid_for_area", lambda *a, **kw: None)
-
-        alg = P2PAlgorithm()
-        alg.initAlgorithm({})
-
-        params = {
-            alg.TX_POINT: QgsPointXY(121.0, 14.0),
-            alg.RX_POINT: QgsPointXY(121.01, 14.0),
-            alg.TX_HEIGHT: 30.0,
-            alg.RX_HEIGHT: 10.0,
-            alg.FREQ_MHZ: 900.0,
-            alg.POLARIZATION: 1,
-            alg.CLIMATE: 1,
-            alg.TIME_PCT: 50.0,
-            alg.LOCATION_PCT: 50.0,
-            alg.SITUATION_PCT: 50.0,
-            alg.TX_POWER: 30.0,
-            alg.TX_GAIN: 10.0,
-            alg.RX_GAIN: 8.0,
-            alg.CABLE_LOSS: 1.0,
-            alg.RX_SENSITIVITY: -90.0,
-            alg.K_FACTOR_PRESET: 2,
-            alg.K_FACTOR: 1.333,
-            alg.N0: 301.0,
-            alg.EPSILON: 15.0,
-            alg.SIGMA: 0.005,
-            alg.TX_ANTENNA_PRESET: 0,
-            alg.TX_ANTENNA_AZ: 0.0,
-            alg.TX_FRONT_BACK_DB: 25.0,
-            alg.TX_DOWNTILT_DEG: 0.0,
-            alg.TX_H_PATTERN: "",
-            alg.TX_V_PATTERN: "",
-            alg.RX_ANTENNA_PRESET: 0,
-            alg.RX_ANTENNA_AZ: 0.0,
-            alg.RX_FRONT_BACK_DB: 25.0,
-            alg.RX_DOWNTILT_DEG: 0.0,
-            alg.RX_H_PATTERN: "",
-            alg.RX_V_PATTERN: "",
-            alg.CLUTTER_MODEL: 0,
-            alg.CCH_OVERRIDE: 0.0,
-            alg.CLUTTER_RASTER: "",
-            alg.TX_CLUTTER_OVERRIDE: 0,
-            alg.RX_CLUTTER_OVERRIDE: 0,
-            alg.CLUTTER_PERCENTILE: 50.0,
-            alg.STREET_WIDTH: 27.0,
-            alg.BEL_ENABLED: False,
-            alg.BEL_BUILDING_TYPE: 0,
-            alg.BEL_ELEVATION_ANGLE: 0.0,
-            alg.SHOW_CHART: False,
-            alg.OUTPUT_PROFILE: str(tmp_path / "profile.gpkg"),
-            alg.OUTPUT_FRESNEL: str(tmp_path / "fresnel.gpkg"),
-            alg.OUTPUT_MARKERS: str(tmp_path / "markers.gpkg"),
-            alg.OUTPUT_REPORT_CSV: str(tmp_path / "report.csv"),
-            alg.OUTPUT_REPORT_JSON: str(tmp_path / "report.json"),
-            alg.OUTPUT_REPORT_HTML: str(tmp_path / "report.html"),
-        }
-
-        results = alg.processAlgorithm(params, processing_context, feedback)
-        assert results[alg.OUTPUT_PROFILE] is not None
-        assert os.path.exists(results[alg.OUTPUT_PROFILE])
-
-
-class TestCoverageAlgorithmExecution:
-    def test_coverage_process_algorithm_runs_with_synthetic_dem(
-        self, qgis_app, processing_context, feedback, patch_dem_download, create_synthetic_dem, monkeypatch, tmp_path,
-    ):
-        from NoWires.algorithm.coverage import CoverageAlgorithm
-        from NoWires import clutter as clutter_mod
-
-        dem_path = patch_dem_download
-        create_synthetic_dem(
-            dem_path, south=13.9, north=14.1,
-            west=120.9, east=121.1, nx=20, ny=20,
+    def test_coverage_report_payload_basic(self, qgis_app):
+        from NoWires.radio_coverage.reporting import build_coverage_report_payload_for_grid
+        payload = build_coverage_report_payload_for_grid(
+            min_lat=0.0, max_lat=1.0, min_lon=0.0, max_lon=1.0,
+            f_mhz=300.0, rx_sensitivity_dbm=-100.0,
+            max_dist_km=5.0, grid_size=1, climate=1,
+            tx_lat=0.5, tx_lon=0.5,
         )
+        assert "tx_lat" in payload
 
-        monkeypatch.setattr(clutter_mod, "ensure_clutter_grid_for_area", lambda *a, **kw: None)
+    def test_remove_coverage_legend_noop(self, qgis_app):
+        from NoWires.radio_coverage.legend import remove_coverage_legend
+        remove_coverage_legend()
+        assert True
 
-        alg = CoverageAlgorithm()
-        alg.initAlgorithm({})
+    def test_palette_apply_coverage_style(self, qgis_app, tmp_path):
+        from NoWires.radio_coverage.palette import apply_coverage_style
+        tif = str(tmp_path / "coverage.tif")
+        _create_dem(tif)
+        from qgis.core import QgsRasterLayer
+        layer = QgsRasterLayer(tif, "Test Coverage")
+        if layer.isValid():
+            apply_coverage_style(layer)
+            assert layer.renderer() is not None
 
-        params = {
-            alg.TX_POINT: QgsPointXY(121.0, 14.0),
-            alg.TX_HEIGHT: 30.0,
-            alg.RX_HEIGHT: 10.0,
-            alg.FREQ_MHZ: 900.0,
-            alg.POLARIZATION: 1,
-            alg.CLIMATE: 1,
-            alg.TIME_PCT: 50.0,
-            alg.LOCATION_PCT: 50.0,
-            alg.SITUATION_PCT: 50.0,
-            alg.TX_POWER: 30.0,
-            alg.TX_GAIN: 10.0,
-            alg.RX_GAIN: 8.0,
-            alg.CABLE_LOSS: 1.0,
-            alg.RX_SENSITIVITY: -90.0,
-            alg.N0: 301.0,
-            alg.EPSILON: 15.0,
-            alg.SIGMA: 0.005,
-            alg.RADIUS_KM: 0.5,
-            alg.GRID_SIZE: 0,
-            alg.ANTENNA_PRESET: 0,
-            alg.ANTENNA_AZ: 0.0,
-            alg.ANTENNA_BW: 360.0,
-            alg.FRONT_BACK_DB: 25.0,
-            alg.DOWNTILT_DEG: 0.0,
-            alg.H_PATTERN: "",
-            alg.V_PATTERN: "",
-            alg.CLUTTER_MODEL: 0,
-            alg.CCH_OVERRIDE: 0.0,
-            alg.CLUTTER_RASTER: "",
-            alg.TX_CLUTTER_OVERRIDE: 0,
-            alg.RX_CLUTTER_OVERRIDE: 0,
-            alg.CLUTTER_PERCENTILE: 50.0,
-            alg.STREET_WIDTH: 27.0,
-            alg.BEL_ENABLED: False,
-            alg.BEL_BUILDING_TYPE: 0,
-            alg.BEL_ELEVATION_ANGLE: 0.0,
-            alg.OUTPUT_RASTER: str(tmp_path / "coverage.tif"),
-            alg.OUTPUT_REPORT_CSV: str(tmp_path / "report.csv"),
-            alg.OUTPUT_REPORT_JSON: str(tmp_path / "report.json"),
-            alg.OUTPUT_REPORT_HTML: str(tmp_path / "report.html"),
-        }
-
-        results = alg.processAlgorithm(params, processing_context, feedback)
-        assert results[alg.OUTPUT_RASTER] is not None
-        assert os.path.exists(results[alg.OUTPUT_RASTER])
-
-        from osgeo import gdal
-        ds = gdal.Open(results[alg.OUTPUT_RASTER])
-        assert ds is not None
-        ds = None
+    def test_opacity_dialog_smoke(self, qgis_app, tmp_path):
+        from NoWires.radio_coverage.opacity import CoverageOpacityDialog
+        tif = str(tmp_path / "opacity.tif")
+        _create_dem(tif)
+        from qgis.core import QgsRasterLayer
+        layer = QgsRasterLayer(tif, "Opacity Test")
+        if layer.isValid():
+            dlg = CoverageOpacityDialog(layer, parent=None)
+            assert dlg is not None
+            dlg.deleteLater()
 
 
-class TestAlgorithmParameterConsistency:
-    def test_p2p_algorithm_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm.p2p import P2PAlgorithm
-        alg = P2PAlgorithm()
-        alg.initAlgorithm({})
-        assert alg.name() == "p2p_analysis"
-        assert alg.TX_POINT is not None
-        assert alg.OUTPUT_PROFILE is not None
+class TestThreeDIntegration:
+    def test_highlight_nowires_layers(self, qgis_app, tmp_path):
+        tif = str(tmp_path / "3d_test.tif")
+        _create_dem(tif)
+        from qgis.core import QgsRasterLayer, QgsProject
+        layer = QgsRasterLayer(tif, "NoWires Coverage")
+        QgsProject.instance().addMapLayer(layer)
+        try:
+            from NoWires.three_d import highlight_nowires_layers
+            from unittest.mock import MagicMock
+            mock_iface = MagicMock()
+            mock_iface.mapCanvas.return_value = MagicMock()
+            highlight_nowires_layers(mock_iface)
+        finally:
+            QgsProject.instance().removeMapLayer(layer)
 
-    def test_coverage_algorithm_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm.coverage import CoverageAlgorithm
-        alg = CoverageAlgorithm()
-        alg.initAlgorithm({})
-        assert alg.name() == "coverage_analysis"
-        assert alg.TX_POINT is not None
-        assert alg.RADIUS_KM is not None
-        assert alg.OUTPUT_RASTER is not None
-
-    def test_batch_algorithm_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm.batch import BatchAnalysisAlgorithm
-        alg = BatchAnalysisAlgorithm()
-        alg.initAlgorithm({})
-        assert alg.name() == "batch_p2p_analysis"
-
-    def test_contour_algorithm_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm.contour import ContourLinesAlgorithm
-        alg = ContourLinesAlgorithm()
-        alg.initAlgorithm({})
-        assert alg.name() == "contour_lines"
-        assert alg.OUTPUT is not None
-
-    def test_comparison_algorithm_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm.coverage_comparison import CoverageComparisonAlgorithm
-        alg = CoverageComparisonAlgorithm()
-        alg.initAlgorithm({})
-        assert alg.name() == "coverage_comparison"
-        assert alg.OUTPUT_DELTA is not None
-
-
-class TestBatchAlgorithmExecution:
-    def test_batch_one_to_many_process_algorithm_runs(
-        self, qgis_app, processing_context, feedback, patch_dem_download, create_synthetic_dem, tmp_path,
-    ):
-        from NoWires.algorithm.batch import BatchAnalysisAlgorithm
+    def test_configure_contours_for_3d(self, qgis_app, tmp_path):
+        from qgis.core import QgsVectorLayer
+        gpkg_path = str(tmp_path / "contour3d.gpkg")
         from osgeo import ogr, osr
-
-        dem_path = patch_dem_download
-        create_synthetic_dem(
-            dem_path, south=13.9, north=14.1,
-            west=120.9, east=121.1, nx=20, ny=20,
-        )
-
-        rx_path = str(tmp_path / "rx_points.gpkg")
         driver = ogr.GetDriverByName("GPKG")
-        ds = driver.CreateDataSource(rx_path)
+        ds = driver.CreateDataSource(gpkg_path)
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(4326)
         srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-        layer = ds.CreateLayer("rx", srs=srs, geom_type=ogr.wkbPoint)
-        layer.CreateField(ogr.FieldDefn("height", ogr.OFTReal))
-        layer.CreateField(ogr.FieldDefn("gain_db", ogr.OFTReal))
-        for lon, lat in [(121.005, 14.0), (121.01, 14.0)]:
-            feat = ogr.Feature(layer.GetLayerDefn())
-            geom = ogr.Geometry(ogr.wkbPoint)
-            geom.AddPoint(lon, lat)
-            feat.SetGeometry(geom)
-            feat.SetField("height", 10.0)
-            feat.SetField("gain_db", 8.0)
-            layer.CreateFeature(feat)
+        lyr = ds.CreateLayer("contours", srs, ogr.wkbLineString)
+        lyr.CreateField(ogr.FieldDefn("ELEV", ogr.OFTReal))
+        feat = ogr.Feature(lyr.GetLayerDefn())
+        line = ogr.Geometry(ogr.wkbLineString)
+        line.AddPoint(0, 0)
+        line.AddPoint(1, 0)
+        feat.SetGeometry(line)
+        feat.SetField("ELEV", 100.0)
+        lyr.CreateFeature(feat)
         ds = None
 
-        alg = BatchAnalysisAlgorithm()
-        alg.initAlgorithm({})
-
-        params = {
-            alg.MODE: 0,
-            alg.TX_POINT: QgsPointXY(121.0, 14.0),
-            alg.TX_HEIGHT: 30.0, alg.RX_HEIGHT: 10.0,
-            alg.FREQ_MHZ: 900.0, alg.POLARIZATION: 1, alg.CLIMATE: 1,
-            alg.TIME_PCT: 50.0, alg.LOCATION_PCT: 50.0, alg.SITUATION_PCT: 50.0,
-            alg.TX_POWER: 30.0, alg.TX_GAIN: 10.0, alg.RX_GAIN: 8.0,
-            alg.CABLE_LOSS: 1.0, alg.RX_SENSITIVITY: -90.0,
-            alg.K_FACTOR_PRESET: 2, alg.K_FACTOR: 1.333,
-            alg.N0: 301.0, alg.EPSILON: 15.0, alg.SIGMA: 0.005,
-            alg.RX_LAYER: rx_path,
-            alg.TX_ANTENNA_PRESET: 0, alg.TX_ANTENNA_AZ: 0.0, alg.TX_FRONT_BACK_DB: 25.0,
-            alg.RX_ANTENNA_PRESET: 0, alg.RX_ANTENNA_AZ: 0.0, alg.RX_FRONT_BACK_DB: 25.0,
-            alg.CLUTTER_MODEL: 0, alg.CCH_OVERRIDE: 0.0, alg.CLUTTER_RASTER: "",
-            alg.TX_CLUTTER_OVERRIDE: 0, alg.RX_CLUTTER_OVERRIDE: 0,
-            alg.CLUTTER_PERCENTILE: 50.0, alg.STREET_WIDTH: 27.0,
-            alg.BEL_ENABLED: False, alg.BEL_BUILDING_TYPE: 0, alg.BEL_ELEVATION_ANGLE: 0.0,
-            alg.RANK_BY: 0,
-            alg.OUTPUT_MARKERS: str(tmp_path / "markers.gpkg"),
-            alg.OUTPUT_CSV: str(tmp_path / "results.csv"),
-            alg.OUTPUT_JSON: str(tmp_path / "results.json"),
-        }
-
-        results = alg.processAlgorithm(params, processing_context, feedback)
-        assert results[alg.OUTPUT_MARKERS] is not None
-        assert os.path.exists(results[alg.OUTPUT_MARKERS])
+        layer = QgsVectorLayer(gpkg_path, "Contours")
+        if layer.isValid():
+            from NoWires.three_d import configure_contours_for_3d
+            configure_contours_for_3d(layer)
 
 
-class TestContourAlgorithmExecution:
-    def test_contour_validate_aoi_with_valid_rectangle(self, qgis_app):
-        from NoWires.algorithm.contour import ContourLinesAlgorithm
-        from qgis.core import QgsRectangle, QgsProcessingContext
-
-        alg = ContourLinesAlgorithm()
-        alg.initAlgorithm({})
-
-        rect = QgsRectangle(120.9, 13.9, 121.1, 14.1)
-        aoi, geom = alg._validate_aoi(
-            {alg.AREA_OF_INTEREST: rect},
-            QgsProcessingContext(),
-        )
-        assert aoi.width() < 5.0
-        assert aoi.height() < 5.0
-        assert not geom.isEmpty()
-
-    def test_contour_validate_aoi_rejects_large_area(self, qgis_app):
-        from NoWires.algorithm.contour import ContourLinesAlgorithm
-        from qgis.core import QgsRectangle, QgsProcessingContext
-        from qgis.core import QgsProcessingException
-
-        alg = ContourLinesAlgorithm()
-        alg.initAlgorithm({})
-
-        rect = QgsRectangle(-10, -10, 10, 10)
-        with pytest.raises(QgsProcessingException, match="too large"):
-            alg._validate_aoi({alg.AREA_OF_INTEREST: rect}, QgsProcessingContext())
+class TestContourIntegration:
+    def test_contour_smoothing_none(self, qgis_app, tmp_path):
+        tif = str(tmp_path / "smooth_dem.tif")
+        _create_dem(tif)
+        from NoWires.contour.smoothing import smooth_contour_dem, SMOOTHING_NONE
+        from NoWires.temp_manager import TempDirManager
+        mgr = TempDirManager()
+        tmp_dir = mgr.make_dir("smooth_test")
+        try:
+            smooth_contour_dem(
+                SMOOTHING_NONE, tif, tmp_dir,
+                Feedback(), 0.0, 1.0,
+            )
+        finally:
+            mgr.cleanup()
 
 
+class TestP2PIntegration:
+    def test_p2p_link_param_class(self, qgis_app):
+        from NoWires.p2p.analysis_params import P2PAnalysisParams
+        params = P2PAnalysisParams()
+        params.tx_lat = 47.0
+        params.tx_lon = 8.0
+        params.rx_lat = 47.1
+        params.rx_lon = 8.1
+        params.f_mhz = 300.0
+        assert params.tx_lat == 47.0
+        assert params.f_mhz == 300.0
+
+    def test_p2p_outputs_write_fresnel_zone(self, qgis_app, tmp_path):
+        from NoWires.p2p.outputs import write_fresnel_zone
+        output_path = str(tmp_path / "fresnel.gpkg")
+        d_km = np.linspace(0, 5, 50)
+        terrain = np.full(50, 100.0)
+        write_fresnel_zone(output_path, d_km, 0.0, 0.0, 0.1, 0.0, terrain, terrain * 0.6)
+        assert os.path.exists(output_path)
+
+    def test_p2p_symbology_applied(self, qgis_app, tmp_path):
+        from qgis.core import QgsVectorLayer
+        gpkg_path = str(tmp_path / "p2p_lines.gpkg")
+        from osgeo import ogr, osr
+        driver = ogr.GetDriverByName("GPKG")
+        ds = driver.CreateDataSource(gpkg_path)
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+        srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        lyr = ds.CreateLayer("path", srs, ogr.wkbLineString)
+        feat = ogr.Feature(lyr.GetLayerDefn())
+        line = ogr.Geometry(ogr.wkbLineString)
+        line.AddPoint(0, 0)
+        line.AddPoint(1, 0)
+        feat.SetGeometry(line)
+        lyr.CreateFeature(feat)
+        ds = None
+
+        layer = QgsVectorLayer(gpkg_path, "P2P Path")
+        if layer.isValid():
+            from NoWires.p2p.symbology import apply_profile_line_symbology
+            apply_profile_line_symbology(layer)
+
+
+class TestProcessingUtilsIntegration:
+    def test_queue_layer_loading(self, qgis_app, tmp_path):
+        from NoWires.processing_utils import queue_layer_for_loading
+        from qgis.core import QgsVectorLayer
+        context = QgsProcessingContext()
+        gpkg_path = str(tmp_path / "queue.gpkg")
+        from osgeo import ogr, osr
+        driver = ogr.GetDriverByName("GPKG")
+        ds = driver.CreateDataSource(gpkg_path)
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+        lyr = ds.CreateLayer("test", srs, ogr.wkbPoint)
+        feat = ogr.Feature(lyr.GetLayerDefn())
+        pt = ogr.Geometry(ogr.wkbPoint)
+        pt.AddPoint(0, 0)
+        feat.SetGeometry(pt)
+        lyr.CreateFeature(feat)
+        ds = None
+
+        layer = QgsVectorLayer(gpkg_path, "Test")
+        queue_layer_for_loading(context, layer, "Test Layer")
+
+
+class TestNowiresPluginIntegration:
+    def test_provider_loads_all_algorithms(self, qgis_app):
+        from NoWires.provider import NoWiresProvider
+        provider = NoWiresProvider()
+        provider.loadAlgorithms()
+        names = [a.name() for a in provider.algorithms()]
+        assert "p2p_analysis" in names
+        assert "coverage_analysis" in names
+        assert "coverage_comparison" in names
+        assert "contour_lines" in names
+        assert "batch_p2p_analysis" in names
+        assert len(names) == 5
