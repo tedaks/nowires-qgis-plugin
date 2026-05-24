@@ -79,13 +79,11 @@ class TestCacheManager:
         from NoWires import cache_manager as cm
         dem_dir = tmp_path / "NoWires-lru"
         dem_dir.mkdir()
-        expected_output_path = None
         for i in range(3):
             tile = dem_dir / f"Copernicus_DSM_COG_10_N0{i}_00_E000_00_DEM.tif"
             tile.write_text("data" * 100)
             os.utime(str(tile), (1000 + i, 1000 + i))
         monkeypatch.setattr(cm, "get_temp_dir", lambda create=False: str(dem_dir))
-        total_before = cm.get_cache_size()[1]
         count, freed = cm.evict_cache_lru(max_bytes=10)
         assert count + freed >= 0
 
