@@ -4,7 +4,6 @@
 """Docker QGIS integration tests for algorithm modules."""
 
 import os
-import tempfile
 
 import numpy as np
 import pytest

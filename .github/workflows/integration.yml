@@ -68,6 +68,9 @@ jobs:
         # copy in /usr/local wins on PATH.
         run: pip install --break-system-packages --ignore-installed -c constraints-ci.txt -r requirements-test.txt
 
+      - name: Install matplotlib (off-screen chart tests)
+        run: pip install --break-system-packages --ignore-installed matplotlib
+
       - name: Verify dependency tree
         run: pip check
 

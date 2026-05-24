@@ -4,15 +4,12 @@
 """Edge case tests for _smoothing_vrt helpers."""
 
 import os
-import re
 import tempfile
 
-import pytest
 
 
 class TestParseXML:
     def test_parse_xml_uses_defusedxml_when_available(self, monkeypatch):
-        import xml.etree.ElementTree as ET
         from contour._smoothing_vrt import _parse_xml
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:

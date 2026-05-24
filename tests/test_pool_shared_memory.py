@@ -3,13 +3,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for coverage pool close/unlink/fallback paths."""
 
-import os
-import sys
-from multiprocessing.shared_memory import SharedMemory
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
-import pytest
 
 from NoWires.radio_coverage.pool import (
     _final_cov_pool,

@@ -127,12 +127,10 @@ class TestCoverageLegend:
             parent.deleteLater()
 
     def test_show_coverage_legend(self, qgis_app):
-        from unittest.mock import MagicMock
         from qgis.PyQt.QtWidgets import QWidget
         from NoWires.radio_coverage.legend import show_coverage_legend
 
         parent = QWidget()
-        canvas = QWidget(parent)
         widget = show_coverage_legend(-90.0)
         if widget is not None:
             widget.deleteLater()
