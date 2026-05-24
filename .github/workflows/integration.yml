@@ -2,6 +2,8 @@ name: QGIS Integration Tests
 
 on:
   push:
+    branches: [main]
+    tags: ['v*.*.*']
   pull_request:
   workflow_dispatch:
 
@@ -17,36 +19,15 @@ defaults:
     shell: bash -euo pipefail {0}
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-
-      - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: constraints-ci.txt
-
-      - name: Install lint dependencies
-        run: pip install -c constraints-ci.txt -r requirements-lint.txt
-
-      - name: Run ruff check
-        run: ruff check .
-
+  # Lint is owned by tests.yml and required via branch protection; no need
+  # to duplicate it here.
   qgis-integration:
-    needs: [lint]
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     strategy:
       matrix:
         qgis_version: ["4.0"]
-      fail-fast: false
 
     container:
       # Pinned to digest so upstream point releases of qgis/qgis:4.0
@@ -61,12 +42,20 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
+      - name: Create venv with system-site-packages
+        # QGIS Python bindings live in the container's system site-packages
+        # and cannot be pip-installed, so the venv inherits them. Pinned
+        # versions go into the venv (which precedes system on sys.path) and
+        # shadow the apt-shipped copies of pytest/numpy/defusedxml. Unlike
+        # the previous --ignore-installed approach, pip check now sees both
+        # layers and surfaces real conflicts instead of silently masking
+        # them.
+        run: |
+          python3 -m venv --system-site-packages /opt/ci-venv
+          echo "/opt/ci-venv/bin" >> "$GITHUB_PATH"
+
       - name: Install test dependencies
-        # The qgis/qgis container ships pytest/numpy/defusedxml via apt with
-        # no RECORD files, so pip cannot uninstall them. --ignore-installed
-        # lets pip install the pinned versions alongside; the pip-installed
-        # copy in /usr/local wins on PATH.
-        run: pip install --break-system-packages --ignore-installed -c constraints-ci.txt -r requirements-test.txt
+        run: pip install -c constraints-ci.txt -r requirements-test.txt matplotlib
 
       - name: Verify dependency tree
         run: pip check

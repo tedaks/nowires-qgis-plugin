@@ -25,6 +25,12 @@ pytestmark = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def _clear_project(qgis_app):
+    from qgis.core import QgsProject
+    QgsProject.instance().clear()
+
+
 def _make_geotiff(path):
     from NoWires.raster_io import write_geotiff
     grid = np.full((4, 4), -50.0, dtype=np.float32)

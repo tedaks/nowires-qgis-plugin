@@ -12,6 +12,12 @@ from unittest.mock import mock_open, patch
 import pytest
 import tile_download_base as tdb
 
+try:
+    import qgis.core  # noqa: F401
+    _HAS_REAL_QGIS = True
+except ImportError:
+    _HAS_REAL_QGIS = False
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -146,6 +152,7 @@ class _DegenerateDataset:
 # Covers lines: 104-110 (cancel during chunk read, f.flush, os.unlink)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(_HAS_REAL_QGIS, reason="mock_open interferes with QGIS runtime")
 def test_cancel_mid_download_flushes_and_cleans_tmp():
     """Cancel during chunk read must call f.flush() and remove tmp.
 

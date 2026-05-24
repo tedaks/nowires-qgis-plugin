@@ -12,6 +12,11 @@ from NoWires.radio_coverage.params import (
 from NoWires.radio_coverage.analysis_params import CoverageAnalysisParams
 
 
+def _pname(p):
+    val = getattr(p, "name")
+    return val() if callable(val) else val
+
+
 class _Alg:
     def __init__(self):
         self._params = {}
@@ -50,15 +55,15 @@ class TestAddCoverageParams:
     def test_tx_point_param_is_point_type(self):
         alg = _Alg()
         add_coverage_params(alg)
-        point_params = [p for p in alg._added if hasattr(p, 'name') and p.name == 'TX_POINT']
+        point_params = [p for p in alg._added if _pname(p) == "TX_POINT"]
         assert len(point_params) == 1
 
     def test_grid_size_is_enum(self):
         alg = _Alg()
         add_coverage_params(alg)
-        gs = [p for p in alg._added if hasattr(p, 'name') and p.name == 'GRID_SIZE']
+        gs = [p for p in alg._added if _pname(p) == "GRID_SIZE"]
         assert len(gs) == 1
-        assert hasattr(gs[0], 'options')
+        assert hasattr(gs[0], "options")
 
 
 class TestExtractCoverageParams:
