@@ -9,21 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned
+
+- Docker QGIS integration tests for `algorithm/batch.py`, `algorithm/coverage_comparison.py`, `algorithm/contour.py`, `algorithm/coverage.py`, `comparison/outputs.py` full algorithm orchestration.
+- Unit tests for `radio_coverage/legend.py` legend data builders (Qt-dependent).
+
+## [1.6.4] - 2026-05-24
+
 ### Changed
 
 - Increase `fail_under` coverage threshold from 59% to 65% in `pyproject.toml`.
 - Coverage push: 63% unit → 66.7% unit + GDAL, → **80% combined** (unit + GDAL + QGIS integration) via Docker QGIS 4.0 container.
+- CI: `pytest` no longer blocks on `lint`/`audit`/`mypy`/`import-linter` — all five gates now run in parallel.
+- CI: restrict `push` trigger on `tests.yml` and `integration.yml` to `main` + `v*.*.*` tags to stop double-firing on PR-source pushes.
+- CI: integration container switched from `--ignore-installed` to a venv with `--system-site-packages`, so `pip check` surfaces real conflicts instead of silently masking them.
+- CI: `version-check.yml` docs-only detection tightened from `*.md` wildcard to an explicit allowlist of root doc files.
 
 ### Added
 
 - 83 unit tests across 8 files: bearing_destination edge cases, tile download cancel/corruption, batch/outputs height validation, nowires lifecycle, batch/writer CSV/JSON edges, coverage pool close/unlink, smoothing VRT helpers, non-Qt GUI helpers.
 - 23 extended unit tests for temp_manager lifecycle, sanitizers Unicode guards, shared_dem_grid stale-entry cleanup, SHM_NAME_RE validation.
 - 9 Docker QGIS integration tests covering compute_itm_p2p, coverage legend/palette/opacity, three_d highlight/contour, contour smoothing, p2p symbology, processing_utils queue, provider registration.
+- CI: `tests.yml` now exposes `workflow_call`; `release.yml` gates the release on the full test suite running against the tagged commit.
+- CI: SLSA build provenance attestation on the release zip via `actions/attest-build-provenance` (pinned by commit SHA).
+- CI: `benchmark.yml` downloads the latest successful main baseline artifact and prints an informational diff on PR runs.
+- CI: 300-line source-file gate now also excludes `benchmarks/`.
 
-### Planned
+### Removed
 
-- Docker QGIS integration tests for `algorithm/batch.py`, `algorithm/coverage_comparison.py`, `algorithm/contour.py`, `algorithm/coverage.py`, `comparison/outputs.py` full algorithm orchestration.
-- Unit tests for `radio_coverage/legend.py` legend data builders (Qt-dependent).
+- CI: duplicate `lint` jobs removed from `integration.yml` and `release.yml` (lint is owned by `tests.yml`).
 
 ## [1.6.3] - 2026-05-24
 
