@@ -41,6 +41,11 @@ jobs:
             echo "enforce=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          if echo "$LABELS" | grep -q '"release"'; then
+            echo "Skipping unreleased-entries check: 'release' label present"
+            echo "enforce=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           git fetch --quiet origin "${{ github.base_ref }}"
           changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
