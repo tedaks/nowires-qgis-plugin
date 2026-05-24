@@ -4,9 +4,7 @@
 """Extended tests for shared_dem_grid, temp_manager, and nan_utils."""
 
 import os
-import tempfile
 
-import pytest
 
 
 class TestTempManagerEdges:
@@ -115,7 +113,6 @@ class TestNanUtilsSanitizers:
 
     def test_sanitize_json_nan_to_none(self):
         from sanitizers import sanitize_json
-        import math
         data = {"value": float("nan"), "list": [1, float("inf"), float("-inf")]}
         result = sanitize_json(data)
         assert result["value"] is None
@@ -123,7 +120,6 @@ class TestNanUtilsSanitizers:
 
     def test_sanitize_json_nested_dict(self):
         from sanitizers import sanitize_json
-        import math
         data = {"outer": {"inner": float("nan")}}
         result = sanitize_json(data)
         assert result["outer"]["inner"] is None
@@ -172,7 +168,6 @@ class TestCleanupStaleSharedMemory:
         assert entry.exists()
 
     def test_shm_name_regex_matches(self):
-        import re
         from shared_dem_grid import _SHM_NAME_RE
         match = _SHM_NAME_RE.match("nowires_dem_12345_abc123def")
         assert match is not None

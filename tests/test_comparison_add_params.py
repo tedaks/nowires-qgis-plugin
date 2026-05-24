@@ -9,10 +9,7 @@ try:
     from qgis.core import (
         QgsProcessingParameterEnum,
         QgsProcessingParameterFile,
-        QgsProcessingParameterFileDestination,
-        QgsProcessingParameterFolderDestination,
         QgsProcessingParameterNumber,
-        QgsProcessingParameterRasterDestination,
     )
     _HAS_QGIS = bool(__import__("os").environ.get("QGIS_PREFIX_PATH"))
 except ImportError:

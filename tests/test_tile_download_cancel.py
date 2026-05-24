@@ -4,7 +4,6 @@
 """Regression tests for tile_download_base cancel and corruption paths."""
 
 import os
-import hashlib
 
 import tile_download_base as tdb
 import tile_cache_integrity as tci

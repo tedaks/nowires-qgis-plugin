@@ -3,12 +3,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Edge case tests for batch/outputs.py _compute_single_link."""
 
-import math
 import os
 import sys
 from unittest.mock import MagicMock, patch
 
-import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "NoWires"))
