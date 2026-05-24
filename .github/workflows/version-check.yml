@@ -28,6 +28,7 @@ jobs:
         id: gate
         if: github.event_name == 'pull_request'
         env:
+          GH_TOKEN: ${{ github.token }}
           PR_ACTOR: ${{ github.event.pull_request.user.login }}
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
         run: |
@@ -36,13 +37,16 @@ jobs:
             echo "enforce=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if echo "$LABELS" | grep -q '"no-version-bump"'; then
+          # Re-fetch labels via API so reruns and late-applied labels work.
+          CURRENT_LABELS=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/labels" \
+            --jq '.[].name' 2>/dev/null || echo "$LABELS")
+          if echo "$CURRENT_LABELS" | grep -q 'no-version-bump' || echo "$LABELS" | grep -q '"no-version-bump"'; then
             echo "Skipping: 'no-version-bump' label present"
             echo "enforce=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if echo "$LABELS" | grep -q '"release"'; then
-            echo "Skipping unreleased-entries check: 'release' label present"
+          if echo "$CURRENT_LABELS" | grep -q 'release'; then
+            echo "Skipping: 'release' label present"
             echo "enforce=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
