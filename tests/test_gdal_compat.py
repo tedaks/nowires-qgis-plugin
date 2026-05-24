@@ -43,11 +43,11 @@ class TestGdalStableApiUsage:
         assert "ExportToWkt" in source
 
     def test_tile_download_uses_gdal_warp(self):
-        source = open("tile_download_base.py").read()
+        source = open("tile_merge.py").read()
         assert "gdal.Warp" in source
 
     def test_tile_download_warp_uses_stable_kwargs(self):
-        source = open("tile_download_base.py").read()
+        source = open("tile_merge.py").read()
         for kw in ("cutlineDSName", "cropToCutline", "dstNodata",
                    "srcSRS", "dstSRS", "format"):
             assert kw in source, "Missing stable Warp kwarg: {}".format(kw)
@@ -106,12 +106,12 @@ class TestGdalVersionSensitiveFeatures:
 
     def test_tile_download_uses_axis_mapping_strategy(self):
         """SetAxisMappingStrategy was added in GDAL 3.0."""
-        source = open("tile_download_base.py").read()
+        source = open("tile_merge.py").read()
         assert "OAMS_TRADITIONAL_GIS_ORDER" in source
 
     def test_osr_axis_mapping_is_set_before_create_layer(self):
         """Verify SetAxisMappingStrategy is called before CreateLayer."""
-        source = open("tile_download_base.py").read()
+        source = open("tile_merge.py").read()
         set_idx = source.find("SetAxisMappingStrategy")
         create_idx = source.find("CreateLayer")
         assert set_idx > 0 and create_idx > 0, "Both calls must exist"
