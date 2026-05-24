@@ -41,7 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Planned items for v1.6.4 are tracked in [ROADMAP.md](ROADMAP.md).
+### Planned
+
+- Increase `fail_under` coverage threshold from 59% to 65% in `pyproject.toml`.
+- Add unit tests for high-value uncovered modules: `elevation.py`, `tile_download_base.py`, `nowires.py`, `batch/outputs.py`, `batch/writer.py`, `radio_coverage/pool.py`, `contour/smoothing.py`, `_smoothing_vrt.py`.
+- Add Docker-based QGIS integration tests for algorithm orchestration.
+- Add unit tests for non-Qt paths in GUI modules: `three_d.py`, `report/markers.py`, `radio_coverage/legend.py`, `p2p/chart.py`.
+- Target: 85% combined unit + integration test coverage.
 
 ## [1.6.2] - 2026-05-23
 
