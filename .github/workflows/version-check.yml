@@ -59,13 +59,18 @@ jobs:
             exit 0
           fi
 
+          # Explicit allowlist of root-level doc files. CHANGELOG.md and
+          # metadata.txt deliberately fall through to the catch-all so that
+          # touching them keeps version-bump enforcement on. Add new root
+          # doc files here as they appear; an unrecognized *.md no longer
+          # silently skips enforcement.
           docs_only=true
           while IFS= read -r f; do
             [ -z "$f" ] && continue
             case "$f" in
               CHANGELOG.md|metadata.txt)
                 docs_only=false; break ;;
-              docs/*|*.md)
+              docs/*|README.md|NOTICE.md|ROADMAP.md|AGENTS.md|CONTRIBUTING.md|USERS-GUIDE.md|Technical_Documentation.md)
                 ;;
               *)
                 docs_only=false; break ;;
