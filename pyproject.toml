@@ -1,6 +1,6 @@
 [project]
 name = "nowires"
-version = "1.6.3"
+version = "1.6.4"
 description = "QGIS plugin for radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM"
 requires-python = ">=3.12"
 license = {text = "GPL-3.0-or-later"}
@@ -38,10 +38,10 @@ omit = [
 
 [tool.coverage.report]
 show_missing = true
-fail_under = 59
+fail_under = 64
 
 [tool.bumpversion]
-current_version = "1.6.3"
+current_version = "1.6.4"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 commit = true

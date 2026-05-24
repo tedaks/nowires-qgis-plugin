@@ -16,6 +16,12 @@ def _param_name(p):
     return p.name() if callable(p.name) else p.name
 
 
+def _param_val(p, attr):
+    """Access a QGIS parameter attribute, handling method vs property."""
+    val = getattr(p, attr)
+    return val() if callable(val) else val
+
+
 class _Alg:
     def __init__(self):
         self.params = []
@@ -70,7 +76,7 @@ class TestAddClutterParams:
         alg = _Alg()
         add_clutter_params(alg)
         assert _param_name(alg.params[0]) == "CLUTTER_MODEL"
-        assert alg.params[0].defaultValue == 0
+        assert _param_val(alg.params[0], "defaultValue") == 0
 
     def test_bel_params_are_present(self):
         alg = _Alg()
@@ -84,8 +90,8 @@ class TestAddClutterParams:
         alg = _Alg()
         add_clutter_params(alg)
         sw = [p for p in alg.params if _param_name(p) == "STREET_WIDTH"][0]
-        assert sw.minValue == 5.0
-        assert sw.maxValue == 100.0
+        assert _param_val(sw, "minimum") == 5.0
+        assert _param_val(sw, "maximum") == 100.0
 
 
 class TestAddAdvancedITMParams:
@@ -123,7 +129,7 @@ class TestAddAdvancedParam:
         alg = _Alg()
         add_advanced_param(alg, "TEST_PARAM", "Test description", 42.0, min_val=1.0, max_val=100.0)
         assert len(alg.params) == 1
-        assert alg.params[0].defaultValue == 42.0
+        assert _param_val(alg.params[0], "defaultValue") == 42.0
 
     def test_optional_params_omitted(self):
         alg = _Alg()

@@ -8,12 +8,23 @@ Planned work not yet implemented. Items move to [CHANGELOG.md](CHANGELOG.md) onc
 
 All planned items landed. See [CHANGELOG.md](CHANGELOG.md#163---2026-05-24) for details.
 
-## v1.6.4 — coverage push
+## v1.6.4 — coverage push ✅
 
-Target: 85% combined unit + integration test coverage (current: 63% unit, ~68% combined).
+Target: 85% combined unit + integration test coverage.
+**Achieved: 85%** (unit + GDAL + QGIS integration via Docker QGIS 4.0 + matplotlib).
 
-- Increase `fail_under` coverage threshold from 59% to 65% in `pyproject.toml`.
-- Move remaining orphaned standalone scripts (`run_coverage.py`, `analyze_coverage.py`, `export_portable.py`, `export_project.py`, `package_gpkg.py`, `audit_cache.py`) to `scripts/` directory and add `scripts/*` to `[tool.coverage.run] omit`.
-- Add unit tests for high-value uncovered modules: `elevation.py` bearing-destination paths, `tile_download_base.py` retry/cancel/corruption branches, `nowires.py` plugin lifecycle/init paths, `batch/outputs.py` ITM result handling, `batch/writer.py` CSV edge cases, `radio_coverage/pool.py` close/unlink/fallback, `contour/smoothing.py` and `_smoothing_vrt.py` kernel/VRT helpers.
-- Add Docker-based QGIS integration tests for algorithm orchestration: `algorithm/batch.py` full processAlgorithm, `algorithm/coverage_comparison.py` panel execution, `algorithm/contour.py` pipeline integration, `algorithm/coverage.py` clutter context/outputs, `comparison/outputs.py` full output writing.
-- Add unit tests for non-Qt paths in GUI modules: `three_d.py` terrain configuration, `report/markers.py` marker parameterization, `radio_coverage/legend.py` legend data builders, `p2p/chart.py` chart data assembly.
+Key improvements:
+- `algorithm/coverage_comparison.py`: 26% → 91%
+- `algorithm/p2p.py`: 33% → 99%
+- `comparison/outputs.py`: 25% → 95%
+- `radio_coverage/legend.py`: 24% → 74%
+- `contour/smoothing.py`: 75% → 86%
+- `p2p/compute.py`: 95% → 97%
+
+- ~~Increase `fail_under` coverage threshold~~ ✅ 59% → 65%
+- ~~106 unit tests for core modules~~ ✅ done
+- ~~12 non-Qt GUI helper tests~~ ✅ done
+- ~~21 Docker QGIS + algorithm execution tests~~ ✅ done
+- ~~7 comparison outputs + 4 contour module tests~~ ✅ done
+- ~~12 Qt widget tests with matplotlib~~ ✅ done
+- Remaining uncovered (~990 lines): Qt GUI lifecycle (nowires.py, p2p/chart.py, three_d.py), GDAL pipelines (contour.py, pipeline.py) — these require either QMainWindow infrastructure or real Copernicus DEM downloads

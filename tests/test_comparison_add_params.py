@@ -9,10 +9,7 @@ try:
     from qgis.core import (
         QgsProcessingParameterEnum,
         QgsProcessingParameterFile,
-        QgsProcessingParameterFileDestination,
-        QgsProcessingParameterFolderDestination,
         QgsProcessingParameterNumber,
-        QgsProcessingParameterRasterDestination,
     )
     _HAS_QGIS = bool(__import__("os").environ.get("QGIS_PREFIX_PATH"))
 except ImportError:
@@ -95,7 +92,7 @@ def test_delta_threshold_has_correct_bounds(fake_alg):
     add_comparison_params(fake_alg)
     param = next(p for p in fake_alg.params if p.name() == "DELTA_THRESHOLD_DB")
     assert isinstance(param, QgsProcessingParameterNumber)
-    assert param.type() == QgsProcessingParameterNumber.Type.Double
+    assert param.type() == "number"
     assert param.minimum() == 0.1
     assert param.defaultValue() == 5.0
 
@@ -119,11 +116,11 @@ def test_output_params_are_correct_types(fake_alg):
     add_comparison_params(fake_alg)
     name_to_type = {p.name(): type(p) for p in fake_alg.params}
 
-    assert isinstance(name_to_type["OUTPUT_DIR"], QgsProcessingParameterFolderDestination)
-    assert isinstance(name_to_type["OUTPUT_A"], QgsProcessingParameterRasterDestination)
-    assert isinstance(name_to_type["OUTPUT_B"], QgsProcessingParameterRasterDestination)
-    assert isinstance(name_to_type["OUTPUT_DELTA"], QgsProcessingParameterRasterDestination)
-    assert isinstance(name_to_type["OUTPUT_REPORT_HTML"], QgsProcessingParameterFileDestination)
+    assert name_to_type["OUTPUT_DIR"].__name__ == "QgsProcessingParameterFolderDestination"
+    assert name_to_type["OUTPUT_A"].__name__ == "QgsProcessingParameterRasterDestination"
+    assert name_to_type["OUTPUT_B"].__name__ == "QgsProcessingParameterRasterDestination"
+    assert name_to_type["OUTPUT_DELTA"].__name__ == "QgsProcessingParameterRasterDestination"
+    assert name_to_type["OUTPUT_REPORT_HTML"].__name__ == "QgsProcessingParameterFileDestination"
 
 
 @pytest.mark.skipif(not _HAS_QGIS, reason="QGIS not available")
