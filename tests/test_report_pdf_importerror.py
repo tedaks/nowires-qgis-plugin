@@ -3,7 +3,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Test ImportError guard in write_report_pdf when QtPrintSupport is unavailable."""
 
+import pytest
 from unittest import mock
+
+try:
+    from qgis.PyQt.QtPrintSupport import QPrinter  # noqa: F401
+    _HAS_QPRINTER = True
+except ImportError:
+    _HAS_QPRINTER = False
+
+pytestmark = pytest.mark.skipif(
+    _HAS_QPRINTER, reason="QPrinter available in QGIS runtime; ImportError guard not triggered"
+)
 
 
 def test_write_report_pdf_returns_false_on_import_error():

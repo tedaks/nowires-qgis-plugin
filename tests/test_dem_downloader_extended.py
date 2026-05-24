@@ -12,6 +12,16 @@ from unittest.mock import MagicMock
 
 import pytest
 
+try:
+    import qgis.core  # noqa: F401
+    _HAS_REAL_QGIS = True
+except ImportError:
+    _HAS_REAL_QGIS = False
+
+_skip_if_real_qgis = pytest.mark.skipif(
+    _HAS_REAL_QGIS, reason="Test mocks QGIS classes; skip when real QGIS is available"
+)
+
 
 def _import_dem_downloader():
     import importlib.util as _ilu
@@ -183,6 +193,7 @@ class TestTileNameForFloatBoundary:
 # ---------------------------------------------------------------------------
 # required_tiles (lines ‑142‑continue, ‑147‑feedback, ‑157‑return)
 # ---------------------------------------------------------------------------
+@_skip_if_real_qgis
 class TestRequiredTiles:
     def test_single_tile_area(self, monkeypatch):
         """Lines 147, 157: a small area returns one tile with feedback pushInfo."""
@@ -388,6 +399,7 @@ class TestEnsureDEMForArea:
         assert result is None
 
 
+@_skip_if_real_qgis
 class TestRequiredTilesTooMany:
     def test_too_many_tiles_raises(self, monkeypatch):
         dd, tile_base = _import_dem_downloader()

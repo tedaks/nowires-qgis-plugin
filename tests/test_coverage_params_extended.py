@@ -50,15 +50,15 @@ class TestAddCoverageParams:
     def test_tx_point_param_is_point_type(self):
         alg = _Alg()
         add_coverage_params(alg)
-        point_params = [p for p in alg._added if hasattr(p, 'name') and p.name == 'TX_POINT']
+        point_params = [p for p in alg._added if p.name() == "TX_POINT"]
         assert len(point_params) == 1
 
     def test_grid_size_is_enum(self):
         alg = _Alg()
         add_coverage_params(alg)
-        gs = [p for p in alg._added if hasattr(p, 'name') and p.name == 'GRID_SIZE']
+        gs = [p for p in alg._added if p.name() == "GRID_SIZE"]
         assert len(gs) == 1
-        assert hasattr(gs[0], 'options')
+        assert hasattr(gs[0], "options")
 
 
 class TestExtractCoverageParams:
