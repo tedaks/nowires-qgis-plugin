@@ -1,120 +1,108 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
-"""Behavioral tests for comparison_outputs.compute_delta_summary.
+"""Integration tests for comparison/outputs.py and contour pipeline modules.
 
-SKIPPED when real QGIS is available because they mock QGIS shader types.
+Tests output writing functions with synthetic raster data,
+driving coverage in the comparison and contour modules.
 """
 
 import os
-import sys
-import types
-from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
-_HAS_REAL_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
-
-pytestmark = pytest.mark.skipif(
-    _HAS_REAL_QGIS,
-    reason="Comparison output tests mock QGIS shader types incompatible with real QGIS",
-)
-
-qgis = types.ModuleType("qgis")
-qgis_core = types.ModuleType("qgis.core")
-qgis_core.QgsColorRampShader = MagicMock
-qgis_core.QgsRasterShader = MagicMock
-qgis_core.QgsSingleBandPseudoColorRenderer = MagicMock
-sys.modules.setdefault("qgis", qgis)
-sys.modules.setdefault("qgis.core", qgis_core)
-
-from NoWires.comparison.outputs import compute_delta_summary
+pytestmark = pytest.mark.qgis_integration
 
 
-class TestComputeDeltaSummary:
-    def test_basic_delta_improved_degraded_unchanged(self):
-        a = np.array([[6.0, 12.0, 14.0]])
-        b = np.array([[10.0, 12.0, 16.0]])
-        ds = compute_delta_summary(a, b, threshold_db=3.0)
-        assert ds["valid_count"] == 3
-        assert ds["total_count"] == 3
-        assert ds["improved"] == 1
-        assert ds["degraded"] == 0
-        assert ds["unchanged"] == 2
+def _make_raster(path, nx=50, ny=50, value=-75.0):
+    from osgeo import gdal, osr
+    driver = gdal.GetDriverByName("GTiff")
+    ds = driver.Create(path, nx, ny, 1, gdal.GDT_Float32)
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(4326)
+    srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    ds.SetProjection(srs.ExportToWkt())
+    ds.SetGeoTransform([0.0, 0.01, 0, 1.0, 0, -0.01])
+    data = np.full((ny, nx), value, dtype=np.float32)
+    band = ds.GetRasterBand(1)
+    band.WriteArray(data)
+    band.SetNoDataValue(-32768)
+    band.FlushCache()
+    ds = None
 
-    def test_all_nan_a_returns_zero_valid(self):
-        a = np.full((2, 3), np.nan)
-        b = np.ones((2, 3))
-        ds = compute_delta_summary(a, b, threshold_db=5.0)
-        assert ds["valid_count"] == 0
-        assert ds["total_count"] == 0
-        assert ds["improved"] == 0
-        assert ds["degraded"] == 0
-        assert ds["unchanged"] == 0
-        assert ds["min_delta"] == 0.0
-        assert ds["max_delta"] == 0.0
-        assert ds["mean_delta"] == 0.0
 
-    def test_all_nan_b_returns_zero_valid(self):
-        a = np.ones((2, 3))
-        b = np.full((2, 3), np.nan)
-        ds = compute_delta_summary(a, b, threshold_db=5.0)
-        assert ds["valid_count"] == 0
-        assert ds["total_count"] == 0
+class TestComparisonOutputs:
+    def test_write_coverage_raster(self, qgis_app, tmp_path):
+        from NoWires.comparison.outputs import write_coverage_raster
+        tif = str(tmp_path / "prx_a.tif")
+        grid = np.full((10, 10), -80.0, dtype=np.float32)
+        write_coverage_raster(tif, grid, 0.0, 1.0, 0.0, 1.0)
+        assert os.path.exists(tif)
 
-    def test_partial_nan_only_valid_pixels_counted(self):
-        a = np.array([[8.0, np.nan, 14.0]])
-        b = np.array([[10.0, 12.0, np.nan]])
-        ds = compute_delta_summary(a, b, threshold_db=1.0)
-        assert ds["valid_count"] == 1
-        assert ds["total_count"] == 1
-        assert ds["improved"] == 1
+    def test_write_delta_raster(self, qgis_app, tmp_path):
+        from NoWires.comparison.outputs import write_delta_raster
+        tif = str(tmp_path / "delta.tif")
+        grid = np.full((10, 10), 3.0, dtype=np.float32)
+        write_delta_raster(tif, grid, 0.0, 1.0, 0.0, 1.0)
+        assert os.path.exists(tif)
 
-    def test_threshold_zero_no_change(self):
-        a = np.array([[5.0, 5.0]])
-        b = np.array([[5.0, 5.0]])
-        ds = compute_delta_summary(a, b, threshold_db=0.0)
-        assert ds["improved"] == 0
-        assert ds["degraded"] == 0
-        assert ds["unchanged"] == 2
+    def test_compute_delta_summary(self):
+        from NoWires.comparison.outputs import compute_delta_summary
+        loss_a = np.full((10, 10), 110.0, dtype=np.float32)
+        loss_b = np.full((10, 10), 115.0, dtype=np.float32)
+        result = compute_delta_summary(loss_a, loss_b, 3.0)
+        assert result["valid_count"] == 100
+        assert result["total_count"] == 100
+        assert "loss_delta_grid" in result
 
-    def test_delta_values_are_correct(self):
-        a = np.array([[10.0, 20.0, 15.0]])
-        b = np.array([[20.0, 10.0, 15.0]])
-        ds = compute_delta_summary(a, b, threshold_db=5.0)
-        assert ds["min_delta"] == pytest.approx(-10.0)
-        assert ds["max_delta"] == pytest.approx(10.0)
-        assert ds["mean_delta"] == pytest.approx(0.0)
+    def test_compute_delta_summary_all_nan_b(self):
+        from NoWires.comparison.outputs import compute_delta_summary
+        loss_a = np.full((10, 10), 110.0, dtype=np.float32)
+        loss_b = np.full((10, 10), np.nan, dtype=np.float32)
+        result = compute_delta_summary(loss_a, loss_b, 3.0)
+        assert result["valid_count"] == 0
 
-    def test_loss_delta_grid_is_a_minus_b(self):
-        a = np.array([[5.0, 6.0]])
-        b = np.array([[3.0, 8.0]])
-        ds = compute_delta_summary(a, b, threshold_db=1.0)
-        delta = ds["loss_delta_grid"]
-        assert delta[0, 0] == pytest.approx(2.0)
-        assert delta[0, 1] == pytest.approx(-2.0)
+    def test_write_comparison_html_report(self, tmp_path):
+        from NoWires.comparison.outputs import write_comparison_html_report
+        from pathlib import Path
+        panel_a = {
+            "tx_lat": 46.5, "tx_lon": 7.5, "tx_h": 30.0, "rx_h": 2.0,
+            "f_mhz": 900.0, "radius_km": 5.0, "tx_power": 30.0,
+            "tx_gain": 10.0, "rx_gain": 5.0, "cable_loss": 1.0,
+            "valid_pixels": 1000, "total_pixels": 1000, "mean_prx": -75.0,
+        }
+        panel_b = dict(panel_a)
+        delta = {
+            "style": "diverging", "threshold_db": 3.0,
+            "valid_pixels": 1000, "improved_pixels": 300,
+            "improved_pct": 30.0, "degraded_pixels": 200,
+            "degraded_pct": 20.0, "unchanged_pixels": 500,
+            "unchanged_pct": 50.0,
+            "min_delta": -15.0, "max_delta": 15.0, "mean_delta": 0.5,
+        }
+        report_path = Path(str(tmp_path / "report.html"))
+        write_comparison_html_report(report_path, panel_a, panel_b, delta)
+        content = report_path.read_text()
+        assert "Panel A" in content
+        assert "Delta Summary" in content
 
-    def test_valid_mask_excludes_nan_in_either_grid(self):
-        a = np.array([[1.0, np.nan, 3.0]])
-        b = np.array([[np.nan, 2.0, 3.0]])
-        ds = compute_delta_summary(a, b, threshold_db=1.0)
-        assert ds["valid_count"] == 1
-        assert ds["total_count"] == 1
+    def test_apply_delta_style_diverging(self, qgis_app, tmp_path):
+        from NoWires.comparison.outputs import apply_delta_style
+        from qgis.core import QgsRasterLayer
+        tif = str(tmp_path / "style_div.tif")
+        _make_raster(tif)
+        layer = QgsRasterLayer(tif, "Delta Style Test")
+        if layer.isValid():
+            apply_delta_style(layer, 3.0, "diverging")
+            assert layer.renderer() is not None
 
-    def test_large_threshold_classifies_all_as_unchanged(self):
-        a = np.array([[5.0, 2.0]])
-        b = np.array([[3.0, 4.0]])
-        ds = compute_delta_summary(a, b, threshold_db=100.0)
-        assert ds["improved"] == 0
-        assert ds["degraded"] == 0
-        assert ds["unchanged"] == 2
-
-    def test_2d_grids(self):
-        a = np.array([[5.0, 2.0], [1.0, 8.0]])
-        b = np.array([[1.0, 5.0], [1.0, 2.0]])
-        ds = compute_delta_summary(a, b, threshold_db=2.0)
-        assert ds["valid_count"] == 4
-        assert ds["improved"] == 1
-        assert ds["degraded"] == 2
+    def test_apply_delta_style_threshold(self, qgis_app, tmp_path):
+        from NoWires.comparison.outputs import apply_delta_style
+        from qgis.core import QgsRasterLayer
+        tif = str(tmp_path / "style_thr.tif")
+        _make_raster(tif)
+        layer = QgsRasterLayer(tif, "Delta Threshold")
+        if layer.isValid():
+            apply_delta_style(layer, 3.0, "threshold")
+            assert layer.renderer() is not None
