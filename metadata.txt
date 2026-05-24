@@ -14,6 +14,19 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
+    Version 1.6.4
+    - Increase fail_under coverage threshold from 59% to 65% in pyproject.toml
+    - Coverage push: 63% unit → 66.7% unit + GDAL → 80% combined via Docker QGIS 4.0 container
+    - Add 83 unit tests across 8 files (bearing_destination, tile download, batch outputs, nowires lifecycle, etc.)
+    - Add 23 extended unit tests for temp_manager, sanitizers, shared_dem_grid, SHM_NAME_RE
+    - Add 9 Docker QGIS integration tests (compute_itm_p2p, coverage legend, three_d, contour smoothing, p2p symbology, provider)
+    - CI: parallelize pytest with lint/audit/mypy/import-linter (no longer chained sequentially)
+    - CI: make tests.yml a reusable workflow and gate release.yml on the full suite via workflow_call
+    - CI: switch QGIS integration container to a venv with --system-site-packages so pip check surfaces real conflicts
+    - CI: add SLSA build provenance attestation to the release zip via actions/attest-build-provenance
+    - CI: add baseline diff in benchmark.yml against latest successful main run
+    - CI: tighten version-check docs allowlist; exclude benchmarks/ from the 300-line source gate
+    - CI: remove duplicate lint jobs from integration.yml and release.yml (now owned by tests.yml)
     Version 1.6.3
     - Fix TOCTOU race in dem_downloader temp dir creation — replace os.makedirs with atomic mkdtemp+rename
     - Add configurable max_bytes download cap (250 MiB) to prevent unbounded downloads
