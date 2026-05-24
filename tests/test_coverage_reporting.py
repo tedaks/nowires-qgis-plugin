@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from NoWires.coverage.reporting import (
+from NoWires.radio_coverage.reporting import (
     build_coverage_report_payload_for_grid,
     report_coverage_results,
     write_coverage_geotiff,
@@ -166,7 +166,7 @@ def test_build_coverage_report_payload_labels_advanced_clutter():
 
 
 def test_write_coverage_geotiff_delegates_raw_compute_grid(monkeypatch, tmp_path):
-    import NoWires.coverage.reporting as module
+    import NoWires.radio_coverage.reporting as module
 
     calls = []
     prx_grid = np.array([[1.0], [2.0]], dtype=np.float32)

@@ -5,7 +5,7 @@
 
 import numpy as np
 
-from NoWires.coverage.engine import (
+from NoWires.radio_coverage.engine import (
     _get_tx_ground_elevation,
     _build_rx_ground_grid,
     _build_clutter_context,

@@ -43,13 +43,16 @@ def _iter_rows(payload):
             yield "meta", section_name, section_value
 
 
+_FORMULA_TRIGGER_CHARS = frozenset({'=', '+', '@', '\N{EN DASH}', '\N{MINUS SIGN}'})
+_UNICODE_WHITESPACE = "\t\r\u3000\u2003\u2002\ufeff"
+
+
 def _csv_safe(value):
     """Sanitize a CSV cell value to prevent formula injection and multi-line issues."""
     s = str(value)
-    # Strip newlines that could break row structure
     s = s.replace("\r", " ").replace("\n", " ")
-    s = s.lstrip("\t\r")
-    if s and s[0] in ('=', '+', '@'):
+    s = s.lstrip(_UNICODE_WHITESPACE)
+    if s and s[0] in _FORMULA_TRIGGER_CHARS:
         return "'" + s
     if s.startswith('-') and len(s) > 1:
         try:

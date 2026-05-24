@@ -10,7 +10,8 @@ from osgeo import osr
 from qgis.core import QgsProcessingException
 
 from NoWires.constants import (
-    CLIMATE_NAMES, DEFAULT_PROFILE_STEP_M, DEGREE_PADDING, METERS_PER_DEGREE_LAT,
+    CLIMATE_NAMES, DEFAULT_PROFILE_STEP_M, DEGREE_PADDING, FSPL_CONSTANT,
+    METERS_PER_DEGREE_LAT, MHZ_TO_HZ,
     POLARIZATION_NAMES,
 )
 from NoWires.constants import ITM_LOSS_UPPER_BOUND
@@ -152,7 +153,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         loss_db = min(result.loss_db, ITM_LOSS_UPPER_BOUND)
         tx_elev, rx_elev = elevations[0], elevations[-1]
         tx_ant_h, rx_ant_h = tx_elev + p.tx_h, rx_elev + p.rx_h
-        wavelength_m = C_LIGHT / (p.f_mhz * 1e6)
+        wavelength_m = C_LIGHT / (p.f_mhz * MHZ_TO_HZ)
         dist_arr = np.asarray(distances, dtype=np.float64)
         elev_arr = np.asarray(elevations, dtype=np.float64)
         terrain_bulge, los_h, fresnel_r, obstructs, vf1, vf60 = (
@@ -184,7 +185,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         total_path_loss_db = loss_db + cl.total_with_bel_db
         prx_dbm = eirp_dbm + p.rx_gain + ant_adj_total - total_path_loss_db
         margin_db = prx_dbm - p.rx_sens
-        fspl_db = 20.0 * math.log10(dist_m / 1000.0) + 20.0 * math.log10(p.f_mhz) + 32.45
+        fspl_db = 20.0 * math.log10(dist_m / 1000.0) + 20.0 * math.log10(p.f_mhz) + FSPL_CONSTANT
         p.feedback.setProgress(70)
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(4326)

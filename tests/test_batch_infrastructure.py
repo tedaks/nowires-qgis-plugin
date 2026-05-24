@@ -63,7 +63,7 @@ def _valid_itm_result(loss_db=120.0):
 
 
 def _valid_coverage_result():
-    from NoWires.coverage.pool import CoverageResult
+    from NoWires.radio_coverage.pool import CoverageResult
 
     gs = 100
     nan32 = np.float32(np.nan)

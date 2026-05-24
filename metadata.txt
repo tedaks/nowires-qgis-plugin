@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.6.1
+version=1.6.2
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,12 +14,45 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
+    Version 1.6.2
+    - Fix TOCTOU race in dem_downloader temp dir creation — replace os.makedirs with atomic mkdtemp+rename
+    - Add configurable max_bytes download cap (250 MiB) to prevent unbounded downloads
+    - Add SHA-256 cache integrity verification for cached tiles via sidecar files
+    - Broaden CSV formula-injection guard to cover en-dash, minus sign, Unicode whitespace
+    - Fix TempDirManager leak in contour __init__ and coverage_comparison __init__
+    - Fix OGR datasource leaks in contour/pipeline and contour/generation
+    - Add SharedMemory.unlink() to coverage pool finalizer for worker-crash paths
+    - Add climate index range check (0-6) to radio.validate_itm_input_ranges
+    - Change ITMResult failure sentinel from mode=0 to mode=-1 for unambiguity
+    - Add threading.Lock around coverage pool module globals
+    - Sample TX ground elevation from DEM in comparison/panel instead of hardcoding 0.0
+    - Validate per-feature antenna heights against ITM limits in batch/outputs
+    - Implement LRU cache eviction with 2 GiB cap in cache_manager
+    - Use os.lstat instead of os.stat in shared_dem_grid stale-entry cleanup
+    - Guard against None GDAL driver in raster_io and contour/_smoothing_vrt
+    - Remove memory-doubling np.copy on south-up elevation flip
+    - Remove six redundant zero-array copies in fresnel
+    - Add bool type guard to antenna_preset_key
+    - Log warning for malformed CSV rows in antenna pattern reader
+    - Keep bilinear interpolation intermediates in float64
+    - Add NaN guard in saalos vectorized below-canopy path
+    - Add singleton guard to prevent duplicate P2P chart docks
+    - Fix PANEL_A_CONSTANTS/PANEL_B_CONSTANTS dict keys so install_constants creates correct attributes
+    - CI: enforce coverage threshold on main test pass, add version downgrade guard
+    - CI: gate release on lint, add pip-audit for full dependency tree, add importlinter contracts
+    - .gitignore: add .env, *.pem, *.key, credentials*, *.zip, **/*.prj
+    - Extract safe_create_dir to fs_utils.py, consolidate dem/worldcover downloaders
+    - Centralize magic numbers: DEM_NODATA, FSPL_CONSTANT, MHZ_TO_HZ, DIR_PERMISSIONS, K_FACTOR
+    - Fix CCH override treating explicit 0.0 as no override
+    - Wire antenna.clear_pattern_cache() into antenna_pattern_preview file picker
+    - Centralize create_synthetic_dem test helper into conftest
+    - Add 49 regression and coverage tests (clutter, writer, helpers, stale temp, sidecars)
     Version 1.6.1
     - Fix CSV formula-injection bypass via leading whitespace in report/export.py::_csv_safe
     - Add threading.Lock around _pending_releases mutations in shared_dem_grid.py to prevent data races
     - Skip pre-allocation of prx_grid, loss_grid, and 4 other arrays when coverage tasks list is empty (~20 MB saved)
     - Fix dem_downloader.tile_name_for(lat, lon) raising ValueError on float input; add math.floor cast
-    - Mask dist_grid_km to NaN where prx_grid is NaN in coverage/summary.py
+    - Mask dist_grid_km to NaN where prx_grid is NaN in radio_coverage/summary.py
     - Add debug logging for out-of-bounds bilinear samples in _bilinear.py
     - Fix ITM finite-loss guard in batch/outputs.py — NaN/Inf loss now returns None instead of corrupting results
     - Fix tmpdir=None assert crash in comparison/reporting.py when all three output paths are explicit

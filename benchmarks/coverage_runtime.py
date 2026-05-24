@@ -18,10 +18,10 @@ if __package__ in (None, ""):
     _package = sys.modules.setdefault("NoWires", types.ModuleType("NoWires"))
     _package.__path__ = [_plugin_dir]
     _package.__package__ = "NoWires"
-    from NoWires.coverage.engine import compute_coverage
+    from NoWires.radio_coverage.engine import compute_coverage
     from NoWires.benchmarks.reference_cases import CoverageCase, COVERAGE_CASES, SyntheticElevationGrid
 else:
-    from NoWires.coverage.engine import compute_coverage
+    from NoWires.radio_coverage.engine import compute_coverage
     from .reference_cases import CoverageCase, COVERAGE_CASES, SyntheticElevationGrid
 
 

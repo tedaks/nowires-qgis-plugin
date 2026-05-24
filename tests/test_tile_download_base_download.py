@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for download_tile_with_retry covering missed lines in tile_download_base.py."""
 
+import hashlib
 import os
 import re
 import urllib.error
@@ -209,6 +210,8 @@ def test_cache_hit_reuses_valid_tif(tmp_path):
     """Valid cached TIFF is reused without re-downloading."""
     local_tif = tmp_path / "tile.tif"
     _create_valid_tif(str(local_tif))
+    (tmp_path / "tile.tif.sha256").write_text(
+        hashlib.sha256(local_tif.read_bytes()).hexdigest())
     feedback = _Feedback()
     opener = _FakeOpener(
         _FakeResponse("https://example.test/tile.tif", [b"new"])

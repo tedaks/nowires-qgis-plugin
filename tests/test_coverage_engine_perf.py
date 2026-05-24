@@ -8,9 +8,9 @@ import os
 
 
 PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
-ENGINE_SOURCE = os.path.join(PLUGIN_DIR, "coverage/engine.py")
-POOL_SOURCE = os.path.join(PLUGIN_DIR, "coverage/pool.py")
-EXECUTOR_SOURCE = os.path.join(PLUGIN_DIR, "coverage/_executor.py")
+ENGINE_SOURCE = os.path.join(PLUGIN_DIR, "radio_coverage/engine.py")
+POOL_SOURCE = os.path.join(PLUGIN_DIR, "radio_coverage/pool.py")
+EXECUTOR_SOURCE = os.path.join(PLUGIN_DIR, "radio_coverage/_executor.py")
 
 
 def _engine_source():

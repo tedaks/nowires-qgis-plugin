@@ -32,16 +32,18 @@ import urllib.error
 from osgeo import gdal, ogr, osr
 
 from NoWires.geo_bounds import longitude_intervals
+from NoWires.tile_cache_integrity import cap_exceeded, cleanup_sidecar, reject_oversized_content_length, verify_checksum, write_checksum
 
 logger = logging.getLogger(__name__)
-DEFAULT_PER_TILE_WALL_CLOCK_BUDGET = 180  # caps slow trickles where socket_timeout never fires
-
+DEFAULT_PER_TILE_WALL_CLOCK_BUDGET = 180
+DEFAULT_MAX_BYTES = 250 * 1024 * 1024
 
 def download_tile_with_retry(
     tile_url, local_tif, base_name_label, feedback=None,
     max_retries=3, socket_timeout=60, valid_tile_re=None,
     base_url=None, opener=None,
     wall_clock_budget=DEFAULT_PER_TILE_WALL_CLOCK_BUDGET,
+    max_bytes=DEFAULT_MAX_BYTES,
 ):
     if valid_tile_re is not None and not valid_tile_re.match(base_name_label):
         logger.error("Invalid tile name rejected: %s", base_name_label)
@@ -55,13 +57,14 @@ def download_tile_with_retry(
                 xsize = test_ds.RasterXSize
                 ysize = test_ds.RasterYSize
                 if xsize > 0 and ysize > 0 and band_count >= 1:
-                    logger.debug("Cache hit: %s (%dx%d)", base_name_label, xsize, ysize)
-                    if feedback:
-                        feedback.pushInfo("Cache hit: " + base_name_label)
-                    return local_tif
-                logger.warning(
-                    "Cached tile %s has degenerate dimensions; re-downloading",
-                    base_name_label)
+                    if verify_checksum(local_tif):
+                        logger.debug("Cache hit: %s (%dx%d)", base_name_label, xsize, ysize)
+                        if feedback:
+                            feedback.pushInfo("Cache hit: " + base_name_label)
+                        return local_tif
+                    logger.warning("Cached tile %s checksum mismatch; re-downloading", base_name_label)
+                else:
+                    logger.warning("Cached tile %s has degenerate dimensions; re-downloading", base_name_label)
             finally:
                 test_ds = None
         else:
@@ -70,6 +73,7 @@ def download_tile_with_retry(
             os.unlink(local_tif)
         except OSError:
             pass
+        cleanup_sidecar(local_tif)
     if feedback:
         feedback.pushInfo("Downloading: " + tile_url)
     downloaded = False
@@ -94,10 +98,12 @@ def download_tile_with_retry(
                         raise RuntimeError("Unexpected redirect to: " + final_url)
                 content_length_hdr = response.headers.get("Content-Length")
                 if content_length_hdr is None:
-                    logger.debug("No Content-Length header for %s", base_name_label)
                     expected_size = 0
                 else:
                     expected_size = int(content_length_hdr)
+                    if reject_oversized_content_length(expected_size, max_bytes,
+                                                       base_name_label, feedback):
+                        return None
                 bytes_received = 0
                 with open(tmp_path, "wb") as f:
                     while True:
@@ -111,18 +117,17 @@ def download_tile_with_retry(
                         chunk = response.read(65536)
                         if not chunk:
                             break
+                        if cap_exceeded(bytes_received, len(chunk), max_bytes,
+                                        base_name_label, f, tmp_path):
+                            return None
                         f.write(chunk)
                         bytes_received += len(chunk)
                     f.flush()
                     os.fsync(f.fileno())
 
             if expected_size > 0 and bytes_received != expected_size:
-                logger.warning(
-                    "Incomplete download %s: %d/%d bytes",
-                    base_name_label,
-                    bytes_received,
-                    expected_size,
-                )
+                logger.warning("Incomplete download %s: %d/%d bytes",
+                               base_name_label, bytes_received, expected_size)
                 try:
                     os.unlink(tmp_path)
                 except OSError:
@@ -130,11 +135,8 @@ def download_tile_with_retry(
                 if attempt < max_retries - 1:
                     time.sleep(2 ** attempt)
                     continue
-                raise ValueError(
-                    "Incomplete download: {} of {} bytes".format(
-                        bytes_received, expected_size
-                    )
-                )
+                raise ValueError("Incomplete download: {} of {} bytes".format(
+                    bytes_received, expected_size))
 
             test_ds = gdal.Open(tmp_path)
             if test_ds is None:
@@ -147,8 +149,9 @@ def download_tile_with_retry(
                     time.sleep(2 ** attempt)
                     continue
                 break
-            test_ds = None  # Release GDAL dataset handle promptly
+            test_ds = None
             os.replace(tmp_path, local_tif)
+            write_checksum(local_tif)
             downloaded = True
             break
 
@@ -197,7 +200,6 @@ def download_tile_with_retry(
             pass
     return local_tif if downloaded else None
 
-
 def _rectangle_geometry(south, north, west, east, ogr_module=ogr):
     ring = ogr_module.Geometry(ogr_module.wkbLinearRing)
     ring.AddPoint(west, south)
@@ -209,7 +211,6 @@ def _rectangle_geometry(south, north, west, east, ogr_module=ogr):
     poly.AddGeometry(ring)
     return poly
 
-
 def _aoi_geometry_for_bounds(south, north, west, east, ogr_module=ogr):
     intervals = longitude_intervals(west, east)
     if len(intervals) == 1:
@@ -218,7 +219,6 @@ def _aoi_geometry_for_bounds(south, north, west, east, ogr_module=ogr):
     for lon_west, lon_east in intervals:
         geom.AddGeometry(_rectangle_geometry(south, north, lon_west, lon_east, ogr_module))
     return geom
-
 
 def clip_and_merge_tiles(
     tile_paths, south, north, west, east, temp_dir, feedback,

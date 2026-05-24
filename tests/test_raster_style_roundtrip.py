@@ -33,7 +33,7 @@ def _make_geotiff(path, grid, min_lat, max_lat, min_lon, max_lon):
 
 class TestCoverageStyleRoundtrip:
     def test_apply_coverage_style_sets_renderer(self, qgis_app, tmp_path):
-        from NoWires.coverage.palette import apply_coverage_style
+        from NoWires.radio_coverage.palette import apply_coverage_style
         tif = str(tmp_path / "coverage.tif")
         grid = np.full((20, 20), -70.0, dtype=np.float32)
         _make_geotiff(tif, grid, 47.0, 47.1, 8.0, 8.1)
@@ -45,7 +45,7 @@ class TestCoverageStyleRoundtrip:
         assert isinstance(renderer, QgsSingleBandPseudoColorRenderer)
 
     def test_coverage_style_has_discrete_ramp(self, qgis_app, tmp_path):
-        from NoWires.coverage.palette import apply_coverage_style
+        from NoWires.radio_coverage.palette import apply_coverage_style
         tif = str(tmp_path / "coverage_discrete.tif")
         grid = np.full((20, 20), -70.0, dtype=np.float32)
         _make_geotiff(tif, grid, 47.0, 47.1, 8.0, 8.1)
@@ -59,7 +59,7 @@ class TestCoverageStyleRoundtrip:
         assert func.colorRampType() == QgsColorRampShader.Discrete
 
     def test_coverage_style_ramp_items_match_signal_levels(self, qgis_app, tmp_path):
-        from NoWires.coverage.palette import apply_coverage_style, SIGNAL_LEVELS
+        from NoWires.radio_coverage.palette import apply_coverage_style, SIGNAL_LEVELS
         tif = str(tmp_path / "coverage_ramp.tif")
         grid = np.full((20, 20), -70.0, dtype=np.float32)
         _make_geotiff(tif, grid, 47.0, 47.1, 8.0, 8.1)

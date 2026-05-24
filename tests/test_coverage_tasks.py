@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from NoWires.coverage.tasks import _coverage_axis_centers, _haversine_grid, _bearing_grid, build_coverage_tasks
+from NoWires.radio_coverage.tasks import _coverage_axis_centers, _haversine_grid, _bearing_grid, build_coverage_tasks
 from NoWires.antenna import AntennaConfig
 from NoWires.clutter.context import ClutterLossContext
 

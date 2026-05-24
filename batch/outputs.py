@@ -37,7 +37,7 @@ except ImportError:
 
 from NoWires.batch.analysis_params import BatchAnalysisParams
 from NoWires.batch.writer import write_batch_marker_layer, write_batch_csv, write_batch_json
-from NoWires.constants import DEFAULT_PROFILE_STEP_M, CLIMATE_NAMES
+from NoWires.constants import DEFAULT_PROFILE_STEP_M, CLIMATE_NAMES, MHZ_TO_HZ
 from NoWires.elevation import bearing_deg, haversine_m
 from NoWires.fresnel import C_LIGHT, fresnel_profile_analysis
 from NoWires.radio import (
@@ -67,6 +67,16 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
     rx_lon = rx_def["lon"]
     tx_h_eff = tx_def["height"] if tx_def["height"] is not None else params.tx_h
     rx_h_eff = rx_def["height"] if rx_def["height"] is not None else params.rx_h
+
+    from NoWires.radio import ITM_MIN_TERMINAL_HEIGHT_M, ITM_MAX_TERMINAL_HEIGHT_M
+    if tx_h_eff < ITM_MIN_TERMINAL_HEIGHT_M or tx_h_eff > ITM_MAX_TERMINAL_HEIGHT_M:
+        logger.warning("Feature TX height %.1f m out of range [%.1f, %.1f]; skipping",
+                      tx_h_eff, ITM_MIN_TERMINAL_HEIGHT_M, ITM_MAX_TERMINAL_HEIGHT_M)
+        return None
+    if rx_h_eff < ITM_MIN_TERMINAL_HEIGHT_M or rx_h_eff > ITM_MAX_TERMINAL_HEIGHT_M:
+        logger.warning("Feature RX height %.1f m out of range [%.1f, %.1f]; skipping",
+                      rx_h_eff, ITM_MIN_TERMINAL_HEIGHT_M, ITM_MAX_TERMINAL_HEIGHT_M)
+        return None
 
     dist_m = haversine_m(tx_def["lat"], tx_def["lon"], rx_lat, rx_lon)
     if dist_m < 1.0:
@@ -200,7 +210,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
     }
 
 def compute_batch_links(params: BatchAnalysisParams, feedback):
-    wavelength_m = C_LIGHT / (params.f_mhz * 1e6)
+    wavelength_m = C_LIGHT / (params.f_mhz * MHZ_TO_HZ)
     results = []
     count = 0
 

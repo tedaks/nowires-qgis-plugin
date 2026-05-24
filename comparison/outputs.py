@@ -277,7 +277,7 @@ def load_comparison_layers(context: object, output_a: str, output_b: str, output
     until QGIS finishes processing (otherwise QGIS will dereference freed
     Python wrappers and crash).
     """
-    from NoWires.coverage.palette import apply_coverage_style
+    from NoWires.radio_coverage.palette import apply_coverage_style
 
     raster_layer_ids: list[str] = []
     post_processors = []

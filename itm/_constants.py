@@ -14,6 +14,8 @@ import math
 PI = 3.1415926535897932384
 SQRT2 = math.sqrt(2)
 THIRD = 1.0 / 3.0
+FSPL_CONSTANT = 32.45
+K_FACTOR = 4.0 / 3.0
 a_0__meter = 6370e3  # actual earth radius
 a_9000__meter = 9000e3  # reference radius for variability effective distance
 

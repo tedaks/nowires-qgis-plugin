@@ -31,6 +31,8 @@ import tempfile
 
 from osgeo import gdal, ogr
 
+from NoWires.constants import DEM_NODATA
+
 from qgis.PyQt.QtGui import QPainter
 from qgis.core import QgsApplication, QgsAuthMethodConfig, QgsProject, QgsRasterLayer
 
@@ -85,16 +87,18 @@ def write_aoi_shapefile(aoi_geometry, aoi_shp_path):
     aoi_datasource = shp_driver.CreateDataSource(aoi_shp_path)
     if aoi_datasource is None:
         raise RuntimeError("Failed to create dataset at {}".format(aoi_shp_path))
-    aoi_layer = aoi_datasource.CreateLayer("layer", geom_type=ogr.wkbPolygon)
-    feat_defn = aoi_layer.GetLayerDefn()
-    feature = ogr.Feature(feat_defn)
-    wkt = aoi_geometry.asWkt()
-    ogr_geom = ogr.CreateGeometryFromWkt(wkt)
-    if ogr_geom is None:
-        raise RuntimeError("Failed to convert geometry to OGR format.")
-    feature.SetGeometry(ogr_geom)
-    aoi_layer.CreateFeature(feature)
-    aoi_datasource = None
+    try:
+        aoi_layer = aoi_datasource.CreateLayer("layer", geom_type=ogr.wkbPolygon)
+        feat_defn = aoi_layer.GetLayerDefn()
+        feature = ogr.Feature(feat_defn)
+        wkt = aoi_geometry.asWkt()
+        ogr_geom = ogr.CreateGeometryFromWkt(wkt)
+        if ogr_geom is None:
+            raise RuntimeError("Failed to convert geometry to OGR format.")
+        feature.SetGeometry(ogr_geom)
+        aoi_layer.CreateFeature(feature)
+    finally:
+        aoi_datasource = None
 
 
 def download_and_merge_tiles(
@@ -139,7 +143,7 @@ def download_and_merge_tiles(
         clip_result = gdal.Warp(
             fn_clip, tile_path,
             cutlineDSName=aoi_shp_path, cropToCutline=True,
-            dstNodata=-32768, srcSRS="EPSG:4326", dstSRS="EPSG:4326",
+            dstNodata=DEM_NODATA, srcSRS="EPSG:4326", dstSRS="EPSG:4326",
             format="GTiff", callback=gdal_callback,
         )
         if clip_result is not None:
@@ -164,7 +168,7 @@ def download_and_merge_tiles(
     temp_files.append(merged_path)
     merge_result = gdal.Warp(
         merged_path, clipped_rasters,
-        dstNodata=-32768, format="GTiff", callback=gdal_callback,
+        dstNodata=DEM_NODATA, format="GTiff", callback=gdal_callback,
     )
     if merge_result is None:
         raise RuntimeError(

@@ -76,7 +76,7 @@ def cleanup_stale_shm_entries(dev_shm_dir: str, my_uid: int) -> None:
         if m is None:
             continue
         try:
-            st = os.stat(entry)
+            st = os.lstat(entry)
         except OSError:
             continue
         if st.st_uid != my_uid:

@@ -101,6 +101,8 @@ def _angle_diff_deg(angle_deg, reference_deg):
 
 
 def antenna_preset_key(index_or_key):
+    if isinstance(index_or_key, bool):
+        raise TypeError("antenna_preset_key expects str or int, not bool")
     if isinstance(index_or_key, str):
         return index_or_key if index_or_key in ANTENNA_PRESETS else "omni"
     idx = int(index_or_key)
@@ -158,6 +160,7 @@ def _read_pattern_points(path):
                 angle = float(row[0])
                 gain = float(row[1])
             except ValueError:
+                logger.warning("Skipping malformed row in pattern file %s: %s", path, row)
                 continue
             points.append((angle, gain))
     if len(points) < 2:
