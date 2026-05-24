@@ -3,37 +3,37 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Regression tests for CSV formula-injection guards.
 
-M8/N21: _csv_safe now only strips tab/CR (not spaces) before checking for
+M8/N21: csv_safe now only strips tab/CR (not spaces) before checking for
 formula prefixes.  A leading space is NOT a formula-injection vector —
 spreadsheets treat " =1+1" as literal text, not a formula.
 """
-from NoWires.report.export import _csv_safe
+from NoWires.sanitizers import csv_safe
 
 
 def test_leading_space_is_preserved():
     # A leading space prevents formula injection in spreadsheets
-    assert _csv_safe(" =1+1") == " =1+1"
+    assert csv_safe(" =1+1") == " =1+1"
 
 
 def test_leading_space_plus_preserved():
-    assert _csv_safe(" +CMD(...)") == " +CMD(...)"
+    assert csv_safe(" +CMD(...)") == " +CMD(...)"
 
 
 def test_leading_space_at_preserved():
-    assert _csv_safe(" @SUM(...)") == " @SUM(...)"
+    assert csv_safe(" @SUM(...)") == " @SUM(...)"
 
 
 def test_leading_tab_formula_injection():
-    assert _csv_safe("	=1+1") == "'=1+1"
+    assert csv_safe("	=1+1") == "'=1+1"
 
 
 def test_normal_value_unchanged():
-    assert _csv_safe("hello") == "hello"
+    assert csv_safe("hello") == "hello"
 
 
 def test_existing_formula_prefix_still_caught():
-    assert _csv_safe("=1+1") == "'=1+1"
+    assert csv_safe("=1+1") == "'=1+1"
 
 
 def test_existing_minus_numeric_still_caught():
-    assert _csv_safe("-1.5") == "-1.5"
+    assert csv_safe("-1.5") == "-1.5"

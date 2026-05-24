@@ -29,16 +29,7 @@ and were originally distributed under the MIT License. See NOTICE.md for
 attribution details.
 """
 
-SIGNAL_LEVELS = [
-    (-30.0, (0, 70, 20, 220), "Very Strong"),
-    (-60.0, (0, 110, 40, 210), "Excellent"),
-    (-75.0, (0, 180, 80, 200), "Good"),
-    (-85.0, (180, 220, 40, 195), "Fair"),
-    (-95.0, (240, 180, 40, 190), "Marginal"),
-    (-105.0, (230, 110, 40, 185), "Weak"),
-    # Transparent by design: no-service cells should reveal the base map.
-    (-120.0, (200, 40, 40, 0), "No service"),
-]
+from NoWires.constants import SIGNAL_LEVELS
 
 _RAMP_CEILING_DBM = 100.0
 

@@ -1,11 +1,16 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
+import numpy as np
 from osgeo import gdal, osr
 
 from qgis.core import QgsProcessingException
 
-from NoWires.constants import COVERAGE_NODATA
-from NoWires.radio_coverage.compute import grid_to_raster_array
+from NoWires.constants import COVERAGE_NODATA, GDAL_DRIVER_NAME
+
+
+def grid_to_raster_array(grid, nodata=COVERAGE_NODATA):
+    arr = np.asarray(grid, dtype=np.float32)
+    return np.where(np.isnan(arr), nodata, arr)[::-1]
 
 
 def write_geotiff(path, grid, min_lat, max_lat, min_lon, max_lon, nodata=COVERAGE_NODATA):
@@ -22,7 +27,7 @@ def write_geotiff(path, grid, min_lat, max_lat, min_lon, max_lon, nodata=COVERAG
     """
     raster = grid_to_raster_array(grid)
     n_rows, n_cols = raster.shape
-    driver = gdal.GetDriverByName("GTiff")
+    driver = gdal.GetDriverByName(GDAL_DRIVER_NAME)
     if driver is None:
         raise QgsProcessingException("GDAL GTiff driver not available")
     ds = driver.Create(path, n_cols, n_rows, 1, gdal.GDT_Float32)

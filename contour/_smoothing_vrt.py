@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET  # nosec B405
 import numpy as np
 from osgeo import gdal
 
-from NoWires.constants import DEM_NODATA
+from NoWires.constants import DEM_NODATA, GDAL_DRIVER_NAME
 
 try:
     from defusedxml.ElementTree import parse as _safe_parse  # nosec B405
@@ -52,7 +52,7 @@ def _raster_calc(calc_func, output_path, nodata=DEM_NODATA, overwrite=False, **i
         result[np.isnan(result)] = nodata
         if not overwrite and os.path.exists(output_path):
             raise RuntimeError("Output file already exists: " + output_path)
-        driver = gdal.GetDriverByName("GTiff")
+        driver = gdal.GetDriverByName(GDAL_DRIVER_NAME)
         out_ds = driver.Create(output_path, cols, rows, 1, gdal.GDT_Float32)
         out_ds.SetGeoTransform(geo_transform)
         out_ds.SetProjection(projection)
