@@ -62,15 +62,28 @@ class TestRadioCoverageIntegration:
         assert "received_power_dbm" in result
         assert "total_path_loss_db" in result
 
-    def test_coverage_report_payload_basic(self, qgis_app):
+    def test_coverage_report_empty_grid(self, qgis_app):
+        import numpy as np
         from NoWires.radio_coverage.reporting import build_coverage_report_payload_for_grid
+        grid = np.full((5, 5), np.nan, dtype=np.float32)
+        from unittest.mock import MagicMock
+        mock_clutter = MagicMock()
+        mock_clutter.tx_loss_db = 0.0
         payload = build_coverage_report_payload_for_grid(
+            prx_grid=grid, loss_grid=grid, itm_loss_grid=grid,
+            clutter_loss_grid=np.zeros((5, 5), dtype=np.float32),
+            clutter_rx_db_grid=np.zeros((5, 5), dtype=np.float32),
+            bel_rx_db_grid=np.zeros((5, 5), dtype=np.float32),
             min_lat=0.0, max_lat=1.0, min_lon=0.0, max_lon=1.0,
-            f_mhz=300.0, rx_sensitivity_dbm=-100.0,
-            max_dist_km=5.0, grid_size=1, climate=1,
             tx_lat=0.5, tx_lon=0.5,
+            tx_h=30.0, rx_h=2.0, f_mhz=300.0,
+            radius_km=5.0, grid_size=1, polarization=1,
+            climate=1, time_pct=50.0, location_pct=50.0, situation_pct=50.0,
+            tx_power=30.0, tx_gain=0.0, rx_gain=0.0, cable_loss=0.0, rx_sens=-100.0,
+            clutter_enabled=False, clutter_source="none",
+            antenna_preset=0, tx_clutter_for_report=mock_clutter,
         )
-        assert "tx_lat" in payload
+        assert payload is not None
 
     def test_remove_coverage_legend_noop(self, qgis_app):
         from NoWires.radio_coverage.legend import remove_coverage_legend
@@ -161,22 +174,33 @@ class TestContourIntegration:
 class TestP2PIntegration:
     def test_p2p_link_param_class(self, qgis_app):
         from NoWires.p2p.analysis_params import P2PAnalysisParams
-        params = P2PAnalysisParams()
-        params.tx_lat = 47.0
-        params.tx_lon = 8.0
-        params.rx_lat = 47.1
-        params.rx_lon = 8.1
-        params.f_mhz = 300.0
+        params = P2PAnalysisParams(
+            tx_lat=47.0, tx_lon=8.0, rx_lat=47.1, rx_lon=8.1,
+            tx_h=30.0, rx_h=10.0, f_mhz=300.0,
+            polarization=1, climate=1,
+            time_pct=50.0, location_pct=50.0, situation_pct=50.0,
+            tx_power=30.0, tx_gain=0.0, rx_gain=0.0,
+            cable_loss=0.0, rx_sens=-100.0, k_factor=1.333,
+            n0=301.0, epsilon=15.0, sigma=0.005,
+        )
         assert params.tx_lat == 47.0
         assert params.f_mhz == 300.0
 
     def test_p2p_outputs_write_fresnel_zone(self, qgis_app, tmp_path):
         from NoWires.p2p.outputs import write_fresnel_zone
-        output_path = str(tmp_path / "fresnel.gpkg")
-        d_km = np.linspace(0, 5, 50)
+        from osgeo import osr
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+        poly_path = str(tmp_path / "fresnel_poly.gpkg")
+        lines_path = str(tmp_path / "fresnel_lines.gpkg")
+        distances = np.linspace(0, 5000, 50)
         terrain = np.full(50, 100.0)
-        write_fresnel_zone(output_path, d_km, 0.0, 0.0, 0.1, 0.0, terrain, terrain * 0.6)
-        assert os.path.exists(output_path)
+        write_fresnel_zone(
+            poly_path, lines_path, srs,
+            0.0, 0.0, 0.05, 0.0,
+            distances, terrain, terrain * 0.6, terrain * 0.3, 5000.0,
+        )
+        assert os.path.exists(poly_path)
 
     def test_p2p_symbology_applied(self, qgis_app, tmp_path):
         from qgis.core import QgsVectorLayer

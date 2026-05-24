@@ -31,8 +31,13 @@ def _call_load_layers(mock_feedback=None, show_chart=True):
     mock_context = MagicMock()
     mock_layer = MagicMock()
     mock_layer.isValid.return_value = True
+    mock_renderer = MagicMock()
+    mock_renderer.rootRule.return_value = MagicMock()
     with patch.object(compute_mod, "show_profile_chart", side_effect=RuntimeError("chart crash")), \
          patch("qgis.core.QgsVectorLayer", return_value=mock_layer), \
+         patch("qgis.core.QgsRuleBasedRenderer", return_value=mock_renderer, create=True), \
+         patch("NoWires.p2p.symbology.QgsRuleBasedRenderer", return_value=mock_renderer, create=True), \
+         patch("NoWires.p2p.symbology.QgsSymbol.defaultSymbol", return_value=MagicMock()), \
          patch.object(compute_mod, "register_destination_layer", return_value=None), \
          patch.object(compute_mod, "queue_layer_for_loading"):
         compute_mod._load_p2p_qgis_layers(
