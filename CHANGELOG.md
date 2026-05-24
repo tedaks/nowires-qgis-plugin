@@ -7,9 +7,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.3] - 2026-05-24
+
+### Fixed
+
+- Clamp `math.asin` argument in `elevation.py:bearing_destination` to `[-1.0, 1.0]` for large-distance edge cases.
+- Hoist `urlsplit` import to module level in `tile_download_base.py`.
+- Replace hardcoded `earth_r = 6371000.0` in `package_gpkg.py` with `EARTH_RADIUS_M` from `constants.py`.
+- Remove dead store in `algorithm/coverage_comparison.py:124`.
+- Remove unnecessary `Qt_rm = QTimer` alias in `p2p/chart.py:149`.
+- Remove stale test comment in `tests/test_algorithms_integration.py:90-100`.
+
+### Changed
+
+- Add `GDAL_DRIVER_NAME = "GTiff"` and `AOI_PADDING_FRACTION = 0.1` to `constants.py`, replacing 12 hardcoded occurrences.
+- Add `SIGNAL_LEVELS` to `constants.py`, breaking `radio → radio_coverage` import dependency.
+- Move `grid_to_raster_array` from `radio_coverage/compute.py` to `raster_io.py`, breaking `raster_io → radio_coverage` import dependency.
+- Extract duplicated AOI padding formula into `aoi_padding_deg()` in `geo_bounds.py`.
+- Extract `_csv_safe` and `_sanitize_json` from `report/export.py` into shared `sanitizers.py` module as `csv_safe` and `sanitize_json`.
+- Replace `itm_p2p_loss()` hardcoded parameter defaults (`301.0`, `300.0`, `15.0`, `0.005`) with imports from `defaults.py`.
+- Pre-emptively split `tile_download_base.py` — extract `clip_and_merge_tiles` into new `tile_merge.py`.
+- Stop `clutter/__init__.py` from re-exporting private symbols `_category_height_m` and `_resolve_category`.
+
+### Added
+
+- Add 3 import-linter contracts: `radio` must not depend on `radio_coverage`, `raster_io` must not depend on `radio_coverage`, `tile_download_base` must not depend on `report`.
+- Replace `type: ignore[arg-type]` suppressions in `comparison/reporting.py` with explicit `assert tmpdir is not None` guards.
+- Add unit tests for `comparison/add_params.py` (298 lines, previously untested).
+- Add `__all__` to top-level `__init__.py` for explicit public API surface.
+- Move 6 orphaned standalone scripts to `scripts/` directory, excluded from coverage.
+- Add `reviewers` and `labels` to `.github/dependabot.yml`.
+- Add release dates to CHANGELOG headers in bumpversion configuration.
+
 ## [Unreleased]
 
-Planned items for v1.6.3 and v1.6.4 are tracked in [ROADMAP.md](ROADMAP.md).
+Planned items for v1.6.4 are tracked in [ROADMAP.md](ROADMAP.md).
 
 ## [1.6.2] - 2026-05-23
 

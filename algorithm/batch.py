@@ -28,10 +28,10 @@ import logging
 from typing import Any
 from qgis.core import QgsProcessingException
 from NoWires.base_algorithm import NoWiresAlgorithm, install_constants
-from NoWires.constants import DEGREE_PADDING, WGS84_CRS
+from NoWires.constants import METERS_PER_DEGREE_LAT, WGS84_CRS
 from NoWires.dem_downloader import ensure_dem_for_area
 from NoWires.elevation import ElevationGrid
-from NoWires.geo_bounds import shortest_longitude_bounds_for, validate_coordinates
+from NoWires.geo_bounds import aoi_padding_deg, shortest_longitude_bounds_for, validate_coordinates
 from NoWires.radio import K_FACTOR_PRESETS, resolve_k_factor, validate_itm_input_ranges
 from NoWires.antenna import antenna_preset_key
 from NoWires.clutter import ensure_clutter_grid_for_area
@@ -163,7 +163,7 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
     lats = [pt["lat"] for pt in candidate_tx] + [pt["lat"] for pt in rx_points]
     lons = [pt["lon"] for pt in candidate_tx] + [pt["lon"] for pt in rx_points]
     south, north = min(lats), max(lats)
-    pad = max(DEGREE_PADDING, (north - south) * 0.1)
+    pad = aoi_padding_deg((north - south) * METERS_PER_DEGREE_LAT)
     west, east = shortest_longitude_bounds_for(lons, padding_deg=pad)
     owns_clutter_grid = False
     if rp["cg"] is None and rp["ce"]:

@@ -87,19 +87,6 @@ def test_comparison_init_algorithm_registers_params(qgis_app):
     assert "OUTPUT_REPORT_HTML" in param_names
 
 
-"""
-NOTE: test_grid_size_validation_raises_on_mismatch is deliberately not
-implemented as a behavioral test. The production code at
-coverage_comparison.py:86 accesses ``self.PANEL_A_POINT`` which is
-never set by install_constants (only ``self.POINT`` is set with value
-``"PANEL_A_POINT"`` then overwritten to ``"PANEL_B_POINT"`` by PANEL_B).
-The original inspect.getsource() test verified source ordering but
-executing processAlgorithm would AttributeError before reaching the
-grid-size check. This requires a production fix to coverage_comparison.py
-to either use string literals or properly set panel-prefixed constants.
-"""
-
-
 def test_comparison_name_and_display(qgis_app):
     """Verify algorithm identity methods (lines 254, 257, 260)."""
     from NoWires.algorithm.coverage_comparison import CoverageComparisonAlgorithm

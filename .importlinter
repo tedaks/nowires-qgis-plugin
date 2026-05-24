@@ -13,3 +13,27 @@ forbidden_modules =
     qgis
     PyQt5
     PyQt6
+
+[importlinter:contract:radio-no-coverage]
+name = radio must not depend on radio_coverage
+type = forbidden
+source_modules =
+    NoWires.radio
+forbidden_modules =
+    NoWires.radio_coverage
+
+[importlinter:contract:raster-io-no-coverage]
+name = raster_io must not depend on radio_coverage
+type = forbidden
+source_modules =
+    NoWires.raster_io
+forbidden_modules =
+    NoWires.radio_coverage
+
+[importlinter:contract:tile-download-no-report]
+name = tile_download_base must not depend on report
+type = forbidden
+source_modules =
+    NoWires.tile_download_base
+forbidden_modules =
+    NoWires.report

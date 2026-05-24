@@ -146,8 +146,7 @@ def show_profile_chart(
                 for ann in pending:
                     ann.remove()
                 fig.canvas.draw_idle()
-            Qt_rm = QTimer
-            Qt_rm.singleShot(0, _rm)
+            QTimer.singleShot(0, _rm)
 
     def update_visibility():
         if _destroyed:

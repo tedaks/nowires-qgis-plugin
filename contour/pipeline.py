@@ -31,7 +31,7 @@ import tempfile
 
 from osgeo import gdal, ogr
 
-from NoWires.constants import DEM_NODATA
+from NoWires.constants import DEM_NODATA, GDAL_DRIVER_NAME
 
 from qgis.PyQt.QtGui import QPainter
 from qgis.core import QgsApplication, QgsAuthMethodConfig, QgsProject, QgsRasterLayer
@@ -144,7 +144,7 @@ def download_and_merge_tiles(
             fn_clip, tile_path,
             cutlineDSName=aoi_shp_path, cropToCutline=True,
             dstNodata=DEM_NODATA, srcSRS="EPSG:4326", dstSRS="EPSG:4326",
-            format="GTiff", callback=gdal_callback,
+            format=GDAL_DRIVER_NAME, callback=gdal_callback,
         )
         if clip_result is not None:
             temp_files.append(fn_clip)

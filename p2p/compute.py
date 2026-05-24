@@ -10,16 +10,15 @@ from osgeo import osr
 from qgis.core import QgsProcessingException
 
 from NoWires.constants import (
-    CLIMATE_NAMES, DEFAULT_PROFILE_STEP_M, DEGREE_PADDING, FSPL_CONSTANT,
-    METERS_PER_DEGREE_LAT, MHZ_TO_HZ,
-    POLARIZATION_NAMES,
+    CLIMATE_NAMES, DEFAULT_PROFILE_STEP_M, FSPL_CONSTANT,
+    MHZ_TO_HZ, POLARIZATION_NAMES,
 )
 from NoWires.constants import ITM_LOSS_UPPER_BOUND
 from NoWires.temp_manager import TempDirManager
 from NoWires.dem_downloader import ensure_dem_for_area, get_temp_dir
 from NoWires.elevation import ElevationGrid, bearing_deg, haversine_m
 from NoWires.fresnel import C_LIGHT, fresnel_profile_analysis
-from NoWires.geo_bounds import shortest_longitude_bounds
+from NoWires.geo_bounds import aoi_padding_deg, shortest_longitude_bounds
 from NoWires.p2p.analysis_params import P2PAnalysisParams
 from NoWires.radio import PROP_MODE_NAMES, build_pfl, itm_p2p_loss
 from NoWires.report.payloads import build_p2p_report_payload
@@ -95,7 +94,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon))
     p.feedback.pushInfo("Path distance: {:.1f} m ({:.2f} km)".format(
         dist_m, dist_m / 1000.0))
-    pad = max(DEGREE_PADDING, dist_m / METERS_PER_DEGREE_LAT * 0.1)
+    pad = aoi_padding_deg(dist_m)
     south, north = min(p.tx_lat, p.rx_lat) - pad, max(p.tx_lat, p.rx_lat) + pad
     west, east = shortest_longitude_bounds(p.tx_lon, p.rx_lon, padding_deg=pad)
     clutter_grid = p.clutter_grid

@@ -1,6 +1,6 @@
 [project]
 name = "nowires"
-version = "1.6.2"
+version = "1.6.3"
 description = "QGIS plugin for radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM"
 requires-python = ">=3.12"
 license = {text = "GPL-3.0-or-later"}
@@ -32,6 +32,7 @@ omit = [
     "tests/*",
     "itm/*",
     "benchmarks/*",
+    "scripts/*",
     "*/__pycache__/*",
 ]
 
@@ -40,7 +41,7 @@ show_missing = true
 fail_under = 59
 
 [tool.bumpversion]
-current_version = "1.6.2"
+current_version = "1.6.3"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 commit = true
@@ -56,7 +57,7 @@ replace = "version={new_version}"
 [[tool.bumpversion.files]]
 filename = "CHANGELOG.md"
 search = "## [Unreleased]"
-replace = "## [{new_version}]"
+replace = "## [{new_version}] - {now:%Y-%m-%d}"
 
 [[tool.bumpversion.files]]
 filename = "metadata.txt"
