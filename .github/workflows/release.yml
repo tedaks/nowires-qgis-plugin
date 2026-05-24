@@ -173,12 +173,7 @@ jobs:
           echo "Zip smoke check OK (metadata.txt version: $zip_version)"
 
       - name: Attest build provenance
-        # FIXME: pin to a SHA you have verified from
-        # https://github.com/actions/attest-build-provenance/releases
-        # (`gh api repos/actions/attest-build-provenance/git/refs/tags/v2`
-        # to fetch the current SHA). Left as a floating major to flag this
-        # for review rather than guess a SHA.
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2
         with:
           subject-path: ${{ steps.build.outputs.zip }}
 
