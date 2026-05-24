@@ -8,7 +8,6 @@ Requires QGIS_PREFIX_PATH to be set (QGIS Docker container).
 """
 
 import os
-import numpy as np
 import pytest
 
 try:
@@ -26,25 +25,6 @@ pytestmark = [
 ]
 
 
-def _create_synthetic_dem(path, south, north, west, east, nx=50, ny=50):
-    from osgeo import gdal, osr
-    driver = gdal.GetDriverByName("GTiff")
-    ds = driver.Create(path, nx, ny, 1, gdal.GDT_Float32)
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(4326)
-    srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-    ds.SetProjection(srs.ExportToWkt())
-    dx = (east - west) / nx
-    dy = (north - south) / ny
-    ds.SetGeoTransform([west, dx, 0, north, 0, -dy])
-    data = np.full((ny, nx), 100.0, dtype=np.float32)
-    band = ds.GetRasterBand(1)
-    band.WriteArray(data)
-    band.SetNoDataValue(-32768)
-    band.FlushCache()
-    ds = None
-    return path
-
 
 @pytest.fixture
 def processing_context(qgis_app):
@@ -58,13 +38,13 @@ def feedback():
 
 class TestP2PAlgorithmExecution:
     def test_p2p_process_algorithm_runs_with_synthetic_dem(
-        self, qgis_app, processing_context, feedback, patch_dem_download, monkeypatch, tmp_path,
+        self, qgis_app, processing_context, feedback, patch_dem_download, create_synthetic_dem, monkeypatch, tmp_path,
     ):
         from NoWires.algorithm.p2p import P2PAlgorithm
         from NoWires import clutter as clutter_mod
 
         dem_path = patch_dem_download
-        _create_synthetic_dem(
+        create_synthetic_dem(
             dem_path, south=13.9, north=14.1,
             west=120.9, east=121.1, nx=20, ny=20,
         )
@@ -133,13 +113,13 @@ class TestP2PAlgorithmExecution:
 
 class TestCoverageAlgorithmExecution:
     def test_coverage_process_algorithm_runs_with_synthetic_dem(
-        self, qgis_app, processing_context, feedback, patch_dem_download, monkeypatch, tmp_path,
+        self, qgis_app, processing_context, feedback, patch_dem_download, create_synthetic_dem, monkeypatch, tmp_path,
     ):
         from NoWires.algorithm.coverage import CoverageAlgorithm
         from NoWires import clutter as clutter_mod
 
         dem_path = patch_dem_download
-        _create_synthetic_dem(
+        create_synthetic_dem(
             dem_path, south=13.9, north=14.1,
             west=120.9, east=121.1, nx=20, ny=20,
         )
@@ -243,13 +223,13 @@ class TestAlgorithmParameterConsistency:
 
 class TestBatchAlgorithmExecution:
     def test_batch_one_to_many_process_algorithm_runs(
-        self, qgis_app, processing_context, feedback, patch_dem_download, tmp_path,
+        self, qgis_app, processing_context, feedback, patch_dem_download, create_synthetic_dem, tmp_path,
     ):
         from NoWires.algorithm.batch import BatchAnalysisAlgorithm
         from osgeo import ogr, osr
 
         dem_path = patch_dem_download
-        _create_synthetic_dem(
+        create_synthetic_dem(
             dem_path, south=13.9, north=14.1,
             west=120.9, east=121.1, nx=20, ny=20,
         )

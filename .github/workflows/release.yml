@@ -18,7 +18,29 @@ defaults:
     shell: bash -euo pipefail {0}
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: constraints-ci.txt
+
+      - name: Install lint dependencies
+        run: pip install -c constraints-ci.txt -r requirements-lint.txt
+
+      - name: Run ruff check
+        run: ruff check .
+
   release:
+    needs: [lint]
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -87,7 +109,7 @@ jobs:
           # Explicit include list: only matching paths ship in the bundle.
           # New dev files/dirs are excluded by default and must be added here.
           # Directories shipped recursively:
-          include_dirs=(itm algorithm batch comparison contour coverage clutter p2p report)
+          include_dirs=(itm algorithm batch comparison contour radio_coverage clutter p2p report)
           # Root-level files/patterns shipped (subdirectory matches are filtered out):
           include_root_files=(
             '*.py'
@@ -139,7 +161,7 @@ jobs:
             NoWires/batch/outputs.py
             NoWires/comparison/panel.py
             NoWires/contour/pipeline.py
-            NoWires/coverage/engine.py
+            NoWires/radio_coverage/engine.py
             NoWires/clutter/__init__.py
             NoWires/p2p/compute.py
             NoWires/report/export.py

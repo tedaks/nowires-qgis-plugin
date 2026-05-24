@@ -74,8 +74,8 @@ def _bilinear_line(data: np.ndarray, gm: dict, lats: np.ndarray, lons: np.ndarra
     x0 = np.floor(fx).astype(np.int32)
     y1 = np.clip(y0 + 1, 0, n_lat - 1)
     x1 = np.clip(x0 + 1, 0, n_lon - 1)
-    ty = (fy - y0).astype(np.float32)
-    tx_ = (fx - x0).astype(np.float32)
+    ty = (fy - y0).astype(np.float64)
+    tx_ = (fx - x0).astype(np.float64)
     result = (
         data[y0, x0] * (1 - tx_) * (1 - ty)
         + data[y0, x1] * tx_ * (1 - ty)
@@ -105,13 +105,13 @@ def _bilinear_grid(data: np.ndarray, gm: dict, lats: np.ndarray, lons: np.ndarra
     x0 = np.floor(fx).astype(np.int32)
     y1 = np.clip(y0 + 1, 0, n_lat - 1)
     x1 = np.clip(x0 + 1, 0, n_lon - 1)
-    ty = (fy - y0).astype(np.float32)
-    tx_ = (fx - x0).astype(np.float32)
+    ty = (fy - y0).astype(np.float64)
+    tx_ = (fx - x0).astype(np.float64)
     result = (
         data[y0, x0] * (1 - tx_) * (1 - ty)
         + data[y0, x1] * tx_ * (1 - ty)
         + data[y1, x0] * (1 - tx_) * ty
         + data[y1, x1] * tx_ * ty
-    ).astype(np.float32)
+    )
     result[oob] = np.nan
     return result  # type: ignore[no-any-return]  # numpy bilinear-blend result types as Any

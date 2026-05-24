@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from NoWires.coverage.pool import (
+from NoWires.radio_coverage.pool import (
     _CoverageTask,
     apply_batch_results,
     log_coverage_failures,
@@ -26,7 +26,7 @@ from NoWires.coverage.pool import (
     _itm_worker_batch,
     _final_cov_pool,
 )
-from NoWires.coverage._result_dispatch import WorkerError
+from NoWires.radio_coverage._result_dispatch import WorkerError
 
 
 class TestInterpolateNANElevations:
@@ -56,13 +56,13 @@ class TestShouldUseMultiprocessing:
 
     def test_darwin_falls_back_when_no_python_exe(self):
         with patch.object(sys, "platform", "darwin"), \
-             patch("NoWires.coverage.pool.find_macos_python_executable", return_value=None):
+             patch("NoWires.radio_coverage.pool.find_macos_python_executable", return_value=None):
             result = should_use_multiprocessing()
             assert result is False
 
     def test_darwin_returns_true_when_python_exe_found(self):
         with patch.object(sys, "platform", "darwin"), \
-             patch("NoWires.coverage.pool.find_macos_python_executable", return_value="/usr/bin/python3"):
+             patch("NoWires.radio_coverage.pool.find_macos_python_executable", return_value="/usr/bin/python3"):
             result = should_use_multiprocessing()
             assert result is True
 
@@ -85,7 +85,7 @@ class TestEnsurePath:
 class TestFinalCovPool:
     def test_cleans_up_shared_memory_on_shutdown(self):
         mock_shm = MagicMock()
-        import NoWires.coverage.pool as cp
+        import NoWires.radio_coverage.pool as cp
         cp._cov_shm = mock_shm
         cp._cov_grid_data = np.array([1.0, 2.0])
         try:
@@ -97,7 +97,7 @@ class TestFinalCovPool:
             cp._cov_grid_data = None
 
     def test_noop_when_nothing_to_clean(self):
-        import NoWires.coverage.pool as cp
+        import NoWires.radio_coverage.pool as cp
         cp._cov_shm = None
         cp._cov_grid_data = None
         _final_cov_pool()
@@ -217,7 +217,7 @@ class TestCoverageTask:
 
 class TestITMWorkerNANHandling:
     def test_all_nan_elevations_returns_none(self):
-        with patch("NoWires.coverage.pool.sample_line_from_grid",
+        with patch("NoWires.radio_coverage.pool.sample_line_from_grid",
                    return_value=np.array([np.nan, np.nan, np.nan])):
             grid_data = np.zeros((10, 10))
             grid_meta = {
@@ -261,7 +261,7 @@ class TestITMWorkerBatch:
             0.0, 0.0, 0.0,
         )
 
-        with patch("NoWires.coverage.pool.sample_line_from_grid",
+        with patch("NoWires.radio_coverage.pool.sample_line_from_grid",
                    return_value=np.array([np.nan, np.nan, np.nan])):
             batch = [tuple(task1), tuple(task2)]
             # v1.5.5+: _itm_worker_batch takes a plain batch list (no
@@ -286,7 +286,7 @@ class TestITMWorkerBatch:
         )
         batch = [tuple(task), tuple(task)]
 
-        with patch("NoWires.coverage.pool.sample_line_from_grid",
+        with patch("NoWires.radio_coverage.pool.sample_line_from_grid",
                    return_value=np.array([np.nan, np.nan, np.nan])):
             results = _itm_worker_batch(batch)
             assert len(results) == 2

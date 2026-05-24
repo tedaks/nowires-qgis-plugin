@@ -33,7 +33,7 @@ from NoWires.clutter import CLUTTER_MODEL_OPTIONS
 from NoWires.clutter.context import ClutterModel
 from NoWires.antenna import ANTENNA_PRESET_OPTIONS
 from NoWires.constants import CLIMATE_NAMES, POLARIZATION_NAMES
-from NoWires.coverage.summary import summarize_coverage_grid
+from NoWires.radio_coverage.summary import summarize_coverage_grid
 from NoWires.report.payloads import (
     build_coverage_report_payload,
     build_empty_coverage_report_payload,

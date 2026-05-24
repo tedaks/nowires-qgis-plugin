@@ -8,15 +8,15 @@ import os
 
 
 PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
-PALETTE_SOURCE_PATH = os.path.join(PLUGIN_DIR, "coverage/palette.py")
+PALETTE_SOURCE_PATH = os.path.join(PLUGIN_DIR, "radio_coverage/palette.py")
 ALGORITHM_SOURCES = [
     os.path.join(PLUGIN_DIR, f)
     for f in (
         "algorithm/coverage.py",
-        "coverage/params.py",
-        "coverage/reporting.py",
-        "coverage/pool.py",
-        "coverage/tasks.py",
+        "radio_coverage/params.py",
+        "radio_coverage/reporting.py",
+        "radio_coverage/pool.py",
+        "radio_coverage/tasks.py",
     )
 ]
 
@@ -36,7 +36,7 @@ def _algorithm_source():
 
 def test_coverage_algorithm_delegates_to_palette():
     source = _algorithm_source()
-    assert "from NoWires.coverage.palette import apply_coverage_style" in source
+    assert "from NoWires.radio_coverage.palette import apply_coverage_style" in source
     assert "apply_coverage_style(layer)" in source
 
 

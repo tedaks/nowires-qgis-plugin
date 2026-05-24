@@ -176,7 +176,7 @@ def add_coverage_params(algorithm):
 
 def extract_coverage_params(alg, parameters, context):
     from qgis.core import QgsProcessingException
-    from NoWires.coverage.analysis_params import CoverageAnalysisParams
+    from NoWires.radio_coverage.analysis_params import CoverageAnalysisParams
     _dbl = alg.parameterAsDouble
     _enum = alg.parameterAsEnum
     tx_point = alg.parameterAsPoint(

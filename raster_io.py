@@ -5,7 +5,7 @@ from osgeo import gdal, osr
 from qgis.core import QgsProcessingException
 
 from NoWires.constants import COVERAGE_NODATA
-from NoWires.coverage.compute import grid_to_raster_array
+from NoWires.radio_coverage.compute import grid_to_raster_array
 
 
 def write_geotiff(path, grid, min_lat, max_lat, min_lon, max_lon, nodata=COVERAGE_NODATA):
@@ -23,6 +23,8 @@ def write_geotiff(path, grid, min_lat, max_lat, min_lon, max_lon, nodata=COVERAG
     raster = grid_to_raster_array(grid)
     n_rows, n_cols = raster.shape
     driver = gdal.GetDriverByName("GTiff")
+    if driver is None:
+        raise QgsProcessingException("GDAL GTiff driver not available")
     ds = driver.Create(path, n_cols, n_rows, 1, gdal.GDT_Float32)
     if ds is None:
         raise QgsProcessingException("GDAL failed to create GeoTIFF: {}".format(path))

@@ -38,7 +38,6 @@ import logging
 import math
 import os
 import re
-import stat
 import ssl
 import tempfile
 import urllib.request
@@ -47,6 +46,8 @@ from typing import Any
 
 
 
+from NoWires.fs_utils import safe_create_dir
+from NoWires.constants import DIR_PERMISSIONS
 from NoWires.geo_bounds import longitude_intervals
 from NoWires.tile_download_base import clip_and_merge_tiles, download_tile_with_retry
 
@@ -63,54 +64,6 @@ _MAX_TILES = 200
 _VALID_TILE_RE = re.compile(r"^[NS]\d{2}[EW]\d{3}$")
 
 
-def _safe_create_dir(target):
-    """Create or validate a directory safely, avoiding symlink TOCTOU races.
-
-    Uses tempfile.mkdtemp() for atomic creation when the directory does not
-    yet exist. On platforms that support O_DIRECTORY | O_NOFOLLOW, also uses
-    os.open to verify an existing directory is not a symlink.
-    """
-    try:
-        st = os.lstat(target)
-        if stat.S_ISLNK(st.st_mode):
-            logger.warning("Removing symlink at %s", target)
-            os.unlink(target)
-        elif not os.path.isdir(target):
-            logger.warning("Removing non-directory at %s", target)
-            os.unlink(target)
-        else:
-            dir_flag = getattr(os, "O_DIRECTORY", None)
-            nofollow_flag = getattr(os, "O_NOFOLLOW", None)
-            if dir_flag is not None and nofollow_flag is not None:
-                try:
-                    fd = os.open(target, os.O_RDONLY | dir_flag | nofollow_flag)
-                    os.close(fd)
-                except OSError:
-                    logger.warning("Removing unsafe directory at %s", target)
-                    os.unlink(target)
-    except OSError:
-        pass
-    if not os.path.isdir(target):
-        parent = os.path.dirname(target)
-        tmp = tempfile.mkdtemp(dir=parent)
-        try:
-            os.chmod(tmp, 0o700)
-        except OSError:
-            pass
-        try:
-            os.rename(tmp, target)
-        except OSError:
-            logger.debug("Could not rename %s to %s; using temp path", tmp, target)
-            return tmp
-    try:
-        st = os.stat(target)
-        if st.st_mode & 0o777 != 0o700:
-            os.chmod(target, 0o700)
-    except OSError:
-        pass
-    return target
-
-
 def get_worldcover_dir():
     try:
         username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
@@ -118,9 +71,9 @@ def get_worldcover_dir():
         username = "nowires"
     base = tempfile.gettempdir()
     nowires_dir = os.path.join(base, "NoWires-" + username)
-    nowires_dir = _safe_create_dir(nowires_dir)
+    nowires_dir = safe_create_dir(nowires_dir)
     target = os.path.join(nowires_dir, "worldcover")
-    return _safe_create_dir(target)
+    return safe_create_dir(target)
 
 
 def worldcover_tile_id(lat, lon):
@@ -241,7 +194,7 @@ def ensure_worldcover_for_area(south, north, west, east, feedback=None):
         feedback.pushInfo("Clipping and merging WorldCover tiles")
 
     merge_temp_dir = tempfile.mkdtemp(prefix="nowires_worldcover_", dir=temp_dir)
-    os.chmod(merge_temp_dir, 0o700)
+    os.chmod(merge_temp_dir, DIR_PERMISSIONS)
     if feedback:
         feedback.pushInfo(
             "Merged WorldCover outputs are kept in a per-run folder: "

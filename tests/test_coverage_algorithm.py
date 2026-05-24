@@ -18,7 +18,7 @@ from qgis.core import QgsProcessingContext, QgsProcessingFeedback
 
 from NoWires.algorithm.coverage import _build_clutter_context, CoverageAlgorithm
 from NoWires.clutter.context import TerminalClutterLosses
-from NoWires.coverage.analysis_params import CoverageAnalysisParams
+from NoWires.radio_coverage.analysis_params import CoverageAnalysisParams
 
 pytestmark = pytest.mark.qgis_integration
 
