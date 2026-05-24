@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    reviewers:
+      - "tedaks"
+    labels:
+      - "dependencies"
     groups:
       ci-tooling:
         patterns:
@@ -30,3 +34,7 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    reviewers:
+      - "tedaks"
+    labels:
+      - "dependencies"

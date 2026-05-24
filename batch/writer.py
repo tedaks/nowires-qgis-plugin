@@ -33,7 +33,7 @@ from osgeo import ogr, osr
 from NoWires.report.markers import ogr_driver_for_path, remove_existing_ogr_dataset
 from NoWires.batch.params import BATCH_MODE_OPTIONS
 from NoWires.processing_utils import queue_layer_for_loading
-from NoWires.report.export import _csv_safe, _sanitize_json
+from NoWires.sanitizers import csv_safe, sanitize_json
 
 
 def write_batch_marker_layer(path, results, feedback, mode):
@@ -104,7 +104,7 @@ def write_batch_csv(path, results, mode):
                 point_id = "TX({}, {:.5f}, {:.5f})".format(rank, r["tx_lat"], r["tx_lon"])
             else:
                 point_id = "RX({}, {:.5f}, {:.5f})".format(rank, r["rx_lat"], r["rx_lon"])
-            writer.writerow([_csv_safe(v) for v in (
+            writer.writerow([csv_safe(v) for v in (
                 point_id,
                 rank,
                 r["tx_lat"],
@@ -147,7 +147,7 @@ def write_batch_json(path, results, mode):
         ],
     }
     with open(str(path), "w", encoding="utf-8") as f:
-        json.dump(_sanitize_json(payload), f, indent=2, sort_keys=True, allow_nan=False)
+        json.dump(sanitize_json(payload), f, indent=2, sort_keys=True, allow_nan=False)
         f.write("\n")
 
 

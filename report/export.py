@@ -32,6 +32,8 @@ import html
 import json
 from pathlib import Path
 
+from NoWires.sanitizers import csv_safe, sanitize_json
+
 
 def _iter_rows(payload):
     """Yield CSV rows as (section, key, value) tuples."""
@@ -43,36 +45,6 @@ def _iter_rows(payload):
             yield "meta", section_name, section_value
 
 
-_FORMULA_TRIGGER_CHARS = frozenset({'=', '+', '@', '\N{EN DASH}', '\N{MINUS SIGN}'})
-_UNICODE_WHITESPACE = "\t\r\u3000\u2003\u2002\ufeff"
-
-
-def _csv_safe(value):
-    """Sanitize a CSV cell value to prevent formula injection and multi-line issues."""
-    s = str(value)
-    s = s.replace("\r", " ").replace("\n", " ")
-    s = s.lstrip(_UNICODE_WHITESPACE)
-    if s and s[0] in _FORMULA_TRIGGER_CHARS:
-        return "'" + s
-    if s.startswith('-') and len(s) > 1:
-        try:
-            float(s)
-        except ValueError:
-            return "'" + s
-    return s
-
-
-def _sanitize_json(obj):
-    import math
-    if isinstance(obj, dict):
-        return {k: _sanitize_json(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
-        return [_sanitize_json(v) for v in obj]
-    if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
-        return None
-    return obj
-
-
 def write_report_csv(path, payload):
     """Write a report payload as section/key/value CSV."""
     path = Path(path)
@@ -80,13 +52,13 @@ def write_report_csv(path, payload):
         writer = csv.writer(handle)
         writer.writerow(["section", "key", "value"])
         for row in _iter_rows(payload):
-            writer.writerow(tuple(_csv_safe(v) for v in row))
+            writer.writerow(tuple(csv_safe(v) for v in row))
 
 
 def write_report_json(path, payload):
     """Write a report payload as indented JSON."""
     path = Path(path)
-    sanitized = _sanitize_json(payload)
+    sanitized = sanitize_json(payload)
     with path.open("w", encoding="utf-8") as handle:
         json.dump(sanitized, handle, indent=2, sort_keys=True, allow_nan=False)
         handle.write("\n")

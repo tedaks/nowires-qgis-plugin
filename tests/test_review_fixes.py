@@ -187,7 +187,7 @@ def test_short_longitude_bounds_cross_antimeridian_without_global_extent():
 
 
 def test_tile_clip_geometry_splits_antimeridian_bounds():
-    from NoWires.tile_download_base import _aoi_geometry_for_bounds
+    from NoWires.tile_merge import _aoi_geometry_for_bounds
 
     calls = []
 

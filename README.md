@@ -4,7 +4,7 @@ Radio propagation analysis and terrain tools powered by NTIA's Irregular Terrain
 
 ## Status
 
-This repository contains the QGIS 4 plugin source for **NoWires** version 1.6.2.
+This repository contains the QGIS 4 plugin source for **NoWires** version 1.6.3.
 
 Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 SPDX-License-Identifier: GPL-3.0-or-later

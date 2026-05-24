@@ -49,6 +49,18 @@ FRESNEL_60PCT_FACTOR = 0.6
 EMPTY_MARGIN_DB = -999.0
 COVERAGE_NODATA = -9999.0
 ITM_LOSS_UPPER_BOUND = 400.0
+GDAL_DRIVER_NAME = "GTiff"
+AOI_PADDING_FRACTION = 0.1
+
+SIGNAL_LEVELS = [
+    (-30.0, (0, 70, 20, 220), "Very Strong"),
+    (-60.0, (0, 110, 40, 210), "Excellent"),
+    (-75.0, (0, 180, 80, 200), "Good"),
+    (-85.0, (180, 220, 40, 195), "Fair"),
+    (-95.0, (240, 180, 40, 190), "Marginal"),
+    (-105.0, (230, 110, 40, 185), "Weak"),
+    (-120.0, (200, 40, 40, 0), "No service"),
+]
 
 try:
     from qgis.core import QgsCoordinateReferenceSystem as _QgsCRS

@@ -180,7 +180,8 @@ def test_legacy_categories_unchanged():
     )
 
 
-from clutter import compute_terminal_clutter_loss, _category_height_m
+from clutter import compute_terminal_clutter_loss
+from clutter.advanced import _category_height_m
 from clutter.context import ClutterLossContext
 
 

@@ -292,7 +292,8 @@ def test_aoi_geometry_crosses_antimeridian():
             pytest.skip("osgeo.ogr is mocked by conftest")
     except ImportError:
         pytest.skip("GDAL not available")
-    geom = tdb._aoi_geometry_for_bounds(-10.0, 10.0, 170.0, -170.0, ogr_module=_real_ogr)
+    from NoWires.tile_merge import _aoi_geometry_for_bounds
+    geom = _aoi_geometry_for_bounds(-10.0, 10.0, 170.0, -170.0, ogr_module=_real_ogr)
     assert geom is not None
     name = geom.GetGeometryName()
     assert name in ("MULTIPOLYGON", "POLYGON")
@@ -307,7 +308,8 @@ def test_rectangle_geometry_is_valid_polygon():
             pytest.skip("osgeo.ogr is mocked by conftest")
     except ImportError:
         pytest.skip("GDAL not available")
-    geom = tdb._rectangle_geometry(-10.0, 10.0, -5.0, 5.0, ogr_module=_real_ogr)
+    from NoWires.tile_merge import _rectangle_geometry
+    geom = _rectangle_geometry(-10.0, 10.0, -5.0, 5.0, ogr_module=_real_ogr)
     assert geom.GetGeometryName() == "POLYGON"
     assert geom.GetArea() > 0.0
 
@@ -321,5 +323,6 @@ def test_aoi_geometry_single_interval_returns_polygon():
             pytest.skip("osgeo.ogr is mocked by conftest")
     except ImportError:
         pytest.skip("GDAL not available")
-    geom = tdb._aoi_geometry_for_bounds(-10.0, 10.0, -5.0, 5.0, ogr_module=_real_ogr)
+    from NoWires.tile_merge import _aoi_geometry_for_bounds
+    geom = _aoi_geometry_for_bounds(-10.0, 10.0, -5.0, 5.0, ogr_module=_real_ogr)
     assert geom.GetGeometryName() == "POLYGON"

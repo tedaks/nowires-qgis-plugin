@@ -30,7 +30,7 @@ import os
 
 from osgeo import gdal
 
-from NoWires.constants import DEM_NODATA
+from NoWires.constants import DEM_NODATA, GDAL_DRIVER_NAME
 from NoWires.overlay_raster import build_overview_levels, choose_overlay_dimensions
 
 
@@ -68,7 +68,7 @@ def prepare_elevation_overlay(source_dem_path, persistent_temp_dir, context, fee
     translate_result = gdal.Warp(
         overlay_dem_path,
         source_dem_path,
-        format="GTiff",
+        format=GDAL_DRIVER_NAME,
         dstNodata=DEM_NODATA,
         dstSRS=dst_srs,
         width=overlay_width,
@@ -85,7 +85,7 @@ def prepare_elevation_overlay(source_dem_path, persistent_temp_dir, context, fee
         overlay_hillshade_path,
         overlay_dem_path,
         "hillshade",
-        format="GTiff",
+        format=GDAL_DRIVER_NAME,
         azimuth=315,
         altitude=45,
         creationOptions=["TILED=YES", "COMPRESS=DEFLATE", "BIGTIFF=IF_SAFER"],

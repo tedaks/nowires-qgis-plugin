@@ -66,7 +66,7 @@ def test_compute_itm_p2p_uses_radio_bridge(monkeypatch):
 
 
 def test_grid_to_raster_array_flips_rows_and_replaces_nan_with_nodata():
-    module = importlib.import_module("NoWires.radio_coverage.compute")
+    module = importlib.import_module("NoWires.raster_io")
     grid = np.array(
         [
             [1.0, np.nan],
