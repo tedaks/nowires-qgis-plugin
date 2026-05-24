@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: read  # required to download artifacts from prior workflow runs
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -49,10 +50,52 @@ jobs:
             python3 benchmarks/p2p_runtime.py
           } | tee -a benchmark-output.txt
 
+      - name: Download latest main baseline
+        # Best-effort: pulls benchmark-output.txt from the most recent
+        # successful run of this workflow on main. Artifacts expire after
+        # 90 days by default — comparison silently skips if unavailable.
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p baseline
+          main_run_id=$(gh run list \
+            --workflow benchmark.yml \
+            --branch main \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId' || true)
+          if [ -z "$main_run_id" ] || [ "$main_run_id" = "null" ]; then
+            echo "No successful main run found; skipping baseline download"
+            exit 0
+          fi
+          echo "Downloading benchmark output from main run $main_run_id"
+          gh run download "$main_run_id" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name benchmark-output \
+            --dir baseline \
+            || echo "Baseline artifact unavailable (possibly expired)"
+
+      - name: Diff against main baseline (informational)
+        # Prints a unified diff for human review on the PR check log.
+        # Does not fail the job — runtime variance on shared runners makes
+        # auto-failing too noisy without a regression threshold.
+        if: github.event_name == 'pull_request'
+        run: |
+          if [ -f baseline/benchmark-output.txt ]; then
+            echo "=== Diff vs latest successful main ==="
+            diff -u baseline/benchmark-output.txt benchmark-output.txt || true
+          else
+            echo "No baseline available; skipping comparison"
+          fi
+
       - name: Upload benchmark output
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: benchmark-output-${{ github.run_id }}
+          # Stable name (no run_id suffix) so PR runs can download the
+          # latest main artifact by name.
+          name: benchmark-output
           path: benchmark-output.txt
           if-no-files-found: ignore
