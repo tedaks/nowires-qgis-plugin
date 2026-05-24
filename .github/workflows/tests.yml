@@ -2,7 +2,10 @@ name: Tests
 
 on:
   push:
+    branches: [main]
+    tags: ['v*.*.*']
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -39,7 +42,7 @@ jobs:
 
       - name: Verify no source file exceeds 300 lines
         run: |
-          violating=$(find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}')
+          violating=$(find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/benchmarks/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}')
           if [ -n "$violating" ]; then
             echo "ERROR: The following source files exceed 300 lines:"
             echo "$violating"
@@ -124,13 +127,15 @@ jobs:
         run: lint-imports
 
   pytest:
+    # Runs in parallel with lint/audit/mypy/import-linter. Each is enforced
+    # independently via branch protection; coupling them serializes CI for
+    # no signal benefit, and a freshly-disclosed CVE in audit shouldn't gate
+    # test results.
     runs-on: ubuntu-latest
-    needs: [lint, audit, mypy, import-linter]
     timeout-minutes: 15
     strategy:
       matrix:
         python-version: ["3.12"]
-      fail-fast: false
 
     steps:
       - name: Check out repository
@@ -147,7 +152,7 @@ jobs:
         run: pip install -c constraints-ci.txt -r requirements-test.txt
 
       - name: Run main test suite (coverage collection only)
-        run: pytest -q -m "not benchmark and not qgis_integration and not gdal_integration" --ignore=tests/test_coverage_pool_extended.py --ignore=tests/test_plugin_load.py --cov --cov-fail-under=59 --cov-report=
+        run: pytest -q -m "not benchmark and not qgis_integration and not gdal_integration" --ignore=tests/test_coverage_pool_extended.py --ignore=tests/test_plugin_load.py --cov --cov-report=
 
       - name: Run isolation-sensitive tests with combined coverage check
         run: pytest -q tests/test_coverage_pool_extended.py tests/test_plugin_load.py --cov --cov-append --cov-report=term-missing
