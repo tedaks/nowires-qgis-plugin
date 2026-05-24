@@ -44,12 +44,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from NoWires.defaults import DEFAULT_K_FACTOR
+from NoWires.defaults import (
+    DEFAULT_EPSILON, DEFAULT_FREQ_MHZ, DEFAULT_K_FACTOR, DEFAULT_N0, DEFAULT_SIGMA,
+)
 
 
 # --- Signal Level Definitions ---
 
-from NoWires.radio_coverage.palette import SIGNAL_LEVELS
+from NoWires.constants import SIGNAL_LEVELS
 
 THRESHOLDS = np.array([t for t, _, _ in SIGNAL_LEVELS], dtype=np.float64)
 COLORS = np.array(
@@ -194,11 +196,11 @@ def itm_p2p_loss(
     h_rx__meter,
     profile,
     climate=1,
-    N0=301.0,
-    f__mhz=300.0,
+    N0=DEFAULT_N0,
+    f__mhz=DEFAULT_FREQ_MHZ,
     polarization=0,
-    epsilon=15.0,
-    sigma=0.005,
+    epsilon=DEFAULT_EPSILON,
+    sigma=DEFAULT_SIGMA,
     mdvar=0,
     time_pct=50.0,
     location_pct=50.0,

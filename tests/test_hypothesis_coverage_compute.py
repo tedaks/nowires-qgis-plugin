@@ -9,7 +9,8 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from radio_coverage.compute import grid_to_raster_array, COVERAGE_NODATA
+from NoWires.constants import COVERAGE_NODATA
+from NoWires.raster_io import grid_to_raster_array
 
 
 class TestGridToRasterArrayProperties:

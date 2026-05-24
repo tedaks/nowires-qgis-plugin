@@ -22,6 +22,7 @@
  ***************************************************************************/
 """
 
+__all__ = ["classFactory"]
 
 class _NoOpPlugin:
     """Placeholder plugin returned in multiprocessing subprocesses.

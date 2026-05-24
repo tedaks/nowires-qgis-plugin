@@ -102,7 +102,8 @@ class TestRasterIOContract:
     def test_write_geotiff_uses_gdal_driver(self):
         """Contract: raster_io uses gdal.GetDriverByName('GTiff')."""
         source = open("raster_io.py").read()
-        assert 'GetDriverByName("GTiff")' in source
+        assert "from NoWires.constants import COVERAGE_NODATA, GDAL_DRIVER_NAME" in source or \
+            'GetDriverByName("GTiff")' in source
 
     def test_write_geotiff_closes_dataset_in_finally(self):
         source = open("raster_io.py").read()

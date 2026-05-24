@@ -18,14 +18,13 @@ from NoWires.clutter.categories import (  # noqa: F401
 )
 from NoWires.clutter.context import TerminalClutterLosses  # noqa: F401
 from NoWires.clutter.advanced import (  # noqa: F401
-    compute_terminal_clutter_loss, _category_height_m,
+    compute_terminal_clutter_loss,
     compute_terminal_clutter_losses,
     compute_path_clutter_loss, ClutterComponents,
     compute_advanced_loss,
 )
 from NoWires.clutter.resolve import (  # noqa: F401
     resolve_category_advanced,
-    _resolve_category,
 )
 from NoWires.clutter.grid import LandCoverGrid  # noqa: F401
 

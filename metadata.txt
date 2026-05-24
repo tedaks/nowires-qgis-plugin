@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.6.2
+version=1.6.3
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,7 +14,7 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
-    Version 1.6.2
+    Version 1.6.3
     - Fix TOCTOU race in dem_downloader temp dir creation — replace os.makedirs with atomic mkdtemp+rename
     - Add configurable max_bytes download cap (250 MiB) to prevent unbounded downloads
     - Add SHA-256 cache integrity verification for cached tiles via sidecar files

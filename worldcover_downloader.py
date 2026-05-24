@@ -49,7 +49,8 @@ from typing import Any
 from NoWires.fs_utils import safe_create_dir
 from NoWires.constants import DIR_PERMISSIONS
 from NoWires.geo_bounds import longitude_intervals
-from NoWires.tile_download_base import clip_and_merge_tiles, download_tile_with_retry
+from NoWires.tile_download_base import download_tile_with_retry
+from NoWires.tile_merge import clip_and_merge_tiles
 
 logger = logging.getLogger(__name__)
 

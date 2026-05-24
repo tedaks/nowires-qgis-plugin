@@ -17,7 +17,7 @@ except ImportError:
 
 pytestmark = pytest.mark.skipif(not _REAL_GDAL, reason="Real GDAL not available (mocked by conftest)")
 
-from NoWires.tile_download_base import clip_and_merge_tiles
+from NoWires.tile_merge import clip_and_merge_tiles
 
 
 class _Feedback:

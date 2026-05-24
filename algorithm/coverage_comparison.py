@@ -34,10 +34,10 @@ attribution details.
 import logging
 from qgis.core import QgsProcessingException
 from NoWires.base_algorithm import NoWiresAlgorithm, install_constants
-from NoWires.constants import DEGREE_PADDING, METERS_PER_DEGREE_LAT, WGS84_CRS
+from NoWires.constants import WGS84_CRS
 from NoWires.dem_downloader import ensure_dem_for_area
 from NoWires.elevation import ElevationGrid
-from NoWires.geo_bounds import coverage_bounds
+from NoWires.geo_bounds import aoi_padding_deg, coverage_bounds
 from NoWires.comparison.params import (
     GRID_SIZE_PRESETS, DELTA_STYLE_OPTIONS,
     PANEL_A_CONSTANTS, PANEL_B_CONSTANTS, OUTPUT_CONSTANTS, make_panel_config)
@@ -95,7 +95,7 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
         tx_lat_center = (tx_lat_a + tx_lat_b) / 2.0
         tx_lon_center = (tx_lon_a + tx_lon_b) / 2.0
 
-        pad_deg = max(DEGREE_PADDING, radius_km * 1000.0 / METERS_PER_DEGREE_LAT * 0.1)
+        pad_deg = aoi_padding_deg(radius_km * 1000.0)
         south, north, west, east = coverage_bounds(
             tx_lat_center, tx_lon_center, radius_km, padding_deg=pad_deg)
 
@@ -120,8 +120,6 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
         try:
             with ElevationGrid(dem_path) as elev:
 
-                # Load clutter grid once and share between panels to ensure consistency.
-                shared_clutter_grid = None
                 panel_a_clutter_model_idx = self.parameterAsEnum(
                     parameters, self.PANEL_A_CLUTTER_MODEL, context)
                 panel_b_clutter_model_idx = self.parameterAsEnum(
