@@ -9,12 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Increase `fail_under` coverage threshold from 59% to 65% in `pyproject.toml` (66.7% achieved).
+
+### Added
+
+- Unit tests for `elevation.py` bearing-destination edge cases: near-antipodal clamping, extreme distances, longitude normalization (8 tests in `test_elevation_bearing_dest.py`).
+- Unit tests for `tile_download_base.py` cancel/corruption/budget paths and `tile_cache_integrity.py` checksum lifecycle (25 tests in `test_tile_download_cancel.py`).
+- Unit tests for `batch/outputs.py` _compute_single_link edge cases: height validation, distance/elev/profile guards (9 tests in `test_batch_outputs_edges.py`).
+- Unit tests for `nowires.py` plugin lifecycle: _stale_temp_dir_count, _NoOpPlugin behavior (8 tests in `test_nowires_lifecycle.py`).
+- Unit tests for `batch/writer.py` CSV/JSON edge cases: empty results, climate field, mode variants (9 tests in `test_batch_writer_edges.py`).
+- Unit tests for `radio_coverage/pool.py` close/unlink paths: SharedMEMGrid lifecycle, _final_cov_pool cleanup with failure handling (6 tests in `test_pool_shared_memory.py`).
+- Unit tests for `contour/_smoothing_vrt.py` helpers: _parse_xml, kernel edge cases, smoothing constants (6 tests in `test_smoothing_vrt_edges.py`).
+- Unit tests for non-Qt paths in `three_d.py`, `report/markers.py`, and `p2p/chart_format.py`: shapefile sidecars, OGR driver routing, marker records (12 tests in `test_gui_helpers.py`).
+
 ### Planned
 
-- Increase `fail_under` coverage threshold from 59% to 65% in `pyproject.toml`.
-- Add unit tests for high-value uncovered modules: `elevation.py` bearing-destination paths, `tile_download_base.py` retry/cancel/corruption branches, `nowires.py` plugin lifecycle/init paths, `batch/outputs.py` ITM result handling, `batch/writer.py` CSV edge cases, `radio_coverage/pool.py` close/unlink/fallback, `contour/smoothing.py` and `_smoothing_vrt.py` kernel/VRT helpers.
 - Add Docker-based QGIS integration tests for algorithm orchestration: `algorithm/batch.py` full processAlgorithm, `algorithm/coverage_comparison.py` panel execution, `algorithm/contour.py` pipeline integration, `algorithm/coverage.py` clutter context/outputs, `comparison/outputs.py` full output writing.
-- Add unit tests for non-Qt paths in GUI modules: `three_d.py` terrain configuration, `report/markers.py` marker parameterization, `radio_coverage/legend.py` legend data builders, `p2p/chart.py` chart data assembly.
+- Add unit tests for `radio_coverage/legend.py` legend data builders.
 
 ## [1.6.3] - 2026-05-24
 
