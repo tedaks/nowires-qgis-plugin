@@ -11,11 +11,17 @@ All planned items landed. See [CHANGELOG.md](CHANGELOG.md#163---2026-05-24) for 
 ## v1.6.4 — coverage push
 
 Target: 85% combined unit + integration test coverage.
-Progress: **80% combined** (unit + GDAL + QGIS integration via Docker QGIS 4.0).
+Progress: **83% combined** (unit + GDAL + QGIS integration via Docker QGIS 4.0).
 
-- ~~Increase `fail_under` coverage threshold from 59% to 65%~~ ✅ done
-- ~~Add unit tests for `elevation.py`, `tile_download_base.py`, `nowires.py`, `batch/outputs.py`, `batch/writer.py`, `radio_coverage/pool.py`, `contour/smoothing.py`~~ ✅ 106 tests added
-- ~~Add unit tests for non-Qt paths in `three_d.py`, `report/markers.py`, `p2p/chart_format.py`~~ ✅ 12 tests added
-- ~~Add starter Docker QGIS integration tests~~ ✅ 9 tests added (`test_qgis_integration_extended.py`)
-- Expand Docker QGIS integration tests for full algorithm orchestration: `algorithm/batch.py`, `algorithm/coverage_comparison.py`, `algorithm/contour.py`, `algorithm/coverage.py`, `comparison/outputs.py` (remaining ~5% gap to 85%)
-- Add unit tests for `radio_coverage/legend.py` legend data builders (Qt-dependent)
+Key module improvements:
+- `algorithm/coverage_comparison.py`: 26% → 91%
+- `algorithm/p2p.py`: 33% → 99%
+- `comparison/outputs.py`: 25% → 95%
+- `contour/smoothing.py`: 75% → 86%
+- `p2p/compute.py`: 95% → 97%
+
+- ~~Increase `fail_under` coverage threshold~~ ✅ 59% → 65%
+- ~~106 unit tests for core modules~~ ✅ done
+- ~~12 non-Qt GUI helper tests~~ ✅ done
+- ~~21 Docker QGIS integration tests~~ ✅ done (algorithm execution + comparison outputs + contour modules)
+- Remaining 2% gap (~104 lines): `algorithm/contour.py` full pipeline, `contour/pipeline.py` tile download, `nowires.py` GUI lifecycle, `p2p/chart.py` chart rendering — all require either complex GDAL tile download setup or Qt widget infrastructure
