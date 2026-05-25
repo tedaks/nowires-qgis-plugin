@@ -68,18 +68,23 @@ def _make_params():
 def _load_p2p_compute(monkeypatch):
     qgis_core = sys.modules.setdefault("qgis.core", types.ModuleType("qgis.core"))
     if not hasattr(qgis_core, "QgsProcessingException"):
-        qgis_core.QgsProcessingException = RuntimeError
+        monkeypatch.setattr(qgis_core, "QgsProcessingException", RuntimeError, raising=False)
 
     for name in ("NoWires.dem_downloader", "NoWires.p2p.params",
                  "NoWires.processing_utils"):
         if name not in sys.modules:
-            sys.modules[name] = types.ModuleType(name)
+            monkeypatch.setitem(sys.modules, name, types.ModuleType(name))
 
-    sys.modules["NoWires.dem_downloader"].ensure_dem_for_area = lambda *a, **kw: "/tmp/dem.tif"
-    sys.modules["NoWires.dem_downloader"].get_temp_dir = lambda: "/tmp/nowires_test"
-    sys.modules["NoWires.p2p.params"].report_p2p_results = lambda *a, **kw: None
-    sys.modules["NoWires.processing_utils"].queue_layer_for_loading = lambda *a, **kw: None
-    sys.modules["NoWires.processing_utils"].register_destination_layer = lambda *a, **kw: None
+    monkeypatch.setattr(sys.modules["NoWires.dem_downloader"],
+                        "ensure_dem_for_area", lambda *a, **kw: "/tmp/dem.tif", raising=False)
+    monkeypatch.setattr(sys.modules["NoWires.dem_downloader"],
+                        "get_temp_dir", lambda: "/tmp/nowires_test", raising=False)
+    monkeypatch.setattr(sys.modules["NoWires.p2p.params"],
+                        "report_p2p_results", lambda *a, **kw: None, raising=False)
+    monkeypatch.setattr(sys.modules["NoWires.processing_utils"],
+                        "queue_layer_for_loading", lambda *a, **kw: None, raising=False)
+    monkeypatch.setattr(sys.modules["NoWires.processing_utils"],
+                        "register_destination_layer", lambda *a, **kw: None, raising=False)
 
     module_path = os.path.join(os.path.dirname(__file__), "..", "p2p/compute.py")
     spec = importlib.util.spec_from_file_location("NoWires._test_p2p_compute", module_path)
