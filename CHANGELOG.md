@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Increase `fail_under` coverage threshold from 59% to 65% in `pyproject.toml`.
+- Increase `fail_under` coverage threshold from 59% to 64% in `pyproject.toml`.
 - Coverage push: 63% unit → 66.7% unit + GDAL, → **80% combined** (unit + GDAL + QGIS integration) via Docker QGIS 4.0 container.
 - CI: `pytest` no longer blocks on `lint`/`audit`/`mypy`/`import-linter` — all five gates now run in parallel.
 - CI: restrict `push` trigger on `tests.yml` and `integration.yml` to `main` + `v*.*.*` tags to stop double-firing on PR-source pushes.
