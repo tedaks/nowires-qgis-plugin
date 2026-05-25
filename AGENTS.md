@@ -8,16 +8,16 @@ Six GitHub Actions workflows guard the project:
 
 | Workflow | Triggers | Jobs |
 |----------|----------|------|
-| `tests.yml` | push, PR | ruff lint, pip-audit, mypy type-check, pytest (Python 3.12, cov ≥64%) |
-| `integration.yml` | push, PR, workflow_dispatch | QGIS 4.0 Docker integration tests (digest-pinned) with coverage |
+| `tests.yml` | push to main, push of `v*.*.*` tags, PR, workflow_call | ruff lint + 300-line gate, pip-audit, mypy type-check, import-linter, pytest (Python 3.12, cov ≥64%) |
+| `integration.yml` | push to main, push of `v*.*.*` tags, PR, workflow_dispatch, workflow_call | QGIS 4.0 Docker integration tests (digest-pinned); coverage is informational (`--cov-fail-under=0`) |
 | `benchmark.yml` | push, PR, workflow_dispatch | Benchmark smoke tests (15 min timeout) |
-| `codeql.yml` | push/PR to main, weekly cron | CodeQL Python static analysis |
-| `version-check.yml` | PR to main | Fails if metadata.txt version not bumped or CHANGELOG.md empty |
-| `release.yml` | push of `v*.*.*` tag, workflow_dispatch | Verifies tag matches metadata.txt, builds the `NoWires-X.Y.Z.zip` plugin bundle, extracts the matching CHANGELOG section, and publishes a GitHub Release |
+| `codeql.yml` | push/PR to main, weekly Monday 06:00 UTC | CodeQL Python static analysis |
+| `version-check.yml` | PR to main, push to main | Fails if metadata.txt version not bumped or CHANGELOG.md empty; skips Dependabot PRs, `no-version-bump`/`release` labelled PRs, and docs-only diffs |
+| `release.yml` | push of `v*.*.*` tag, workflow_dispatch | Gates release on both `tests.yml` and `integration.yml` via workflow_call; verifies tag is valid semver and matches metadata.txt, builds the `NoWires-X.Y.Z.zip` plugin bundle, extracts the matching CHANGELOG section, and publishes a GitHub Release |
 
-Tool versions are pinned in `constraints-ci.txt`. Each job installs only what it needs via role-specific files (`requirements-lint.txt`, `requirements-typecheck.txt`, `requirements-test.txt`) using `pip install -c constraints-ci.txt -r requirements-<role>.txt`. The single coverage threshold lives in `pyproject.toml` (`[tool.coverage.report] fail_under`); CI invokes `pytest --cov` without a CLI override so the project file is the source of truth.
+Tool versions are pinned in `constraints-ci.txt`. Most jobs install via role-specific files (`requirements-lint.txt`, `requirements-typecheck.txt`, `requirements-test.txt`) using `pip install -c constraints-ci.txt -r requirements-<role>.txt`. Exceptions: the `audit` job installs `pip-audit` directly, and the `import-linter` job installs `import-linter` directly (both constrained by `constraints-ci.txt`). The single coverage threshold lives in `pyproject.toml` (`[tool.coverage.report] fail_under`); CI invokes `pytest --cov` without a CLI override so the project file is the source of truth.
 
-The unit-test job in `tests.yml` excludes `qgis_integration` and `gdal_integration` markers. Tests that call `band.WriteArray()` / `band.ReadAsArray()` require numpy-2-compatible GDAL bindings and must carry `@pytest.mark.gdal_integration`; they run in the QGIS Docker container via `integration.yml`. Tests that need a full QGIS runtime carry `@pytest.mark.qgis_integration`.
+The unit-test job in `tests.yml` excludes `qgis_integration`, `gdal_integration`, and `benchmark` markers. Tests that call `band.WriteArray()` / `band.ReadAsArray()` require numpy-2-compatible GDAL bindings and must carry `@pytest.mark.gdal_integration` (run in the QGIS Docker container) or `@pytest.mark.qgis_integration` (full QGIS runtime). Tests that need a complete QGIS runtime carry `@pytest.mark.qgis_integration`.
 
 All third-party actions are SHA-pinned. Dependabot manages bumps for both `pip` and `github-actions` ecosystems (see `.github/dependabot.yml`).
 
@@ -59,10 +59,11 @@ All Python source files in this project must strictly adhere to a maximum of **3
 - Prefer composition and delegation over inheritance — split large classes into focused helper modules.
 - Test files (`tests/test_*.py`) are exempt from this limit.
 - Bundled third-party code (e.g., `itm/`) is exempt from this limit.
+- Benchmark files (`benchmarks/`) are exempt from this limit.
 
 ### Enforcement
 
-- Before committing, verify: `find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}'` — must return zero files.
+- Before committing, verify: `find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/benchmarks/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}'` — must return zero files.
 - Ruff line-length is set to 99; use it consistently to keep lines compact.
 
 ## Changelog Structure
