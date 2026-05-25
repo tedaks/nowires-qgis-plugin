@@ -171,6 +171,10 @@ def extract_clutter_params(alg, parameters, context, attr_getter=None) -> Clutte
     p_enum = alg.parameterAsEnum
     model_idx = p_enum(parameters, ag("CLUTTER_MODEL"), context)
     cch_raw = p_dbl(parameters, ag("CCH_OVERRIDE"), context)
+    # UI labels CCH_OVERRIDE as "0 = auto"; normalise here so downstream
+    # advanced-clutter code (_category_height_m) falls back to per-category
+    # canopy heights instead of treating 0.0 as a 0 m canopy override.
+    cch_override = cch_raw if cch_raw > 0.0 else None
     raster_path = alg.parameterAsFile(parameters, ag("CLUTTER_RASTER"), context)
     bel_type_idx = p_enum(parameters, ag("BEL_BUILDING_TYPE"), context)
     return ClutterParamBundle(
@@ -182,7 +186,7 @@ def extract_clutter_params(alg, parameters, context, attr_getter=None) -> Clutte
             p_enum(parameters, ag("TX_CLUTTER_OVERRIDE"), context)),
         rx_override=clutter_override_value(
             p_enum(parameters, ag("RX_CLUTTER_OVERRIDE"), context)),
-        cch_override_m=cch_raw,
+        cch_override_m=cch_override,
         percentile=p_dbl(parameters, ag("CLUTTER_PERCENTILE"), context),
         street_width_m=p_dbl(parameters, ag("STREET_WIDTH"), context),
         bel_enabled=alg.parameterAsBool(parameters, ag("BEL_ENABLED"), context),
