@@ -8,7 +8,7 @@ Six GitHub Actions workflows guard the project:
 
 | Workflow | Triggers | Jobs |
 |----------|----------|------|
-| `tests.yml` | push, PR | ruff lint, pip-audit, mypy type-check, pytest (Python 3.12, cov ≥59%) |
+| `tests.yml` | push, PR | ruff lint, pip-audit, mypy type-check, pytest (Python 3.12, cov ≥64%) |
 | `integration.yml` | push, PR, workflow_dispatch | QGIS 4.0 Docker integration tests (digest-pinned) with coverage |
 | `benchmark.yml` | push, PR, workflow_dispatch | Benchmark smoke tests (15 min timeout) |
 | `codeql.yml` | push/PR to main, weekly cron | CodeQL Python static analysis |

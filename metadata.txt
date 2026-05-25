@@ -15,7 +15,7 @@ hasProcessingProvider=yes
 
 changelog=
     Version 1.6.4
-    - Increase fail_under coverage threshold from 59% to 65% in pyproject.toml
+    - Increase fail_under coverage threshold from 59% to 64% in pyproject.toml
     - Coverage push: 63% unit → 66.7% unit + GDAL → 80% combined via Docker QGIS 4.0 container
     - Add 83 unit tests across 8 files (bearing_destination, tile download, batch outputs, nowires lifecycle, etc.)
     - Add 23 extended unit tests for temp_manager, sanitizers, shared_dem_grid, SHM_NAME_RE
