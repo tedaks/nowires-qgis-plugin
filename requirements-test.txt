@@ -4,3 +4,4 @@ hypothesis
 numpy
 defusedxml
 import-linter
+matplotlib

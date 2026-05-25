@@ -56,7 +56,7 @@ This plugin also adapts code from [tedaks/nowires](https://github.com/tedaks/now
 Only needed when running the test/lint/typecheck suite outside QGIS:
 
 ```bash
-pip install -r requirements-test.txt       # pytest, pytest-cov, hypothesis, numpy, defusedxml
+pip install -r requirements-test.txt       # pytest, pytest-cov, hypothesis, numpy, defusedxml, import-linter, matplotlib
 pip install -r requirements-typecheck.txt  # mypy, numpy
 pip install -r requirements-lint.txt       # ruff
 ```

@@ -20,7 +20,7 @@ All Python source files in this project must strictly adhere to a maximum of **3
 - If a module grows beyond 300 lines, refactor it by extracting responsibilities into new modules.
 - Prefer composition and delegation over inheritance — split large classes into focused helper modules.
 - Ruff line-length is set to 99; use it consistently to keep lines compact.
-- Before committing, verify: `find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '$1 > 300'` — must return zero files.
+- Before committing, verify: `find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/benchmarks/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}'` — must return zero files.
 
 ## CI Pipeline
 
@@ -31,14 +31,14 @@ The project uses six GitHub Actions workflows run on every push and pull request
 | Job | Description |
 |-----|-------------|
 | `lint` | Runs `ruff check .` and enforces the 300-line file limit |
-| `audit` | Runs `pip-audit --requirement constraints-ci.txt` against the pinned dependency list |
+| `audit` | Runs `pip-audit --requirement constraints-ci.txt` against the pinned dependency list, then audits the full dependency tree |
 | `mypy` | Runs `mypy . --config-file mypy.ini` for static type checking |
 | `import-linter` | Runs `lint-imports` to check import architecture rules |
-| `pytest` | Runs `pytest -m "not benchmark and not qgis_integration" --cov` on Python 3.12. Coverage threshold lives in `pyproject.toml` (currently 59%). |
+| `pytest` | Runs `pytest -m "not benchmark and not qgis_integration and not gdal_integration" --cov` on Python 3.12. Coverage threshold lives in `pyproject.toml` (currently 64%). Isolation-sensitive tests run separately. |
 
 ### integration.yml — QGIS Integration Tests (Docker)
 
-Runs inside the `qgis/qgis:4.0` container on every push/PR. Runs the QGIS integration suite, GDAL compatibility tests, and raster I/O integration tests, all sharing one combined coverage file. Blocking — failures prevent merge.
+Runs inside the `qgis/qgis:4.0` container on every push/PR. Runs the QGIS integration suite, GDAL compatibility tests, and raster I/O integration tests, all sharing one combined coverage file. Coverage is informational (`--cov-fail-under=0`); the unit-test job enforces the project threshold. Blocking — failures prevent merge.
 
 ### benchmark.yml — Benchmark Smoke Tests
 
@@ -50,7 +50,7 @@ Runs on push/PR to `main` and weekly cron. Performs Python static analysis via C
 
 ### version-check.yml — Version and Changelog Gate
 
-Runs on PRs to `main`. Fails if `metadata.txt` version was not bumped or `CHANGELOG.md` `[Unreleased]` section has no entries.
+Runs on PRs and pushes to `main`. For PRs, skips enforcement for Dependabot PRs, PRs labelled `no-version-bump` or `release`, and docs-only diffs (explicit allowlist: `docs/*`, `README.md`, `NOTICE.md`, `ROADMAP.md`, `AGENTS.md`, `CONTRIBUTING.md`, `USERS-GUIDE.md`, `Technical_Documentation.md`). Always checks that all six version-bearing locations (metadata.txt, metadata.txt changelog, CHANGELOG.md, pyproject.toml `version`, pyproject.toml `current_version`, README.md) are aligned. Fails if metadata.txt version has not been bumped from the base branch.
 
 ## Local Checks
 
@@ -64,7 +64,7 @@ ruff check .
 mypy . --config-file mypy.ini
 
 # Unit and contract tests with coverage (threshold from pyproject.toml)
-PYTHONPATH="$(pwd)" pytest -q -m "not benchmark and not qgis_integration" --cov
+PYTHONPATH="$(pwd)" pytest -q -m "not benchmark and not qgis_integration and not gdal_integration" --cov
 
 # File-size enforcement
 find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}'
@@ -78,7 +78,10 @@ docker run --rm \
   -e QGIS_PREFIX_PATH=/usr -e QT_QPA_PLATFORM=offscreen \
   -e PYTHONPATH=/project:/usr/share/qgis/python \
   qgis/qgis:4.0@sha256:6f33d932b56305a550d9e079d64daeabca71fcc97101bba1ca578c55c0e1439b \
-  bash -c 'pip install --break-system-packages --ignore-installed -c constraints-ci.txt -r requirements-test.txt && \
+  bash -c 'python3 -m venv --system-site-packages /opt/ci-venv && \
+    export PATH=/opt/ci-venv/bin:$PATH && \
+    pip install -c constraints-ci.txt -r requirements-test.txt && \
+    pip check && \
     pytest -m qgis_integration -v --tb=short && \
     pytest tests/test_gdal_compat.py -v --tb=short && \
     pytest tests/test_raster_io_integration.py -v --tb=short && \
