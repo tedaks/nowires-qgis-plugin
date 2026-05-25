@@ -9,6 +9,7 @@ from NoWires.shared_params import (
     add_clutter_params,
     add_advanced_itm_params,
     add_advanced_param,
+    extract_clutter_params,
 )
 
 
@@ -135,3 +136,58 @@ class TestAddAdvancedParam:
         alg = _Alg()
         add_advanced_param(alg, "TEST_PARAM", "Test", 50.0)
         assert len(alg.params) == 1
+
+
+class _ExtractAlg(_Alg):
+    """_Alg variant exposing the parameterAsXxx methods extract_clutter_params calls."""
+
+    def __init__(self, values):
+        super().__init__()
+        self._values = values
+
+    def parameterAsDouble(self, parameters, name, context):
+        return float(self._values[name])
+
+    def parameterAsEnum(self, parameters, name, context):
+        return int(self._values[name])
+
+    def parameterAsFile(self, parameters, name, context):
+        return str(self._values[name])
+
+    def parameterAsBool(self, parameters, name, context):
+        return bool(self._values[name])
+
+
+def _extract_values(cch_value):
+    return {
+        "CLUTTER_MODEL": 2,            # advanced
+        "CCH_OVERRIDE": cch_value,
+        "CLUTTER_RASTER": "",
+        "BEL_BUILDING_TYPE": 0,
+        "TX_CLUTTER_OVERRIDE": 0,
+        "RX_CLUTTER_OVERRIDE": 0,
+        "CLUTTER_PERCENTILE": 50.0,
+        "STREET_WIDTH": 27.0,
+        "BEL_ENABLED": False,
+        "BEL_ELEVATION_ANGLE": 0.0,
+    }
+
+
+class TestExtractClutterParamsCchOverride:
+    """Regression: UI labels CCH_OVERRIDE as "0 = auto", so 0.0 must become None.
+
+    With cch_override_m=0.0 reaching ``_category_height_m``, every advanced-mode
+    pixel short-circuits to zero clutter — silently disabling the model despite a
+    valid land-cover grid (observed in field reports: clutter_tx_db /
+    clutter_rx_db / bel_rx_db all 0.0, total_path_loss_db == itm_loss_db).
+    """
+
+    def test_zero_cch_normalises_to_none(self):
+        alg = _ExtractAlg(_extract_values(0.0))
+        bundle = extract_clutter_params(alg, parameters={}, context=None)
+        assert bundle.cch_override_m is None
+
+    def test_positive_cch_passes_through(self):
+        alg = _ExtractAlg(_extract_values(18.0))
+        bundle = extract_clutter_params(alg, parameters={}, context=None)
+        assert bundle.cch_override_m == 18.0
