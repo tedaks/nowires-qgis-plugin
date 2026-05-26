@@ -46,16 +46,47 @@ the chart can only be recovered by re-running the algorithm. Store the last
 `chart_kwargs` on the `show_profile_chart` module and add a "Reopen P2P Chart"
 menu action so the graph is reopenable without recomputation.
 
-### Coverage TIF lost after project save/reopen
+### Project-relative output paths for temporary layers (PATCH)
 
-When coverage is run as "Temporary Output", the raster is written to
-`/tmp/NoWires-<user>/coverage_prx/coverage_prx.tif`. The path is stored in the
-QGIS project file, but `/tmp` is cleaned by `systemd-tmpfiles` on reboot, so
-the layer is missing when the project is reopened.
+When coverage or P2P is run as "Temporary Output", the raster and marker GPKG
+are written to `/tmp/NoWires-<user>/`. The paths are stored in the QGIS project
+file but `/tmp` is cleaned by `systemd-tmpfiles` on reboot — layers are missing
+after reopen. Moving the project to another computer breaks the paths entirely.
 
-Replace the bare `/tmp` fallback in `_write_coverage_outputs()`
-(`algorithm/coverage.py:87`) with `QgsProcessingUtils.generateTempFilename()`
-so QGIS manages the temp lifecycle and preserves the path across sessions.
+**Affected paths:**
+
+| Algorithm | File | Temporary output written to |
+|-----------|------|----------------------------|
+| Coverage | `algorithm/coverage.py:87` | `coverage_prx.tif` |
+| Coverage | `algorithm/coverage.py:148` | `tx_marker.gpkg` |
+| P2P | `p2p/compute.py:193` | `profile_line.gpkg`, `fresnel_poly.gpkg`, `markers.gpkg` |
+
+DEM/WorldCover caches, intermediate merges, and contour outputs are already
+transient or user-specified — not affected.
+
+**Design:**
+
+Extract a shared helper that detects whether the QGIS project has been saved:
+
+```python
+def _project_or_temp_dir(tmp_mgr, context, feedback, name):
+    proj = context.project().fileName()
+    if proj:
+        out = os.path.join(os.path.dirname(proj), "nowires_" + name)
+        os.makedirs(out, exist_ok=True)
+        return out
+    out = tmp_mgr.make_dir(name, persistent=True)
+    tmp_mgr.warn_persistent(feedback)
+    return out
+```
+
+- Saved project → write to `<project_dir>/nowires_coverage/` (or `nowires_p2p/`)
+- Unsaved project → fall back to existing `/tmp` behavior
+
+**Portability:** Cross-machine transfer works when the user enables QGIS project
+settings → General → "Save paths as relative". QGIS normalises absolute paths to
+`./nowires_coverage/` on save and resolves `./` relative to the project file on
+open. Same-machine reboot survival works without any user action.
 
 ### Test harness improvements (runner repository)
 
