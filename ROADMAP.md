@@ -134,30 +134,18 @@ them; verify they're consumed not just echoed).
 `compute_coverage()` twice with default ground vs seawater (epsilon=80, sigma=5),
 same TX + freq + power + grid. Assert the per-pixel `Prx` arrays differ.
 
-### BEL building type parameter has no effect on output (new — 2026-05-26)
-
-v1.6.5 fixed BEL_ENABLED (BEL on/off produces 33 dB difference). However,
-varying `BEL_BUILDING_TYPE` (0=tradiational suburban vs 1=residential urban
-vs 2=commercial) at different elevation angles produces zero measurable
-difference in coverage output. The P.2109 model should produce distinct losses
-per building category and frequency.
-
-**Proposed investigation.** Trace `bel_building_type` through
-`clutter/p2109_bel.py` and verify the frequency-dependent loss table
-distinguishes categories at 900 MHz. The BEL on/off path works; the
-per-category differentiation may be masked or not implemented.
-
 ### DOWNTILT_DEG / ANTENNA_BW suppressed in coverage path (confirmed — 2026-05-26)
 
-v1.6.5 fixed the comparison-side Omni preset override (forces BW=360, AZ=None
-in `collect_panel_params()`). The coverage path (`radio_coverage/params.py`)
-still preserves the custom BW/AZ when PRESET=0, but downstream discards them.
-Two identical rasters are produced whether downtilt is 0° or 6°, or BW is 360°
-or 65°.
+v1.6.5 fixed comparison-side Omni preset override (`comparison/params.py:142-144`:
+forces `antenna_bw_override=360.0`, `antenna_az=None`). The coverage path
+(`radio_coverage/params.py:220-223`) lacks the equivalent guard, letting custom
+BW/AZ values leak through for `ANTENNA_PRESET=0`.
 
-**Proposed fix.** Apply the same normalization used in comparison params to
-the coverage path: when `ANTENNA_PRESET=0` (Omni), force `antenna_bw_override=360.0`,
-`antenna_az=None`, and `downtilt_deg=0.0` in `radio_coverage/params.py`.
+Functionally benign — `antenna_gain_adjustment_db()` returns 0.0 for omni
+regardless of BW/downtilt. Purely a code-consistency cleanup.
+
+**Proposed fix.** Add `if antenna_preset == 0: antenna_bw_override = 360.0;
+antenna_az = None` guard in `radio_coverage/params.py`, matching comparison path.
 
 ### Test harness improvements
 
