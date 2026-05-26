@@ -2,7 +2,6 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import pytest
 from NoWires.tile_download_base import _backoff_seconds
 
 
