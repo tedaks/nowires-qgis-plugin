@@ -53,7 +53,7 @@ def clip_and_merge_tiles(
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(4326)
         srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-        layer = ds.CreateLayer("aoi", srs=srs, geom_type=ogr.wkbPolygon)
+        layer = ds.CreateLayer("aoi", srs=srs, geom_type=ogr.wkbPolygon25D)
         feat_defn = layer.GetLayerDefn()
         feature = ogr.Feature(feat_defn)
         feature.SetGeometry(_aoi_geometry_for_bounds(south, north, west, east))
