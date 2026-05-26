@@ -107,7 +107,7 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 - `coverage/params.py`: coverage parameter definitions and defaults
 - `coverage/pool.py`: coverage multiprocessing pool and shared-memory management
 - `coverage/_executor.py`: coverage multiprocessing executor (extracted from pool)
-- `coverage/_result_dispatch.py`: batch result dispatch and failure logging (extracted from pool)
+- `coverage/result_dispatch.py`: batch result dispatch and failure logging (extracted from pool)
 - `coverage/tasks.py`: coverage per-pixel task definitions
 - `coverage/summary.py`: raster-derived usable-distance metrics
 - `coverage/palette.py`: heatmap stop definitions and coverage style renderer
@@ -124,7 +124,7 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 - `p2p/params.py`: P2P parameter definitions and defaults
 - `p2p/compute.py`: P2P ITM and link-budget computation
 - `p2p/outputs.py`: P2P vector output helpers
-- `p2p/_outputs_internal.py`: P2P output layer and report writing (extracted from compute.py)
+- `p2p/outputs_internal.py`: P2P output layer and report writing (extracted from compute.py)
 - `p2p/chart.py`: interactive profile chart with hover, callouts, and export
 - `p2p/chart_helpers.py`: chart helper functions extracted from chart.py
 - `p2p/chart_format.py`: chart axis and label formatting
