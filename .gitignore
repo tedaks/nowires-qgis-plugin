@@ -84,5 +84,8 @@ credentials*
 # Build artifacts
 *.zip
 
+# Package manager lock files
+uv.lock
+
 # Run-time projection files
 **/*.prj
