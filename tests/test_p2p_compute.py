@@ -426,7 +426,7 @@ class TestP2PITMLossCapConsistency:
         captured = {}
         monkeypatch.setattr(
             p2p_compute, "build_p2p_report_payload",
-            lambda *a, **kw: (captured.update(kw) or {"results": {"itm_path_loss_db": kw["itm_loss_db"],
+            lambda *a, **kw: (captured.update(kw) or {"results": {"itm_loss_db": kw["itm_loss_db"],
                 "free_space_loss_db": 100.0, "total_path_loss_db": kw["itm_loss_db"],
                 "eirp_dbm": 37.0, "clutter_tx_db": 0.0, "clutter_rx_db": 0.0,
                 "received_power_dbm": -63.0, "link_margin_db": 27.0,
@@ -485,7 +485,7 @@ class TestP2PITMLossCapConsistency:
         payload = {
             "inputs": {"tx_power_dbm": 30.0, "tx_gain_dbi": 10.0, "cable_loss_db": 1.0,
                        "rx_gain_dbi": 8.0, "rx_sensitivity_dbm": -90.0},
-            "results": {"itm_path_loss_db": ITM_LOSS_UPPER_BOUND,
+            "results": {"itm_loss_db": ITM_LOSS_UPPER_BOUND,
                         "free_space_loss_db": 100.0, "total_path_loss_db": ITM_LOSS_UPPER_BOUND,
                         "eirp_dbm": 37.0, "clutter_tx_db": 0.0, "clutter_rx_db": 0.0,
                         "received_power_dbm": -63.0, "link_margin_db": 27.0,
