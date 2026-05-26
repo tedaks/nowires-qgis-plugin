@@ -137,6 +137,8 @@ def collect_panel_params(algo, prefix: str, parameters, context) -> ComparisonPa
 
     antenna_bw = pd("ANTENNA_BW")
     antenna_preset = pe("ANTENNA_PRESET")
+    antenna_bw_override: float | None
+    antenna_az: float | None
     if antenna_preset == 0:
         antenna_az = None
         antenna_bw_override = 360.0
