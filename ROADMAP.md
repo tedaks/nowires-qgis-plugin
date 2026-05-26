@@ -32,6 +32,13 @@ These three core modules have the highest concentration of untyped function
 arguments. The rest of the codebase is well-typed. Closing this gap would enable
 `mypy --strict` on the full project.
 
+### Remove dead `contour_shp_path is None` check in contour algorithm
+
+`algorithm/contour.py:205-207` checks `if contour_shp_path is None` but
+`generate_contour_lines()` (`contour/generation.py:71`) never returns `None` —
+it either returns the path or raises `RuntimeError`. The `None` branch is
+unreachable. Either remove it or replace with a feature-count validation.
+
 ### Test harness improvements (runner repository)
 
 - expects-error mechanism for intentional guard-rail exceptions
