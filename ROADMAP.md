@@ -72,68 +72,6 @@ waste bandwidth, and stall the pipeline.
    box with a coastline proxy. Sea pixels don't contribute to ITM terrain.
 2. Add a configurable timeout wrapping `ComputeStatistics` calls.
 
-### Coverage polarization parameter has zero effect on output (new — 2026-05-26)
-
-Surfaced by the revised test harness running against v1.6.5 HEAD (`run-4`,
-QGIS 4.0 Docker). The behavioral assertion
-`cov_pipeline_b_vs_cov_polar_v_manila` (varies only `POLARIZATION` between
-horizontal and vertical, identical Manila 5 km path + 900 MHz + simple-clutter)
-recorded `mean_dbm = -67.5` for both runs — **exact zero delta** against an
-expected ≥ 0.2 dB threshold.
-
-**Evidence.** From `run-3/cov_pipeline_b/analysis.json` and
-`run-3/cov_polar_v_manila/analysis.json`:
-```
-mean_dbm: -67.5  (POLARIZATION=0, horizontal)
-mean_dbm: -67.5  (POLARIZATION=1, vertical)
-```
-
-The P2P-side polarization assertion against the same Manila→Tagaytay path
-produced a 0.022 dB delta (negligible but non-zero), which is consistent with
-ITM polarization effects over rough land being small but real. The fact that
-the coverage path returns *bit-equivalent* mean is suspicious — coverage either
-isn't forwarding `polarization` to the engine, or is masking it via a
-default-vertical short-circuit.
-
-**Proposed investigation.** Trace `polarization` through
-`radio_coverage/params.py` → `radio_coverage/engine.py` → `radio_coverage/tasks.py`
-and verify it reaches the per-pixel ITM call. Compare with the P2P path
-(`p2p/compute.py`) which does honor polarization (0.022 dB delta is below the
-0.5 dB assertion threshold but the value is non-zero, proving the param does flow).
-
-**Regression test.** `tests/test_coverage_honors_polarization.py` — run
-`compute_coverage()` twice with `polarization=0` vs `polarization=1`, same TX
-+ freq + power + grid + clutter. Assert the per-pixel `Prx` arrays differ
-(not necessarily a large mean, but at least one cell ≥ 0.01 dB different).
-
-### Coverage epsilon/sigma (ground material) has zero effect on output (new — 2026-05-26)
-
-Same `run-4` harness run. The behavioral assertion
-`cov_pipeline_b_vs_cov_ground_manila_seawater` varies `EPSILON` (15→70) and
-`SIGMA` (0.005→5) — i.e. switching from default ground to seawater — over the
-same Manila 5 km path. Recorded **exact zero delta**: `mean_dbm = -67.5` for both.
-
-**Evidence.** From `run-3/cov_pipeline_b/analysis.json` and
-`run-3/cov_ground_manila_seawater/analysis.json`:
-```
-mean_dbm: -67.5  (EPSILON=15, SIGMA=0.005 — default land)
-mean_dbm: -67.5  (EPSILON=80, SIGMA=5 — seawater)
-```
-
-A two-decade change in conductivity and a ~5× change in permittivity should
-produce a measurable difference even over a mostly-land path — the threshold
-was set to ≥ 2 dB to be conservative. Zero delta suggests `epsilon`/`sigma`
-are not flowing through to the ITM engine in the coverage path.
-
-**Proposed investigation.** Same path as polarization above — trace through
-`radio_coverage/params.py` → `engine.py` → `tasks.py`. Compare with P2P which
-does include `epsilon`/`sigma` in `report.json` (the `inputs` block records
-them; verify they're consumed not just echoed).
-
-**Regression test.** `tests/test_coverage_honors_ground_material.py` — run
-`compute_coverage()` twice with default ground vs seawater (epsilon=80, sigma=5),
-same TX + freq + power + grid. Assert the per-pixel `Prx` arrays differ.
-
 ### DOWNTILT_DEG / ANTENNA_BW suppressed in coverage path (confirmed — 2026-05-26)
 
 v1.6.5 fixed comparison-side Omni preset override (`comparison/params.py:142-144`:
