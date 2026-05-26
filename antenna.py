@@ -151,7 +151,7 @@ def _read_pattern_points(path):
     """Read a CSV pattern file. Results are cached by path for the session;
     editing a pattern file requires calling clear_pattern_cache() or a QGIS
     restart to take effect."""
-    points = []
+    points: list[tuple[float, float]] = []
     with open(path, "r", encoding="utf-8") as handle:
         reader = csv.reader(handle)
         for row in reader:
