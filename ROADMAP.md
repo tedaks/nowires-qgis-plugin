@@ -147,16 +147,6 @@ per building category and frequency.
 distinguishes categories at 900 MHz. The BEL on/off path works; the
 per-category differentiation may be masked or not implemented.
 
-### TX_CLUTTER_OVERRIDE and CLUTTER_PERCENTILE still simple-mode-only (confirmed — 2026-05-26)
-
-v1.6.5 unified BEL across simple and advanced clutter modes. The same treatment
-is needed for `tx_clutter_override` and `clutter_percentile` which remain
-simple-mode-only, producing zero-delta output against any baseline.
-
-**Proposed fix.** Same approach as BEL — move the override/percentile
-computation before the simple/advanced branch in `radio_coverage/tasks.py`
-so both modes consume the values.
-
 ### DOWNTILT_DEG / ANTENNA_BW suppressed in coverage path (confirmed — 2026-05-26)
 
 v1.6.5 fixed the comparison-side Omni preset override (forces BW=360, AZ=None
