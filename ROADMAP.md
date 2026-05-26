@@ -29,7 +29,55 @@ Key improvements:
 - ~~12 Qt widget tests with matplotlib~~ ✅ done
 - Remaining uncovered (~990 lines): Qt GUI lifecycle (nowires.py, p2p/chart.py, three_d.py), GDAL pipelines (contour.py, pipeline.py) — these require either QMainWindow infrastructure or real Copernicus DEM downloads
 
-## v1.6.5 — review-driven hardening (planned)
+## v1.6.6 — deferred items from v1.6.5 (planned)
+
+Carried forward from v1.6.5. Each has a verified root cause and a proposed fix in the sections below — ready to land.
+
+### Coverage report.json omits most engine-consumed parameters (from v1.6.5)
+
+`report/payloads.py:_build_coverage_input_dict()` serialises only 14 of the
+26+ parameters consumed by the coverage engine. Missing fields include BEL,
+clutter percentile, clutter overrides, antenna BW/AZ/downtilt, k-factor, N0,
+epsilon, sigma. P2P reports echo most of these — the asymmetry is purely a
+coverage-side gap.
+
+The revised test harness compensated by externally capturing `params_sent.json`
+before every `processAlgorithm()` call. Real users cannot do this — the
+`report.json` is their only post-hoc evidence of what ran.
+
+**Proposed fix.** Extend `_build_coverage_input_dict()` to mirror the P2P
+inputs structure. Add a `clutter_model` field and a `clutter_advanced_active`
+boolean to make mode-dependent param handling visible.
+
+**Regression test.** `tests/test_coverage_report_includes_clutter_inputs.py` —
+build a coverage payload with `bel_enabled=True, clutter_percentile=90.0,
+tx_clutter_override="urban", downtilt_deg=6.0, k_factor=0.67`. Assert all five
+appear under `inputs` in the resulting payload dict.
+
+### GDAL geometry type warnings flood feedback logs (from v1.6.5)
+
+Every coverage and P2P run emits 10–30 warnings: `"Layer 'markers' has been
+declared with non-Z geometry type Point, but it does contain geometries with Z."`
+These fill `feedback.log` with noise, making real warnings invisible.
+
+**Proposed fix.** In each `ogr_driver.CreateLayer()` call across
+`p2p/compute.py`, radio_coverage output paths, and comparison panel writers,
+either set the geometry type to the Z variant (e.g., `wkbPoint25D` →
+`wkbPointZM`) or suppress the warning with GDAL config.
+
+### DEM download timeout on long cross-sea paths (from v1.6.5)
+
+Manila → Cebu (~600 km) timed out at 300s inside `clips_and_merge_tiles →
+ComputeStatistics`. The tile merger blocks indefinitely on GDAL operations
+with no progress callback. Cross-sea paths download tiles with no land,
+waste bandwidth, and stall the pipeline.
+
+**Proposed fix.** Two-pronged:
+1. Cap the DEM fetch to the land portion by intersecting the bounding
+   box with a coastline proxy. Sea pixels don't contribute to ITM terrain.
+2. Add a configurable timeout wrapping `ComputeStatistics` calls.
+
+## v1.6.5 — review-driven hardening ✅
 
 Findings from a manual code review (2026-05-24). Each item below was verified by reading
 the source — speculative findings from the same review pass are not listed.

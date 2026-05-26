@@ -132,7 +132,7 @@ class TestBuildP2pReportPayload:
         expected = {
             "distance_m", "distance_km", "propagation_mode",
             "propagation_mode_name", "free_space_loss_db",
-            "itm_path_loss_db", "excess_loss_db", "eirp_dbm",
+            "itm_loss_db", "excess_loss_db", "eirp_dbm",
             "clutter_tx_db", "clutter_rx_db", "total_path_loss_db",
             "antenna_gain_adjustment_db", "received_power_dbm",
             "link_margin_db", "availability_method",

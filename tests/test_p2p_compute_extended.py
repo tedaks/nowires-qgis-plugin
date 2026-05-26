@@ -216,7 +216,7 @@ class TestP2PFresnelAnalysis:
 
         def _capture_payload(*a, **kw):
             captured_payload.update(kw)
-            return {"results": {"itm_path_loss_db": 110.0, "free_space_loss_db": 100.0,
+            return {"results": {"itm_loss_db": 110.0, "free_space_loss_db": 100.0,
                 "total_path_loss_db": 110.0, "eirp_dbm": 37.0, "clutter_tx_db": 0.0,
                 "clutter_rx_db": 0.0, "received_power_dbm": -63.0, "link_margin_db": 27.0,
                 "propagation_mode_name": "Line-of-Sight", "antenna_gain_adjustment_db": 0.0,

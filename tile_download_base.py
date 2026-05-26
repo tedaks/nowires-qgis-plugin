@@ -26,9 +26,10 @@ Shared tile download logic with retry, validation, and caching for DEM and World
 
 import logging
 import os
+import random
 import time
 import urllib.error
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 from osgeo import gdal
 
@@ -39,6 +40,15 @@ from NoWires.tile_cache_integrity import (
 logger = logging.getLogger(__name__)
 DEFAULT_PER_TILE_WALL_CLOCK_BUDGET = 180
 DEFAULT_MAX_BYTES = 250 * 1024 * 1024
+
+
+def _redact_query(url: str) -> str:
+    parts = urlsplit(url)
+    return urlunsplit(parts._replace(query="", fragment=""))
+
+
+def _backoff_seconds(attempt: int) -> float:
+    return 2 ** attempt + random.uniform(0, 1)
 
 def download_tile_with_retry(
     tile_url, local_tif, base_name_label, feedback=None,
@@ -80,7 +90,8 @@ def download_tile_with_retry(
             pass
         cleanup_sidecar(local_tif)
     if feedback:
-        feedback.pushInfo("Downloading: " + tile_url)
+        feedback.pushInfo("Downloading: " + _redact_query(tile_url))
+    logger.debug("Downloading full URL: %s", tile_url)
     downloaded = False
     tmp_path = local_tif + ".tmp"
     t_start = time.monotonic()
@@ -98,7 +109,10 @@ def download_tile_with_retry(
             with opener.open(tile_url, timeout=socket_timeout) as response:
                 final_url = response.geturl()
                 if base_url is not None:
-                    if urlsplit(final_url).netloc.lower() != urlsplit(base_url).netloc.lower():
+                    base = urlsplit(base_url)
+                    final = urlsplit(final_url)
+                    if (final.netloc.lower() != base.netloc.lower()
+                            or final.scheme != base.scheme):
                         raise RuntimeError("Unexpected redirect to: " + final_url)
                 content_length_hdr = response.headers.get("Content-Length")
                 if content_length_hdr is None:
@@ -137,7 +151,7 @@ def download_tile_with_retry(
                 except OSError:
                     pass
                 if attempt < max_retries - 1:
-                    time.sleep(2 ** attempt)
+                    time.sleep(_backoff_seconds(attempt))
                     continue
                 raise ValueError("Incomplete download: {} of {} bytes".format(
                     bytes_received, expected_size))
@@ -150,7 +164,7 @@ def download_tile_with_retry(
                 except OSError:
                     pass
                 if attempt < max_retries - 1:
-                    time.sleep(2 ** attempt)
+                    time.sleep(_backoff_seconds(attempt))
                     continue
                 break
             test_ds = None
@@ -172,9 +186,9 @@ def download_tile_with_retry(
                     try:
                         wait_secs = max(int(retry_after), 1)
                     except ValueError:
-                        wait_secs = 2 ** attempt
+                        wait_secs = _backoff_seconds(attempt)
                 else:
-                    wait_secs = 2 ** attempt
+                    wait_secs = _backoff_seconds(attempt)
                 msg = "HTTP {} on {} (attempt {}/{}); retry in {}s".format(
                     e.code, base_name_label, attempt + 1, max_retries, wait_secs)
                 logger.warning(msg)
@@ -195,7 +209,7 @@ def download_tile_with_retry(
                 feedback.pushInfo("Error downloading {} (attempt {}): {}".format(
                     base_name_label, attempt + 1, str(e)))
             if attempt < max_retries - 1:
-                time.sleep(2 ** attempt)
+                time.sleep(_backoff_seconds(attempt))
 
     if not downloaded and os.path.exists(tmp_path):
         try:
