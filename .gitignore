@@ -54,13 +54,7 @@ htmlcov/
 # Docs
 /docs
 
-# Ad-hoc analysis/export scripts
-/analyze_coverage.py
-/audit_cache.py
-/export_portable.py
-/export_project.py
-/package_gpkg.py
-/run_coverage.py
+# Ad-hoc analysis/export scripts (now tracked under scripts/)
 
 # Generated output data
 /output/
