@@ -15,19 +15,27 @@ hasProcessingProvider=yes
 
 changelog=
     Version 1.6.6
-    - Security: fix tile download redirect scheme check to compare URL scheme in addition to netloc
-    - Security: fix tile URL logged unsanitised — strip query strings from feedback
-    - Security: fix CSV formula-injection bypass via leading regular space
-    - Correctness: fix SAALOS scalar/vector numerical asymmetry with vector-path clamps
-    - Correctness: add logger warning when K_FACTOR_PRESET discards custom K_FACTOR
-    - Correctness: fix inconsistent JSON key naming (itm_path_loss_db → itm_loss_db) across P2P/coverage reports
-    - Correctness: force antenna_bw_override=360.0/antenna_az=None when Omni preset suppresses custom BW/AZ
-    - Correctness: fix simple-clutter mode silently ignoring BEL/CLUTTER_PERCENTILE/TX_CLUTTER_OVERRIDE
-    - Correctness: add validation warnings in simple-clutter mode when advanced-only params are set
-    - Robustness: add random jitter to tile download retry backoff to prevent thundering-herd
-    - Robustness: narrow except-pass to FileNotFoundError/OSError in shared-memory finalizer
-    - Add 10 regression tests per TDD convention
-    - Update ROADMAP.md with revised test harness findings
+    - Correctness: add P2P climate zone range validation to prevent silent clamp
+    - Correctness: surface WorldCover fallback in coverage report clutter_model field
+    - Correctness: enforce MAX_AOI_EXTENT_DEGREES in coverage_bounds with clamp-and-warn
+    - Correctness: extend coverage report input echo to include all engine-consumed params
+    - Correctness: update simple-mode clutter warnings to reflect mode-independent BEL/override
+    - Robustness: cap antenna pattern CSV reader at MAX_PATTERN_ROWS=3600
+    - Robustness: broaden TempDirManager.__del__ exception catch to (TypeError, AttributeError)
+    - Robustness: use 25D geometry types in all GPKG CreateLayer calls to suppress Z warnings
+    - Robustness: add 30s ComputeStatistics timeout guard in tile_merge
+    - Changed: extract shared _compute_indices from triplicated bilinear index logic
+    - Changed: interpolate_nan_elevations returns np.ndarray for consistency
+    - Changed: expose test_batch_philippines.py to CI with @pytest.mark.slow
+    - Changed: document relatime/atime limitation in evict_cache_lru docstring
+    - Changed: rename _outputs_internal.py and _result_dispatch.py dropping underscore
+    - Changed: add omni preset guard for BW/AZ in coverage params matching comparison path
+    - Changed: simplify all CHANGELOG entries
+    - Added: QGIS integration tests for batch, comparison, and contour algorithms
+    - Added: advanced clutter mode QGIS integration test with WorldCover
+    - Added: concurrent SharedDEMGrid release safety tests
+    - Added: unit tests for coverage legend data builders
+    - Added: 16 new regression tests per TDD convention
     Version 1.6.4
     - Increase fail_under coverage threshold from 59% to 64% in pyproject.toml
     - Coverage push: 63% unit → 66.7% unit + GDAL → 80% combined via Docker QGIS 4.0 container
