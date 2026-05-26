@@ -46,6 +46,17 @@ the chart can only be recovered by re-running the algorithm. Store the last
 `chart_kwargs` on the `show_profile_chart` module and add a "Reopen P2P Chart"
 menu action so the graph is reopenable without recomputation.
 
+### Coverage TIF lost after project save/reopen
+
+When coverage is run as "Temporary Output", the raster is written to
+`/tmp/NoWires-<user>/coverage_prx/coverage_prx.tif`. The path is stored in the
+QGIS project file, but `/tmp` is cleaned by `systemd-tmpfiles` on reboot, so
+the layer is missing when the project is reopened.
+
+Replace the bare `/tmp` fallback in `_write_coverage_outputs()`
+(`algorithm/coverage.py:87`) with `QgsProcessingUtils.generateTempFilename()`
+so QGIS manages the temp lifecycle and preserves the path across sessions.
+
 ### Test harness improvements (runner repository)
 
 - expects-error mechanism for intentional guard-rail exceptions
