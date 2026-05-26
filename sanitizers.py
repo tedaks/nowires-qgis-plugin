@@ -9,12 +9,12 @@ _UNICODE_WHITESPACE = "\t\r\u3000\u2003\u2002\ufeff"
 def csv_safe(value):
     s = str(value)
     s = s.replace("\r", " ").replace("\n", " ")
-    s = s.lstrip(_UNICODE_WHITESPACE)
-    if s and s[0] in _FORMULA_TRIGGER_CHARS:
+    stripped = s.lstrip(_UNICODE_WHITESPACE + " ")
+    if stripped and stripped[0] in _FORMULA_TRIGGER_CHARS:
         return "'" + s
-    if s.startswith('-') and len(s) > 1:
+    if stripped.startswith("-") and len(stripped) > 1:
         try:
-            float(s)
+            float(stripped)
         except ValueError:
             return "'" + s
     return s
