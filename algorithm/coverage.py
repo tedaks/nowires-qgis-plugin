@@ -113,7 +113,18 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
             rx_sens=p.rx_sens, clutter_enabled=p.clutter_enabled,
             clutter_model=p.clutter_model, antenna_preset=p.antenna_preset,
             clutter_source=clutter_source,
-            tx_clutter_for_report=tx_clutter_for_report))
+            tx_clutter_for_report=tx_clutter_for_report,
+            extra_inputs={
+                "n0": p.n0, "epsilon": p.epsilon, "sigma": p.sigma,
+                "antenna_az": p.antenna_az, "antenna_bw_override": p.antenna_bw_override,
+                "downtilt_deg": p.downtilt_deg, "front_back_db": p.front_back_db,
+                "cch_override_m": p.cch_override_m,
+                "clutter_percentile": p.clutter_percentile,
+                "street_width_m": p.street_width_m,
+                "bel_enabled": p.bel_enabled, "bel_building_type": p.bel_building_type,
+                "bel_elevation_angle_deg": p.bel_elevation_angle_deg,
+            },
+        ))
 
     write_coverage_geotiff(result.prx_grid, result.min_lat, result.max_lat,
                            result.min_lon, result.max_lon, tif_path)
