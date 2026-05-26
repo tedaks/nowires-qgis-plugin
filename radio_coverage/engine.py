@@ -142,17 +142,12 @@ def compute_coverage(
         rx_clutter_override, clutter_context,
     )
     if clutter_enabled and clutter_model == "simple" and feedback:
-        if bel_enabled:
-            feedback.pushWarning(
-                "BEL_ENABLED=True ignored — requires Advanced clutter model")
         if clutter_percentile != 50.0:
             feedback.pushWarning(
-                "CLUTTER_PERCENTILE=%.1f ignored — requires Advanced clutter model"
+                "CLUTTER_PERCENTILE=%.1f in simple mode only affects BEL; "
+                "core clutter loss uses fixed category values. "
+                "Use Advanced clutter model for full percentile modulation."
                 % clutter_percentile)
-        if tx_clutter_override is not None:
-            feedback.pushWarning(
-                "TX_CLUTTER_OVERRIDE=%s ignored — requires Advanced clutter model"
-                % tx_clutter_override)
     tasks = build_coverage_tasks(
         tx_lat, tx_lon, radius_m, grid_size, profile_step_m, max_profile_pts,
         tx_h_m, rx_h_m, climate, N0, f_mhz, polarization, epsilon, sigma,
