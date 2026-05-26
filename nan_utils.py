@@ -21,16 +21,16 @@ def interpolate_nan_elevations(elevations):
         elevations: Array-like of elevation values (may contain NaN).
 
     Returns:
-        list[float]: Interpolated elevation values with NaN replaced.
+        numpy.ndarray: Interpolated elevation values with NaN replaced.
     """
     arr = np.asarray(elevations, dtype=np.float64)
     nan_mask = np.isnan(arr)
     if not nan_mask.any() or not (~nan_mask).any():
-        return [float(x) for x in arr]
+        return arr.copy()
     valid_idx = np.where(~nan_mask)[0]
     arr = arr.copy()
     arr[nan_mask] = np.interp(np.where(nan_mask)[0], valid_idx, arr[valid_idx])
-    return [float(x) for x in arr]
+    return arr
 
 
 def interpolate_nan_array(arr):
