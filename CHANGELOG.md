@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.6.6] - 2026-05-26
 
+### Correctness
+
+- Fix P2P algorithm silently accepting out-of-range climate zone index — add `validate_itm_input_ranges(climate=climate)` call matching coverage-path convention, converting the silent QGIS clamp into a fail-fast `QgsProcessingException`.
+- Fix coverage report `clutter_model` field showing "Simple clutter correction" even when WorldCover tile was unavailable — append "(WorldCover unavailable — clutter skipped)" when `clutter_source == "fallback_open"` so the report reflects actual state.
+- Enforce `MAX_AOI_EXTENT_DEGREES` in `geo_bounds.coverage_bounds()` — clamp and warn when the computed lat/lon extent exceeds the limit, providing defense-in-depth beyond the existing algorithm-level check.
+
+### Robustness
+
+- Add `MAX_PATTERN_ROWS = 3600` cap to antenna pattern CSV reader — break reader loop when exceeded and emit warning to prevent memory exhaustion from maliciously-crafted files.
+- Broaden `TempDirManager.__del__` exception catch from `TypeError` to `(TypeError, AttributeError)` to handle interpreter shutdown where `os` module globals may be `None`.
+
+### Changed
+
+- Refactor `_bilinear.py`: extract shared `_compute_indices` function from the duplicated fractional-index computation in scalar, line, and grid variants (~60 lines deduplicated).
+- Change `interpolate_nan_elevations` to return `numpy.ndarray` instead of `list[float]` for consistency with `interpolate_nan_array`.
+- Expose `tests/test_batch_philippines.py` to version control — remove from `.gitignore`, add `@pytest.mark.slow` marker, register `slow` marker in `pyproject.toml`.
+- Document `relatime`/atime limitation in `evict_cache_lru` docstring.
+- Rename `_outputs_internal.py` → `outputs_internal.py` and `_result_dispatch.py` → `result_dispatch.py` — drop misleading underscore prefix from intra-package decomposition modules.
+
+### Added
+
+- Add concurrency safety test for `SharedDEMGrid.release()` — 8-thread simultaneous release, lock-contention timing, and `__del__` segment cleanup.
+- Add QGIS integration test for advanced clutter mode with WorldCover (`tests/test_qgis_integration_clutter_advanced.py`).
+- 10 new regression tests added per TDD convention.
+
 ### Planned
 
 - Docker QGIS integration tests for `algorithm/batch.py`, `algorithm/coverage_comparison.py`, `algorithm/contour.py`, `algorithm/coverage.py`, `comparison/outputs.py` full algorithm orchestration.
