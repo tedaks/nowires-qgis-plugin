@@ -76,7 +76,7 @@ def clutter_loss_saalos(d__meter, cch__meter, h_tx__meter, h_rx__meter,
             cttc = math.sqrt(1.0 - math.sin(ttc) ** 2)
             crpc = (cch__meter - h_rx__meter) / cttc
             if crpc >= dp:
-                crpc = dp - 1.0 / dp
+                crpc = dp - 1.0 / max(dp, 1.0)
             ssnps = (math.pi / 2.0) - tic
             d1a = (crpc * math.sin(ttc)) / (1.0 - 1.0 / EARTH_RADIUS)
             dp = pd - d1a
@@ -106,7 +106,7 @@ def clutter_loss_saalos(d__meter, cch__meter, h_tx__meter, h_rx__meter,
         tvsr = max(0.0, h_tx__meter - h_rx_gnd__meter)
 
         if d1a < 50.0:
-            arte = 0.0195 * crpc - 20.0 * math.log10(tsp)
+            arte = 0.0195 * crpc - 20.0 * math.log10(max(tsp, 1e-30))
         elif d1a < 225.0:
             if tvsr > 1000.0:
                 q = d1a * (0.03 * math.exp(-0.14 * pdk))
@@ -115,7 +115,7 @@ def clutter_loss_saalos(d__meter, cch__meter, h_tx__meter, h_rx__meter,
             arte = q + (0.7 * pdk - max(0.01, math.log10(wn * 47.7) - 2.0)) * (h_rx__meter / hone)
         else:
             q = 0.00055 * pdk + math.log10(pdk) * (0.041 - 0.0017 * math.sqrt(hone) + 0.019)
-            arte = d1a * q - (18.0 * math.log10(rsp)) / math.exp(hone / 37.5)
+            arte = d1a * q - (18.0 * math.log10(max(rsp, 1e-30))) / math.exp(hone / 37.5)
             zi = 1.5 * math.sqrt(hone - cch__meter)
             if pdk > zi:
                 q = ((pdk - zi) * 10.2 *

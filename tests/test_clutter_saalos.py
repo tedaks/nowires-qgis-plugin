@@ -31,7 +31,7 @@ def test_distance_reference_values_h_pol(d, expected):
 
 
 @pytest.mark.parametrize("h_rx,expected", [
-    (0.0, 13.497084),
+    (0.0, 13.494902),
     (2.0, 9.301259),
     (5.0, 5.983496),
     (10.0, 3.110594),

@@ -25,13 +25,16 @@ def _result_row(status="VIABLE"):
     }
 
 
-@pytest.mark.parametrize("payload", [
-    "=cmd|/bin/bash",
-    "+1+1",
-    "@SUM(A1:A10)",
-    "\t=2+2",
+@pytest.mark.parametrize("payload,expected_prefix", [
+    ("=cmd|/bin/bash", "'=cmd|/bin/bash"),
+    ("+1+1", "'+1+1"),
+    ("@SUM(A1:A10)", "'@SUM(A1:A10)"),
+    ("\t=2+2", "'\t=2+2"),
+    (" =SUM(A1)", "' =SUM(A1)"),
+    (" +A1", "' +A1"),
+    ("  @SUM", "'  @SUM"),
 ])
-def test_status_starting_with_formula_char_is_sanitized(tmp_path, payload):
+def test_status_starting_with_formula_char_is_sanitized(tmp_path, payload, expected_prefix):
     from NoWires.batch.writer import write_batch_csv
 
     out = tmp_path / "batch.csv"
@@ -40,13 +43,14 @@ def test_status_starting_with_formula_char_is_sanitized(tmp_path, payload):
     with out.open(encoding="utf-8", newline="") as f:
         rows = list(csv.reader(f))
 
-    # header + one data row
     assert len(rows) == 2
     status_idx = rows[0].index("status")
     cell = rows[1][status_idx]
     assert cell.startswith("'"), (
-        "status cell {!r} starts with a formula char {!r} unescaped; "
-        "v1.5.7 requires _csv_safe() prefix".format(cell, payload[0])
+        "status cell {!r} not escaped for formula char".format(cell)
+    )
+    assert cell == expected_prefix, (
+        "expected {!r}, got {!r}".format(expected_prefix, cell)
     )
 
 

@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.6.4
+version=1.6.5
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,6 +14,20 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
+    Version 1.6.5
+    - Security: fix tile download redirect scheme check to compare URL scheme in addition to netloc
+    - Security: fix tile URL logged unsanitised — strip query strings from feedback
+    - Security: fix CSV formula-injection bypass via leading regular space
+    - Correctness: fix SAALOS scalar/vector numerical asymmetry with vector-path clamps
+    - Correctness: add logger warning when K_FACTOR_PRESET discards custom K_FACTOR
+    - Correctness: fix inconsistent JSON key naming (itm_path_loss_db → itm_loss_db) across P2P/coverage reports
+    - Correctness: force antenna_bw_override=360.0/antenna_az=None when Omni preset suppresses custom BW/AZ
+    - Correctness: fix simple-clutter mode silently ignoring BEL/CLUTTER_PERCENTILE/TX_CLUTTER_OVERRIDE
+    - Correctness: add validation warnings in simple-clutter mode when advanced-only params are set
+    - Robustness: add random jitter to tile download retry backoff to prevent thundering-herd
+    - Robustness: narrow except-pass to FileNotFoundError/OSError in shared-memory finalizer
+    - Add 10 regression tests per TDD convention
+    - Update ROADMAP.md with revised test harness findings
     Version 1.6.4
     - Increase fail_under coverage threshold from 59% to 64% in pyproject.toml
     - Coverage push: 63% unit → 66.7% unit + GDAL → 80% combined via Docker QGIS 4.0 container
