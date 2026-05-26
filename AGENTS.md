@@ -70,6 +70,11 @@ All Python source files in this project must strictly adhere to a maximum of **3
 
 `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions. It must always have `## [Unreleased]` as the first versioned section (after the header), before any released version sections. Planned or deferred work lives under `### Planned` subsections within `[Unreleased]`. When cutting a release, move completed items from `[Unreleased]` into a new dated `## [X.Y.Z] - YYYY-MM-DD` section that goes immediately after `[Unreleased]`.
 
+### Entry Style
+
+- **Current release** (latest version): include all changes under standard Keep a Changelog categories (Security, Correctness, Robustness, Changed, Added). Each entry is one concise line — what changed and the outcome. No code paths, no justification prose, no line numbers.
+- **Historical releases** (all prior versions): collapse to high-level summaries only. Omit internal refactors, test-count tallies, constant extractions, lint/CI tweaks, and single-line bug fixes. Keep only security issues, breaking changes, major features, and user-visible fixes. Target 1–6 lines per historical version.
+
 ## Release Process
 
 This project adheres to [Semantic Versioning](https://semver.org). The version bump reflects the most significant change in the release: MAJOR for breaking API changes, MINOR for new backwards-compatible functionality, PATCH for backwards-compatible bug fixes and zero-behavior-change refactors. A single release may include changes across multiple categories (e.g., PATCH-level cleanups bundled with MINOR-level features) — the bump is determined by the highest-impact change per the classification table below.
