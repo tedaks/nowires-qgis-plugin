@@ -27,6 +27,6 @@ class TestAdvancedClutterIntegration:
         assert any("advanced" in opt.lower() for opt in CLUTTER_MODEL_OPTIONS)
 
     def test_clutter_context_knows_advanced_model(self, qgis_app):
-        from NoWires.clutter.context import _VALID_MODELS, ClutterModel
+        from NoWires.clutter.context import _VALID_MODELS
         assert "advanced" in _VALID_MODELS
         assert "simple" in _VALID_MODELS
