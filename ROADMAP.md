@@ -560,3 +560,157 @@ when users select the default clutter model.
    are set in simple mode.
 
 This eliminates 5 of the 17 behavioral assertion failures in a single change.
+
+### Code audit findings (2026-05-26)
+
+Findings from a comprehensive source audit. Bump classification: PATCH unless
+otherwise noted.
+
+#### Antenna pattern CSV has no row/size cap (HIGH)
+
+`antenna.py:149-167` — `_read_pattern_points` reads unbounded rows from
+user-supplied CSV files. A maliciously crafted file could exhaust memory. The
+`@lru_cache(maxsize=32)` mitigates re-reads but not a single oversized file.
+
+**Proposed fix.** Add `MAX_PATTERN_ROWS = 3600` constant (0.1° resolution for
+360°) and break the reader loop when `len(points) >= MAX_PATTERN_ROWS`. Emit
+`logger.warning("Pattern file %s exceeds %d rows; truncating", path,
+MAX_PATTERN_ROWS)` so users can diagnose truncation.
+
+**Regression test.** `tests/test_antenna_pattern_row_cap.py` — feed a CSV with
+4000 rows and assert the result is truncated to 3600, and that a warning is
+logged.
+
+#### No concurrency tests for SharedDEMGrid and release-lock paths (HIGH)
+
+`SharedDEMGrid.release()` acquires `_release_lock`, removes from
+`_pending_releases`, closes + unlinks the shm segment. `__del__` calls
+`release()`. `_atexit_release_pending` iterates `_pending_releases` then calls
+`release()` on each. No test exercises actual multi-thread contention on
+`release()` or validates `__del__` during interpreter shutdown while another
+thread holds the lock.
+
+**Proposed fix.** Add `tests/test_shared_dem_concurrent_release.py`:
+1. Create a `SharedDEMGrid`, spawn 8 threads all calling `release()`, assert no
+   `OSError` or double-unlink (`FileNotFoundError`).
+2. Create a grid, start a thread that acquires `_release_lock` for 200 ms,
+   then call `release()` from main thread — assert it blocks then completes.
+3. Create a grid, remove all references (triggering `__del__`), assert shm
+   segment no longer exists in `/dev/shm/`.
+
+#### Bilinear interpolation triplication — DRY refactor (HIGH)
+
+`_bilinear.py:28-117` — the scalar, line, and grid variants duplicate
+identical fractional-index computation (clip + floor + blend weights). Three
+blocks of near-identical logic risk divergence if one is edited without the
+others.
+
+**Proposed fix.** Extract a shared
+`_compute_indices(n_rows, n_cols, gm, fy, fx)` that returns
+`(y0, x0, y1, x1, ty, tx, oob_mask)`. Each variant calls this then applies
+its own blend. Approximately 60 lines of duplicated index logic collapse into
+one function. Maintain the public API (`bilinear_sample`,
+`bilinear_sample_grid`) unchanged.
+
+**Regression test.** Existing `_bilinear` tests cover the outer API — they
+should pass unchanged after refactor. Add a targeted test that calls
+`_compute_indices` directly and asserts expected values at boundary coordinates.
+
+#### test_batch_philippines.py excluded from CI (MEDIUM)
+
+`tests/test_batch_philippines.py` is listed in `.gitignore:76` so CI never
+runs it. It contains region-specific regression assertions that are important
+for validating propagation calculations over real terrain.
+
+**Proposed fix.** Either (a) remove the `.gitignore` entry and add
+`@pytest.mark.slow` so it runs in CI, or (b) refactor its key assertions into
+a CI-runnable test file that uses mocked terrain data. Option (a) is simpler;
+option (b) avoids CI needing real DEM tiles.
+
+#### Enforce MAX_AOI_EXTENT_DEGREES in coverage_bounds() (MEDIUM)
+
+`geo_bounds.py:17-38` — `coverage_bounds()` computes lat/lon extents from a
+radius but does not enforce `MAX_AOI_EXTENT_DEGREES`. Validation currently
+lives upstream in `algorithm/contour.py:133`. Defense in depth: the function
+that computes bounds should enforce the limit itself.
+
+**Proposed fix.** Add `max_extent=MAX_AOI_EXTENT_DEGREES` parameter to
+`coverage_bounds()`. If `half_lat > max_extent` or `half_lon > max_extent`,
+clamp and emit `logger.warning("AOI clamped from %.2f to %.2f degrees", ...)`
+so users know the extent was reduced.
+
+**Regression test.** `tests/test_geo_bounds_lat_clamp.py` already tests
+latitude clamping; extend it to assert longitude clamping and the `max_extent`
+parameter.
+
+#### Add integration test for advanced clutter mode with WorldCover (MEDIUM)
+
+The Docker QGIS integration suite has no test that runs coverage with
+`clutter_enabled=True, clutter_model=2` (advanced / SAALOS) against a
+WorldCover grid. This is a critical path that differs significantly from the
+simple-mode branch yet is untested in integration.
+
+**Proposed fix.** Add `tests/test_qgis_integration_clutter_advanced.py`
+marked `@pytest.mark.qgis_integration` that:
+1. Runs coverage with `CLUTTER_MODEL=2` (advanced) + WorldCover.
+2. Asserts the output raster has non-uniform values (not all NODATA).
+3. Asserts `report.json` contains `clutter_model: "advanced"`.
+
+#### Document atime limitation in cache eviction (LOW)
+
+`cache_manager.py:94` — `evict_cache_lru` sorts entries by
+`os.path.getatime()`. On Linux ext4 with `relatime` (the default mount option),
+atime is only updated every ~24 hours, making LRU eviction imprecise.
+The function works correctly but may evict recently-accessed entries if atime
+hasn't been flushed.
+
+**Proposed fix.** Add a docstring note to `evict_cache_lru()` documenting the
+atime caveat. Optionally consider mtime-based eviction as a future
+improvement (requires recording access time in a sidecar file).
+
+#### Return numpy array from interpolate_nan_elevations (LOW)
+
+`nan_utils.py:14-33` — `interpolate_nan_elevations()` returns `list[float]`
+while `interpolate_nan_array()` returns `numpy.ndarray`. The list return is
+intentional (P2P code path uses it), but the inconsistency is confusing.
+
+**Proposed fix.** Change `interpolate_nan_elevations()` to return
+`np.ndarray` and update the P2P callers to handle arrays. Alternatively,
+document in the docstring why a list is returned and add a
+`interpolate_nan_elevations_as_array` convenience wrapper.
+
+#### Broaden TempDirManager.__del__ exception catch (LOW)
+
+`temp_manager.py:138-143` — `__del__` catches `TypeError` but not
+`AttributeError`. During interpreter shutdown, `os.unlink` and `os.path` may
+be `None` if their modules have been garbage-collected, raising
+`AttributeError`. The `TypeError` catch handles the common case but is
+incomplete.
+
+**Proposed fix.** Change `except TypeError` to
+`except (TypeError, AttributeError)` on line 143. This mirrors the standard
+CPython `__del__` pattern for `tempfile` cleanup.
+
+#### Rename underscore-prefixed public modules (LOW → MINOR bump)
+
+`p2p/_outputs_internal.py` and `radio_coverage/_result_dispatch.py` use the
+underscore convention signaling "private", but are imported by sibling modules
+within their packages. This is misleading — the underscore suggests internal
+stability guarantees while the modules are actually part of the package's
+decomposition API.
+
+**Proposed fix.** Rename `_outputs_internal.py` → `outputs_internal.py` and
+`_result_dispatch.py` → `result_dispatch.py`. Update all imports. Per
+`AGENTS.md`, this is a public API rename → **MINOR** bump. Add both renames
+to the `[Unreleased]` section of `CHANGELOG.md`.
+
+#### No compiled API reference documentation (LOW)
+
+The project has excellent docstrings but no compiled API reference (Sphinx or
+similar). The `docs/` directory is in `.gitignore`. Users and contributors
+must read source files directly to understand the API.
+
+**Proposed fix.** Add a `docs/` directory with a Sphinx `conf.py` and
+auto-generate API references from docstrings. Wire into CI as a
+`docs` job that fails on broken references. Low priority but improves
+contributor onboarding.
