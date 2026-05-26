@@ -140,6 +140,14 @@ def _build_coverage_input_dict(**kw):
         "clutter_model": kw["clutter_model"],
         "clutter_source": kw["clutter_source"],
         "tx_antenna_preset": kw["tx_antenna_preset"],
+        "n0": kw.get("n0"), "epsilon": kw.get("epsilon"), "sigma": kw.get("sigma"),
+        "antenna_az": kw.get("antenna_az"), "antenna_bw_override": kw.get("antenna_bw_override"),
+        "downtilt_deg": kw.get("downtilt_deg"), "front_back_db": kw.get("front_back_db"),
+        "cch_override_m": kw.get("cch_override_m"),
+        "clutter_percentile": kw.get("clutter_percentile"),
+        "street_width_m": kw.get("street_width_m"),
+        "bel_enabled": kw.get("bel_enabled"), "bel_building_type": kw.get("bel_building_type"),
+        "bel_elevation_angle_deg": kw.get("bel_elevation_angle_deg"),
     }
 
 
@@ -167,6 +175,7 @@ def build_coverage_report_payload(
     average_distance_km, clutter_model="Off", clutter_source="off",
     tx_antenna_preset="omni", itm_loss_db=None, clutter_tx_db=0.0,
     clutter_rx_db=0.0, bel_rx_db=0.0, total_path_loss_db=None,
+    **extra_inputs,
 ):
     """Build the structured coverage report payload."""
     reliability = summarize_reliability(
@@ -182,6 +191,7 @@ def build_coverage_report_payload(
         cable_loss=cable_loss, rx_sensitivity_dbm=rx_sensitivity_dbm,
         clutter_model=clutter_model, clutter_source=clutter_source,
         tx_antenna_preset=tx_antenna_preset,
+        **extra_inputs,
     )
     results = _build_coverage_reliability_results(
         reliability, itm_loss_db, clutter_tx_db, clutter_rx_db,
@@ -215,6 +225,7 @@ def build_empty_coverage_report_payload(
     clutter_model="Off", clutter_source="off", tx_antenna_preset="omni",
     itm_loss_db=None, clutter_tx_db=0.0, clutter_rx_db=0.0,
     bel_rx_db=0.0, total_path_loss_db=None,
+    **extra_inputs,
 ):
     """Build a coverage report payload for a grid with no valid modelled cells."""
     reliability = summarize_reliability(
@@ -229,6 +240,7 @@ def build_empty_coverage_report_payload(
         cable_loss=cable_loss, rx_sensitivity_dbm=rx_sensitivity_dbm,
         clutter_model=clutter_model, clutter_source=clutter_source,
         tx_antenna_preset=tx_antenna_preset,
+        **extra_inputs,
     )
     results = _build_coverage_reliability_results(
         reliability, itm_loss_db, clutter_tx_db, clutter_rx_db,
