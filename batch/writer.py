@@ -48,7 +48,7 @@ def write_batch_marker_layer(path, results, feedback, mode):
         srs.ImportFromEPSG(4326)
         srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
-        layer = ds.CreateLayer("batch_markers", srs=srs, geom_type=ogr.wkbPoint)
+        layer = ds.CreateLayer("batch_markers", srs=srs, geom_type=ogr.wkbPoint25D)
         layer.CreateField(ogr.FieldDefn("rank", ogr.OFTInteger))
         layer.CreateField(ogr.FieldDefn("point_id", ogr.OFTString))
         layer.CreateField(ogr.FieldDefn("margin_db", ogr.OFTReal))

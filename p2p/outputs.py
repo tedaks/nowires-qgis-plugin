@@ -51,7 +51,7 @@ def write_profile_line(path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result
         ds = driver.CreateDataSource(path)
         if ds is None:
             raise RuntimeError("Failed to create dataset at {}".format(path))
-        layer = ds.CreateLayer("link", srs=srs, geom_type=ogr.wkbLineString)
+        layer = ds.CreateLayer("link", srs=srs, geom_type=ogr.wkbLineString25D)
         layer.CreateField(ogr.FieldDefn("distance", ogr.OFTReal))
         layer.CreateField(ogr.FieldDefn("loss_db", ogr.OFTReal))
         layer.CreateField(ogr.FieldDefn("mode", ogr.OFTInteger))
@@ -103,7 +103,7 @@ def write_fresnel_zone(
         if ds_poly is None:
             raise RuntimeError("Failed to create dataset at {}".format(poly_path))
         layer_poly = ds_poly.CreateLayer(
-            "fresnel_zones", srs=srs, geom_type=ogr.wkbPolygon
+            "fresnel_zones", srs=srs, geom_type=ogr.wkbPolygon25D
         )
         layer_poly.CreateField(ogr.FieldDefn("type", ogr.OFTString))
         layer_poly.CreateField(ogr.FieldDefn("blocked", ogr.OFTInteger))
@@ -158,7 +158,7 @@ def write_fresnel_zone(
         if ds_lines is None:
             raise RuntimeError("Failed to create dataset at {}".format(lines_path))
         layer_lines = ds_lines.CreateLayer(
-            "fresnel_lines", srs=srs, geom_type=ogr.wkbLineString
+            "fresnel_lines", srs=srs, geom_type=ogr.wkbLineString25D
         )
         layer_lines.CreateField(ogr.FieldDefn("type", ogr.OFTString))
         layer_lines.CreateField(ogr.FieldDefn("blocked", ogr.OFTInteger))
