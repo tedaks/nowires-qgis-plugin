@@ -14,7 +14,7 @@ import ast
 
 def test_write_p2p_output_layers_returns_four_values():
     """_write_p2p_output_layers must return a 4-tuple including fresnel_lines_path."""
-    with open("p2p/_outputs_internal.py") as f:
+    with open("p2p/outputs_internal.py") as f:
         source = f.read()
     tree = ast.parse(source)
     func = None
