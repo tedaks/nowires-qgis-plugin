@@ -79,43 +79,39 @@ def test_simple_mode_warns_on_advanced_percentile(monkeypatch):
         for call in feedback.pushWarning.call_args_list
     ]
     assert any(
-        "CLUTTER_PERCENTILE" in msg and "90.0" in msg and "ignored" in msg
+        "CLUTTER_PERCENTILE" in msg and "90.0" in msg and "only affects BEL" in msg
         for msg in warnings
     ), f"Expected percentile warning, got: {warnings}"
 
 
-def test_simple_mode_warns_on_bel_enabled(monkeypatch):
-    """feedback.pushWarning must be called when BEL is enabled in simple mode."""
+def test_simple_mode_does_not_warn_on_bel_enabled(monkeypatch):
     engine = _import_engine(monkeypatch)
     feedback = MagicMock()
 
     _run_with_params(engine, monkeypatch, feedback, bel_enabled=True)
 
     warnings = [
-        call[0][0]
-        for call in feedback.pushWarning.call_args_list
+        call[0][0] for call in feedback.pushWarning.call_args_list
     ]
-    assert any(
-        "BEL_ENABLED" in msg and "ignored" in msg
-        for msg in warnings
-    ), f"Expected BEL warning, got: {warnings}"
+    assert not any("BEL_ENABLED" in msg for msg in warnings), (
+        f"BEL should not warn in simple mode (mode-independent since v1.6.5), "
+        f"got: {warnings}"
+    )
 
 
-def test_simple_mode_warns_on_tx_clutter_override(monkeypatch):
-    """feedback.pushWarning must be called when tx_clutter_override is set in simple mode."""
+def test_simple_mode_does_not_warn_on_tx_clutter_override(monkeypatch):
     engine = _import_engine(monkeypatch)
     feedback = MagicMock()
 
     _run_with_params(engine, monkeypatch, feedback, tx_clutter_override="urban")
 
     warnings = [
-        call[0][0]
-        for call in feedback.pushWarning.call_args_list
+        call[0][0] for call in feedback.pushWarning.call_args_list
     ]
-    assert any(
-        "TX_CLUTTER_OVERRIDE" in msg and "ignored" in msg
-        for msg in warnings
-    ), f"Expected TX override warning, got: {warnings}"
+    assert not any("TX_CLUTTER_OVERRIDE" in msg for msg in warnings), (
+        f"TX override should not warn in simple mode (mode-independent since v1.6.5), "
+        f"got: {warnings}"
+    )
 
 
 def test_simple_mode_no_warning_on_default_params(monkeypatch):
