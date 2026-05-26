@@ -39,6 +39,13 @@ arguments. The rest of the codebase is well-typed. Closing this gap would enable
 it either returns the path or raises `RuntimeError`. The `None` branch is
 unreachable. Either remove it or replace with a feature-count validation.
 
+### Reopenable P2P profile chart (MINOR)
+
+Closing the P2P chart dock destroys the widget and drops all profile data —
+the chart can only be recovered by re-running the algorithm. Store the last
+`chart_kwargs` on the `show_profile_chart` module and add a "Reopen P2P Chart"
+menu action so the graph is reopenable without recomputation.
+
 ### Test harness improvements (runner repository)
 
 - expects-error mechanism for intentional guard-rail exceptions
