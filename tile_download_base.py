@@ -48,7 +48,7 @@ def _redact_query(url: str) -> str:
 
 
 def _backoff_seconds(attempt: int) -> float:
-    return 2 ** attempt + random.uniform(0, 1)
+    return float(2 ** attempt + random.uniform(0, 1))
 
 def download_tile_with_retry(
     tile_url, local_tif, base_name_label, feedback=None,
@@ -184,7 +184,7 @@ def download_tile_with_retry(
                 retry_after = e.headers.get("Retry-After")
                 if retry_after:
                     try:
-                        wait_secs = max(int(retry_after), 1)
+                        wait_secs = float(max(int(retry_after), 1))
                     except ValueError:
                         wait_secs = _backoff_seconds(attempt)
                 else:
