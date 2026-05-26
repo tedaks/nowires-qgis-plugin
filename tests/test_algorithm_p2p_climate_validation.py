@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Regression test: P2P algorithm must fail-fast on out-of-range climate zone."""
 
-from unittest.mock import MagicMock, patch
 
 import pytest
 
