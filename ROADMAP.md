@@ -8,6 +8,26 @@ Planned work not yet implemented. Items move to [CHANGELOG.md](CHANGELOG.md) onc
 
 Carried forward from v1.6.5. Each has a verified root cause and a proposed fix in the sections below — ready to land.
 
+### Docker QGIS integration tests for full algorithm orchestration
+
+The Docker integration suite covers `algorithm/coverage.py` but lacks tests
+for `algorithm/batch.py`, `algorithm/coverage_comparison.py`,
+`algorithm/contour.py`, and `comparison/outputs.py`. These paths exercise
+significantly different engine pathways and should be validated in the QGIS
+Docker container against real Copernicus DEM tiles.
+
+**Proposed fix.** Add `@pytest.mark.qgis_integration` test files for each
+algorithm path, following the pattern of `test_qgis_integration.py`.
+
+### Unit tests for legend.py
+
+`radio_coverage/legend.py` legend data builders are Qt-dependent and currently
+untested at the unit level. The legend construction logic (color stops, label
+generation) can be tested in isolation with mocked Qt objects.
+
+**Proposed fix.** Add unit tests covering `show_coverage_legend()` builder
+functions with mocked `QgsRasterLayer` and `QgsSingleBandPseudoColorRenderer`.
+
 ### Coverage report.json omits most engine-consumed parameters (from v1.6.5)
 
 `report/payloads.py:_build_coverage_input_dict()` serialises only 14 of the
