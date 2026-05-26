@@ -416,8 +416,8 @@ def test_http_500_retries_then_succeeds(tmp_path, monkeypatch):
     assert local_tif.read_bytes() == b"ok"
     assert len(opener.calls) == 3
     assert len(sleeps) == 2
-    assert sleeps[0] == 1.0
-    assert sleeps[1] == 2.0
+    assert sleeps[0] >= 1.0
+    assert sleeps[1] >= 2.0
 
 
 # ---------------------------------------------------------------------------

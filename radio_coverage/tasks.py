@@ -124,6 +124,16 @@ def build_coverage_tasks(
 
     advanced = clutter_context is not None and clutter_context.model == "advanced"
 
+    bel_db = 0.0
+    if clutter_enabled and clutter_context is not None and clutter_context.bel_enabled:
+        from NoWires.clutter.p2109_bel import building_entry_loss
+        bel_db = building_entry_loss(
+            f_mhz / 1000.0,
+            clutter_context.bel_building_type,
+            theta_deg=clutter_context.bel_elevation_angle_deg,
+            p=clutter_context.percentile,
+        )
+
     if advanced and clutter_enabled:
         tx_category, _tx_source = resolve_category_advanced(
             tx_lat, tx_lon, tx_clutter_override, clutter_grid)
@@ -140,18 +150,6 @@ def build_coverage_tasks(
             )
         )
         rx_clutter_loss_grid = None
-        # BEL parameters are uniform across all pixels (same frequency, building
-        # type, elevation angle, and percentile), so compute once outside the
-        # per-pixel loop instead of redundantly evaluating per pixel.
-        bel_db = 0.0
-        if clutter_context.bel_enabled:
-            from NoWires.clutter.p2109_bel import building_entry_loss
-            bel_db = building_entry_loss(
-                f_mhz / 1000.0,
-                clutter_context.bel_building_type,
-                theta_deg=clutter_context.bel_elevation_angle_deg,
-                p=clutter_context.percentile,
-            )
     elif clutter_enabled and clutter_grid is not None:
         rx_clutter_loss_grid = clutter_grid.sample_category_grid(
             lats, lons, rx_override=rx_clutter_override)
@@ -237,15 +235,15 @@ def build_coverage_tasks(
                     # Both terminals zero: split evenly (both will be 0.0).
                     tx_clutter_db = path_total * 0.5
                     rx_clutter_db = path_total * 0.5
-                pixel_bel_db = bel_db if clutter_context.bel_enabled else 0.0
+                pixel_bel_db = bel_db
             elif rx_clutter_loss_grid is not None:
                 tx_clutter_db = tx_clutter_loss_db
                 rx_clutter_db = float(rx_clutter_loss_grid[i, j])
-                pixel_bel_db = 0.0
+                pixel_bel_db = bel_db
             else:
                 tx_clutter_db = tx_clutter_loss_db
                 rx_clutter_db = 0.0
-                pixel_bel_db = 0.0
+                pixel_bel_db = bel_db
             tasks.append(
                 _CoverageTask(
                     i=i,
