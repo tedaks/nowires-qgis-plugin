@@ -8,7 +8,7 @@ import os
 import pytest
 
 try:
-    from qgis.core import QgsProcessingContext, QgsProcessingFeedback
+    import qgis.core  # noqa: F401
     _HAS_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
 except ImportError:
     _HAS_QGIS = False
