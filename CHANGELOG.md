@@ -16,11 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - P2P: add climate zone range validation matching coverage-path convention
 - Clutter: surface WorldCover-unavailable fallback in report `clutter_model` field
 - `geo_bounds`: enforce `MAX_AOI_EXTENT_DEGREES` with clamp-and-warn
+- Coverage: extend report input echo to include BEL, clutter, antenna, ground params
+- Engine: update simple-mode clutter warnings — BEL and TX override work in both modes
 
 ### Robustness
 
 - Antenna: cap pattern CSV reader at `MAX_PATTERN_ROWS=3600`, warn on truncation
 - `TempDirManager`: broaden `__del__` exception catch to `(TypeError, AttributeError)`
+- GPKG writers: use 25D geometry types in all `CreateLayer` calls to suppress Z warnings
+- `tile_merge`: add 30s timeout guard on `ComputeStatistics` to prevent UI hang
 
 ### Changed
 
@@ -29,12 +33,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Expose `test_batch_philippines.py` to VC, add `@pytest.mark.slow`
 - `cache_manager`: document `relatime`/atime limitation in `evict_cache_lru`
 - Rename `_outputs_internal.py`/`_result_dispatch.py` dropping misleading underscore
+- `radio_coverage/params.py`: add omni preset guard for BW/AZ matching comparison path
 
 ### Added
 
 - Concurrency safety tests for `SharedDEMGrid.release()`
 - QGIS integration test for advanced clutter mode with WorldCover
-- 10 new regression tests
+- QGIS integration tests for batch, comparison, and contour algorithms
+- Unit tests for coverage legend data builders
+- 16 new regression tests
 
 ## [1.6.5] - 2026-05-26
 
