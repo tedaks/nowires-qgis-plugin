@@ -561,10 +561,95 @@ when users select the default clutter model.
 
 This eliminates 5 of the 17 behavioral assertion failures in a single change.
 
-### Code audit findings (2026-05-26)
+#### P2P path lacks the climate range check that coverage already enforces (new — 2026-05-26)
 
-Findings from a comprehensive source audit. Bump classification: PATCH unless
-otherwise noted.
+The CLIMATE Processing parameter is a 7-option enum (indices 0–6) with
+`defaultValue=1` ([radio_coverage/params.py:113](radio_coverage/params.py)).
+`validate_itm_input_ranges()` in `radio.py` does range-check `climate` against
+`ITM_MIN_CLIMATE=0 / ITM_MAX_CLIMATE=6`, but it is only invoked from the
+coverage path ([radio_coverage/params.py:225](radio_coverage/params.py)). The
+P2P algorithm reads CLIMATE at [algorithm/p2p.py:87](algorithm/p2p.py) via
+`parameterAsEnum()` and forwards the value straight through with no range
+validation. When a caller passes an out-of-range index via Python API or
+script (e.g., a 1-based ITU/NTIA climate code such as 7 instead of the
+plugin's 0-based 6 for Maritime Temperate Sea), QGIS's `parameterAsEnum`
+silently substitutes the parameter's `defaultValue` — the algorithm sees
+climate=1 with no warning, the report records `"Continental Subtropical"`,
+and the result is bit-identical to a genuine CLIMATE=1 run. `radio.itm_p2p_loss`
+adds 1 to map to the internal `Climate(IntEnum)` so the surrounding code
+*would* raise `ValueError` on Climate(8), but the QGIS-level clamp prevents
+that branch from ever being reached.
+
+**Evidence.** From the revised-harness run-4 thorough run: `p2p_climate_1_equatorial`
+(CLIMATE=1) and `p2p_climate_7_maritime_warm` (CLIMATE=7) produced byte-identical
+`itm_loss_db=127.05654797537987`. Both reports show `inputs.climate =
+"Continental Subtropical"`. `p2p_climate_5_tagaytay` (CLIMATE=5, in range)
+diverged correctly to 127.16830091322589 / `"Maritime Temperate (land)"`.
+
+**Proposed fix.** Call `validate_itm_input_ranges()` from
+`algorithm/p2p.py::processAlgorithm` before invoking the engine, matching the
+coverage-path convention. This converts the silent clamp into a fail-fast
+`QgsProcessingException` with a clear range message. Optional follow-up: emit
+a `feedback.pushWarning()` from the parameter extraction layer when QGIS
+clamps to default, so GUI users also see the substitution.
+
+**Regression test.** `tests/test_algorithm_p2p_climate_validation.py` — invoke
+`P2PAlgorithm.processAlgorithm()` with `CLIMATE=7` and assert
+`QgsProcessingException` is raised with a message containing `"Climate zone"`
+and `"between 0 and 6"`.
+
+**Status:** ✅ Resolved — v1.6.6 (commit `cbc1af0`).
+
+#### Silent clutter fallback masquerades as a successful clutter run (new — 2026-05-26)
+
+When the WorldCover tile is unavailable (download fails, race during parallel
+runs, file corruption), `clutter/__init__.py:99` and `clutter/resolve.py:43,53`
+return the sentinel `"fallback_open"` and the coverage engine proceeds with
+`clutter_tx_db=0.0, clutter_rx_db=0.0` — effectively no clutter applied. The
+report still records `inputs.clutter_model = "Simple clutter correction"`. The
+only signal that clutter was skipped is `inputs.clutter_source = "fallback_open"`,
+which is easy to miss in a multi-page HTML report. Two runs with identical
+input parameters but different WorldCover availability produce reports that
+look indistinguishable on the headline fields while differing by ~15 dB on
+mean Prx.
+
+**Evidence.** In run-4, `cov_antenna_downtilt` and `cov_antenna_downtilt_only`
+have byte-identical `params_sent.json` (apart from output paths). The first
+hit a WorldCover download race and reported `clutter_source = "fallback_open"`,
+`clutter_tx_db = 0.0`, `mean_prx_dbm = -57.36`. The second loaded the tile
+correctly and reported `clutter_source = "…/ESA_WorldCover_…tif"`,
+`clutter_tx_db = 10.0`, `mean_prx_dbm = -72.83`. Both reports advertise
+`clutter_model = "Simple clutter correction"`.
+
+**Proposed fix.** Three options, escalating in strength:
+
+1. **Surface in `clutter_model`.** When `clutter_source == "fallback_open"`,
+   set `clutter_model = "Simple clutter correction (WorldCover unavailable —
+   clutter skipped)"` so the most-viewed field reflects the actual state.
+2. **`feedback.pushWarning()`** at the call site when the resolver returns
+   `"fallback_open"`, citing the failed tile name and reason if available.
+3. **Fail-fast option.** Add a `STRICT_CLUTTER` boolean parameter
+   (default False) that converts the fallback into a `QgsProcessingException`.
+   Useful for batch scripts and CI where a silent zero-clutter run is worse
+   than a hard failure.
+
+Option 1 is the minimum bar (zero-cost reporting fix); options 2–3 are
+follow-ups. This complements the existing "Simple-clutter mode should warn
+when advanced-only params are set" item above — both surface silent failures
+so users can self-diagnose.
+
+**Regression test.** `tests/test_clutter_fallback_visible_in_report.py` —
+patch `ensure_worldcover_for_area` to return None, run a coverage call, and
+assert the resulting `report.json` `clutter_model` field contains a substring
+identifying the fallback (e.g., `"unavailable"` or `"fallback"`).
+
+**Status:** ✅ Resolved — v1.6.6 (commit `6e62d3a`). Option 1 implemented.
+
+### Code audit findings (2026-05-26) — resolved v1.6.6
+
+Findings from a comprehensive source audit. All PATCH-classified items below
+were implemented in v1.6.6 (14 commits, 2026-05-27). The one deferred item is
+noted inline.
 
 #### Antenna pattern CSV has no row/size cap (HIGH)
 
@@ -581,6 +666,8 @@ MAX_PATTERN_ROWS)` so users can diagnose truncation.
 4000 rows and assert the result is truncated to 3600, and that a warning is
 logged.
 
+**Status:** ✅ Resolved — v1.6.6 (commit `fdaddb7`).
+
 #### No concurrency tests for SharedDEMGrid and release-lock paths (HIGH)
 
 `SharedDEMGrid.release()` acquires `_release_lock`, removes from
@@ -596,7 +683,9 @@ thread holds the lock.
 2. Create a grid, start a thread that acquires `_release_lock` for 200 ms,
    then call `release()` from main thread — assert it blocks then completes.
 3. Create a grid, remove all references (triggering `__del__`), assert shm
-   segment no longer exists in `/dev/shm/`.
+    segment no longer exists in `/dev/shm/`.
+
+**Status:** ✅ Resolved — v1.6.6 (commit `2fbb83a`).
 
 #### Bilinear interpolation triplication — DRY refactor (HIGH)
 
@@ -616,6 +705,8 @@ one function. Maintain the public API (`bilinear_sample`,
 should pass unchanged after refactor. Add a targeted test that calls
 `_compute_indices` directly and asserts expected values at boundary coordinates.
 
+**Status:** ✅ Resolved — v1.6.6 (commit `6efeb03`).
+
 #### test_batch_philippines.py excluded from CI (MEDIUM)
 
 `tests/test_batch_philippines.py` is listed in `.gitignore:76` so CI never
@@ -626,6 +717,8 @@ for validating propagation calculations over real terrain.
 `@pytest.mark.slow` so it runs in CI, or (b) refactor its key assertions into
 a CI-runnable test file that uses mocked terrain data. Option (a) is simpler;
 option (b) avoids CI needing real DEM tiles.
+
+**Status:** ✅ Resolved — v1.6.6 (commit `14c706d`). Option (a) with `@pytest.mark.slow`.
 
 #### Enforce MAX_AOI_EXTENT_DEGREES in coverage_bounds() (MEDIUM)
 
@@ -643,6 +736,8 @@ so users know the extent was reduced.
 latitude clamping; extend it to assert longitude clamping and the `max_extent`
 parameter.
 
+**Status:** ✅ Resolved — v1.6.6 (commit `eb2cf7f`).
+
 #### Add integration test for advanced clutter mode with WorldCover (MEDIUM)
 
 The Docker QGIS integration suite has no test that runs coverage with
@@ -656,6 +751,8 @@ marked `@pytest.mark.qgis_integration` that:
 2. Asserts the output raster has non-uniform values (not all NODATA).
 3. Asserts `report.json` contains `clutter_model: "advanced"`.
 
+**Status:** ✅ Resolved — v1.6.6 (commit `ba20108`).
+
 #### Document atime limitation in cache eviction (LOW)
 
 `cache_manager.py:94` — `evict_cache_lru` sorts entries by
@@ -668,6 +765,8 @@ hasn't been flushed.
 atime caveat. Optionally consider mtime-based eviction as a future
 improvement (requires recording access time in a sidecar file).
 
+**Status:** ✅ Resolved — v1.6.6 (commit `b8479de`).
+
 #### Return numpy array from interpolate_nan_elevations (LOW)
 
 `nan_utils.py:14-33` — `interpolate_nan_elevations()` returns `list[float]`
@@ -678,6 +777,8 @@ intentional (P2P code path uses it), but the inconsistency is confusing.
 `np.ndarray` and update the P2P callers to handle arrays. Alternatively,
 document in the docstring why a list is returned and add a
 `interpolate_nan_elevations_as_array` convenience wrapper.
+
+**Status:** ✅ Resolved — v1.6.6 (commit `1281955`). Return type changed to `np.ndarray`.
 
 #### Broaden TempDirManager.__del__ exception catch (LOW)
 
@@ -690,6 +791,8 @@ incomplete.
 **Proposed fix.** Change `except TypeError` to
 `except (TypeError, AttributeError)` on line 143. This mirrors the standard
 CPython `__del__` pattern for `tempfile` cleanup.
+
+**Status:** ✅ Resolved — v1.6.6 (commit `c43a309`).
 
 #### Rename underscore-prefixed public modules (LOW → MINOR bump)
 
@@ -704,6 +807,8 @@ decomposition API.
 `AGENTS.md`, this is a public API rename → **MINOR** bump. Add both renames
 to the `[Unreleased]` section of `CHANGELOG.md`.
 
+**Status:** ✅ Resolved — v1.6.6 (commit `f03c69f`). Both modules renamed; all imports updated.
+
 #### No compiled API reference documentation (LOW)
 
 The project has excellent docstrings but no compiled API reference (Sphinx or
@@ -714,3 +819,5 @@ must read source files directly to understand the API.
 auto-generate API references from docstrings. Wire into CI as a
 `docs` job that fails on broken references. Low priority but improves
 contributor onboarding.
+
+**Status:** ⏳ Deferred — not included in v1.6.6.
