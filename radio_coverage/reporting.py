@@ -41,10 +41,13 @@ from NoWires.report.payloads import (
 from NoWires.raster_io import write_geotiff
 
 
-def _clutter_model_label(enabled, model: ClutterModel = "simple"):
+def _clutter_model_label(enabled, model: ClutterModel = "simple", clutter_source: str = ""):
     if not enabled:
         return CLUTTER_MODEL_OPTIONS[0]
-    return CLUTTER_MODEL_OPTIONS[2] if model == "advanced" else CLUTTER_MODEL_OPTIONS[1]
+    label = CLUTTER_MODEL_OPTIONS[2] if model == "advanced" else CLUTTER_MODEL_OPTIONS[1]
+    if clutter_source == "fallback_open":
+        label += " (WorldCover unavailable — clutter skipped)"
+    return label
 
 
 def build_coverage_report_payload_for_grid(
@@ -94,7 +97,7 @@ def build_coverage_report_payload_for_grid(
             situation_pct=situation_pct, tx_power=tx_power, tx_gain=tx_gain,
             rx_gain=rx_gain, cable_loss=cable_loss,
             rx_sensitivity_dbm=rx_sens, pixel_count=int(raster_grid.size),
-            clutter_model=_clutter_model_label(clutter_enabled, clutter_model),
+            clutter_model=_clutter_model_label(clutter_enabled, clutter_model, clutter_source),
             clutter_source=clutter_source,
             tx_antenna_preset=ANTENNA_PRESET_OPTIONS[antenna_preset],
             clutter_tx_db=tx_clutter_for_report.tx_loss_db,
