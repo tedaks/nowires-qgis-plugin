@@ -204,26 +204,28 @@ def test_collect_panel_params_antenna_az_only_read_when_bw_lt_360():
 
 
 def test_collect_panel_params_antenna_bw_override_rule():
-    # Rule: None if (preset != CUSTOM_INDEX AND bw == 360.0), else bw.
+    # Rule: PRESET=0 (omni) forces AZ=None and BW=360 regardless of raw BW.
     from comparison.params import CUSTOM_ANTENNA_PRESET_INDEX
 
-    # Case A: bw == 360, preset == omni (not custom) → override None.
+    # Case A: bw == 360, preset == omni → override 360, az None.
     v = _default_values()
     v["ANTENNA_BW"] = 360.0
     v["ANTENNA_PRESET"] = 0  # omni
     p = collect_panel_params(_FakeAlgo(v), "PANEL_A", parameters={}, context=None)
-    assert p.antenna_bw_override is None
+    assert p.antenna_bw_override == 360.0
+    assert p.antenna_az is None
 
     # Case B: bw == 360, preset == custom → override == bw.
     v["ANTENNA_PRESET"] = CUSTOM_ANTENNA_PRESET_INDEX
     p = collect_panel_params(_FakeAlgo(v), "PANEL_A", parameters={}, context=None)
     assert p.antenna_bw_override == 360.0
 
-    # Case C: bw < 360 → override == bw regardless of preset.
+    # Case C: bw < 360, preset == omni → override 360, az None.
     v["ANTENNA_BW"] = 90.0
     v["ANTENNA_PRESET"] = 0
     p = collect_panel_params(_FakeAlgo(v), "PANEL_A", parameters={}, context=None)
-    assert p.antenna_bw_override == 90.0
+    assert p.antenna_bw_override == 360.0
+    assert p.antenna_az is None
 
 
 def test_collect_panel_params_prefixes_every_key():

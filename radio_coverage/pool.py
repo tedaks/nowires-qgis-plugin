@@ -126,8 +126,10 @@ def _final_cov_pool():
             try:
                 _cov_shm.close()
                 _cov_shm.unlink()
-            except Exception:
+            except FileNotFoundError:
                 pass
+            except OSError as exc:
+                logger.debug("shm finalizer: %s", exc)
             _cov_shm = None
 
 
@@ -140,8 +142,8 @@ def _init_cov_pool(shm_name, shape, dtype_str, grid_meta):
         if _cov_shm is not None:
             try:
                 _cov_shm.close()
-            except Exception:
-                pass
+            except OSError as exc:
+                logger.debug("shm init close: %s", exc)
             _cov_shm = None
         _cov_shm = multiprocessing.shared_memory.SharedMemory(name=shm_name)
         _cov_grid_data = np.ndarray(shape, dtype=np.dtype(dtype_str), buffer=_cov_shm.buf)

@@ -89,6 +89,12 @@ def resolve_k_factor(
     Prefers the preset enum; falls back to the legacy numeric K_FACTOR only
     when the preset is absent and the custom value was supplied.
     """
+    if has_preset and has_custom:
+        logger.warning(
+            "K_FACTOR preset selected; custom K_FACTOR=%s is ignored, "
+            "using preset index %s instead.",
+            custom_value, preset_index,
+        )
     if not has_preset and has_custom:
         return float(custom_value)
     return presets[preset_index]

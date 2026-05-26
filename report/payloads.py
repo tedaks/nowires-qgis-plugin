@@ -94,7 +94,7 @@ def build_p2p_report_payload(
             "distance_km": round(dist_m / 1000.0, 3),
             "propagation_mode": propagation_mode,
             "propagation_mode_name": propagation_mode_name,
-            "free_space_loss_db": fspl_db, "itm_path_loss_db": itm_loss_db,
+            "free_space_loss_db": fspl_db, "itm_loss_db": itm_loss_db,
             "excess_loss_db": itm_loss_db - fspl_db, "eirp_dbm": eirp_dbm,
             "clutter_tx_db": clutter_tx_db, "clutter_rx_db": clutter_rx_db,
             "total_path_loss_db": (

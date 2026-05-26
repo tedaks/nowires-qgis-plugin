@@ -137,12 +137,16 @@ def collect_panel_params(algo, prefix: str, parameters, context) -> ComparisonPa
 
     antenna_bw = pd("ANTENNA_BW")
     antenna_preset = pe("ANTENNA_PRESET")
-    antenna_az = pd("ANTENNA_AZ") if antenna_bw < 360.0 else None
-    antenna_bw_override = (
-        None
-        if antenna_preset != CUSTOM_ANTENNA_PRESET_INDEX and antenna_bw == 360.0
-        else antenna_bw
-    )
+    if antenna_preset == 0:
+        antenna_az = None
+        antenna_bw_override = 360.0
+    else:
+        antenna_az = pd("ANTENNA_AZ") if antenna_bw < 360.0 else None
+        antenna_bw_override = (
+            None
+            if antenna_preset != CUSTOM_ANTENNA_PRESET_INDEX and antenna_bw == 360.0
+            else antenna_bw
+        )
 
     clutter_model_idx = pe("CLUTTER_MODEL")
     cch_raw = pd("CCH_OVERRIDE")
