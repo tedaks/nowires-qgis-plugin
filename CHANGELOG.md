@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
 ## [1.6.6] - 2026-05-27
 
 ### Correctness
@@ -33,14 +35,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add concurrency safety test for `SharedDEMGrid.release()` — 8-thread simultaneous release, lock-contention timing, and `__del__` segment cleanup.
 - Add QGIS integration test for advanced clutter mode with WorldCover (`tests/test_qgis_integration_clutter_advanced.py`).
 - 10 new regression tests added per TDD convention.
-
-### Planned
-
-- Docker QGIS integration tests for `algorithm/batch.py`, `algorithm/coverage_comparison.py`, `algorithm/contour.py`, `algorithm/coverage.py`, `comparison/outputs.py` full algorithm orchestration.
-- Unit tests for `radio_coverage/legend.py` legend data builders (Qt-dependent).
-- Coverage report.json input echo — extend `_build_coverage_input_dict` to mirror P2P inputs (BEL, clutter percentile, overrides, antenna params, k-factor, N0, epsilon, sigma).
-- GDAL geometry type warnings — suppress or fix Z-geometry type mismatches in GPKG writers that flood feedback logs.
-- DEM download timeout on long cross-sea paths — cap tile fetch to land portion and add `ComputeStatistics` timeout wrapper.
 
 ## [1.6.5] - 2026-05-26
 
