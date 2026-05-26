@@ -151,6 +151,7 @@ class TestCoverageParamsValidation:
 
     def test_extracts_antenna_az_when_beamwidth_lt_360(self):
         params = _default_params()
+        params["ANTENNA_PRESET"] = 4
         params["ANTENNA_BW"] = 90.0
         params["ANTENNA_AZ"] = 45.0
         alg = _MockAlg()
