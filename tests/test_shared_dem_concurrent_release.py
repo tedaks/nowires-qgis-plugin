@@ -4,14 +4,12 @@
 """Regression test: concurrent SharedDEMGrid release safety."""
 
 import gc
-import glob
 import os
 import threading
 import time
 import weakref
 
 import numpy as np
-import pytest
 
 from NoWires.shared_dem_grid import SharedDEMGrid
 

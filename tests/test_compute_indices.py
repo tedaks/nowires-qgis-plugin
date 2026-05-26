@@ -4,7 +4,6 @@
 """Unit tests for the shared _compute_indices helper in _bilinear.py."""
 
 import numpy as np
-import pytest
 
 from NoWires._bilinear import _compute_indices
 
