@@ -105,13 +105,17 @@ class P2PAlgorithm(NoWiresAlgorithm):
         n0 = self.parameterAsDouble(parameters, self.N0, context)
         epsilon = self.parameterAsDouble(parameters, self.EPSILON, context)
         sigma = self.parameterAsDouble(parameters, self.SIGMA, context)
-        validate_itm_input_ranges(
-            tx_height_m=tx_h,
-            rx_height_m=rx_h,
-            frequency_mhz=f_mhz,
-            surface_refractivity_n0=n0,
-            earth_conductivity_sigma=sigma,
-        )
+        try:
+            validate_itm_input_ranges(
+                tx_height_m=tx_h,
+                rx_height_m=rx_h,
+                frequency_mhz=f_mhz,
+                surface_refractivity_n0=n0,
+                earth_conductivity_sigma=sigma,
+                climate=climate,
+            )
+        except ValueError as exc:
+            raise QgsProcessingException(str(exc))
 
         tx_antenna_config = antenna_config_from_values(
             preset=self.parameterAsEnum(parameters, self.TX_ANTENNA_PRESET, context),
