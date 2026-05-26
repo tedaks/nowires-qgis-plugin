@@ -72,9 +72,6 @@ htmlcov/
 todo_improved_clutterloss.md
 .worktrees/
 
-# Ad-hoc test (local-only)
-/tests/test_batch_philippines.py
-
 # Secrets and credentials
 .env
 *.pem
