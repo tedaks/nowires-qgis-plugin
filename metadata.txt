@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.6.5
+version=1.6.6
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,7 +14,7 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
-    Version 1.6.5
+    Version 1.6.6
     - Security: fix tile download redirect scheme check to compare URL scheme in addition to netloc
     - Security: fix tile URL logged unsanitised — strip query strings from feedback
     - Security: fix CSV formula-injection bypass via leading regular space
