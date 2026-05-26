@@ -13,787 +13,506 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Correctness
 
-- Fix P2P algorithm silently accepting out-of-range climate zone index — add `validate_itm_input_ranges(climate=climate)` call matching coverage-path convention, converting the silent QGIS clamp into a fail-fast `QgsProcessingException`.
-- Fix coverage report `clutter_model` field showing "Simple clutter correction" even when WorldCover tile was unavailable — append "(WorldCover unavailable — clutter skipped)" when `clutter_source == "fallback_open"` so the report reflects actual state.
-- Enforce `MAX_AOI_EXTENT_DEGREES` in `geo_bounds.coverage_bounds()` — clamp and warn when the computed lat/lon extent exceeds the limit, providing defense-in-depth beyond the existing algorithm-level check.
+- P2P: add climate zone range validation matching coverage-path convention
+- Clutter: surface WorldCover-unavailable fallback in report `clutter_model` field
+- `geo_bounds`: enforce `MAX_AOI_EXTENT_DEGREES` with clamp-and-warn
 
 ### Robustness
 
-- Add `MAX_PATTERN_ROWS = 3600` cap to antenna pattern CSV reader — break reader loop when exceeded and emit warning to prevent memory exhaustion from maliciously-crafted files.
-- Broaden `TempDirManager.__del__` exception catch from `TypeError` to `(TypeError, AttributeError)` to handle interpreter shutdown where `os` module globals may be `None`.
+- Antenna: cap pattern CSV reader at `MAX_PATTERN_ROWS=3600`, warn on truncation
+- `TempDirManager`: broaden `__del__` exception catch to `(TypeError, AttributeError)`
 
 ### Changed
 
-- Refactor `_bilinear.py`: extract shared `_compute_indices` function from the duplicated fractional-index computation in scalar, line, and grid variants (~60 lines deduplicated).
-- Change `interpolate_nan_elevations` to return `numpy.ndarray` instead of `list[float]` for consistency with `interpolate_nan_array`.
-- Expose `tests/test_batch_philippines.py` to version control — remove from `.gitignore`, add `@pytest.mark.slow` marker, register `slow` marker in `pyproject.toml`.
-- Document `relatime`/atime limitation in `evict_cache_lru` docstring.
-- Rename `_outputs_internal.py` → `outputs_internal.py` and `_result_dispatch.py` → `result_dispatch.py` — drop misleading underscore prefix from intra-package decomposition modules.
+- `_bilinear.py`: extract shared `_compute_indices` from triplicated index logic
+- `nan_utils`: return `np.ndarray` from `interpolate_nan_elevations` for consistency
+- Expose `test_batch_philippines.py` to VC, add `@pytest.mark.slow`
+- `cache_manager`: document `relatime`/atime limitation in `evict_cache_lru`
+- Rename `_outputs_internal.py`/`_result_dispatch.py` dropping misleading underscore
 
 ### Added
 
-- Add concurrency safety test for `SharedDEMGrid.release()` — 8-thread simultaneous release, lock-contention timing, and `__del__` segment cleanup.
-- Add QGIS integration test for advanced clutter mode with WorldCover (`tests/test_qgis_integration_clutter_advanced.py`).
-- 10 new regression tests added per TDD convention.
+- Concurrency safety tests for `SharedDEMGrid.release()`
+- QGIS integration test for advanced clutter mode with WorldCover
+- 10 new regression tests
 
 ## [1.6.5] - 2026-05-26
 
 ### Security
 
-- Fix tile download redirect scheme check to compare URL scheme in addition to netloc, preventing HTTPS→HTTP downgrade attacks.
-- Fix tile URL logged unsanitised to QGIS feedback — strip query strings (including presigned S3 signatures) from user-facing messages.
-- Fix CSV formula-injection bypass via leading regular space — match formula-trigger check against first non-whitespace character while preserving original string.
+- Validate tile download redirect URL scheme in addition to netloc
+- Strip query strings from tile URLs in user-facing feedback
+- Fix CSV formula-injection bypass via leading regular space
 
 ### Correctness
 
-- Fix SAALOS scalar/vector numerical asymmetry — mirror vector-path clamps (`max(dp, 1.0)`, `max(tsp, 1e-30)`, `max(rsp, 1e-30)`) into the scalar path so both implementations produce finite, equivalent outputs at edge inputs.
-- Add logger warning when both K_FACTOR_PRESET and custom K_FACTOR are supplied — the preset wins silently; the warning makes the override visible.
-- Fix inconsistent JSON key naming — P2P reports now use `"itm_loss_db"` (matching coverage reports) instead of `"itm_path_loss_db"`. Updated P2P report display and all downstream tests.
-- Fix ANTENNA_PRESET=0 (Omni) suppressing custom DOWNTILT_DEG and ANTENNA_BW in coverage and comparison — force `antenna_bw_override=360.0` and `antenna_az=None` when Omni preset is active, overriding any custom values.
-- Fix simple-clutter mode silently ignoring BEL, CLUTTER_PERCENTILE, and TX_CLUTTER_OVERRIDE — extract BEL calculation to shared location and apply uniformly across both simple and advanced clutter modes.
-- Add validation warnings in simple-clutter mode when advanced-only parameters are set to non-default values (bel_enabled, clutter_percentile, tx_clutter_override).
+- Fix SAALOS scalar/vector numerical asymmetry with mirrored clamps
+- Warn when `K_FACTOR_PRESET` discards custom `K_FACTOR`
+- Normalise JSON key `itm_path_loss_db` → `itm_loss_db` across P2P/coverage
+- Omni preset: force `antenna_bw_override=360.0`, `antenna_az=None`
+- Extract BEL to shared location, apply uniformly across both clutter modes
+- Warn in simple-clutter mode when advanced-only params are set
 
 ### Robustness
 
-- Add random jitter to tile download retry backoff to prevent thundering-herd on 503/transient timeouts across multiple workers.
-- Narrow exception handling in shared-memory finalizer — replace bare `except Exception: pass` with targeted `except FileNotFoundError: pass` (normal on second run) and `except OSError as exc: logger.debug(...)` for real failures.
+- Add random jitter to tile download retry backoff
+- Narrow SHM finalizer exception handling: `FileNotFoundError`/`OSError` only
 
 ### Changed
 
-- Updated ROADMAP.md with revised test harness behavioral assertion confirmation and operational hardening findings.
-- 10 new regression tests added per TDD convention.
+- Updated ROADMAP.md with revised test harness findings
+- 10 new regression tests
 
 ## [1.6.4] - 2026-05-24
 
 ### Fixed
 
-- Clamp `math.asin` argument in `elevation.py:bearing_destination` to `[-1.0, 1.0]` for large-distance edge cases.
-- Hoist `urlsplit` import to module level in `tile_download_base.py`.
-- Replace hardcoded `earth_r = 6371000.0` in `package_gpkg.py` with `EARTH_RADIUS_M` from `constants.py`.
-- Remove dead store in `algorithm/coverage_comparison.py:124`.
-- Remove unnecessary `Qt_rm = QTimer` alias in `p2p/chart.py:149`.
-- Remove stale test comment in `tests/test_algorithms_integration.py:90-100`.
+- Clamp `math.asin` in `bearing_destination` to `[-1.0, 1.0]`
+- Hoist `urlsplit` import to module level in `tile_download_base`
+- Replace hardcoded Earth radius with `EARTH_RADIUS_M` constant
+- Remove dead store in `coverage_comparison.py`
+- Remove unnecessary `Qt_rm` alias in `p2p/chart.py`
+- Remove stale test comment
 
 ### Changed
 
-- Add `GDAL_DRIVER_NAME = "GTiff"` and `AOI_PADDING_FRACTION = 0.1` to `constants.py`, replacing 12 hardcoded occurrences.
-- Add `SIGNAL_LEVELS` to `constants.py`, breaking `radio → radio_coverage` import dependency.
-- Move `grid_to_raster_array` from `radio_coverage/compute.py` to `raster_io.py`, breaking `raster_io → radio_coverage` import dependency.
-- Extract duplicated AOI padding formula into `aoi_padding_deg()` in `geo_bounds.py`.
-- Extract `_csv_safe` and `_sanitize_json` from `report/export.py` into shared `sanitizers.py` module as `csv_safe` and `sanitize_json`.
-- Replace `itm_p2p_loss()` hardcoded parameter defaults (`301.0`, `300.0`, `15.0`, `0.005`) with imports from `defaults.py`.
-- Pre-emptively split `tile_download_base.py` — extract `clip_and_merge_tiles` into new `tile_merge.py`.
-- Stop `clutter/__init__.py` from re-exporting private symbols `_category_height_m` and `_resolve_category`.
+- Add `GDAL_DRIVER_NAME` and `AOI_PADDING_FRACTION` to `constants.py` (12 sites)
+- Add `SIGNAL_LEVELS` to `constants.py`, breaking `radio→radio_coverage` dep
+- Move `grid_to_raster_array` to `raster_io`, breaking `raster_io→radio_coverage` dep
+- Extract `aoi_padding_deg()` helper in `geo_bounds`
+- Extract `csv_safe`/`sanitize_json` to `sanitizers.py`
+- Replace ITM hardcoded defaults with `defaults.py` imports
+- Split `clip_and_merge_tiles` into new `tile_merge.py`
+- Stop `clutter/__init__.py` re-exporting private symbols
 
 ### Added
 
-- Add 3 import-linter contracts: `radio` must not depend on `radio_coverage`, `raster_io` must not depend on `radio_coverage`, `tile_download_base` must not depend on `report`.
-- Replace `type: ignore[arg-type]` suppressions in `comparison/reporting.py` with explicit `assert tmpdir is not None` guards.
-- Add unit tests for `comparison/add_params.py` (298 lines, previously untested).
-- Add `__all__` to top-level `__init__.py` for explicit public API surface.
-- Move 6 orphaned standalone scripts to `scripts/` directory, excluded from coverage.
-- Add `reviewers` and `labels` to `.github/dependabot.yml`.
-- Add release dates to CHANGELOG headers in bumpversion configuration.
+- 3 import-linter contracts: `radio`, `raster_io`, `tile_download_base` isolation
+- Replace `type: ignore[arg-type]` with explicit `assert tmpdir is not None`
+- Unit tests for `comparison/add_params.py`
+- `__all__` to top-level `__init__.py`
+- Move 6 orphaned scripts to `scripts/`
+- `reviewers`/`labels` in `.github/dependabot.yml`
 
 ## [1.6.3] - 2026-05-24
 
 ### Fixed
 
-- Clamp `math.asin` argument in `elevation.py:bearing_destination` to `[-1.0, 1.0]` for large-distance edge cases.
-- Hoist `urlsplit` import to module level in `tile_download_base.py`.
-- Replace hardcoded `earth_r = 6371000.0` in `package_gpkg.py` with `EARTH_RADIUS_M` from `constants.py`.
-- Remove dead store in `algorithm/coverage_comparison.py:124`.
-- Remove unnecessary `Qt_rm = QTimer` alias in `p2p/chart.py:149`.
-- Remove stale test comment in `tests/test_algorithms_integration.py:90-100`.
+- Clamp `math.asin` in `bearing_destination`
+- Hoist `urlsplit` import to module level
+- Replace Earth radius magic number with `EARTH_RADIUS_M`
+- Remove dead store, dead alias, stale test comment
 
 ### Changed
 
-- Add `GDAL_DRIVER_NAME = "GTiff"` and `AOI_PADDING_FRACTION = 0.1` to `constants.py`, replacing 12 hardcoded occurrences.
-- Add `SIGNAL_LEVELS` to `constants.py`, breaking `radio → radio_coverage` import dependency.
-- Move `grid_to_raster_array` from `radio_coverage/compute.py` to `raster_io.py`, breaking `raster_io → radio_coverage` import dependency.
-- Extract duplicated AOI padding formula into `aoi_padding_deg()` in `geo_bounds.py`.
-- Extract `_csv_safe` and `_sanitize_json` from `report/export.py` into shared `sanitizers.py` module as `csv_safe` and `sanitize_json`.
-- Replace `itm_p2p_loss()` hardcoded parameter defaults (`301.0`, `300.0`, `15.0`, `0.005`) with imports from `defaults.py`.
-- Pre-emptively split `tile_download_base.py` — extract `clip_and_merge_tiles` into new `tile_merge.py`.
-- Stop `clutter/__init__.py` from re-exporting private symbols `_category_height_m` and `_resolve_category`.
+- Add `GDAL_DRIVER_NAME`/`AOI_PADDING_FRACTION` to constants (12 sites)
+- Add `SIGNAL_LEVELS` to constants, extract `aoi_padding_deg()` helper
+- Move `grid_to_raster_array` to `raster_io`
+- Extract `csv_safe`/`sanitize_json` to `sanitizers.py`
+- Replace ITM hardcoded defaults with imports from `defaults.py`
+- Split `clip_and_merge_tiles` into `tile_merge.py`
+- Stop re-exporting private clutter symbols
 
 ### Added
 
-- Add 3 import-linter contracts: `radio` must not depend on `radio_coverage`, `raster_io` must not depend on `radio_coverage`, `tile_download_base` must not depend on `report`.
-- Replace `type: ignore[arg-type]` suppressions in `comparison/reporting.py` with explicit `assert tmpdir is not None` guards.
-- Add unit tests for `comparison/add_params.py` (298 lines, previously untested).
-- Add `__all__` to top-level `__init__.py` for explicit public API surface.
-- Move 6 orphaned standalone scripts to `scripts/` directory, excluded from coverage.
-- Add `reviewers` and `labels` to `.github/dependabot.yml`.
-- Add release dates to CHANGELOG headers in bumpversion configuration.
+- 3 import-linter contracts, `__all__` export, test for `comparison/add_params.py`
+- Move orphaned scripts to `scripts/`
 
 ## [1.6.2] - 2026-05-23
 
-> **Breaking**: this release renames the `coverage/` subpackage to `radio_coverage/`. Consider releasing as **1.7.0** per SemVer instead.
+> Breaking: rename `coverage/` subpackage to `radio_coverage/`.
 
 ### Fixed
 
-- Fix TOCTOU race in `dem_downloader.get_temp_dir()` — replace `os.makedirs` with atomic `tempfile.mkdtemp` + `os.rename` pattern already used by `worldcover_downloader._safe_create_dir`.
-- Add configurable `max_bytes` download cap (default 250 MiB) to `tile_download_base.download_tile_with_retry()` for chunked-transfer responses lacking a `Content-Length` header.
-- Add SHA-256 cache integrity verification for cached tiles — stored via `.sha256` sidecar files, verified on cache hit, written after successful download.
-- Broaden `_csv_safe` formula-injection guard: add en-dash (U+2013), minus sign (U+2212), and Unicode whitespace (U+3000, U+2003, U+2002, U+FEFF) to the `lstrip` and trigger-character check.
-- Fix `TempDirManager` resource leak — `algorithm/contour.py` and `algorithm/coverage_comparison.py` now call `cleanup()` before replacing the `__init__`-created manager in `processAlgorithm`.
-- Fix OGR datasource leaks in `contour/pipeline.py::write_aoi_shapefile` and `contour/generation.py::generate_contour_lines` — wrap `CreateLayer`/`CreateFeature` in try/finally.
-- Add `SharedMemory.unlink()` to `coverage/pool._final_cov_pool` for worker-crash paths so `/dev/shm` segments don't persist until OS reboot.
-- Add climate index range check (0–6) to `radio.validate_itm_input_ranges()`.
-- Change `ITMResult` failure sentinel from `mode=0` to `mode=-1` for unambiguous discrimination from valid line-of-sight results.
-- Add `threading.Lock` around `coverage/pool` module globals (`_cov_shm`, `_cov_grid_data`, `_cov_grid_meta`) to prevent concurrent re-binding races.
-- Sample TX ground elevation from the DEM in `comparison/panel.py::run_panel_coverage` instead of hardcoding `tx_ground_elevation_m=0.0`.
-- Validate per-feature antenna height attributes against `ITM_MIN_TERMINAL_HEIGHT_M`/`ITM_MAX_TERMINAL_HEIGHT_M` in `batch/outputs._compute_single_link`.
-- Implement LRU cache eviction in `cache_manager.py` with a configurable 2 GiB size cap.
-- Use `os.lstat` instead of `os.stat` in `shared_dem_grid.cleanup_stale_shm_entries()` to detect symlinks.
-- Guard against `gdal.GetDriverByName` returning None in `raster_io.write_geotiff()` and `contour/_smoothing_vrt._raster_calc()`.
-- Remove memory-doubling `np.copy` call on south-up raster flip in `elevation.ElevationGrid`.
-- Remove six redundant `.copy()` calls on zero-array return in `fresnel.fresnel_profile_analysis`.
-- Add explicit `bool` type guard in `antenna.antenna_preset_key()`.
-- Log warning for malformed CSV rows in `antenna._read_pattern_points()` instead of silent discard.
-- Keep bilinear interpolation intermediates in float64 instead of casting to float32.
-- Add NaN guard matching the scalar path in `clutter/saalos._saalos_vec_below`.
-- Add singleton guard to `p2p/chart.show_profile_chart()` to prevent duplicate floating chart docks.
-- Fix `PANEL_A_CONSTANTS` and `PANEL_B_CONSTANTS` dict keys so `install_constants` creates attributes named `PANEL_A_POINT` etc. instead of `POINT` (fixes AttributeError at `coverage_comparison.py:86`).
-- Fix `_final_cov_pool` worker atexit handler unlinking the parent's shared-memory segment. Workers now call `shm.close()` only; only the parent process that created the segment calls `unlink()`.
-- Prevent `FileNotFoundError` from inherited fork-atexit handlers when workers exit before peers finish initializing the shared-memory pool.
-- Add zero-dimension guards to `_bilinear.py` — `bilinear_sample`, `bilinear_sample_line`, and `bilinear_sample_grid` now return `NaN` when `grid_meta["n_lat"] <= 0` or `grid_meta["n_lon"] <= 0`, preventing `ZeroDivisionError` on degenerate grid metadata.
-- Capture and release `gdal.Translate` return value in `package_gpkg.py` — the dataset handle was discarded without closing, leaking a GDAL dataset.
-- Fix `fs_utils.safe_create_dir()` returning an unregistered temporary directory on `os.rename` failure — when rename fails (cross-device, permissions), the function returned the raw `mkdtemp` path without registering it for cleanup, leaking the directory permanently.
-- Fix contour algorithm silently returning `{}` on `ENOSPC` (disk full) during reprojection — calls `feedback.reportError()` but returns empty dict instead of raising `QgsProcessingException`, suppressing the failure from the QGIS processing log.
-- Add `logger.debug(..., exc_info=True)` to `contour/pipeline.py` proxy-auth exception handler — only `type(e).__name__` was used for feedback; the full exception value and traceback were discarded, losing diagnostic information.
-- Clamp scalar below-canopy exponent to `[-700.0, 700.0]` in `clutter/saalos.py` `compute_terminal_clutter_loss` — the scalar path only clamped the upper bound of `exp(min(..., 700.0))` while the vector path used `np.clip(..., -700.0, 700.0)`. Practically safe (large negative → exp ≈ 0) but inconsistent.
+- TOCTOU race in `dem_downloader`: `os.makedirs` → atomic `mkdtemp`+`rename`
+- Configurable `max_bytes` download cap (250 MiB) for chunked transfers
+- SHA-256 cache integrity via `.sha256` sidecar files
+- Broaden CSV formula-injection guard (en-dash, minus, Unicode whitespace)
+- `TempDirManager` leak in contour/coverage_comparison `__init__`
+- OGR datasource leaks in contour pipeline/generation
+- `SharedMemory.unlink()` in coverage pool finalizer for worker-crash paths
+- Climate index range check (0–6) in `validate_itm_input_ranges`
+- `ITMResult` failure sentinel: `mode=0` → `mode=-1`
+- `threading.Lock` around coverage pool module globals
+- Sample TX ground elevation from DEM in coverage comparison
+- Validate per-feature antenna heights against ITM limits
+- LRU cache eviction with 2 GiB cap
+- `os.lstat` for symlink detection in SHM cleanup
+- Guard against None GDAL driver in `raster_io`/contour smoothing
+- Remove memory-doubling `np.copy` on south-up flip; 6 redundant copies in Fresnel
+- Bool type guard in `antenna_preset_key`
+- Warn on malformed CSV in antenna pattern reader
+- Keep bilinear intermediates in float64
+- NaN guard in SAALOS vectorized below-canopy path
+- Singleton guard for P2P chart docks
+- Fix `PANEL_A/B_CONSTANTS` dict keys for `install_constants`
+- Worker atexit: `shm.close()` only; parent unlinks
+- Prevent `FileNotFoundError` from inherited fork-atexit handlers
+- Zero-dimension guards in `_bilinear.py`
+- Capture/release `gdal.Translate` return in `package_gpkg`
+- `safe_create_dir`: register temp dir on rename failure
+- Contour: raise `QgsProcessingException` on `ENOSPC` instead of returning `{}`
+- Add `exc_info=True` to contour proxy-auth exception handler
+- Clamp scalar below-canopy exponent to `[-700, 700]`
 
 ### Added
 
-- New module `tile_cache_integrity.py` — SHA-256 sidecar verification and download cap helpers.
-- New module `fs_utils.py` — atomic `safe_create_dir()` extracted from `worldcover_downloader`, shared with `dem_downloader`.
-- LRU cache eviction with 2 GiB cap in `cache_manager.evict_cache_lru()`.
-- 49 new regression and coverage tests across 11 test files: clutter edge cases (8), chart_helpers (3), install_constants (2), batch_writer (5), stale_temp_dir (4), shapefile sidecars (2), report_pdf (1), tile_download caps (8), TOCTOU (4), CSV injection (8), elevation (1).
+- `tile_cache_integrity.py`, `fs_utils.py`, LRU eviction
+- 49 regression tests across 11 files
 
 ### Changed
 
-- CI: enforce coverage threshold on main test pass (was disabled with `--cov-fail-under=0`).
-- CI: add version downgrade guard to `version-check.yml`.
-- CI: gate `release.yml` on lint job; add full-dependency `pip-audit` step to `tests.yml`.
-- `.gitignore`: add `.env`, `*.pem`, `*.key`, `credentials*`, `*.zip`, `**/*.prj`.
-- Centralize magic numbers: `DEM_NODATA`, `FSPL_CONSTANT`, `MHZ_TO_HZ`, `DIR_PERMISSIONS`, `K_FACTOR` in `constants.py`.
-- Fix CCH override treating explicit `0.0` as "no override" — `0.0` now means zero canopy height.
-- Wire `antenna.clear_pattern_cache()` into `antenna_pattern_preview.py` file picker.
-- Centralize `create_synthetic_dem` test helper into `tests/conftest.py`.
-- `dem_downloader` and `worldcover_downloader` now both use `fs_utils.safe_create_dir` for atomic directory creation.
-- **Breaking**: Rename `coverage/` subpackage to `radio_coverage/` to eliminate shadow conflict with Python's `coverage` test-coverage package. All imports change from `NoWires.coverage.xxx` to `NoWires.radio_coverage.xxx`.
-- Replace `except Exception: pass` with `logger.debug(..., exc_info=True)` in `radio_coverage/pool.py` `_final_cov_pool` and `_init_cov_pool` for shared-memory cleanup diagnostics.
-- Add `logging.debug` calls to `_final_cov_pool` close/unlink steps for observability.
+- CI: enforce coverage threshold, version downgrade guard, gate release on lint
+- `pip-audit` full dependency tree, import-linter per AGENTS.md, SHA-pinned codeql
+- `.gitignore`: add secrets/credentials patterns
+- Centralize `DEM_NODATA`/`FSPL_CONSTANT`/`MHZ_TO_HZ`/`DIR_PERMISSIONS`/`K_FACTOR`
+- Explicit `0.0` CCH override; wire `clear_pattern_cache` into preview file picker
+- Centralize `create_synthetic_dem` in conftest
+- Unify `dem_downloader`/`worldcover_downloader` on `safe_create_dir`
+- **Breaking:** `coverage/` → `radio_coverage/`
+- Replace `except Exception:pass` with `logger.debug(exc_info=True)`
 
 ### Security
 
-- Replace `os.makedirs(exist_ok=True)` with `fs_utils.safe_create_dir()` in `p2p/compute.py`, `algorithm/contour.py`, and `comparison/reporting.py` for TOCTOU-safe directory creation, eliminating symlink attacks on hardcoded subdirectory paths in shared `/tmp`.
-
-### Known issues
-
-- Baseline coverage 62%; medium-effort and QGIS/Docker coverage tests deferred to future release.
+- TOCTOU-safe `safe_create_dir` in p2p/compute, contour, comparison
 
 ## [1.6.1] - 2026-05-23
 
 ### Fixed
 
-- Add theta clamping to vectorized `building_entry_loss_vec()` in `clutter/p2109_bel.py` matching scalar path. Scalar clamped to `[0, 90]` but vector used raw value, producing higher BEL for `theta_deg > 90°`.
-- Fix `nan_utils.interpolate_nan_array()` all-NaN branch returning reference instead of copy. Both the no-NaN and all-NaN branches now return `arr.copy()`, matching the documented contract.
-- Add `_destroyed` guard flag in `p2p/chart.py::show_profile_chart()` to prevent stale closures (`update_visibility`, `_set_obstructions_visible`) from manipulating a cleared figure after `_on_destroy` runs.
-- Tighten `validate_panels()` TX position tolerance from 1e-3° (~111 m) to 1e-4° (~11 m) in `comparison/reporting.py`. Original 1e-5° was too strict, 1e-3° could match genuinely different positions.
-- Restore defensive `assert tmpdir is not None` inside the tmpdir-creation block in `resolve_output_paths()`, replacing `type: ignore[arg-type]` suppressions.
-- Remove unreachable `h_m <= 0.0` dead code in `clutter/p2108_height_gain.py::height_gain_loss()`. Condition already caught by `h_m < _MIN_HEIGHT_M` guard.
-- Replace explicit `f.close()` with idiomatic `f.flush()` on download cancel in `tile_download_base.py::download_tile_with_retry()` to avoid double-close from `with` block `__exit__`.
-- Accept float timeout values via `float()` in `macos_compat.py::_can_spawn()` instead of `int()` which rejected `"2.5"`.
-- Import and use `DEFAULT_K_FACTOR` constant in `fresnel.py::earth_bulge()` and `fresnel_profile_analysis()` instead of hardcoded `4.0 / 3.0`.
-- Add `FlushCache()` on `gdal.Translate` result in `contour/pipeline.py::load_dem_output()` before setting to `None`, consistent with other GDAL cleanup patterns.
-- Replace NaN with empty string in `p2p/chart_helpers.py::make_export_csv()` CSV export to avoid producing literal `"nan"` string for downstream parsers.
-- Wrap `clutter_grid_resolved.close()` in try/except within `algorithm/coverage.py::_build_clutter_context()` except block to preserve original exception if `.close()` fails.
-- Fix CSV formula-injection bypass via leading whitespace in `report/export.py::_csv_safe`. Add `s = s.lstrip()` before the formula-character check so inputs like `" =1+1"` are properly escaped.
-- Add `threading.Lock` around `_pending_releases` mutations in `shared_dem_grid.py` to prevent data races during concurrent SharedDEMGrid create/release operations.
-- Skip pre-allocation of `prx_grid`, `loss_grid`, and 4 other arrays in `coverage/engine.py::compute_coverage` when `build_coverage_tasks` returns an empty list, saving ~20 MB per empty-coverage run.
-- Fix `dem_downloader.tile_name_for(lat, lon)` raising `ValueError` on float input. Add `math.floor` cast for both lat and lon.
-- Mask `dist_grid_km` to NaN where `prx_grid` is NaN in `coverage/summary.py` for self-consistent downstream consumption.
-- Add debug logging for out-of-bounds bilinear samples in `_bilinear.py` (scalar, line, and grid paths).
-- Fix ITM finite-loss guard in `batch/outputs.py:_compute_single_link`. When ITM returns `failed=True` or NaN/Inf loss, return `None` instead of producing a result dict with corrupted values.
-- Fix `assert tmpdir is not None` crash in `comparison/reporting.py:resolve_output_paths()` when all three explicit output paths are provided. Guard the tmpdir fallback block.
-- Relax `validate_panels()` TX position tolerance from `1e-5°` (~1.1 m) to `1e-3°` (~111 m) in `comparison/reporting.py`.
-- Fix contour algorithm silently returning `{}` on DEM failure in `algorithm/contour.py`. Raise `QgsProcessingException` instead.
-- Fix `comparison/panel.py` raising bare `ValueError` instead of `QgsProcessingException`.
-- Add matplotlib figure memory leak fix in `p2p/chart.py`. The `_on_destroy` callback now calls `fig.clear()` and `plt.close(fig)` to prevent slow memory accumulation.
-- Add headless QGIS guard in `p2p/chart.py::show_profile_chart()`. Return early when `qgis.utils.iface is None` to prevent `AttributeError` in CI/Docker environments.
-- Add `FlushCache()` on hillshade GDAL dataset before release in `contour/overlay.py`.
-- Fix P2P chart failure not surfaced to user in `p2p/compute.py`. Add `feedback.pushWarning("P2P profile chart creation failed")` alongside the existing `logger.warning`.
-- Fix P.2109-2 `theta_deg` not clamped to 0-90 validity range in `clutter/p2109_bel.py`. Add `theta_deg = max(0.0, min(abs(theta_deg), 90.0))` before computation.
-- Fix P.2108-1 near-zero height producing implausibly large loss in `clutter/p2108_height_gain.py`. Add `_MIN_HEIGHT_M = 0.1` floor constant; heights below 0.1 m now return 0.0 dB loss instead of 280+ dB.
-- Validate panel grid sizes early in `algorithm/coverage_comparison.py` before expensive coverage computation.
-- Add climate zone line to P2P console feedback in `p2p/report_display.py`.
-- Add climate zone to batch CSV/JSON output in `batch/writer.py` and `build_panel_info()` in `comparison/reporting.py`.
-- Fix scalar/vector formula divergence in `clutter/saalos.py` below-canopy path. The vectorized `exp(1.0 / m_cch_h)` was computing `exp(1/(cch-htx))` instead of `exp(1/cch - htx)`, matching ITWOM 3.0 and Rust upstream.
-- Add shared `patch_dem_download` fixture to `tests/conftest.py` that patches `ensure_dem_for_area` in both source module and all 4 importer namespaces.
-- Refactor: extract helpers from `p2p/chart.py` into `p2p/chart_helpers.py` (298 lines → 201 + 136).
-- Fix `test_plugin_load.py` failures on macOS — `_ensure_gdal_env()` runs on darwin and calls `QgsApplication.instance()`, which the `_FakeQgsApplication` mock lacks. Monkeypatch `sys.platform` to `"linux"` so the darwin-specific code path is skipped.
-- Document local macOS QGIS 4 integration testing setup in `CONTRIBUTING.md`.
-- Fix broken `monkeypatch.setattr` in `test_qgis_integration_extended.py` — algorithm modules capture the function at import time. Replace with shared `_patch_dem_download()` fixture in `tests/conftest.py`.
+- Theta clamp in vectorized `building_entry_loss_vec` matching scalar path
+- `interpolate_nan_array` all-NaN branch returns copy, not reference
+- `_destroyed` guard in P2P chart to prevent stale closures
+- Tighten TX position tolerance from 1e-3° to 1e-4°
+- Restore `assert tmpdir is not None` in `resolve_output_paths`
+- Remove unreachable `h_m <= 0.0` in P.2108 height gain
+- Replace `f.close()` with `f.flush()` on download cancel
+- Accept float timeout via `float()` in `_can_spawn`
+- Use `DEFAULT_K_FACTOR` in Fresnel instead of hardcoded `4.0/3.0`
+- `FlushCache()` on `gdal.Translate` result before release
+- Replace NaN with empty string in CSV export
+- Wrap `clutter_grid.close()` in try/except preserving original exception
+- CSV formula-injection: `lstrip()` before trigger-character check
+- `threading.Lock` around `_pending_releases` in `SharedDEMGrid`
+- Skip ~20 MB array pre-allocation on empty coverage tasks
+- `math.floor` cast for lat/lon in `tile_name_for`
+- Mask `dist_grid_km` to NaN where `prx_grid` is NaN
+- Debug logging for OOB bilinear samples
+- ITM finite-loss guard: NaN/Inf returns None in batch
+- Fix `tmpdir=None` assert crash in comparison reporting
+- Relax TX tolerance in `validate_panels` from 1e-5° to 1e-3°
+- Contour DEM failure: `QgsProcessingException` instead of `{}`
+- Comparison: `QgsProcessingException` instead of bare `ValueError`
+- Matplotlib figure leak: `fig.clear()`+`plt.close(fig)` in `_on_destroy`
+- Headless QGIS guard in `show_profile_chart`
+- `FlushCache()` on hillshade dataset before release
+- P2P chart failure: `feedback.pushWarning` alongside `logger.warning`
+- P.2109-2 theta clamp to 0–90°
+- P.2108-1 near-zero height floor at `_MIN_HEIGHT_M=0.1 m`
+- Validate panel grid sizes early in coverage comparison
+- Add climate zone to P2P feedback and batch/comparison output
+- SAALOS scalar/vector formula consistency: `exp(1/cch - htx)`
 
 ### Added
 
-- Add 7 edge-case regression tests to `test_fresnel.py`: `f_mhz <= 0`, `k_factor <= 0`, `dist_m <= 0`, `DEFAULT_K_FACTOR` verification, single-point profile.
-- Add 15 clutter edge-case tests (`test_clutter_edge_cases.py`): p2108 `R <= 0` guard, p2109 scalar+vector frequency clamp, p2108_common `f_inv_normal` bounds, context unknown model, terrestrial_stat vec clamp.
-- Add 5 behavioral tests to `test_comparison_reporting.py`: TX tolerance boundary, radius mismatch, None panel points, zero `valid_count` division guard, climate key presence.
-- Add 15 coverage algorithm tests (`test_coverage_algorithm.py`): `_build_clutter_context` exception/close paths, `elev.sample()` inf guard, output constants, post-process legend, finally-close on None/MemoryError.
-- Add 10 algorithm integration tests (`test_algorithms_integration.py`): coverage_comparison, batch, contour, p2p parameter registration and `initAlgorithm` verification.
-- Add 7 batch infrastructure tests (`test_batch_infrastructure.py`): `_compute_single_link` ITM failure/NaN/success, batch writer CSV header/NaN rows, panel coverage success/None paths.
-- Add 8 coverage infrastructure tests (`test_coverage_infrastructure.py`): executor empty task list/exception fallback, `_result_dispatch` key presence, pool lifecycle, proxy opener None/empty auth.
-- Add 6 clutter grid tests (`test_clutter_grid_extended.py`): raster construction, `sample_category`, bounds, advanced clutter context + CCH override.
-- Add 10 tile download tests (`test_tile_download_base_download.py`): cancel mid-download flush, valid tile name reject, cache hit/degenerate/corrupt, wall clock budget, HTTP 404/500/403, redirect validation.
-- Add 15 p2p chart extended tests (`test_p2p_chart_extended.py`): obstruction annotations, CSV NaN export, status text variants, obstruction data edge cases.
-- Add 3 legend/marker tests (`test_legend_and_markers.py`): `show_coverage_legend` dialog, `write_single_marker` GPKG, `remove_existing_ogr_dataset`.
-- Add 3 3D/preview tests (`test_three_d_and_preview.py`): `open_nowires_3d_view`, `AntennaPatternPreviewDialog` creation + synthetic pattern file load.
-- Add 7 cache manager tests (`test_cache_manager.py`): OSError suppression, `shutil.rmtree`, `format_cache_size` empty/non-empty, empty temp dir (89% → 100%).
-- Add 13 dem downloader edge-case tests (`test_dem_downloader_extended.py`): symlink removal, O_DIRECTORY, chmod/stat failure, `tile_name_for` float/negative (84% → 100%).
-- Add 3 coverage opacity tests (`test_coverage_opacity_extended.py`): `find_latest_coverage_layer` by settings/name, None return (qgis_integration).
-- Add 8 coverage params validation tests (`test_coverage_params_validation.py`): TX point None, grid_size > 1024, radius/freq <= 0, ITM error propagation (qgis_integration).
-- Add 6 provider lifecycle tests (`test_provider_extended.py`): icon, name/id/longName, load failure logging, unload (qgis_integration).
-- Overall test coverage increased from 59% to 66% (+143 tests, +420 covered statements).
-- Add `test_batch_philippines.py` — 10 QGIS integration tests for Batch P2P and Coverage Analysis with Philippines coordinates (Manila, Cebu, Davao, Puerto Princesa, Baguio, Iligan, Iriga).
-- Add `test_contour_pipeline_integration.py` — full-pipeline QGIS integration test for Contour Lines algorithm.
-- Add P2P chart rendering test (matplotlib only, no QGIS).
-- Add proper offline P2P integration test with `_patch_dem_download()` and assertions on all 4 output layers.
-- Add full-pipeline Coverage Comparison integration test in Docker.
-- Add climate-variation integration test — Equatorial vs Maritime Temperate on same link.
-- Add regression tests for 6 crash/error paths: tmpdir assert, ITM NaN, saalos scalar/vector, P.2109 theta, P.2108 height, contour RuntimeError branches.
-- Add ~30 error-path tests for untested `RuntimeError`/`QgsProcessingException` branches.
-- Add hypothesis property-based tests for pure-logic numeric functions.
-- Add multiprocessing execution smoke test (real `ProcessPoolExecutor`).
+- 7 Fresnel edge-case tests, 15 clutter edge-case tests
+- 5 comparison reporting tests, 15 coverage algorithm tests
+- 10 algorithm integration tests, 7 batch infrastructure tests
+- 8 coverage infrastructure tests, 6 clutter grid tests
+- 10 tile download tests, 15 p2p chart extended tests
+- 13 dem downloader edge-case tests, 7 cache manager tests
+- Coverage from 59% to 66% (+143 tests, +420 covered statements)
+- `test_batch_philippines.py`, contour pipeline integration, climate-variation test
+- Hypothesis property-based tests, MP execution smoke test
 
 ### Changed
 
-- Convert `test_p2p_chart_headless_guard.py` from fragile `inspect.getsource()` check to behavioral test calling `show_profile_chart()` with mocked `qgis.utils.iface = None`.
-- Revert `test_coverage_comparison_grid_size_early_validate.py` to source-ordering check. Behavioral ``processAlgorithm`` test requires full QGIS runtime and discovered a pre-existing ``AttributeError`` in ``CoverageComparisonAlgorithm`` (``PANEL_A_POINT`` never set by ``install_constants`` — only ``POINT`` is set and overwritten by PANEL_B).
-- Strengthen `test_coverage_dist_nan_mask.py` assertion from `min_distance_km > 0 or isnan` to specific checks on `min_distance_km > 0`, not NaN, and `usable_cell_count == 2`.
+- Convert fragile `inspect.getsource()` test to behavioral
+- Revert early-validate test to source check
+- Strengthen `dist_nan_mask` assertion
 
 ## [1.6.0] - 2026-05-19
 
 ### Refactor
 
-- Internal module layout reorganized into 8 subpackages
-  (algorithm/, batch/, comparison/, contour/, coverage/, clutter/, p2p/,
-  report/). 60 modules relocated; zero behavior changes. All imports
-  switched to absolute (`NoWires.X`).
-- Architectural import rule enforced by import-linter: ITM module
-  must not depend on qgis or PyQt.
-- **NOTE FOR USERS:** Restart QGIS after upgrading. Do not use Plugin
-  Reloader, which retains references to deleted flat modules and will
-  raise ImportError on first invocation post-upgrade.
+- Reorganize into 8 subpackages (algorithm, batch, comparison, contour, coverage,
+  clutter, p2p, report). 60 modules relocated. All imports → `NoWires.X`.
+- Import-linter contract: ITM must not depend on qgis/PyQt.
+- **NOTE:** Restart QGIS after upgrading; Plugin Reloader retains stale references.
 
 ## [1.5.12] - 2026-05-18
 
 ### Changed
 
-- Extract `build_link_clutter_context()` factory in `clutter_context.py`, consolidating the 14-field `ClutterLossContext` construction duplicated in `p2p_compute.run_p2p_analysis` and `batch_outputs._compute_single_link`. Duck-types over `P2PAnalysisParams`/`BatchAnalysisParams`; `tx_h`/`rx_h` remain explicit since batch overrides per-link from feature attributes. Companion to existing `build_initial_clutter_context()` for the placeholder (distance=0, rx_ground=0) case used by coverage.
-- Replace inline Fresnel/earth-bulge/LOS reimplementation in `batch_outputs._compute_single_link` with a call to the existing `fresnel.fresnel_profile_analysis`. The two implementations were mathematically equivalent (per-point first-Fresnel radius, k-factor earth bulge, linear LOS interpolation); the inline version was a parallel maintenance burden. Removes the unused `EARTH_RADIUS_M` import from `batch_outputs.py` and the redundant `tx_h_eff_actual` alias. `clearance_pct` continues to use the strict `> 0` semantic by computing from `terrain_bulge`/`los_h`/`fresnel_r` returned by the helper.
-- Switch `comparison_panel.run_panel_coverage` from inline `ClutterLossContext(distance_m=0.0, rx_ground_elevation_m=0.0, ...)` construction to the existing `build_initial_clutter_context()` factory in `clutter_context.py`. Same placeholder-context pattern already used by `algorithm_coverage._build_clutter_context` and `coverage_engine._build_clutter_context`; consolidates the third call site. `tx_ground_elevation_m=0.0` is passed explicitly to preserve current behavior (sampling TX ground from the elevation grid here would be a separate fix, not a refactor).
-- Extract `ComparisonPanelParams` frozen-shape dataclass and `collect_panel_params()` factory in `comparison_params.py`. Moves the ~90-line `parameterAsDouble/Enum/File/Bool` block out of `run_panel_coverage` into a single typed bundle covering all 39 panel fields plus derived values (`clutter_enabled`, `clutter_model`, `bel_building_type`, `cch_override_m`, `antenna_bw_override`). `run_panel_coverage` drops from 227 lines to ~107 lines; `comparison_panel.py` from 276 lines to 163. Caller-visible behavior unchanged.
-- Consolidate the `tx_def["height"] if tx_def["height"] is not None else params.tx_h` resolution in `batch_outputs._compute_single_link` to a single `tx_h_eff` local at the top of the function. Previously the same ternary appeared three times (lines 95, 109, 131 of the pre-cleanup file) with two different aliases (`tx_h_eff` / `tx_h_actual`).
+- Extract `build_link_clutter_context()` factory, dedup 14-field construction
+- Replace inline Fresnel/LOS in batch with `fresnel_profile_analysis` call
+- Switch comparison panel to `build_initial_clutter_context` factory
+- Extract `ComparisonPanelParams` dataclass + `collect_panel_params` factory
+- Consolidate `tx_h_eff` resolution in batch link computation
 
 ### Added
 
-- Added `test_collect_panel_params.py` — 13 unit tests covering `comparison_params.collect_panel_params()`. Stubs `parameterAsDouble/Enum/File/Bool` with a fake algorithm object so the tests run as plain unit tests (no `qgis_integration` marker). Locks in the per-field dataclass mapping, prefix handling, and the derivation rules for `clutter_enabled`, `clutter_model`, `cch_override_m`, `bel_building_type`, `antenna_az` (conditional on `antenna_bw < 360`), and `antenna_bw_override` (the custom-preset escape clause).
-- Added 4 tests to `test_clutter_context.py` covering the new `build_link_clutter_context()` factory: full-field mapping from the params duck-type, per-link `dist_m` independent of params, explicit `tx_h`/`rx_h` overriding any params attribute, plus a guard test on `build_initial_clutter_context()`'s placeholder semantics (`distance_m=0`, `rx_ground_elevation_m=0` regardless of caller input).
-- Register `comparison_params` in `tests/_qgis_mocks.py` `_PACKAGE_SUBMODULES` so unit tests can import it through the `NoWires` package machinery without the `qgis_integration` marker.
-- Added `test_clutter_math_snapshot.py` — 32 drift-guard snapshot tests covering `p2108_height_gain.height_gain_loss`, `p2108_terrestrial_stat.clutter_loss_p2108_terrestrial_stat`, `p2109_bel.building_entry_loss`, and `clutter_saalos.clutter_loss_saalos`. Pins a small grid of (inputs → output) tuples per module and asserts `math.isclose` with `rel_tol=1e-9`. Expected values are self-captured from the current implementation, so the tests catch accidental coefficient drift between releases; spec compliance is still the job of the existing per-module property tests.
+- 13 unit tests for `collect_panel_params`, 4 for `build_link_clutter_context`
+- 32 drift-guard snapshot tests for clutter math modules
 
 ## [1.5.10] - 2026-05-17
 
 ### Fixed
 
-- Fix `AttributeError: module 'os' has no attribute 'geteuid'` on Windows. `_cleanup_stale_shared_memory()` called `os.geteuid()` unconditionally, which is POSIX-only and crashes on Windows where `/dev/shm` doesn't exist. Guard with `hasattr(os, "geteuid")` and skip cleanup on non-POSIX platforms. Skip the `/dev/shm` cleanup scoping regression test module on non-POSIX platforms via `pytestmark = pytest.mark.skipif(not hasattr(os, "geteuid"), ...)`.
-- Fix P2P profile chart checkbox toggles having no visible effect. `update_visibility()` called `art.set_visible()` on chart artists but never called `fig.canvas.draw_idle()` to trigger a repaint. Unchecking Terrain, LOS, Fresnel, 60% Band, or Antennas appeared to do nothing until the user triggered an unrelated repaint (mouse hover, window resize). Add `fig.canvas.draw_idle()` after the artist-visibility loop in the deferred callback so toggles take effect immediately.
-- Fix latent `NameError` in P2P profile chart visibility toggle when `tx_marker`/`rx_marker` are undefined. `tx_marker` and `rx_marker` are only created when `len(los_h) > 0` but `update_visibility()` references them unconditionally. Initialize both to `None` and skip them in the toggle loop when `None`.
-- Fix `AttributeError` when `P2PAnalysisParams.tx_antenna_config` or `rx_antenna_config` is `None` (the dataclass default). `antenna_gain_adjustment_db` accesses `config.preset` without a null check, crashing on `NoneType`. The report-payload path (lines 227–228) correctly guards with a ternary; the gain-calculation path (lines 164–166) does not. Return 0.0 dB adjustment when either config is `None`.
-- Fix clutter grid resource leak on early exception in `run_p2p_analysis`. The `clutter_grid.close()` call sits in a `finally` block at line 258 that only covers output writing (lines 195–257). If `ensure_dem_for_area` fails, the terrain profile is too short, all elevations are NaN, or ITM prediction fails (lines 108–142), the `finally` is never reached and the `LandCoverGrid` numpy array persists until GC — significant in long-running QGIS sessions with large land-cover rasters. Move the try/finally to encompass the whole section from clutter-grid acquisition onward.
-- Fix Fresnel zone longitude overflow across antimeridian in `write_fresnel_zone`. Interpolated `lon = tx_lon + t * dlon` can exceed ±180° when the path crosses ±180° (e.g., `tx_lon=179, rx_lon=-170` produces `lon=184.5` at `t=0.5`), creating invalid WGS84 coordinates. Wrap interpolated longitudes to [-180, 180] after computing `lon`.
-- Fix `_ChartCanvas.closeEvent` being dead code in P2P profile chart. The canvas is a child widget embedded in the dock layout; Qt only delivers `closeEvent` to top-level widgets, so the override never fires. The `mpl_disconnect` tooltip cleanup and `blockSignals` calls are never reached. Move cleanup to the `QDockWidget` close event or use `destroyed` signal.
-- Fix `dock.setFloating(True)` called before `addDockWidget` in P2P profile chart. `setFloating` has no effect when the dock is not yet in a `QMainWindow`; on some platforms the chart appears briefly docked before floating. Reorder to `addDockWidget` first, then `setFloating(True)`.
-- Fix `build_obstruction_data` sorting by terrain height instead of Fresnel penetration deficit. `peaks.sort(key=lambda i: terrain_bulge[i])` ranks the tallest peaks rather than the most obstructive ones (highest `terrain_bulge - (los_h - fresnel_r)`). When there are more than 5 obstructions, the most penetrative peaks may be omitted from annotations. Sort by deficit instead.
-- Fix `_p2p_outputs_internal._write_p2p_output_layers` not returning `fresnel_lines_path`. The function writes the Fresnel lines file but omits it from the return tuple. The caller in `p2p_compute.py` reconstructs the path from `fresnel_poly_path` using the same naming convention, which is a DRY violation. Return the path directly.
-- Fix `k_factor` and `wavelength_m` input validation in Fresnel calculations. `fresnel_radius` validates `d1_m`/`d2_m` but not `f_mhz` (zero/negative causes `ZeroDivisionError` or `ValueError`). `fresnel_profile_analysis` and `earth_bulge` don't validate `k_factor` (zero causes silent `inf`/`nan` arrays in NumPy; negative produces physically meaningless negative bulge). Add early-return guards for `f_mhz <= 0` and `k_factor <= 0`.
-- Fix `build_obstruction_data` docstring claiming returns `(index, deficit)` tuples when it actually returns 6-element tuples `(idx, d_km, terrain_bulge, los_h, fresnel_r, deficit)`.
+- Windows `geteuid` AttributeError via `hasattr` guard
+- P2P chart checkbox toggles needing `fig.canvas.draw_idle()` to repaint
+- `NameError` when tx/rx markers undefined in visibility toggle
+- `AttributeError` on None antenna config in gain adjustment
+- Clutter grid leak on early exception in P2P
+- Fresnel longitude wrap across antimeridian
+- Dead `_ChartCanvas.closeEvent` — use dock signal instead
+- `setFloating` called before `addDockWidget`
+- Obstruction sort by deficit, not terrain height
+- Return `fresnel_lines_path` from output writer
+- Validate `f_mhz`/`k_factor` in Fresnel calculations
+- Fix `build_obstruction_data` docstring
 
 ### Added
 
-- Added `test_p2p_chart_visibility_draw.py` — regression tests for P2P chart visibility toggle repaint, marker NameError guard, dock destroyed signal cleanup, and addDockWidget/setFloating ordering.
-- Added `test_antenna_none_config.py` — regression test for `antenna_gain_adjustment_db` None config guard.
-- Added `test_p2p_clutter_grid_leak.py` — regression test for clutter grid resource leak on early exception.
-- Added `test_p2p_outputs_lon_wrap.py` — regression test for Fresnel zone longitude overflow across antimeridian.
-- Added `test_obstruction_deficit_sort.py` — regression test for `build_obstruction_data` deficit sort and 6-element tuple docstring.
-- Added `test_p2p_output_layers_fresnel_lines_path.py` — regression test for `_write_p2p_output_layers` returning `fresnel_lines_path` in 4-tuple.
-- Added `test_fresnel_input_validation.py` — regression test for `f_mhz` and `k_factor` validation guards in Fresnel calculations.
+- Regression tests for chart visibility, antenna None guard, clutter grid leak,
+  lon wrap, obstruction sort, output layer path, Fresnel input validation
 
 ### Changed
 
-- SHA-pin `github/codeql-action/init` and `github/codeql-action/analyze` in `codeql.yml` (previously `@v4` major-version tags; all other workflows already use SHA digests per project policy in AGENTS.md).
-- Add `needs: [lint]` gate to `integration.yml` so the QGIS Docker job is skipped when cheap checks fail, avoiding ~20 min of wasted runner time.
-- Remove unused `qt_dialog` pytest marker from `pyproject.toml` marker declarations; `test_pyqt_dialogs.py` uses `skipif`, not the marker.
-- Add `pip check` step after `pip install --break-system-packages --ignore-installed` in `integration.yml` to verify the QGIS container dependency tree is not broken by constraint overrides.
-- Extract conftest QGIS mock setup from `tests/conftest.py` (495 lines) into `tests/_qgis_mocks.py` to keep conftest focused on fixtures and improve maintainability of mock stubs.
-- Convert `release.yml` zip manifest from exclusion-based `git ls-files | grep -vE` filtering to an explicit include list, preventing accidental inclusion of new dev-only directories.
+- SHA-pin codeql actions; add `needs:[lint]` to integration; remove unused marker
+- Add `pip check` to integration; extract QGIS mocks; explicit zip manifest
 
 ## [1.5.9] - 2026-05-17
 
 ### Fixed
 
-- Fix `tile_download_base.download_tile_with_retry` purging structurally-valid cached tiles when `ComputeStatistics` fails. The stats read was treating any `RuntimeError` or `None` return as corruption, triggering an unnecessary re-download. Cache hits now validate only structural integrity (`gdal.Open() is not None`, `RasterCount >= 1`, non-zero dimensions); actual pixel-data corruption is caught at use-time, and the per-tile wall-clock budget covers runaway downloads.
-- Fix `dem_downloader.download_tiles` and `worldcover_downloader.download_worldcover_tiles` false-tripping their overall wall-clock deadlines (300s / 600s) on legitimately-large coverage areas. The per-tile budget added in v1.5.3 (`DEFAULT_PER_TILE_WALL_CLOCK_BUDGET = 180s` in `tile_download_base`) already caps per-tile runaway; the overall deadlines did not scale with tile count and aborted healthy multi-tile runs. Both removed.
+- Tile download: don't purge structurally-valid cache on `ComputeStatistics` failure
+- Remove overall wall-clock deadlines that false-tripped on large areas
 
 ### Added
 
-- Added `test_tile_cache_stats_tolerance.py` — regression test for cache-hit on `ComputeStatistics` failure with intact structural integrity.
-- Added `test_downloader_no_overall_deadline.py` — regression test for full processing of a large tile list with no overall-deadline check in either downloader.
+- Regression tests for cache stats tolerance and no-overall-deadline
 
 ## [1.5.8] - 2026-05-17
 
 ### Changed
 
-- Decompose `coverage_pool.py` (300→276 lines): extract `apply_batch_results` and `log_coverage_failures` into `_coverage_result_dispatch.py`.
-- Decompose `p2p_compute.py` (300→265 lines): extract `_write_p2p_output_layers` and `_write_p2p_reports` into `_p2p_outputs_internal.py`.
-- Decompose `contour_smoothing.py` (300→195 lines): extract Gaussian kernel, raster calc, and blur VRT helpers into `_smoothing_vrt.py`.
-- Replace hardcoded `111320.0` in `algorithm_coverage.py` and `algorithm_coverage_comparison.py` with `METERS_PER_DEGREE_LAT` from `constants.py`.
-- Replace `f_mhz: float = 300.0` defaults in `CoverageAnalysisParams` and `BatchAnalysisParams` with `DEFAULT_FREQ_MHZ` from `defaults.py`.
-- Replace `N0=301.0, epsilon=15.0, sigma=0.005` in `coverage_engine.compute_coverage` with `DEFAULT_N0`, `DEFAULT_EPSILON`, `DEFAULT_SIGMA` from `defaults.py`.
-- Add `SMOOTHING_NONE`, `SMOOTHING_LOW`, `SMOOTHING_MEDIUM`, `SMOOTHING_HIGH`, `SMOOTHING_OPTIONS` constants in `contour_smoothing.py`; replace string literals in `algorithm_contour.py` parameter registration.
-- Add `DELTA_STYLE_DIVERGING` and `DELTA_STYLE_THRESHOLD` constants in `comparison_params.py`; replace string literals in `comparison_outputs.py`.
-- Add `CLUTTER_OVERRIDE_AUTO` constant in `clutter.py`; replace `"Auto"` string comparisons.
-- Collapse `SharedDEMGrid._atexit_cleanup` into class-level alias on `release`; eliminates duplicate logic.
-- Convert silent `except … pass` in `shared_dem_grid.py` close/release/unlink paths to `logger.debug`; narrow `except Exception` to `except OSError`.
-- Drop duplicate `ProcessPoolExecutor` re-export from `coverage_engine.py`; all runtime usage and monkeypatching lives in `_coverage_executor.py`.
-- Add `gdal_integration` pytest marker for tests that require numpy-2-compatible GDAL bindings; exclude from host unit-test run, include in QGIS Docker integration run.
-- Add `WGS84_CRS` singleton to `constants.py`; replace 6 inline `QgsCoordinateReferenceSystem("EPSG:4326")` constructions across `algorithm_p2p`, `algorithm_batch`, `algorithm_contour`, `algorithm_coverage_comparison`, `comparison_panel`, `coverage_params`.
-- Move `FRESNEL_60PCT_FACTOR` from `defaults.py` to `constants.py`; update import sites in `fresnel.py`, `p2p_outputs.py`, `p2p_chart.py`.
-- Add `EMPTY_MARGIN_DB = -999.0` to `constants.py`; replace magic literal in `report_payloads.py`.
-- Replace 3 hardcoded `1048576.0` literals in `nowires.py` and `cache_manager.py` with `BYTES_PER_MEBIBYTE` from `constants.py`.
-- Convert remaining 7 silent `except … pass` sites to `logger.debug`: `nowires.py` (3 sites), `three_d.py`, `p2p_chart.py`, `temp_manager.py`, `processing_utils.py`. Narrow `except Exception` to `except OSError` where safe (shared memory, temp dir).
-- Add `from __future__ import annotations` to 7 clutter/p2108 modules (`clutter_categories`, `clutter_constants`, `clutter_resolve`, `clutter_saalos`, `p2108_common`, `p2108_terrestrial_stat`, `p2109_bel`) for consistency with sibling modules.
-- Replace `last_contour_layer_id` string literal at `three_d.py:79` with `CONTOUR_LAYER_KEY` constant.
-- Reconcile sequential-mode notice in `_coverage_executor.py` with MP-fallback message: `"Using single-threaded mode..."` → `"Single-threaded mode: no multiprocessing detected"`.
-- Replace `# type: ignore[arg-type]` cluster in `comparison_reporting.py` with explicit `assert tmpdir is not None`; removes three type-ignore suppressions.
-- Break `clutter.py` ↔ `clutter_advanced.py` import cycle: move `TerminalClutterLosses` from `clutter.py` to `clutter_context.py`, eliminating the deferred-import workaround.
-- Extract a single shared bilinear sampler into `_bilinear.py` (`bilinear_sample`, `bilinear_sample_grid`, `bilinear_sample_grid`), consolidating four re-implementations in `ElevationGrid.sample`, `ElevationGrid.sample_line`, `ElevationGrid.sample_grid`, and `sample_line_from_grid`.
-- Promote underscore-private clutter symbols to public API: `_ClutterComponents` → `ClutterComponents`, `_compute_advanced_loss` → `compute_advanced_loss`, `_resolve_category_advanced` → `resolve_category_advanced`; move `legacy_to_advanced_override` from `clutter_resolve.py` to `clutter_categories.py`.
-- Improve `worldcover_class_to_clutter_category` out-of-range handling: early-return `"open"` for invalid class IDs instead of `% 256` fallthrough.
-- Wrap `document.print(printer)` in `report_pdf.write_report_pdf` in try/except with `logger.debug` and `return False` on failure.
-- Add module description to `nowires.py`.
-- Single-source per-category P.2108 parameters: derive `p2108_height_gain._CATEGORY_PARAMS` from `clutter_categories.CLUTTER_CATEGORY_PARAMS` instead of duplicating `R_m` and method tags.
-- Convert stringly-typed enums to `typing.Literal`: add `ClutterModel = Literal["simple", "advanced"]` and `BuildingType = Literal["traditional", "thermally_efficient"]` in `clutter_context.py`; update type annotations across all call sites.
-- Replace length-tag dispatch `isinstance(result, tuple) and len(result) == 2 and result[0] == "error"` in `_coverage_result_dispatch.py` with `WorkerError` frozen dataclass sentinel.
-- Move `_warned_low_vhf_p2108_combined` global mutable flag into `_P2108State` dataclass in `clutter_resolve.py`; tests can reset via `_STATE.warned_low_vhf = False`.
+- Decompose `coverage_pool`/`p2p_compute`/`contour_smoothing` (300-line compliance)
+- Replace 12 magic numbers with constants (`METERS_PER_DEGREE_LAT`, `DEFAULT_FREQ_MHZ`, etc.)
+- Add named smoothing/delta/clutter constants; collapse `_atexit_cleanup` alias
+- Convert 7 silent `except:pass` to `logger.debug`; narrow to `OSError`
+- Drop duplicate `ProcessPoolExecutor` re-export; add `WGS84_CRS` singleton
+- Move `FRESNEL_60PCT_FACTOR` to constants; add `EMPTY_MARGIN_DB`, `BYTES_PER_MEBIBYTE`
+- `from __future__ import annotations` across 7 p2108 modules
+- Replace last `CONTOUR_LAYER_KEY` literal; reconcile MP-fallback message
+- Replace `type: ignore` with `assert tmpdir is not None`
+- Break `clutter↔clutter_advanced` import cycle; extract `_bilinear.py`
+- Promote underscore-private clutter symbols; add `ClutterModel`/`BuildingType` literals
+- `WorkerError` sentinel replacing length-tag dispatch
 
 ### Added
 
-- Added `test_p2108_category_params_derived_from_clutter_categories.py` — consistency test verifying `_CATEGORY_PARAMS` in `p2108_height_gain` is derived from `CLUTTER_CATEGORY_PARAMS`.
-- Added `test_worker_error_sentinel.py` — regression test for `WorkerError` dataclass sentinel replacing length-tag dispatch.
+- Tests for p2108 category derivation and WorkerError sentinel
 
 ## [1.5.7] - 2026-05-17
 
 ### Fixed
 
-- Fix haversine numerical stability in `coverage_summary._compute_grid_summary` — add `a = np.clip(a, 0.0, 1.0)` before `2 * R * np.arcsin(np.sqrt(a))` so FP rounding at antipodal or near-zero distances no longer yields NaN distances.
-- Replace `assert self.data is not None` with `RuntimeError` in `ElevationGrid.sample`, `sample_line`, and `sample_grid`. `assert` is a no-op under `python -O`; an explicit raise is always enforced and much easier to diagnose than a silent NaN read after `close()`.
-- Fix `algorithm_batch.processAlgorithm` unconditionally closing the user-supplied clutter grid. Add `owns_clutter_grid` flag to `BatchAnalysisParams` and `_collect_batch_inputs` (set True only when auto-downloaded); gate the close in `processAlgorithm` on that flag, mirroring `p2p_compute.py:133-137,294-298`.
-- Fix `coverage_pool._init_cov_pool` re-registering `_final_cov_pool` on every initializer call. Gate `atexit.register` with a module-level `_cov_pool_atexit_registered` flag so the finalizer is registered exactly once even across worker reinit.
-- Fix `_coverage_executor.execute_coverage_tasks` discarding partial multiprocessing counters when the pool raises and falls back to sequential. Accumulate (`pixels_failed += seq_failed`, `pixels_done += seq_done`) rather than reassign.
-- Fix GDAL dataset leak in `contour_pipeline.download_and_merge_tiles` clip verification. Replace bare `gdal.Open(fn_clip) is None` with explicit `test_ds = gdal.Open(fn_clip); ...; test_ds = None` pattern matching `tile_download_base.py:143-154`.
-- Fix `NoWiresPlugin.run_pattern_preview` antenna-preview dialog leak. Declare `_pattern_preview_dialog = None` in `__init__`, close-then-replace on each invocation, and close in `unload()` — mirroring the `_opacity_dialog` lifecycle.
-- Clamp `geo_bounds.coverage_bounds` results to valid lat range `[-90, 90]` and replace local `meters_per_deg_lat = 111320.0` with `METERS_PER_DEGREE_LAT` from `constants.py`.
-- Fix `coverage_params._add_pct_params` using `DEFAULT_TIME_PCT` for all three percentage parameters. Split the loop so each `addParameter` call references its matching default (`DEFAULT_TIME_PCT`, `DEFAULT_LOCATION_PCT`, `DEFAULT_SITUATION_PCT`).
-- Fix `contour_overlay.py:103-106` releasing hillshade dataset without flushing pyramid overviews. Add `hillshade_ds.FlushCache()` before `hillshade_ds = None`.
-- Fix `algorithm_contour.py:96-97` leaking permanent temp directory when `get_temp_dir()` returns None. Route the fallback `tempfile.mkdtemp` through `TempDirManager.add_dir` for cleanup.
-- Fix `ElevationGrid.__init__` zero-division on degenerate DEM rasters. Raise `RuntimeError` when `n_rows == 0` or `n_cols == 0` before computing `d_lat` / `d_lon`.
-- Fix `summarize_coverage_grid` zero-division on empty grids. Return the zero-count summary dict early when `n_rows == 0` or `n_cols == 0`.
-- Fix `SharedDEMGrid._create` atexit-handler pinning `self` and `shm`. Replace bound-method `atexit.register(self._atexit_cleanup)` with module-level `_pending_releases` weak-reference dict and `_atexit_release_pending` handler; add `__del__` safety-net so abandoned segments are released promptly.
+- Haversine NaN: `np.clip(a, 0.0, 1.0)` before `arcsin`
+- `assert`→`RuntimeError` in ElevationGrid (enforced under `-O`)
+- Batch: don't close user-supplied clutter grid (`owns_clutter_grid` flag)
+- Coverage pool: gate atexit re-registration; accumulate partial MP counters
+- GDAL leak in contour clip verification; antenna-preview dialog lifecycle
+- Latitude clamp + `METERS_PER_DEGREE_LAT` in `coverage_bounds`
+- Per-param defaults for Time/Location/Situation percentage
+- `FlushCache` before hillshade release; `TempDirManager` for contour fallback
+- Zero-division guards in `ElevationGrid` and `summarize_coverage_grid`
+- Weak-reference atexit registry for `SharedDEMGrid`
 
 ### Added
 
-- Added `test_haversine_clip.py` — regression test for haversine numerical stability.
-- Added `test_elevation_runtime_error.py` — regression test for `assert` → `RuntimeError` in ElevationGrid.
-- Added `test_batch_owns_clutter_grid.py` — regression test for batch clutter-grid ownership flag.
-- Added `test_pool_atexit_gating.py` — regression test for atexit re-registration gating.
-- Added `test_executor_partial_counters.py` — regression test for partial counter accumulation on MP fallback.
-- Added `test_contour_pipeline_clip_leak.py` — regression test for GDAL dataset leak in clip verification.
-- Added `test_pattern_preview_dialog_leak.py` — regression test for antenna-preview dialog lifecycle.
-- Added `test_hillshade_flush_cache.py` — regression test for FlushCache before hillshade release.
-- Added `test_contour_tempdir_cleanup.py` — regression test for fallback temp-dir cleanup registration.
-- Added `test_shared_dem_atexit_weakref.py` — regression test for weak-reference atexit registry in SharedDEMGrid.
-- Added `test_geo_bounds_lat_clamp.py` — regression test for lat clamping and METERS_PER_DEGREE_LAT import.
-- Added `test_elevation_zero_div_guard.py` — regression test for zero-rows/cols RuntimeError guard.
-- Added `test_coverage_summary_zero_div_guard.py` — regression test for empty-grid zero-division guard.
-- Added `test_coverage_pct_param_defaults.py` — regression test for separate percentage parameter defaults.
+- 14 regression tests per TDD convention
 
 ## [1.5.6] - 2026-05-17
 
 ### Fixed
 
-- Fixed `_pickle.PicklingError: Can't pickle <function _init_cov_pool at 0x...>: it's not the same object as NoWires.coverage_pool._init_cov_pool` on Windows multiprocessing. The error surfaced on Windows after the v1.5.5 `pythonw.exe` switch made `find_windows_python_executable()` succeed where it had been silently returning `None` on user setups — so the multiprocessing branch ran for the first time and exposed a latent bug.
-
-  Root cause: `_coverage_executor.py` did `from .coverage_pool import _init_cov_pool, _itm_worker_batch` at module-import time, freezing those names as references to the function objects from the *first* import of `coverage_pool`. If anything subsequently replaced `NoWires.coverage_pool` in `sys.modules` — QGIS plugin reload, the "Plugin Reloader" plugin, any manual `importlib.reload` of just that one file — `sys.modules["NoWires.coverage_pool"]._init_cov_pool` became a new function object, but `_coverage_executor._init_cov_pool` still pointed at the old one. `pickle`'s identity check (`getattr(sys.modules[fn.__module__], fn.__qualname__) is fn`) then failed when `ProcessPoolExecutor` tried to serialize the initializer to send to the spawned worker.
-
-  Fix: resolve both `_init_cov_pool` and `_itm_worker_batch` through `from . import coverage_pool as _cp` *inside* `execute_coverage_tasks`, so each call walks `sys.modules` fresh and the function references handed to `ProcessPoolExecutor` are guaranteed identical to what `pickle` finds by name. The module-level `from .coverage_pool import ...` line no longer carries those two names.
+- Windows `PicklingError`: resolve `_init_cov_pool`/`_itm_worker_batch` lazily inside
+  `execute_coverage_tasks` to avoid stale references after QGIS plugin reload
 
 ### Changed
 
-- Changed the multiprocessing-fallback diagnostic in `_coverage_executor.execute_coverage_tasks` from `feedback.pushInfo("Multiprocessing unavailable, using single-threaded mode...")` to `feedback.pushWarning("Multiprocessing unavailable ({}: {}), using single-threaded mode...".format(type(exc).__name__, exc))`. Previously, when the MP branch raised, the exception type and message were emitted only via Python `logger.warning`; on GUI-subsystem QGIS builds (Windows `pythonw.exe`-bundled, some macOS configurations) the `StreamHandler` can have `stream=None` and silently drop the message — leaving the user with an opaque "Multiprocessing unavailable" with no trail back to the underlying cause. Routing the exception details through the QGIS Processing feedback channel keeps future regressions self-diagnosing in the log panel.
-
-### Added
-
-- Added `tests/test_coverage_executor_reload_pickle.py` — three regression tests that lock in the lazy-lookup contract: (1) after `importlib.reload(coverage_pool)`, the function objects passed to a fake `ProcessPoolExecutor` must be `is`-identical to the reloaded module's attributes; (2) `pickle.dumps` on the reloaded `_init_cov_pool` / `_itm_worker_batch` must succeed (mirrors what `ProcessPoolExecutor` does on spawn); (3) source-level check that `_coverage_executor.py` does not import either symbol at module scope ahead of `execute_coverage_tasks`. Verified the first and third fail without the fix and pass with it.
-
-### Documentation
-
-- `Technical_Documentation.md`: expanded the "Multiprocessing in QGIS" and "Coverage Engine Robustness" sections with the function-local-import contract, the underlying pickle identity-check failure mode, and how v1.5.5's `pythonw.exe` detection unmasked the previously-latent bug on Windows.
+- MP-fallback diagnostic: route exception details through QGIS feedback channel
 
 ## [1.5.5] - 2026-05-16
 
 ### Fixed
 
-- Fixed coverage multiprocessing silently falling back to sequential mode on macOS via **three distinct bugs** that all surfaced as `feedback.pushInfo("Multiprocessing unavailable, using single-threaded mode...")` with the actual exception logged only via Python `logger.warning` (often invisible in the QGIS UI).
-
-  **(1) macOS POSIX shared-memory name too long.** `shared_dem_grid.SharedDEMGrid._create()` was generating names of the form `nowires_dem_<20 hex>` (32 chars). macOS XNU defines `PSHMNAMLEN = 31` as the maximum length including the leading `/` that `multiprocessing.shared_memory.SharedMemory` prepends, so the actual limit after the slash is 30 chars. Names of 32 chars + leading slash = 33 chars triggered `OSError: [Errno 63] File name too long` at `SharedMemory(create=True, name=...)`. Linux's `NAME_MAX = 255` hid this. Fix: truncate the UUID hex suffix from 20 to 16 chars (28 chars total, 29 with slash; comfortably under the macOS limit).
-
-  **(2) Spawn-mode cross-process cancel signal abandoned.** Even with the shm name fix, the next step in the pipeline used a plain `multiprocessing.Event()` in `_coverage_executor.execute_coverage_tasks`. Under the `spawn` start method (macOS default, Windows, containers), the Event's internal Condition raises `RuntimeError: Condition objects should only be shared between processes through inheritance` when `pool.map` tries to pickle it. An interim fix using `multiprocessing.Manager().Event()` worked in Docker but died on the user's macOS QGIS with `EOFError` (the Manager subprocess couldn't be sustained in that environment). The fix that actually works: **remove the cross-process cancel signal entirely**. Cancellation now comes from the main thread breaking out of `pool.map` between batches; in-flight batches finish naturally (~64 tasks × ~5 ms ≈ 320 ms worst case at default chunk size). Linux `fork` was masking both issues.
-
-  **(3) QGIS-bundled `python3.12` aborts on spawn because `sys.prefix` is baked to a CI-builder path.** After (1) and (2) were fixed, workers started spawning but died immediately with `ModuleNotFoundError: No module named 'encodings'` and `Fatal Python error: init_fs_encoding: failed to get the Python codec of the filesystem encoding`. The macOS QGIS-final 4.0.2 build ships a `python3.12` binary whose `sys.prefix` is hard-coded to `/Users/runner/work/QGIS/QGIS/build/vcpkg_installed/arm64-osx-dynamic-release/` (the CI builder's path). QGIS itself overrides this internally via `Py_SetPythonHome()`, but spawned children get no such override and can't find the stdlib. Surfaced as `BrokenProcessPool: A child process terminated abruptly`. Fix: `macos_compat.configure_macos_multiprocessing()` now sets `os.environ["PYTHONHOME"] = sys.prefix` (the *running* interpreter's prefix, which QGIS has remapped to a valid path like `Contents/Frameworks/`). Spawned workers inherit the env at spawn time and find the QGIS-bundled stdlib. Also added a `_can_spawn()` validation step in `find_macos_python_executable()` so we never return a binary that can't actually boot — and an `NOWIRES_PYTHON_EXE` env var override for users who want to point at a different Python (e.g. Homebrew).
-
-  Measured speedup on the in-container `benchmarks/coverage_runtime.py`: small grid 6840 → **31038 px/s** (4.5×), medium grid 7318 → **44024 px/s** (6.0×), large grid 7416 → **48207 px/s** (6.5×). macOS users will see equivalent gains.
+- macOS MP: truncate SHM name hex suffix to 16 chars (PSHMNAMLEN=31)
+- macOS MP: remove cross-process cancel `Event()` incompatible with `spawn`
+- macOS MP: set `PYTHONHOME=sys.prefix` so spawned workers find QGIS-bundled stdlib
+- Measured 4–6× pixel/sec speedup on macOS coverage
 
 ### Changed
 
-- Added a Windows mirror of `configure_macos_multiprocessing` / `find_macos_python_executable` in a new `windows_compat.py`. `_can_spawn` is shared between the two via `from .macos_compat import _can_spawn`. The Windows helper looks for `pythonw.exe` first, then `python.exe`, in standalone and OSGeo4W-style bundle layouts (`<qgis>/pythonw.exe`, `<qgis>/../apps/Python3X/pythonw.exe`, `<qgis>/bin/pythonw.exe`, etc.), validates each candidate by actually launching it under a prepared env (`PYTHONHOME=sys.prefix`), and honours the `NOWIRES_PYTHON_EXE` env var as an explicit override. `pythonw.exe` is preferred so spawned workers don't pop a stray cmd window each (`python.exe` is a console-subsystem binary; `pythonw.exe` is the same interpreter without a console — pipe-based stdin/stdout/stderr still works, which is all `multiprocessing` uses).
-- Replaced the v1.5.3-era `NOWIRES_WINDOWS_MP=1` opt-in env-var gate with the validating helper above. Windows multiprocessing is now self-adjusting: if `find_windows_python_executable()` returns a working interpreter, multiprocessing is on; otherwise the executor cleanly falls back to sequential with a clear log message.
-- Removed cross-process cancel signaling from coverage multiprocessing entirely. `_itm_worker_batch` now takes a plain batch argument (no `(batch, event)` tuple) and the executor no longer creates an `Event` or `Manager`. Trade-off: cancel responsiveness drops from per-pixel to per-batch (~320 ms worst case for a 64-pixel batch at ~5 ms ITM/pixel).
+- Windows MP: auto-detect `pythonw.exe`/`python.exe` with validation fallback
+- Remove `NOWIRES_WINDOWS_MP` opt-in; cancel responsiveness per-batch (~320 ms)
 
 ### Added
 
-- Added `tests/test_coverage_executor_spawn_safety.py` — 3 source-level contract tests asserting the executor does NOT use `multiprocessing.Event()` or `multiprocessing.Manager()`, and that `_itm_worker_batch` takes a plain batch argument. Catches regression to either of the broken patterns without needing a fork/spawn test harness.
-- Added `tests/test_shared_dem_grid_name_length.py` — contract test that parses the literal name template in `shared_dem_grid.py` and asserts the total length (`/<prefix><N hex>`) stays under `PSHMNAMLEN = 31`. Future edits that lengthen the prefix or extend the hex suffix will fail loudly.
+- Tests for spawn safety and SHM name length contract
 
 ## [1.5.4] - 2026-05-16
 
 ### Fixed
 
-- Fixed macOS `SIGABRT` crash when running Coverage Analysis with `ALLOW_THREADING` enabled. Previously `processAlgorithm` called `show_coverage_legend()` (which constructs and `.show()`s a `QFrame`) inline; with the v1.5.3 threading opt-in this ran on a `QThreadPool` worker, and Cocoa rejects `QWidget` creation off the main thread (`abort()` from `_initWithContentRect:`). The legend now stashes its `rx_sensitivity_dbm` on the algorithm instance during `processAlgorithm` and is shown from `postProcessAlgorithm`, which the QGIS Processing framework guarantees runs on the main thread. Linux/Xlib tolerated this pattern; macOS did not.
+- macOS SIGABRT: defer coverage legend `QWidget` creation to `postProcessAlgorithm`
 
 ### Changed
 
-- Extracted `_validate_dem_coverage` from `algorithm_coverage.py` to a new `coverage_dem_validate.py` helper module to keep `algorithm_coverage.py` within the 300-line cap after the new `postProcessAlgorithm` override.
+- Extract `_validate_dem_coverage` to keep `algorithm_coverage.py` ≤300 lines
 
 ### Added
 
-- Added `tests/test_coverage_legend_deferred.py` — source-level contract tests asserting the legend show is deferred to `postProcessAlgorithm`. Catches regressions that would re-introduce the macOS crash without needing a real QGIS UI run.
+- Source-level contract test for deferred legend show
 
 ## [1.5.3] - 2026-05-16
 
 ### Added
 
-- Added `write_report_pdf()` PDF report writer (`report_pdf.py`) using Qt6 `QTextDocument` + `QPrinter`. Wired to Coverage Analysis as a new `OUTPUT_REPORT_PDF` output. Falls back to a warning and returns `False` when Qt print-support isn't available rather than raising.
-- Added `AntennaPatternPreviewDialog` (`antenna_pattern_preview.py`) and a "Preview Antenna Pattern" plugin menu action. Loads an antenna pattern CSV and renders a polar plot via `QPainter` — no matplotlib dependency.
-- Added `extract_link_budget_params()` and `LinkBudgetBundle` in `shared_params`. Companion to `extract_clutter_params` introduced earlier; deduplicates the 5-double link-budget extraction across `algorithm_p2p`, `algorithm_batch`, and `coverage_params`.
-- Added `build_initial_clutter_context()` factory in `clutter_context.py`. Single source of truth for the placeholder `ClutterLossContext(distance=0, rx_ground=0)`; previously constructed inline in both `algorithm_coverage._build_clutter_context` and `coverage_engine._build_clutter_context`.
-- Added `NOWIRES_WINDOWS_MP` environment variable to opt Windows into multiprocessing (off by default). `_ensure_path()` already handles the sys.path hardening needed for spawn-mode workers.
-- Added `build_html_document()` in `report_export.py` to share the HTML body between HTML and PDF writers.
-- Added golden-file regression tests for CSV/JSON/HTML report output (`tests/test_report_export_golden.py`). Catches accidental drift in field names, escape rules, or document structure.
-- Added `tests/test_report_pdf.py` — unit test for the Qt-unavailable fallback path plus a qgis_integration test that asserts a real PDF is written.
+- PDF report output via Qt `QTextDocument`+`QPrinter`
+- Antenna pattern preview dialog (polar plot via `QPainter`)
+- `LinkBudgetBundle`/`extract_link_budget_params` dedup in `shared_params`
+- `build_initial_clutter_context` factory; `NOWIRES_WINDOWS_MP` env var
+- Golden-file report export tests; PDF writer fallback test
 
 ### Changed
 
-- Refactored `nowires.py` plugin GUI registration to a single `action_specs` table; removed nine duplicated `QAction(...)` blocks. Net –50 lines and easier to add new menu actions.
-- Switched `contour_smoothing.py` from monkey-patching `xml.etree.ElementTree.parse = _safe_parse` (which globally mutated the stdlib parser for every importer in the process) to an explicit `_parse_xml()` wrapper.
-- Vectorized the elevation-sampling fallback in `coverage_engine._build_rx_ground_grid` via row-by-row `sample_line` calls when `sample_grid` isn't available; 192× fewer Python-level calls at the default grid size for mocked elevation grids.
-- Increased sequential coverage progress reporting from 100 buckets to 200 (`_coverage_executor._run_sequential`).
-- HTTP retryable and non-retryable failures in `tile_download_base.download_tile_with_retry` now surface status code and retry timing through `feedback.pushInfo` / `pushWarning`; previously these only went to the Python log.
-- `_init_cov_pool` no longer raises `RuntimeError("Shared-memory pool already bound")` when a worker is reused across runs — resets stale state and rebinds instead. Friendlier when threading is enabled.
-- Added one-line reason comments to every previously-unexplained `# type: ignore` in production source (9 sites).
+- Plugin GUI registration via single table (–50 lines)
+- Contour smoothing: explicit `_parse_xml` instead of global monkey-patch
+- Vectorize elevation fallback (192× fewer calls); double progress buckets
+- HTTP failures surface status+timing through feedback
+- Pool init resets stale state instead of raising; 9 type:ignore reasons
 
-### Added (previously in 1.5.3)
+### Added (thread/UX)
 
-- Added `ALLOW_THREADING` opt-in on `NoWiresAlgorithm`. Coverage Analysis, Batch P2P, and Coverage Comparison opt their `processAlgorithm()` into the Processing framework's worker-thread runner so the QGIS UI stays responsive during long computations; quick algorithms (P2P, Contour) keep the existing `NoThreading` behaviour.
-- Added `DEFAULT_PER_TILE_WALL_CLOCK_BUDGET` (180s) default for `download_tile_with_retry`. Caps the total time spent retrying a single DEM or WorldCover tile so a slow trickle (where `socket_timeout` never fires) cannot stall a coverage run for `socket_timeout × max_retries` seconds.
-- Added `get_cache_size()` and `format_cache_size()` to `cache_manager`. The "Clear DEM Cache" menu now reports current cache size and asks for confirmation before deleting.
-- Added `ClutterParamBundle` plus `extract_clutter_params()` in `shared_params`. Single helper replaces three ~20-line duplicated extraction blocks in `algorithm_p2p`, `algorithm_batch`, and `coverage_params`.
-- Added `test_algorithm_threading_optin.py` source-level contract tests verifying which algorithms opt into threading.
-- Added `TestGetCacheSize` tests for the new cache-size helpers.
-
-### Changed
-
-- Increased coverage multiprocessing progress update frequency from every 50 chunks to every 5 chunks (`_coverage_executor.py`) for finer UI feedback.
-- Refactored `clear_dem_cache()` to share the `_iter_cache_entries()` + `_entry_size()` helpers used by `get_cache_size()`, removing duplicated glob/walk loops.
+- `ALLOW_THREADING` on Coverage/Batch/Comparison for responsive UI
+- Per-tile 180s wall-clock budget; cache size/confirmation helpers
+- `ClutterParamBundle` extraction dedup
 
 ## [1.5.2] - 2026-05-15
 
 ### Added
 
-- Added `clear_pattern_cache()` API for reloading antenna pattern CSV files without QGIS restart
-- Added GDAL `UseExceptions()` at plugin startup for consistent error handling across all GDAL operations
-- Added batch algorithm multipart geometry handling with debug logging
-- Added contour CRS fallback to EPSG:4326 when context project is unavailable
-- Added NaN-aware elevation interpolation in batch P2P computation using `nan_utils`
-- Added 8 new test suites: algorithm execution integration, base algorithm integration, raster I/O integration, hypothesis property-based tests for antenna, coverage compute, Fresnel, and radio
-- Added CI pipeline: `pytest` on Python 3.12, `pip-audit` dependency scanning, `ruff` lint in integration job, `timeout-minutes` on benchmarks, version/changelog enforcement workflow
-- Added concurrency groups with `cancel-in-progress` to all GitHub Actions workflows
-- Added two-step pytest isolation in CI: sensitive tests run separately to avoid module state pollution
+- `clear_pattern_cache()` API; GDAL `UseExceptions()` at startup
+- Batch multipart geometry handling; contour CRS fallback
+- NaN-aware elevation interpolation in batch P2P
+- 8 new test suites (integration, hypothesis, I/O)
+- CI: pytest, pip-audit, ruff, version/changelog enforcement, concurrency groups
 
 ### Fixed
 
-- Fix `METERS_PER_FOOT` constant incorrectly applied as multiplier for feet-to-meter conversion in contour generation
-- Fix missing trailing newlines and import ordering in multiple modules
-- Fix mypy compliance: added type annotations to `_geo_utils`, `batch_outputs`, `base_algorithm`, `clutter_advanced`, and 15+ other modules
-- Fix dead code removal: unused module-level globals in `coverage_pool`, unused parameters in `coverage_engine`
-- Fix CI pipeline: tracked missing `mypy.ini` to prevent type-check failure on checkout
-- Fix CI integration job: `continue-on-error: true` removed so QGIS failures now block PRs
-- Fix CI integration matrix: removed `release-3_34` (project targets QGIS 4 / Qt 6 only)
-- Fix CI integration job: removed redundant explicit test steps already covered by `-m qgis_integration`
-- Fix coverage configuration: override `fail_under` to 0 in integration job to avoid false failures from partial integration-only coverage
-
-### Changed
-
-- Integration tests now collect coverage data alongside unit tests for combined analysis
-- Updated CONTRIBUTING.md with CI pipeline documentation and local check instructions
+- `METERS_PER_FOOT` correction for feet-to-meter conversion
+- Mypy annotations across 20+ modules; dead code removal
+- CI: missing `mypy.ini`, `continue-on-error` removal, QGIS 3.34 dropped
 
 ## [1.5.1] - 2026-05-12
 
 ### Added
 
-- Added "Clear DEM Cache" menu action to remove stale downloaded DEM and WorldCover tiles from the temp directory
-- Added `cache_manager.py` module with size-aware cache cleanup
-- Added test coverage for `cache_manager.py` (9 tests)
+- "Clear DEM Cache" menu + `cache_manager.py` (size-aware cleanup)
 
 ### Fixed
 
-- Fix clutter grid ownership: user-provided land-cover rasters are no longer closed by the algorithm after use (auto-downloaded grids are still cleaned up)
-- Fix duplicated numpy scans in coverage report display — statistics are now read from the precomputed report payload
-- Fix missing `from __future__ import annotations` in `elevation.py` for Python 3.9 compatibility
-- Fix coverage pool module-level globals: removed unused `_cov_pool_id`/`_cov_pools` dead code, replaced with concise comment
-- Fix unused `rx_sens` parameter in `write_coverage_raster()` — parameter removed from signature and call sites
-- Fix duplicate imports in `clear_dem_cache()` function body
-- Fix unused `QMessageBox` import in `nowires.py`
-- Fix `algorithm_contour.py`: added fallback when `get_temp_dir()` returns None
-- Fix `comparison_add_params.py`: extracted `_add_panel_advanced_params()` helper to keep file under 300-line limit
-- Fix `coverage_pool.py`: made `_MAX_WORKERS` computation lazy via `_get_max_workers()` function
-- Fix misleading test name `test_handles_broken_symlinks` renamed to `test_handles_readonly_files`
-
-- Fix Qt6 crash when toggling obstruction visibility in P2P chart (Windows access violation)
-- Fix Coverage Comparison silently ignoring advanced clutter controls (percentile, street width, BEL, building type, elevation angle)
-- Fix P2P output geometries drawn wrong across the antimeridian (±180°)
-- Fix `_owns_clutter` UnboundLocalError masking real DEM errors in coverage algorithm
-- Fix coverage TX marker not persisting across QGIS sessions — now uses fixed path under user temp dir
-- Fix P2P output layers (profile, fresnel, markers) not persisting across QGIS sessions
-- Add `_vector_layer_ids` initialization to CoverageAlgorithm for proper layer reordering
-- Add `get_temp_dir` stub to P2P compute test for dem_downloader mock
-- Defensive `len()` for QGIS layer tree children in base_algorithm
+- User clutter grid ownership; dedup numpy scans in report display
+- Qt6 chart crash (Windows); comparison advanced clutter controls
+- Antimeridian P2P geometry; `_owns_clutter` UnboundLocalError
+- Coverage TX marker and P2P output layer persistence
+- 14 code review fixes: resource leaks, metric consistency, API correctness
 
 ### Changed
 
-- `.gitignore`: added `.coverage` to tracked patterns
-- Persistent output paths: coverage and P2P layers now write to fixed directory under user temp dir
-
+- `.gitignore`: added `.coverage`; persistent output paths under user temp dir
 
 ## [1.5.0] - 2026-05-07
 
 ### Added
 
-- Added "Advanced clutter correction" mode: saalos vegetation model, ITU-R P.2108 for built/rural categories
-- Added saalos vegetation clutter model (Python port of ITWOM 3.0 ClutterLoss by Sid Shumate, via the MIT-licensed clutterloss-itm Rust crate). See NOTICE.md for the full MIT license text.
-- Added ITU-R P.2108-1 §3.2 statistical clutter loss for terrestrial paths (combined urban+suburban model, 0.5–67 GHz, percentile-based, distance-capped at 2 km)
-- Added ITU-R P.2108-1 §3.1 height-gain terminal correction (per-category, 0.03–3 GHz, methods 2a/2b)
-- Added ITU-R P.2109-2 building entry loss (two-lognormal model with elevation angle, per building type)
-- Added per-category model dispatch per the P.2108/P.2109 compliance design: `none` (open), `p2108_height_gain` (open_rural, dense_rural), `saalos` (vegetation), `p2108_combined` (suburban, urban with §3.1+§3.2 overlap max)
-- Added `CLUTTER_PERCENTILE` parameter (0.01–99.99) for P.2108 §3.2 and P.2109 BEL
-- Added `STREET_WIDTH_M` parameter (5–100 m, default 27) for P.2108 §3.1
-- Added `BEL_ENABLED` boolean parameter for P.2109 building entry loss
-- Added `BEL_BUILDING_TYPE` enum (Traditional / Thermally-efficient) for P.2109
-- Added `BEL_ELEVATION_ANGLE` parameter (0–90°, default 0) for P.2109
-- Added `method`, `percentile`, `tx_bel_db`, `rx_bel_db`, `total_with_bel_db` fields to `TerminalClutterLosses`
-- Added `p2108_common.py` — shared Q⁻¹ and F⁻¹ inverse normal CDF implementations with sign-convention guard tests
-- Added `p2108_height_gain.py` — P.2108-1 §3.1 height-gain terminal correction (scalar + vectorized)
-- Added `p2108_terrestrial_stat.py` — P.2108-1 §3.2 statistical clutter loss (scalar + vectorized)
-- Added `p2109_bel.py` — P.2109-2 building entry loss (scalar + vectorized)
-- Added `R_m`, `p2108_3_1_method`, `p2108_3_2_applicable` fields to `CLUTTER_CATEGORY_PARAMS`
-- Added `percentile`, `street_width_m`, `bel_enabled`, `bel_building_type`, `bel_elevation_angle_deg` to `ClutterLossContext`
-- Added `clutter_method` and `clutter_percentile` to P2P report payload
-- Added `bel_rx_db` to P2P report payload
-- Added `clutter_method` field to `TerminalClutterLosses` for reporting which sub-model fired (e.g. `"§3.1+§3.2/saalos"`)
-- Added total path loss computation including BEL: `total_with_bel_db = total_loss_db + rx_bel_db`
-- Added comprehensive test suites for p2108_common (24 tests), p2108_terrestrial_stat (14), p2108_height_gain (14), p2109_bel (10)
+- Advanced clutter correction mode (SAALOS, P.2108, P.2109)
+- 5 clutter sub-modules; 62 clutter tests
+- `CLUTTER_PERCENTILE`, `STREET_WIDTH_M`, `BEL_ENABLED/TYPE/ANGLE` params
 
 ### Changed
 
-- **Breaking**: Replaced the simplified per-category `clutter_loss_p2108` with proper ITU-R P.2108-1 §3.2 statistical model. Urban/suburban clutter loss values will differ significantly from the previous approximation (which was incorrect).
-- **Breaking**: `CLUTTER_CATEGORY_PARAMS` no longer has `base_loss_db` or `model="p2108"`. Use `R_m`, `p2108_3_1_method`, `p2108_3_2_applicable`, and `model="p2108_height_gain"` / `"p2108_combined"` instead.
-- P2P analysis now passes `ClutterLossContext` to the advanced clutter dispatch, including antenna height, distance, frequency, and polarization for saalos and P.2108
-- P2P total path loss now uses `total_with_bel_db` (includes BEL when enabled)
-- Coverage engine caches the TX terminal clutter loss and reuses it across all coverage pixels when using advanced mode
-- Coverage per-pixel loop now adds P.2109 building entry loss to RX clutter when `BEL_ENABLED=True`
-- Batch and comparison workflows now propagate advanced clutter context and canopy height overrides through their parameter pipelines
-- `clutter_p2108.py` is now a deprecation shim that delegates to `p2108_terrestrial_stat` with a `DeprecationWarning`
-- Advanced clutter mode now dispatches per-category per-frequency per §6 of the compliance design:
-  - open → 0 dB
-  - open_rural / dense_rural → P.2108 §3.1 height-gain (f < 3 GHz)
-  - vegetation → SAALOS (unchanged)
-  - suburban / urban → P.2108 §3.1 + §3.2 combined (max of both in 0.5–3 GHz overlap; §3.2 only above 3 GHz)
-- Coverage comparison now propagates BEL parameters through its parameter pipeline
+- P.2108 replaced simplified loss model; dispatch per-category per §6 compliance
+- P2P/coverage/batch/comparison pipelines adopt advanced clutter context
 
 ### Fixed
 
-- Fix `ModuleNotFoundError: No module named 'clutter_constants'` at QGIS runtime — `clutter_saalos.py` used absolute import instead of package-relative import
-- Fix coverage heatmap missing color near transmitter — palette had no stop above -60 dBm, so strong-signal pixels (> -60 dBm) rendered as transparent in Discrete shader mode. Added "Very Strong" (-30 dBm) stop and a +100 dBm ceiling entry so values up to +100 dBm are covered by the Very Strong color interval.
-- Fix P2P owned clutter grid not closed after sampling, preventing GDAL dataset handle leak
-- Fix TOCTOU race conditions in temp directory creation
-- Fix four stale contract tests that diverged from actual implementation
-- Remove four unused imports flagged by ruff
-- Fix GDAL handle leak in coverage shared clutter grid cleanup
-- Fix NaN dedup logic in coverage summary
-- Add safety net `__del__` handlers in `temp_manager.py` and `nan_utils.py` for resource cleanup
-- Fix macOS multiprocessing compatibility: prevent duplicate QGIS windows and fix Python executable path
-- Fix P.2108 frequency factor: unify all categories to use the same diffraction-based scaling where clutter loss increases with frequency, consistent with P.2108-1 §3.1 Eq. (2f) and §3.2
-- Fix coverage pool falling back to sequential mode on worker errors instead of propagating exceptions
-- Fix duplicate `compute_terminal_clutter_losses` call in coverage pipeline
-- Fix ElevationGrid edge-registered pixel offset and dead globals cleanup
-- Fix import of `fresnel_profile_analysis` from `fresnel` module instead of `radio`
-- Fix string constant names in comparison `add_clutter_params` instead of `getattr`
-- Fix 14 code review issues: resource leaks, metric consistency, API correctness
-- Comprehensive macOS compatibility fixes for multiprocessing and GUI
+- `ModuleNotFoundError` for `clutter_constants`; coverage heatmap near-transmitter
+- P2P clutter grid handle leak; TOCTOU temp dir races
+- macOS MP compatibility; P.2108 frequency factor unification
+- Coverage pool fallback; duplicate clutter compute; elevation pixel offset
 
 ## [1.4.0] - 2026-05-03
 
 ### Added
 
-- Batch P2P Analysis algorithm: one-to-many and many-to-one link computation, results ranked by link margin, with combined output layer and optional CSV export
-- Coverage Comparison algorithm: dual-panel coverage analysis producing a delta raster (Panel A – Panel B in dB) with statistics and optional report
-- Interactive P2P profile chart with hover callouts, Fresnel zone toggle, and chart export
-- P2P report and marker outputs (vector layers for TX/RX markers)
-- Coverage report outputs (CSV/JSON/HTML)
-- Reliability outputs: fade-margin classes, formal-or-fallback availability guidance in P2P and coverage reports
-- Live coverage opacity slider dialog (plugin menu action)
-- 3D scene tracking and opening for coverage and contour outputs (disabled on Windows)
-- P2P rule-based symbology for Fresnel zone, line, and profile layer outputs
-- Shared parameter registration (`shared_params.py`), shared DEM grid management (`shared_dem_grid.py`)
-- Shared GeoTIFF writer (`raster_io.py`)
-- macOS multiprocessing compatibility (`macos_compat.py`)
-- NaN-safe array utilities (`nan_utils.py`)
-- Temp directory manager with cleanup safety net (`temp_manager.py`)
+- Batch P2P, Coverage Comparison, P2P chart+reports, coverage reports, reliability
+- Coverage opacity slider, 3D scene tracking, P2P rule-based symbology
+- Shared modules: params, DEM grid, GeoTIFF writer, NaN utils, temp manager
 
 ### Changed
 
-- Architecture refactor: algorithm files split from monoliths over 1000 lines into focused helper modules (coverage, contour, batch, p2p)
-- Coverage helper code split by responsibility: `coverage_compute.py`, `coverage_palette.py`, `coverage_legend.py`, `coverage_summary.py`, `coverage_reporting.py`, `coverage_analysis_params.py`
-- Contour code split: `contour_generation.py`, `contour_overlay.py`, `contour_pipeline.py`, `contour_smoothing.py`, `contour_symbology.py`
-- P2P code split: `p2p_analysis_params.py`, `p2p_params.py`, `p2p_compute.py`, `p2p_outputs.py`, `p2p_chart.py`, `p2p_chart_format.py`, `p2p_symbology.py`, `p2p_report_display.py`
-- Comparison code split: `comparison_add_params.py`, `comparison_params.py`, `comparison_panel.py`, `comparison_outputs.py`, `comparison_reporting.py`
-- Batch code split: `batch_analysis_params.py`, `batch_params.py`, `batch_outputs.py`, `batch_writer.py`
-- Clutter code split: `clutter.py`, `clutter_advanced.py`, `clutter_categories.py`, `clutter_constants.py`, `clutter_context.py`, `clutter_p2108.py`, `clutter_saalos.py`
-- Constants extracted into `constants.py` and `defaults.py`
-- Base algorithm class extracted into `base_algorithm.py`
-- P2P batch constant registration collapsed into dict comprehension
-- Comparison panel constants auto-generated in `comparison_params.py`
+- Architecture: monoliths → focused helper modules (coverage, contour, batch, p2p)
+- Constants → `constants.py`/`defaults.py`; base algorithm → `base_algorithm.py`
 
 ### Fixed
 
-- **CR3**: Fix VRT Gaussian smoothing being a silent no-op. `root.iter("Source")` never matched `SimpleSource`/`ComplexSource` tags, so the Gaussian kernel was never injected into the VRT. Contour smoothing now works as intended.
-- **CR4**: Fix comparison delta math: add COVERAGE_NODATA→NaN normalization and shape guard in `compute_delta_summary` to prevent -9999 sentinel values from being treated as real data.
-- **CR5**: Move `QgsProject.instance().writeEntry` calls from `processAlgorithm` to `postProcessAlgorithm` in `base_algorithm.py` to avoid mutating project state inside the processing algorithm.
-- **CR6**: Remove dead `_cleanup_cov_pool` function; cap `n_workers` at `_MAX_WORKERS` (16) in coverage engine.
-- **CR7**: Fix `unload()` AttributeError by initializing `_toolbar_actions` and `_opacity_dialog` in `__init__`; add `getattr` guards for action removal.
-- **CR8**: Fix URL redirect validation from substring prefix check (`startswith`) to `urlsplit().netloc` comparison to prevent URL spoofing.
-- Fix FSPL constant: `32.44` → `32.45` in `p2p_compute.py` to match ITU-R P.525 and the ITM internal constant.
-- Add RX cable loss to received power calculation (was only subtracted at TX).
-- Add NaN count warning in coverage pool worker when replacing NaN elevations with 0.0.
-- Change `itm_p2p_loss` exception sentinel from `999.0` to `NaN` with `failed=True` flag to prevent downstream calculations from treating failures as real values.
-- Fix CSV injection in report export: sanitize cell values starting with `=`, `+`, `-`, `@`, tab, or CR.
-- Fix JSON NaN output in report export: sanitize NaN/Inf values before `json.dump` with `allow_nan=False`.
-- Fix copy-paste defaults: `LOCATION_PCT` and `SITUATION_PCT` now use `DEFAULT_LOCATION_PCT` and `DEFAULT_SITUATION_PCT` instead of `DEFAULT_TIME_PCT` in batch params, comparison params, and P2P params.
-- Fix `_feat_attr` boolean-vs-int dispatch: check `isinstance(default, bool)` before `isinstance(default, int)`.
-- Add `super().unload()` call in `NoWiresProvider.unload()`.
-- Fix comparison reporting: return NaN percentages instead of misleading 0.0% when valid_count is zero.
-- Add `pushWarning` with error summary when raster layers are invalid in coverage and comparison algorithms.
-- Initialize `clutter_grid = None` before try block in `algorithm_coverage.py` to prevent `UnboundLocalError`.
-- Fix `gdal.Translate` NoData remap: use `gdal.Warp` with `srcNodata`/`dstNodata` when source NoData differs from target, preventing -9999 elevations from dominating Gaussian blur.
-- Add `COVERAGE_NODATA` normalization in `coverage_summary.py` to handle reloaded GeoTIFFs.
-- Add `f.flush()` + `os.fsync()` before `os.replace()` in tile download to prevent torn files on power loss.
-- Add temp directory permission check in `dem_downloader.py` after `os.makedirs`.
-- **Note on NC1/NC2**: Verified as correct behavior, not bugs — the ITM smooth-earth fallback sign and polarization branch both match the NTIA reference implementation.
+- VRT smoothing no-op; comparison delta `COVERAGE_NODATA` normalization
+- `postProcessAlgorithm` for project state; dead `_cleanup_cov_pool` removed
+- `unload()` AttributeError; URL redirect validation; FSPL constant `32.44→32.45`
+- RX cable loss in power calc; NaN worker warning; ITM failure → NaN sentinel
+- CSV/JSON injection; per-param defaults for pct values; `_feat_attr` dispatch
+- `super().unload()`; NaN percentages on zero valid_count; layer validity warnings
+- UnboundLocalError on `clutter_grid`; `gdal.Warp` NoData remap; COVERAGE_NODATA norm
+- `f.flush()+os.fsync` before tile rename; temp dir permission check
 
 ## [1.3.0]
 
 ### Added
 
-- Antenna presets (omni, sector 90/120, dish 20, custom), front-to-back ratio, downtilt, and optional horizontal/vertical pattern CSV support for both P2P and coverage workflows.
-- Optional simple terminal clutter correction with WorldCover-style land-cover sampling; clutter loss components (`clutter_tx_db`, `clutter_rx_db`, `total_path_loss_db`) are now visible in all report payloads.
-- `worldcover_downloader.py`: ESA WorldCover 2020 v100 tile download, caching, and clip/merge (mirrors the DEM downloader pattern).
-- `clutter_source_label()` helper for descriptive clutter source labels in reports.
-- `compute_terminal_clutter_losses()` helper for consistent terminal clutter loss computation.
-- Coverage report payloads now include `itm_loss_db`, `clutter_tx_db`, `clutter_rx_db`, and `total_path_loss_db` fields.
-- P2P clutter grid download now occurs after the bounding box is computed, ensuring the correct area is covered.
+- Antenna presets + pattern CSV support; simple clutter correction with WorldCover
+- `worldcover_downloader.py`; `clutter_source_label()` helper
+- Coverage report: clutter loss components
 
 ### Changed
 
-- Clutter source in P2P and coverage reports is now produced by `clutter_source_label()` instead of a raw file path or inline conditional.
-- Coverage clutter reporting now uses the TX terminal clutter loss as the representative `clutter_tx_db` and derives `clutter_rx_db` from the grid-wide mean totals.
-
-### Removed
-
-- The obsolete Qt compatibility helper module has been removed; source now uses QGIS 4 / Qt 6 APIs directly.
+- Clutter source labels via helper; coverage TX clutter as representative
 
 ### Fixed
 
-- **NC1**: Guard `smooth_earth_diffraction` and `height_function` against `ValueError` from `log`/`log10` on non-positive arguments. When low frequency × small ground impedance causes `K > 1.607`, `B_0` can go negative, which previously crashed the ITM prediction for vertical polarization at 20 MHz over high-conductivity ground. Now returns a large finite loss value consistent with the extreme diffraction regime.
-- **NC2**: Add per-task exception handling in `_itm_worker_batch` so a single bad pixel no longer kills an entire chunk of coverage tasks. Broaden the `ProcessPoolExecutor` fallback `except` clause from specific exception types to `Exception`, so `ValueError` and `TypeError` also trigger the sequential fallback with diagnostic logging.
-- **NI1**: Add a shared `multiprocessing.Event` for cancellation signalling between the coverage engine and worker processes, reducing cancellation latency from chunk-sized (5–50 s) to task-sized.
-- **NI2**: Add `_final_cov_pool()` to close per-worker shared-memory handles on pool shutdown, preventing resource leaks on platforms where OS cleanup is not immediate.
-- **NI3**: Extract the -9999 NoData sentinel into a named constant `COVERAGE_NODATA` with documentation explaining why NaN is not used (GDAL Float32 compatibility) and why -9999 is safe.
-- **NI4**: Remove unused `TYPE` field from the contour line layer in `algorithm_contour.py`; `gdal.ContourGenerate` never populates it and no downstream code references it.
-- **NI5**: Fix `_feat_attr` silent type coercion in `algorithm_batch.py`. `int(float(val))` now logs a warning on truncation, and coercion failures log the attribute name, value, and target type instead of silently falling back to the default.
-- **NI6**: Both DEM and WorldCover downloaders now honour the HTTP `Retry-After` header on 429/503 responses, using the server-suggested wait time instead of fixed exponential backoff.
-- **NI7**: Socket timeout values in both downloaders extracted into named constants (`_SOCKET_TIMEOUT`) for visibility. A `_WALL_CLOCK_TIMEOUT` constant documents the intended total-per-tile timeout as a contract for future enforcement.
-- **NM9**: Add 38 ITM reference-vector tests covering `smooth_earth_diffraction` edge cases (NC1 regression), propagation primitives, and end-to-end `predict_p2p` scenarios across all climate zones, boundary frequencies, and polarization modes.
-- Fix Qt 6 `QAction` import location and keep source checks for direct Qt 6 enum usage.
-- Fix P2P clutter grid download bounding box: WorldCover tiles are now fetched after the padded TX–RX extent is known, preventing zero-area downloads when the TX and RX are close together.
+- ITM: `smooth_earth_diffraction` log guard (NC1); per-task exception handling (NC2)
+- MP cancel event (NI1); worker SHM close on pool shutdown (NI2)
+- `COVERAGE_NODATA` constant (NI3); dead contour TYPE field (NI4)
+- `_feat_attr` type coercion logging (NI5); `Retry-After` header honouring (NI6)
+- Socket timeout constants (NI7); 38 ITM reference-vector tests (NM9)
+- Qt6 `QAction` import; P2P clutter grid bounding box fix
 
 ## [1.2.0]
 
-- Remove `gdal_calc.py` (dead code with `eval()` usage and deprecated `optparse`).
-- Fix critical import bug in `report_payloads.py` — bare `from reliability import` would crash at QGIS runtime.
-- Vectorize `coverage_summary.py` distance computation for significant speedup on large grids.
-- Replace fragile VRT string manipulation in `algorithm_contour.py` with proper XML parsing.
-- Use namedtuples for coverage task tuples to prevent fragile positional unpacking.
-- Remove global GDAL configuration side effects from `dem_downloader.py` that affected the entire QGIS process.
-- Use `NaN` instead of `0.0` for nodata replacement in `ElevationGrid` to distinguish nodata from sea level.
-- Remove legacy `sys.path` manipulation from `nowires.py` and `coverage_engine.py`.
-- Fix import ordering violations and remove unused imports across multiple files.
-- Normalize copyright headers to consistent `(C) 2026 by Bortre Tenamo`.
-- Extract magic numbers into named constants for clarity.
-- Remove redundant `sys.path` insertions from test files.
-- Prepare repository for public GitHub upload.
-- Split coverage helpers into `coverage_compute.py` and `coverage_colors.py`.
-- Add a synthetic coverage runtime benchmark under `benchmarks/coverage_runtime.py`.
-- Add a live `Coverage Opacity` plugin action for the latest coverage layer.
-- Restore tracked 3D scene support for coverage and contour outputs.
-- Disable plugin-launched 3D canvas creation on Windows and defer to the native QGIS 3D view workflow there.
-- Add CSV, JSON, and HTML report export for P2P and coverage workflows.
-- Add TX/RX marker output for point-to-point analysis.
-- Add reliability outputs and availability estimates for P2P and coverage reports.
-- Improve the Windows 3D fallback guidance for opening the native QGIS 3D view.
-- Fix coverage raster cell-center alignment so the heatmap matches the requested map extent.
-- Fix DEM north-up sampling so coverage and terrain-derived outputs are not mirrored upside down.
-- Fix Windows access violation crash caused by `QgsProject.instance().addMapLayer()` called from inside `processAlgorithm`.
-- Fix "layer not correctly generated" error by replacing `RasterDestination`/`VectorDestination` output parameters with `FileDestination` to prevent double-loading conflict with manually queued styled layers.
-- Fix DEM raster layers loading on top of coverage/contour outputs; `postProcessAlgorithm` now moves DEM layers to the bottom of the layer tree.
-- Fix missing `ANTENNA_AZ` class constant that caused `AttributeError` at algorithm initialization.
+- Remove `gdal_calc.py`; fix critical `report_payloads` import
+- Vectorize coverage distance; replace VRT string manipulation with XML parsing
+- Namedtuples for coverage tasks; remove global GDAL config side effects
+- NaN for nodata in ElevationGrid; remove legacy `sys.path` manipulation
+- Fix imports/copyright headers; extract magic number constants
+- Split coverage helpers; add synthetic benchmark; live opacity action
+- 3D scene support; CSV/JSON/HTML reports; TX/RX markers; reliability output
+- Fix raster cell-center alignment; north-up DEM sampling; Windows access violation
+- Fix double-loading conflict; DEM layer ordering; missing `ANTENNA_AZ` constant
 
 ## [1.1.0]
 
-- Replace separate area coverage and radius sweep workflows with unified `Coverage Analysis`.
-- Add raster-derived coverage range statistics.
-- Improve coverage raster styling and controls.
-- Add regression coverage for Processing contracts and coverage behavior.
+- Replace area coverage + radius sweep with unified Coverage Analysis
+- Add raster-derived coverage range statistics
+- Improve coverage raster styling and controls
