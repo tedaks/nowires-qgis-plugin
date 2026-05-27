@@ -28,7 +28,7 @@ from NoWires.clutter import (compute_terminal_clutter_losses,
 from NoWires.p2p.params import report_p2p_results
 from NoWires.processing_utils import queue_layer_for_loading, register_destination_layer
 from NoWires.p2p.chart import show_profile_chart
-from NoWires.p2p._outputs_internal import _write_p2p_output_layers, _write_p2p_reports
+from NoWires.p2p.outputs_internal import _write_p2p_output_layers, _write_p2p_reports
 
 logger = logging.getLogger(__name__)
 __all__ = ["run_p2p_analysis"]

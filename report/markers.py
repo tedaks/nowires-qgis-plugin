@@ -144,7 +144,7 @@ def write_p2p_marker_layer(
         srs.ImportFromEPSG(4326)
         srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
-        layer = ds.CreateLayer("markers", srs=srs, geom_type=ogr.wkbPoint)
+        layer = ds.CreateLayer("markers", srs=srs, geom_type=ogr.wkbPoint25D)
         layer.CreateField(ogr.FieldDefn("role", ogr.OFTString))
         layer.CreateField(ogr.FieldDefn("latitude", ogr.OFTReal))
         layer.CreateField(ogr.FieldDefn("longitude", ogr.OFTReal))
@@ -203,7 +203,7 @@ def write_single_marker(path, lat, lon, height_m, gain_dbi, power_dbm, label="TX
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(4326)
         srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-        layer = ds.CreateLayer("marker", srs=srs, geom_type=ogr.wkbPoint)
+        layer = ds.CreateLayer("marker", srs=srs, geom_type=ogr.wkbPoint25D)
         layer.CreateField(ogr.FieldDefn("label", ogr.OFTString))
         layer.CreateField(ogr.FieldDefn("lat", ogr.OFTReal))
         layer.CreateField(ogr.FieldDefn("lon", ogr.OFTReal))

@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
 # This program is free software under GPLv3 or later. See LICENSE.
-"""Tests covering radio_coverage/pool.py, radio_coverage/_executor.py, radio_coverage/_result_dispatch.py,
+"""Tests covering radio_coverage/pool.py, radio_coverage/_executor.py, radio_coverage/result_dispatch.py,
 and contour/pipeline.py."""
 
 import os
@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 
 from NoWires.radio_coverage._executor import execute_coverage_tasks
-from NoWires.radio_coverage._result_dispatch import apply_batch_results
+from NoWires.radio_coverage.result_dispatch import apply_batch_results
 from NoWires.radio_coverage.pool import _make_shared_grid, _release_shared_memory
 from NoWires.contour.pipeline import setup_proxy_opener, write_aoi_shapefile
 

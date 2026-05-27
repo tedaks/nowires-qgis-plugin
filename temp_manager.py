@@ -140,5 +140,5 @@ class TempDirManager:
         if self._dirs or self._files:
             try:
                 self.cleanup()
-            except TypeError:
+            except (TypeError, AttributeError):
                 pass
