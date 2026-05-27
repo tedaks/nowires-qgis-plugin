@@ -124,3 +124,11 @@ Releases are planned in `CHANGELOG.md` `[Unreleased]` subsections and shipped as
 - `git tag` — only when the user explicitly asks to tag a release
 
 The agent may prepare diffs, run tests, lint, typecheck, and suggest next steps — but must never execute any of the above commands unless the user gives a clear, direct instruction to do so.
+
+## Pre-Commit Verification
+
+Before staging or committing any change — including pre-existing working-tree state the user did not touch in-session — verify that each modified or deleted file is genuinely safe to record. Two rules:
+
+1. **Do not trust commit-message qualifiers like "stale," "unused," or "obsolete" without evidence.** Read the file's content and grep the tree (and `.github/workflows/`) for usages before tagging a deletion that way. Files that look unused at a glance — `.importlinter`, `mypy.ini`, `constraints-ci.txt`, similar config files — often anchor CI gates. A recent incident: a 39-line `.importlinter` deletion broke `tests.yml`'s `import-linter` job on the next push because four active architectural contracts (ITM-no-qgis, radio-no-coverage, raster-io-no-coverage, tile-download-no-report) lived in that file.
+
+2. **For pre-existing working-tree state the user has not explicitly touched in the current session, surface it separately and ask before committing.** A blanket "commit all changes" is a reasonable instruction; treat it as authorization for changes the agent made or the user actively edited, and as a *prompt to confirm* anything else. If a deletion or modification appears in `git status` that the agent did not produce and the user did not narrate, name it explicitly in the response and let the user decide whether it belongs in the commit.
