@@ -44,7 +44,7 @@ class TestNaNInterpolation:
     def test_interpolate_nan_elevations_no_nan_unchanged(self):
         elevations = [10.0, 20.0, 30.0]
         result = interpolate_nan_elevations(elevations)
-        assert result == pytest.approx([10.0, 20.0, 30.0])
+        np.testing.assert_array_almost_equal(result, [10.0, 20.0, 30.0])
 
     def test_interpolate_nan_elevations_edge_nan_uses_nearest(self):
         elevations = [float("nan"), 20.0, 30.0]

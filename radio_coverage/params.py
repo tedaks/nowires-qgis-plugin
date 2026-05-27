@@ -217,10 +217,14 @@ def extract_coverage_params(alg, parameters, context):
     h_pattern = alg.parameterAsFile(parameters, alg.H_PATTERN, context)
     v_pattern = alg.parameterAsFile(parameters, alg.V_PATTERN, context)
     c = extract_clutter_params(alg, parameters, context)
-    antenna_bw_override = (
-        None if antenna_preset != CUSTOM_ANTENNA_PRESET_INDEX and doubles["antenna_bw"] == 360.0
-        else doubles["antenna_bw"]
-    )
+    if antenna_preset == 0:
+        antenna_az = None
+        antenna_bw_override: float | None = 360.0
+    else:
+        antenna_bw_override = (
+            None if antenna_preset != CUSTOM_ANTENNA_PRESET_INDEX and doubles["antenna_bw"] == 360.0
+            else doubles["antenna_bw"]
+        )
     try:
         validate_itm_input_ranges(
             tx_height_m=doubles["tx_h"], rx_height_m=doubles["rx_h"],

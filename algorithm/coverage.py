@@ -30,7 +30,6 @@ from NoWires.radio_coverage.reporting import (
 from NoWires.processing_utils import queue_layer_for_loading, register_destination_layer
 from NoWires.temp_manager import TempDirManager
 
-
 def _build_clutter_context(p, clutter_grid, elev):
     """Resolve clutter grid, source label, and per-pixel placeholder context."""
     from NoWires.clutter.context import build_initial_clutter_context
@@ -87,12 +86,9 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
         coverage_dir = algorithm._tmp.make_dir("coverage_prx", persistent=True)
         tif_path = os.path.join(coverage_dir, "coverage_prx.tif")
         algorithm._tmp.warn_persistent(feedback)
-    report_csv_path = algorithm.parameterAsFileOutput(
-        parameters, algorithm.OUTPUT_REPORT_CSV, context)
-    report_json_path = algorithm.parameterAsFileOutput(
-        parameters, algorithm.OUTPUT_REPORT_JSON, context)
-    report_html_path = algorithm.parameterAsFileOutput(
-        parameters, algorithm.OUTPUT_REPORT_HTML, context)
+    report_csv_path = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_REPORT_CSV, context)
+    report_json_path = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_REPORT_JSON, context)
+    report_html_path = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_REPORT_HTML, context)
     report_pdf_path = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_REPORT_PDF, context)
 
     report_payload, raster_grid, valid, summary = (
@@ -113,7 +109,17 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
             rx_sens=p.rx_sens, clutter_enabled=p.clutter_enabled,
             clutter_model=p.clutter_model, antenna_preset=p.antenna_preset,
             clutter_source=clutter_source,
-            tx_clutter_for_report=tx_clutter_for_report))
+            tx_clutter_for_report=tx_clutter_for_report,
+            extra_inputs={
+                "n0": p.n0, "epsilon": p.epsilon, "sigma": p.sigma,
+                "antenna_az": p.antenna_az, "antenna_bw_override": p.antenna_bw_override,
+                "downtilt_deg": p.downtilt_deg, "front_back_db": p.front_back_db,
+                "cch_override_m": p.cch_override_m, "clutter_percentile": p.clutter_percentile,
+                "street_width_m": p.street_width_m,
+                "bel_enabled": p.bel_enabled, "bel_building_type": p.bel_building_type,
+                "bel_elevation_angle_deg": p.bel_elevation_angle_deg,
+            },
+        ))
 
     write_coverage_geotiff(result.prx_grid, result.min_lat, result.max_lat,
                            result.min_lon, result.max_lon, tif_path)
@@ -268,10 +274,8 @@ class CoverageAlgorithm(NoWiresAlgorithm):
                     self, parameters, context, feedback, p, result,
                     dem_path, clutter_source, tx_clutter_for_report)
         finally:
-            # Only close clutter grids that were auto-downloaded by
-            # _build_clutter_context (tracked via _owns_clutter).
-            # User-provided grids (from p.clutter_grid) are owned by the
-            # caller and must not be closed here.
+            # Only close auto-downloaded clutter grids; user-provided
+            # grids are owned by the caller and must not be closed here.
             if _owns_clutter and clutter_grid is not None:
                 with contextlib.suppress(Exception):
                     clutter_grid.close()

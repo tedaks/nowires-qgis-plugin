@@ -1,5 +1,6 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
+import concurrent.futures
 import logging
 import os
 
@@ -10,6 +11,8 @@ from NoWires.geo_bounds import longitude_intervals
 from NoWires.report.markers import remove_existing_ogr_dataset
 
 logger = logging.getLogger(__name__)
+
+_COMPUTE_STATS_TIMEOUT_S = 30
 
 
 def _rectangle_geometry(south, north, west, east, ogr_module=ogr):
@@ -53,7 +56,7 @@ def clip_and_merge_tiles(
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(4326)
         srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-        layer = ds.CreateLayer("aoi", srs=srs, geom_type=ogr.wkbPolygon)
+        layer = ds.CreateLayer("aoi", srs=srs, geom_type=ogr.wkbPolygon25D)
         feat_defn = layer.GetLayerDefn()
         feature = ogr.Feature(feat_defn)
         feature.SetGeometry(_aoi_geometry_for_bounds(south, north, west, east))
@@ -89,8 +92,21 @@ def clip_and_merge_tiles(
         result = None
 
         check = gdal.Open(clip_path)
-        if check is None or check.GetRasterBand(1).ComputeStatistics(False) is None:
+        if check is None:
             logger.warning("Empty or invalid clip for %s", os.path.basename(path))
+            continue
+        band = check.GetRasterBand(1)
+        try:
+            future = concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(
+                band.ComputeStatistics, False)
+            stats = future.result(timeout=_COMPUTE_STATS_TIMEOUT_S)
+        except concurrent.futures.TimeoutError:
+            logger.warning("ComputeStatistics timeout for %s after %ds, skipping",
+                           os.path.basename(path), _COMPUTE_STATS_TIMEOUT_S)
+            check = None
+            continue
+        if stats is None:
+            logger.warning("Invalid statistics for %s", os.path.basename(path))
             check = None
             continue
         check = None
