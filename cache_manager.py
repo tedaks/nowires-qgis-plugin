@@ -87,6 +87,12 @@ def evict_cache_lru(max_bytes=2*1024*1024*1024):
     """Evict least-recently-accessed cache entries until total size is under max_bytes.
 
     Returns ``(freed_count, freed_bytes)``.
+
+    Note: uses ``os.path.getatime()`` for access-time ordering. On Linux ext4
+    filesystems mounted with ``relatime`` (the default), atime is only flushed
+    to disk every ~24 hours, so recently-accessed entries may be evicted ahead
+    of truly stale ones. For mtime-based eviction, consider recording access
+    timestamps in a sidecar file.
     """
     entries = list(_iter_cache_entries())
     if not entries:

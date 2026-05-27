@@ -54,3 +54,27 @@ def test_coverage_bounds_equatorial():
     south, north, west, east = coverage_bounds(0.0, 0.0, 50.0)
     assert -90.0 <= south <= 90.0
     assert -90.0 <= north <= 90.0
+
+
+def test_coverage_bounds_clamps_large_extent_to_max(caplog):
+    from NoWires.constants import MAX_AOI_EXTENT_DEGREES
+    from NoWires.geo_bounds import coverage_bounds
+
+    south, north, west, east = coverage_bounds(0.0, 0.0, 10000.0)
+    lat_span = north - south
+    assert lat_span <= 2 * MAX_AOI_EXTENT_DEGREES + 0.1
+    assert "clamped" in caplog.text.lower()
+
+
+def test_coverage_bounds_small_radius_not_clamped():
+    from NoWires.geo_bounds import coverage_bounds
+
+    south, north, west, east = coverage_bounds(0.0, 0.0, 1.0)
+    assert -1.0 <= south <= 1.0
+
+
+def test_coverage_bounds_respects_custom_max_extent():
+    from NoWires.geo_bounds import coverage_bounds
+
+    south, north, west, east = coverage_bounds(0.0, 0.0, 10000.0, max_extent=2.0)
+    assert north - south <= 4.1

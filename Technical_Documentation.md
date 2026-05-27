@@ -59,7 +59,7 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   Coverage multiprocessing pool and shared-memory management
 - [coverage/_executor.py](coverage/_executor.py)
   Coverage multiprocessing executor (extracted from coverage_pool)
-- [coverage/_result_dispatch.py](coverage/_result_dispatch.py)
+- [coverage/result_dispatch.py](coverage/result_dispatch.py)
   Batch result dispatch and failure logging (extracted from coverage_pool)
 - [coverage/tasks.py](coverage/tasks.py)
   Per-pixel coverage task definitions
@@ -163,7 +163,7 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   P2P algorithm parameter registration
 - [p2p/outputs.py](p2p/outputs.py)
   P2P vector output helpers
-- [p2p/_outputs_internal.py](p2p/_outputs_internal.py)
+- [p2p/outputs_internal.py](p2p/outputs_internal.py)
   P2P output layer and report writing (extracted from compute.py)
 - [p2p/chart.py](p2p/chart.py)
   Interactive profile chart with hover, callouts, and export

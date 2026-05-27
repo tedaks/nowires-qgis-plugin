@@ -2,11 +2,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Geographic bounding-box helpers for longitude wraparound."""
 
+import logging
 import math
 
 from NoWires.constants import (
-    AOI_PADDING_FRACTION, DEGREE_PADDING, METERS_PER_DEGREE_LAT,
+    AOI_PADDING_FRACTION, DEGREE_PADDING, MAX_AOI_EXTENT_DEGREES, METERS_PER_DEGREE_LAT,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def aoi_padding_deg(radius_m: float) -> float:
@@ -14,18 +17,26 @@ def aoi_padding_deg(radius_m: float) -> float:
     return float(max(DEGREE_PADDING, radius_m / METERS_PER_DEGREE_LAT * AOI_PADDING_FRACTION))
 
 
-def coverage_bounds(tx_lat, tx_lon, radius_km, padding_deg=0.0):
+def coverage_bounds(tx_lat, tx_lon, radius_km, padding_deg=0.0, max_extent=MAX_AOI_EXTENT_DEGREES):
     """Compute the lat/lon bounding box for a coverage analysis.
 
     Returns (south, north, west, east) in degrees.
     Latitude bounds are clamped to [-90, 90] to handle near-pole TX
     positions where the analysis area would otherwise exceed valid range.
+    The *max_extent* parameter caps the lat/lon span; if exceeded the bounds
+    are clamped and a warning is logged.
     """
     radius_m = radius_km * 1000.0
     lat_per_m = 1.0 / METERS_PER_DEGREE_LAT
     lon_per_m = 1.0 / (METERS_PER_DEGREE_LAT * max(math.cos(math.radians(tx_lat)), 0.01))
     half_lat = radius_m * lat_per_m
     half_lon = radius_m * lon_per_m
+    if half_lat > max_extent:
+        logger.warning("AOI lat extent clamped from %.2f to %.2f degrees", half_lat, max_extent)
+        half_lat = max_extent
+    if half_lon > max_extent:
+        logger.warning("AOI lon extent clamped from %.2f to %.2f degrees", half_lon, max_extent)
+        half_lon = max_extent
     south = max(-90.0, tx_lat - half_lat - padding_deg)
     north = min(90.0, tx_lat + half_lat + padding_deg)
     west = tx_lon - half_lon - padding_deg

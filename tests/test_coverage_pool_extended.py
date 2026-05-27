@@ -26,7 +26,7 @@ from NoWires.radio_coverage.pool import (
     _itm_worker_batch,
     _final_cov_pool,
 )
-from NoWires.radio_coverage._result_dispatch import WorkerError
+from NoWires.radio_coverage.result_dispatch import WorkerError
 
 
 class TestInterpolateNANElevations:

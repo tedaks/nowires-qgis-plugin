@@ -93,6 +93,7 @@ ANTENNA_PRESET_OPTIONS = [preset.label for preset in ANTENNA_PRESETS.values()]
 ANTENNA_PRESET_KEYS = list(ANTENNA_PRESETS.keys())
 
 CUSTOM_ANTENNA_PRESET_INDEX = ANTENNA_PRESET_KEYS.index("custom")
+MAX_PATTERN_ROWS = 3600
 
 
 def _angle_diff_deg(angle_deg, reference_deg):
@@ -150,10 +151,15 @@ def _read_pattern_points(path):
     """Read a CSV pattern file. Results are cached by path for the session;
     editing a pattern file requires calling clear_pattern_cache() or a QGIS
     restart to take effect."""
-    points = []
+    points: list[tuple[float, float]] = []
     with open(path, "r", encoding="utf-8") as handle:
         reader = csv.reader(handle)
         for row in reader:
+            if len(points) >= MAX_PATTERN_ROWS:
+                logger.warning(
+                    "Pattern file %s exceeds %d rows; truncating", path, MAX_PATTERN_ROWS,
+                )
+                break
             if not row or len(row) < 2:
                 continue
             try:
