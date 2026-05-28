@@ -11,6 +11,7 @@ import os
 
 from qgis.core import Qgis, QgsRasterLayer, QgsVectorLayer
 
+from NoWires.algorithm._project_paths import _project_or_temp_dir
 from NoWires.clutter import (
     clutter_source_label, compute_terminal_clutter_losses,
     ensure_clutter_grid_for_area,
@@ -78,9 +79,9 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
     tif_path = algorithm.parameterAsOutputLayer(parameters, algorithm.OUTPUT_RASTER, context)
     coverage_dir = None
     if not tif_path:
-        coverage_dir = algorithm._tmp.make_dir("coverage_prx", persistent=True)
+        coverage_dir = _project_or_temp_dir(
+            algorithm._tmp, context, feedback, "coverage_prx")
         tif_path = os.path.join(coverage_dir, "coverage_prx.tif")
-        algorithm._tmp.warn_persistent(feedback)
     report_csv_path = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_REPORT_CSV, context)
     report_json_path = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_REPORT_JSON, context)
     report_html_path = algorithm.parameterAsFileOutput(parameters, algorithm.OUTPUT_REPORT_HTML, context)
@@ -140,7 +141,8 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
             queue_layer_for_loading(context, raster_layer, layer_name)
         # Defer legend.show() — Cocoa rejects QWidget creation off main thread.
         algorithm._pending_legend_rx_sens = p.rx_sens
-        marker_dir = coverage_dir or algorithm._tmp.make_dir("coverage_prx", persistent=True)
+        marker_dir = coverage_dir or _project_or_temp_dir(
+            algorithm._tmp, context, feedback, "coverage_prx")
         markers_path = os.path.join(marker_dir, "tx_marker.gpkg")
         write_single_marker(markers_path, lat=p.tx_lat, lon=p.tx_lon, height_m=p.tx_h,
                             gain_dbi=p.tx_gain, power_dbm=p.tx_power, label="TX")
