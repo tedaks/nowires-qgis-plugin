@@ -414,6 +414,7 @@ _PACKAGE_SUBMODULES = (
     # algorithm/
     "algorithm.p2p",
     "algorithm.coverage",
+    "algorithm._coverage_helpers",
     "algorithm.coverage_comparison",
     "algorithm.contour",
     "algorithm.batch",

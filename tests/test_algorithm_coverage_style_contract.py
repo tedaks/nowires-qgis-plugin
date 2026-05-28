@@ -13,6 +13,7 @@ ALGORITHM_SOURCES = [
     os.path.join(PLUGIN_DIR, f)
     for f in (
         "algorithm/coverage.py",
+        "algorithm/_coverage_helpers.py",
         "radio_coverage/params.py",
         "radio_coverage/reporting.py",
         "radio_coverage/pool.py",
