@@ -64,23 +64,28 @@ class TestRadioCoverageIntegration:
     def test_coverage_report_empty_grid(self, qgis_app):
         import numpy as np
         from NoWires.radio_coverage.reporting import build_coverage_report_payload_for_grid
+        from NoWires.radio_coverage.coverage_grids import CoverageGrids
+        from NoWires.radio_coverage.analysis_params import CoverageAnalysisParams
         grid = np.full((5, 5), np.nan, dtype=np.float32)
+        zeros = np.zeros((5, 5), dtype=np.float32)
         from unittest.mock import MagicMock
         mock_clutter = MagicMock()
         mock_clutter.tx_loss_db = 0.0
         payload = build_coverage_report_payload_for_grid(
-            prx_grid=grid, loss_grid=grid, itm_loss_grid=grid,
-            clutter_loss_grid=np.zeros((5, 5), dtype=np.float32),
-            clutter_rx_db_grid=np.zeros((5, 5), dtype=np.float32),
-            bel_rx_db_grid=np.zeros((5, 5), dtype=np.float32),
-            min_lat=0.0, max_lat=1.0, min_lon=0.0, max_lon=1.0,
-            tx_lat=0.5, tx_lon=0.5,
-            tx_h=30.0, rx_h=2.0, f_mhz=300.0,
-            radius_km=5.0, grid_size=1, polarization=1,
-            climate=1, time_pct=50.0, location_pct=50.0, situation_pct=50.0,
-            tx_power=30.0, tx_gain=0.0, rx_gain=0.0, cable_loss=0.0, rx_sens=-100.0,
-            clutter_enabled=False, clutter_source="none",
-            antenna_preset=0, tx_clutter_for_report=mock_clutter,
+            grids=CoverageGrids(
+                prx_grid=grid, loss_grid=grid, itm_loss_grid=grid,
+                clutter_loss_grid=zeros, clutter_rx_db_grid=zeros,
+                bel_rx_db_grid=zeros,
+                min_lat=0.0, max_lat=1.0, min_lon=0.0, max_lon=1.0),
+            params=CoverageAnalysisParams(
+                tx_lat=0.5, tx_lon=0.5, tx_h=30.0, rx_h=2.0,
+                f_mhz=300.0, radius_km=5.0, grid_size=1,
+                polarization=1, climate=1,
+                tx_power=30.0, tx_gain=0.0, rx_gain=0.0,
+                cable_loss=0.0, rx_sens=-100.0, clutter_enabled=False,
+            ),
+            clutter_source="none",
+            tx_clutter_for_report=mock_clutter,
         )
         assert payload is not None
 
