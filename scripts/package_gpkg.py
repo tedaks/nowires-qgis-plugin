@@ -139,7 +139,7 @@ avg_dist = float(meta.get("average_distance_km", 0))
 reliability = meta.get("reliability_summary", "")
 
 gpkg_ds.SetMetadata([
-    "GENERATOR=NoWires QGIS Plugin v1.6.0",
+    "GENERATOR=NoWires QGIS Plugin v1.7.0",
     "RADIO=L3Harris RF-7800V-HH",
     "MODE=Repeater (fixed site)",
     "FREQUENCY_MHZ=47.0",
