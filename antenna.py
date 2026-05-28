@@ -96,12 +96,12 @@ CUSTOM_ANTENNA_PRESET_INDEX = ANTENNA_PRESET_KEYS.index("custom")
 MAX_PATTERN_ROWS = 3600
 
 
-def _angle_diff_deg(angle_deg, reference_deg):
+def _angle_diff_deg(angle_deg: float, reference_deg: float) -> float:
     """Compute the shortest angular difference in degrees, result in [-180, 180]."""
     return (angle_deg - reference_deg + 540.0) % 360.0 - 180.0
 
 
-def antenna_preset_key(index_or_key):
+def antenna_preset_key(index_or_key: int | str) -> str:
     if isinstance(index_or_key, bool):
         raise TypeError("antenna_preset_key expects str or int, not bool")
     if isinstance(index_or_key, str):
@@ -113,15 +113,15 @@ def antenna_preset_key(index_or_key):
 
 
 def antenna_config_from_values(
-    preset,
-    azimuth_deg=None,
-    horizontal_beamwidth_deg=None,
-    vertical_beamwidth_deg=None,
-    front_back_db=None,
-    downtilt_deg=0.0,
-    horizontal_pattern_path=None,
-    vertical_pattern_path=None,
-):
+    preset: int | str,
+    azimuth_deg: float | None = None,
+    horizontal_beamwidth_deg: float | None = None,
+    vertical_beamwidth_deg: float | None = None,
+    front_back_db: float | None = None,
+    downtilt_deg: float = 0.0,
+    horizontal_pattern_path: str | None = None,
+    vertical_pattern_path: str | None = None,
+) -> AntennaConfig:
     key = antenna_preset_key(preset)
     preset_value = ANTENNA_PRESETS[key]
     return AntennaConfig(
@@ -147,7 +147,7 @@ def antenna_config_from_values(
 
 
 @lru_cache(maxsize=32)
-def _read_pattern_points(path):
+def _read_pattern_points(path: str) -> list[tuple[float, float]]:
     """Read a CSV pattern file. Results are cached by path for the session;
     editing a pattern file requires calling clear_pattern_cache() or a QGIS
     restart to take effect."""
@@ -182,7 +182,7 @@ def clear_pattern_cache():
     _read_pattern_points.cache_clear()
 
 
-def _interpolate_pattern_db(angle_deg, path, wrap):
+def _interpolate_pattern_db(angle_deg: float, path: str, wrap: bool) -> float:
     points = _read_pattern_points(path)
     if wrap:
         angle = angle_deg % 360.0
@@ -207,8 +207,9 @@ def _interpolate_pattern_db(angle_deg, path, wrap):
 
 
 def antenna_gain_factor(
-    bearing_from_tx_deg, az_deg, beamwidth_deg, front_back_db=25.0
-):
+    bearing_from_tx_deg: float, az_deg: float | None, beamwidth_deg: float,
+    front_back_db: float = 25.0,
+) -> float:
     """Compute antenna gain adjustment in dB for a given bearing.
 
     Args:
@@ -229,7 +230,8 @@ def antenna_gain_factor(
     return -front_back_db
 
 
-def _vertical_gain_factor(elevation_angle_deg, downtilt_deg, beamwidth_deg):
+def _vertical_gain_factor(elevation_angle_deg: float, downtilt_deg: float,
+                         beamwidth_deg: float) -> float:
     if beamwidth_deg >= 360.0:
         return 0.0
     diff = elevation_angle_deg + downtilt_deg
@@ -239,7 +241,8 @@ def _vertical_gain_factor(elevation_angle_deg, downtilt_deg, beamwidth_deg):
     return -12.0
 
 
-def antenna_gain_adjustment_db(bearing_deg, elevation_angle_deg, config):
+def antenna_gain_adjustment_db(bearing_deg: float, elevation_angle_deg: float,
+                               config: AntennaConfig | None) -> float:
     """Compute off-boresight antenna gain adjustment in dB.
 
     Returns a value <= 0.0 dB representing the gain reduction relative
