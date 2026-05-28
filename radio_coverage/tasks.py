@@ -137,7 +137,7 @@ def build_coverage_tasks(
     advanced = clutter_context is not None and clutter_context.model == "advanced"
 
     bel_db = 0.0
-    if clutter_enabled and clutter_context is not None and clutter_context.bel_enabled:
+    if clutter_context is not None and clutter_context.bel_enabled:
         from NoWires.clutter.p2109_bel import building_entry_loss
         bel_db = building_entry_loss(
             f_mhz / 1000.0,
