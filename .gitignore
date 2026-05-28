@@ -21,6 +21,7 @@ dist/
 # IDE
 .idea/
 .vscode/
+.claude/
 *.swp
 *.swo
 
@@ -71,6 +72,8 @@ todo_improved_clutterloss.md
 *.pem
 *.key
 credentials*
+provider_config.json
+.mcp.json
 
 # Build artifacts
 *.zip
@@ -80,3 +83,6 @@ uv.lock
 
 # Run-time projection files
 **/*.prj
+
+# repowise (local index, embeddings, cache)
+.repowise/
