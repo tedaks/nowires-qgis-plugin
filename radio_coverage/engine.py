@@ -69,6 +69,14 @@ def _build_clutter_context(clutter_enabled, clutter_context, f_mhz, tx_h_m, rx_h
                            tx_ground_elev_m, polarization, cch_override_m, clutter_model,
                            clutter_percentile, street_width_m, bel_enabled, bel_building_type,
                            bel_elevation_angle_deg):
+    if clutter_context is None and bel_enabled and not clutter_enabled:
+        return build_initial_clutter_context(
+            frequency_mhz=f_mhz, tx_height_m=tx_h_m, rx_height_m=rx_h_m,
+            tx_ground_elevation_m=tx_ground_elev_m, polarization=polarization,
+            cch_override_m=cch_override_m, model="simple",
+            percentile=clutter_percentile, street_width_m=street_width_m,
+            bel_enabled=bel_enabled, bel_building_type=bel_building_type,
+            bel_elevation_angle_deg=bel_elevation_angle_deg)
     if clutter_enabled and clutter_context is None:
         return build_initial_clutter_context(
             frequency_mhz=f_mhz, tx_height_m=tx_h_m, rx_height_m=rx_h_m,

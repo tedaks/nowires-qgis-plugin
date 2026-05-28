@@ -171,14 +171,14 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             antenna_gain_adjustment_db(tx_bearing, vert_angle, p.tx_antenna_config)
             + antenna_gain_adjustment_db(rx_bearing, -vert_angle, p.rx_antenna_config))
         clutter_context = None
-        if p.clutter_enabled:
+        if p.clutter_enabled or p.bel_enabled:
             from NoWires.clutter.context import build_link_clutter_context
             clutter_context = build_link_clutter_context(
                 params=p, dist_m=dist_m, tx_h=p.tx_h, rx_h=p.rx_h,
                 tx_elev=float(tx_elev), rx_elev=float(rx_elev))
         cl = compute_terminal_clutter_losses(
             tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.rx_lat, rx_lon=p.rx_lon,
-            frequency_mhz=p.f_mhz, enabled=p.clutter_enabled,
+            frequency_mhz=p.f_mhz, enabled=p.clutter_enabled or p.bel_enabled,
             land_cover_grid=clutter_grid, tx_override=p.tx_clutter_override,
             rx_override=p.rx_clutter_override, context=clutter_context)
         total_path_loss_db = loss_db + cl.total_with_bel_db
