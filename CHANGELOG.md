@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-05-28
+
+### Correctness
+
+- Coverage: handle antimeridian wrapping in cell-center generation to produce tasks near ±180°
+- ITM: use tolerance-based check for kHat near-zero fallback instead of exact float equality
+- BEL: compute Building Entry Loss in simple-clutter mode for P2P and Batch algorithms
+- BEL: decouple BEL computation from `clutter_enabled` flag so BEL applies independently
+- Proxy: validate realm URL hostname and port before building opener URL
+- K-factor: relabel parameter to clarify it affects only Fresnel/LOS display, not ITM propagation
+
+### Robustness
+
+- `__del__`: broaden exception guards to catch `AttributeError` alongside `TypeError`
+- `tile_merge`: wrap `ThreadPoolExecutor` in `with` block to prevent thread leak
+- P2P: clamp AOI latitude bounds to [-90, 90] for polar links
+- SAALOS: guard above-canopy branch against NaN propagation
+- Elevation: produce contiguous array after south-up DEM flip for bilinear hot path
+
 ## [1.6.6] - 2026-05-27
 
 ### Correctness
