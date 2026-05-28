@@ -20,11 +20,16 @@ def _source(name):
         return f.read()
 
 
+def _coverage_source():
+    """Return concatenated source for the Coverage algorithm + its helpers."""
+    return _source("algorithm/coverage.py") + "\n" + _source("algorithm/_coverage_helpers.py")
+
+
 def test_coverage_does_not_show_legend_inside_process_algorithm():
     """No direct show_coverage_legend(...) call inside _write_coverage_outputs
     or processAlgorithm — must be deferred to postProcessAlgorithm.
     """
-    src = _source("algorithm/coverage.py")
+    src = _coverage_source()
     # _write_coverage_outputs writes to _pending_legend_rx_sens; the actual
     # show() happens later, on the main thread.
     assert "show_coverage_legend(rx_sensitivity_dbm=p.rx_sens)" not in src
