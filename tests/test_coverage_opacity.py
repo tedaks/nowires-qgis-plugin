@@ -141,7 +141,7 @@ def test_plugin_removes_opacity_menu_action_on_unload():
 
 def test_plugin_has_coverage_opacity_handler():
     source = _text(PLUGIN_SOURCE)
-    assert "def run_coverage_opacity(self):" in source
+    assert "def run_coverage_opacity(self) -> None:" in source
     assert "find_latest_coverage_layer()" in source
     assert "CoverageOpacityDialog(" in source
 
