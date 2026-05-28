@@ -187,5 +187,5 @@ class SharedDEMGrid:
         try:
             if self._shm is not None and not self._unlinked:
                 self.release()
-        except TypeError:
+        except (TypeError, AttributeError):
             pass

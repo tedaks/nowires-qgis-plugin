@@ -220,8 +220,11 @@ class ElevationGrid:
         return False
 
     def __del__(self):
-        if self.data is not None:
-            self.close()
+        try:
+            if self.data is not None:
+                self.close()
+        except (TypeError, AttributeError):
+            pass
 
 
 
