@@ -14,6 +14,7 @@ COVERAGE_SOURCES = [
         "base_algorithm.py",
         "constants.py",
         "algorithm/coverage.py",
+        "algorithm/_coverage_helpers.py",
         "radio_coverage/params.py",
         "shared_params.py",
         "radio_coverage/reporting.py",

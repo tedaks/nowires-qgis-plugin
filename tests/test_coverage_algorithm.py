@@ -64,7 +64,7 @@ class TestBuildClutterContextExceptionSafety:
     def test_exception_preserves_original(self, monkeypatch):
         """clutter_source_label raises ValueError — original propagates,
         and owns_grid=True triggers close(). Lines 72-73."""
-        from NoWires.algorithm import coverage as cov_mod
+        from NoWires.algorithm import _coverage_helpers as helpers_mod
 
         p = CoverageAnalysisParams(
             clutter_enabled=True,
@@ -74,14 +74,14 @@ class TestBuildClutterContextExceptionSafety:
         grid = _dummy_grid()
         elev = _dummy_elev()
 
-        monkeypatch.setattr(cov_mod, "coverage_bounds",
+        monkeypatch.setattr(helpers_mod, "coverage_bounds",
                             lambda *a, **kw: (10.0, 20.0, 110.0, 130.0))
-        monkeypatch.setattr(cov_mod, "ensure_clutter_grid_for_area",
+        monkeypatch.setattr(helpers_mod, "ensure_clutter_grid_for_area",
                             lambda *a, **kw: grid)
-        monkeypatch.setattr(cov_mod, "compute_terminal_clutter_losses",
+        monkeypatch.setattr(helpers_mod, "compute_terminal_clutter_losses",
                             lambda *a, **kw: TerminalClutterLosses(
                                 "open", "open", 0.0, 0.0, 0.0, "mock"))
-        monkeypatch.setattr(cov_mod, "clutter_source_label",
+        monkeypatch.setattr(helpers_mod, "clutter_source_label",
                             mock.Mock(side_effect=ValueError("simulated")))
 
         with pytest.raises(ValueError, match="simulated"):
@@ -92,7 +92,7 @@ class TestBuildClutterContextExceptionSafety:
     def test_closes_grid_on_source_label_failure(self, monkeypatch):
         """clutter_source_label raises RuntimeError; owns_grid=True => close.
         Lines 75-76."""
-        from NoWires.algorithm import coverage as cov_mod
+        from NoWires.algorithm import _coverage_helpers as helpers_mod
 
         p = CoverageAnalysisParams(
             clutter_enabled=True,
@@ -102,14 +102,14 @@ class TestBuildClutterContextExceptionSafety:
         grid = _dummy_grid()
         elev = _dummy_elev()
 
-        monkeypatch.setattr(cov_mod, "coverage_bounds",
+        monkeypatch.setattr(helpers_mod, "coverage_bounds",
                             lambda *a, **kw: (10.0, 20.0, 110.0, 130.0))
-        monkeypatch.setattr(cov_mod, "ensure_clutter_grid_for_area",
+        monkeypatch.setattr(helpers_mod, "ensure_clutter_grid_for_area",
                             lambda *a, **kw: grid)
-        monkeypatch.setattr(cov_mod, "compute_terminal_clutter_losses",
+        monkeypatch.setattr(helpers_mod, "compute_terminal_clutter_losses",
                             lambda *a, **kw: TerminalClutterLosses(
                                 "open", "open", 0.0, 0.0, 0.0, "mock"))
-        monkeypatch.setattr(cov_mod, "clutter_source_label",
+        monkeypatch.setattr(helpers_mod, "clutter_source_label",
                             mock.Mock(side_effect=RuntimeError("fail")))
 
         with pytest.raises(RuntimeError, match="fail"):
@@ -120,7 +120,7 @@ class TestBuildClutterContextExceptionSafety:
     def test_close_failure_does_not_mask_original(self, monkeypatch):
         """grid.close() itself raises — original ValueError still propagates.
         Lines 75-77."""
-        from NoWires.algorithm import coverage as cov_mod
+        from NoWires.algorithm import _coverage_helpers as helpers_mod
 
         p = CoverageAnalysisParams(
             clutter_enabled=True,
@@ -131,14 +131,14 @@ class TestBuildClutterContextExceptionSafety:
         grid.close.side_effect = RuntimeError("close boom")
         elev = _dummy_elev()
 
-        monkeypatch.setattr(cov_mod, "coverage_bounds",
+        monkeypatch.setattr(helpers_mod, "coverage_bounds",
                             lambda *a, **kw: (10.0, 20.0, 110.0, 130.0))
-        monkeypatch.setattr(cov_mod, "ensure_clutter_grid_for_area",
+        monkeypatch.setattr(helpers_mod, "ensure_clutter_grid_for_area",
                             lambda *a, **kw: grid)
-        monkeypatch.setattr(cov_mod, "compute_terminal_clutter_losses",
+        monkeypatch.setattr(helpers_mod, "compute_terminal_clutter_losses",
                             lambda *a, **kw: TerminalClutterLosses(
                                 "open", "open", 0.0, 0.0, 0.0, "mock"))
-        monkeypatch.setattr(cov_mod, "clutter_source_label",
+        monkeypatch.setattr(helpers_mod, "clutter_source_label",
                             mock.Mock(side_effect=ValueError("original boom")))
 
         with pytest.raises(ValueError, match="original boom"):
@@ -146,7 +146,7 @@ class TestBuildClutterContextExceptionSafety:
 
     def test_elev_sample_inf_guarded(self, monkeypatch):
         """elev.sample returns inf → tx_ground clamped to 0.0.  Lines 52-56."""
-        from NoWires.algorithm import coverage as cov_mod
+        from NoWires.algorithm import _coverage_helpers as helpers_mod
 
         p = CoverageAnalysisParams(
             clutter_enabled=True,
@@ -162,13 +162,13 @@ class TestBuildClutterContextExceptionSafety:
             captured_tx_ground.append(kw["tx_ground_elevation_m"])
             return mock.MagicMock()
 
-        monkeypatch.setattr(cov_mod, "coverage_bounds",
+        monkeypatch.setattr(helpers_mod, "coverage_bounds",
                             lambda *a, **kw: (10.0, 20.0, 110.0, 130.0))
-        monkeypatch.setattr(cov_mod, "ensure_clutter_grid_for_area",
+        monkeypatch.setattr(helpers_mod, "ensure_clutter_grid_for_area",
                             lambda *a, **kw: grid)
-        monkeypatch.setattr(cov_mod, "clutter_source_label",
+        monkeypatch.setattr(helpers_mod, "clutter_source_label",
                             lambda **kw: "mock_source")
-        monkeypatch.setattr(cov_mod, "compute_terminal_clutter_losses",
+        monkeypatch.setattr(helpers_mod, "compute_terminal_clutter_losses",
                             lambda *a, **kw: TerminalClutterLosses(
                                 "open", "open", 0.0, 0.0, 0.0, "mock"))
         monkeypatch.setattr("NoWires.clutter.context.build_initial_clutter_context",
@@ -180,7 +180,7 @@ class TestBuildClutterContextExceptionSafety:
     def test_ensure_clutter_grid_for_area_called_when_enabled(self, monkeypatch):
         """When clutter_enabled=True and no grid provided,
         ensure_clutter_grid_for_area is called. Lines 40-43."""
-        from NoWires.algorithm import coverage as cov_mod
+        from NoWires.algorithm import _coverage_helpers as helpers_mod
 
         p = CoverageAnalysisParams(
             clutter_enabled=True,
@@ -191,13 +191,13 @@ class TestBuildClutterContextExceptionSafety:
         elev = _dummy_elev()
 
         ensure_calls = []
-        monkeypatch.setattr(cov_mod, "coverage_bounds",
+        monkeypatch.setattr(helpers_mod, "coverage_bounds",
                             lambda *a, **kw: (10.0, 20.0, 110.0, 130.0))
-        monkeypatch.setattr(cov_mod, "ensure_clutter_grid_for_area",
+        monkeypatch.setattr(helpers_mod, "ensure_clutter_grid_for_area",
                             lambda **kw: ensure_calls.append(kw) or grid)
-        monkeypatch.setattr(cov_mod, "clutter_source_label",
+        monkeypatch.setattr(helpers_mod, "clutter_source_label",
                             lambda **kw: "mock_source")
-        monkeypatch.setattr(cov_mod, "compute_terminal_clutter_losses",
+        monkeypatch.setattr(helpers_mod, "compute_terminal_clutter_losses",
                             lambda *a, **kw: TerminalClutterLosses(
                                 "open", "open", 0.0, 0.0, 0.0, "mock"))
 

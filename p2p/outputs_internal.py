@@ -4,17 +4,19 @@
 
 import os
 
+from NoWires.p2p.analysis_params import P2PAnalysisParams
 from NoWires.report.export import write_report_csv, write_report_json, write_report_html
 from NoWires.report.markers import write_p2p_marker_layer
 from NoWires.p2p.outputs import write_profile_line, write_fresnel_zone
 
 
-def _write_p2p_output_layers(srs, paths, tx_lat, tx_lon, rx_lat, rx_lon,
+def _write_p2p_output_layers(srs, paths, params: P2PAnalysisParams,
         dist_m, result, dist_arr, terrain_bulge, los_h, fresnel_r,
-        tx_h, rx_h, tx_gain, rx_gain, tx_power, rx_sens, itm_loss_db=None):
+        itm_loss_db=None):
     profile_path = (
         paths["profile_dest"] or os.path.join(paths["temp_dir"], "profile_line.shp"))
-    write_profile_line(profile_path, srs, tx_lat, tx_lon, rx_lat, rx_lon, dist_m, result,
+    write_profile_line(profile_path, srs, params.tx_lat, params.tx_lon,
+                       params.rx_lat, params.rx_lon, dist_m, result,
                        itm_loss_db=itm_loss_db)
     fresnel_poly_path = (
         paths["fresnel_dest"] or os.path.join(paths["temp_dir"], "fresnel_zone.shp"))
@@ -23,12 +25,14 @@ def _write_p2p_output_layers(srs, paths, tx_lat, tx_lon, rx_lat, rx_lon,
     _poly_root, _poly_ext = os.path.splitext(fresnel_poly_path)
     fresnel_lines_path = "{}_lines{}".format(_poly_root, _poly_ext)
     write_fresnel_zone(fresnel_poly_path, fresnel_lines_path, srs,
-        tx_lat, tx_lon, rx_lat, rx_lon,
+        params.tx_lat, params.tx_lon, params.rx_lat, params.rx_lon,
         dist_arr, terrain_bulge, los_h, fresnel_r, dist_m)
     write_p2p_marker_layer(markers_path,
-        tx_lat=tx_lat, tx_lon=tx_lon, rx_lat=rx_lat, rx_lon=rx_lon,
-        tx_h=tx_h, rx_h=rx_h, tx_gain=tx_gain, rx_gain=rx_gain,
-        tx_power_dbm=tx_power, rx_sensitivity_dbm=rx_sens)
+        tx_lat=params.tx_lat, tx_lon=params.tx_lon,
+        rx_lat=params.rx_lat, rx_lon=params.rx_lon,
+        tx_h=params.tx_h, rx_h=params.rx_h, tx_gain=params.tx_gain,
+        rx_gain=params.rx_gain, tx_power_dbm=params.tx_power,
+        rx_sensitivity_dbm=params.rx_sens)
     return profile_path, fresnel_poly_path, fresnel_lines_path, markers_path
 
 

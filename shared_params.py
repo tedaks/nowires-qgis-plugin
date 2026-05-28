@@ -202,7 +202,7 @@ def add_advanced_itm_params(algorithm, attr_getter=None, include_k_factor=True, 
     label_prefix = f"{prefix} " if prefix else ""
     if include_k_factor:
         algorithm.addParameter(QgsProcessingParameterEnum(
-            ag("K_FACTOR_PRESET"), f"{label_prefix}Earth radius factor preset (k)",
+            ag("K_FACTOR_PRESET"), f"{label_prefix}Fresnel Earth-radius factor (display only)",
             options=K_FACTOR_PRESETS_OPTIONS, defaultValue=2))
         add_advanced_param(algorithm, ag("K_FACTOR"),
             f"{label_prefix}Custom Earth radius factor (k)",
@@ -215,3 +215,17 @@ def add_advanced_itm_params(algorithm, attr_getter=None, include_k_factor=True, 
     add_advanced_param(algorithm, ag("SIGMA"),
         f"{label_prefix}Earth conductivity (sigma, S/m)", DEFAULT_SIGMA,
         min_val=ITM_MIN_SIGMA)
+
+
+def warn_if_omni_preset_discards_directional(feedback, *, antenna_preset, antenna_bw_override,
+                                              downtilt_deg):
+    """Emit a feedback note when preset=Omni silently snaps directional values."""
+    if antenna_preset != 0 or feedback is None:
+        return
+    bw = antenna_bw_override if antenna_bw_override is not None else 360.0
+    if bw == 360.0 and downtilt_deg == 0.0:
+        return
+    feedback.pushInfo(
+        "Note: Antenna beamwidth={:.1f} and downtilt={:.1f} ignored - "
+        "preset=Omni snaps to omnidirectional defaults. Choose preset=Custom "
+        "to apply directional values.".format(bw, downtilt_deg))

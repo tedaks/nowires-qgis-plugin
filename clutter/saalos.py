@@ -126,6 +126,8 @@ def clutter_loss_saalos(d__meter, cch__meter, h_tx__meter, h_rx__meter,
                     -20.0 * max(0.01, math.log10(wn * 47.7) - 2.0)
                 ) / math.sqrt(hone)
             arte = arte + q
+        if math.isnan(arte):
+            return MAX_CLUTTER_LOSS
     else:
         # Below-canopy path: exp(1/cch - htx) matches ITWOM 3.0 itwom3.0.cpp:410
         # and Rust clutterloss-itm-addon-rust/src/lib.rs:186.
@@ -192,6 +194,7 @@ def clutter_loss_saalos_vec(d_meter, cch_meter, h_tx_meter, h_rx_meter,
         _saalos_vec_below(result, below, pd, pdk, cch, htx, hrx, wn)
 
     np.clip(result, 0.0, MAX_CLUTTER_LOSS, out=result)
+    result[~np.isfinite(result)] = MAX_CLUTTER_LOSS
     result[~active] = 0.0
     if scalar_out:
         return float(result[0])

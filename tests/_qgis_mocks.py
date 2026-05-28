@@ -414,6 +414,8 @@ _PACKAGE_SUBMODULES = (
     # algorithm/
     "algorithm.p2p",
     "algorithm.coverage",
+    "algorithm._coverage_helpers",
+    "algorithm._project_paths",
     "algorithm.coverage_comparison",
     "algorithm.contour",
     "algorithm.batch",
@@ -450,6 +452,7 @@ _PACKAGE_SUBMODULES = (
     "radio_coverage.dem_validate",
     "radio_coverage._executor",
     "radio_coverage.result_dispatch",
+    "radio_coverage.coverage_grids",
     # clutter/ — package is registered as "clutter" (its __init__.py is the
     # facade); list only submodules below. Do NOT list "clutter.__init__".
     "clutter",
@@ -474,6 +477,7 @@ _PACKAGE_SUBMODULES = (
     "p2p.report_display",
     "p2p.analysis_params",
     "p2p.outputs_internal",
+    "p2p.chart_params",
     # report/
     "report.export",
     "report.markers",

@@ -38,6 +38,10 @@ def test_pattern_preview_dialog_initialised_in_init():
                     for target in stmt.targets:
                         if isinstance(target, ast.Attribute):
                             init_assigns.add(target.attr)
+                elif isinstance(stmt, ast.AnnAssign):
+                    target = stmt.target
+                    if isinstance(target, ast.Attribute):
+                        init_assigns.add(target.attr)
     assert "_pattern_preview_dialog" in init_assigns, (
         "_pattern_preview_dialog must be initialised in NoWiresPlugin.__init__"
     )
