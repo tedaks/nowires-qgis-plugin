@@ -249,6 +249,7 @@ def test_tile_clip_geometry_splits_antimeridian_bounds():
 
 def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypatch, tmp_path):
     import NoWires.algorithm.coverage as module
+    import NoWires.algorithm._coverage_helpers as helpers
 
     class InvalidRasterLayer:
         def __init__(self, path, name):
@@ -328,7 +329,7 @@ def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypa
         def close(self):
             pass
     monkeypatch.setattr(module, "ElevationGrid", lambda path: FakeElevationGrid())
-    monkeypatch.setattr(module, "QgsRasterLayer", InvalidRasterLayer)
+    monkeypatch.setattr(helpers, "QgsRasterLayer", InvalidRasterLayer)
     def _fake_coverage_result(**_kw):
         from radio_coverage.engine import CoverageResult
         return CoverageResult(
@@ -349,15 +350,15 @@ def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypa
         _fake_coverage_result,
     )
     monkeypatch.setattr(
-        module,
+        helpers,
         "build_coverage_report_payload_for_grid",
         lambda **_kw: ({"status": {"summary": "ok"}}, np.array([[-80.0]]), np.array([[True]]), None),
     )
-    monkeypatch.setattr(module, "write_coverage_geotiff", lambda *args: None)
-    monkeypatch.setattr(module, "report_coverage_results", lambda *args, **kwargs: None)
-    monkeypatch.setattr(module, "write_report_csv", lambda path, payload: writes.append(("csv", path)))
-    monkeypatch.setattr(module, "write_report_json", lambda path, payload: writes.append(("json", path)))
-    monkeypatch.setattr(module, "write_report_html", lambda path, payload, title: writes.append(("html", path)))
+    monkeypatch.setattr(helpers, "write_coverage_geotiff", lambda *args: None)
+    monkeypatch.setattr(helpers, "report_coverage_results", lambda *args, **kwargs: None)
+    monkeypatch.setattr(helpers, "write_report_csv", lambda path, payload: writes.append(("csv", path)))
+    monkeypatch.setattr(helpers, "write_report_json", lambda path, payload: writes.append(("json", path)))
+    monkeypatch.setattr(helpers, "write_report_html", lambda path, payload, title: writes.append(("html", path)))
 
     alg.processAlgorithm(params, object(), Feedback())
 

@@ -11,12 +11,18 @@ PLUGIN_DIR = os.path.join(os.path.dirname(__file__), "..")
 OPACITY_SOURCE = os.path.join(PLUGIN_DIR, "radio_coverage/opacity.py")
 PLUGIN_SOURCE = os.path.join(PLUGIN_DIR, "nowires.py")
 COVERAGE_SOURCE = os.path.join(PLUGIN_DIR, "algorithm/coverage.py")
+COVERAGE_HELPERS_SOURCE = os.path.join(PLUGIN_DIR, "algorithm/_coverage_helpers.py")
 LEGEND_SOURCE = os.path.join(PLUGIN_DIR, "radio_coverage/legend.py")
 
 
 def _text(path):
     with open(path, "r", encoding="utf-8") as handle:
         return handle.read()
+
+
+def _coverage_text():
+    """Coverage algorithm source spans coverage.py + _coverage_helpers.py after the v1.7.0 split."""
+    return _text(COVERAGE_SOURCE) + "\n" + _text(COVERAGE_HELPERS_SOURCE)
 
 
 def test_opacity_module_defines_coverage_prefix():
@@ -161,7 +167,7 @@ def test_coverage_algorithm_stores_layer_id():
 
 
 def test_coverage_algorithm_stores_dem_layer_id_for_3d():
-    source = _text(COVERAGE_SOURCE)
+    source = _coverage_text()
     assert "_dem_layer_id" in source
     algo_source = _text(os.path.join(PLUGIN_DIR, "base_algorithm.py"))
     assert "last_dem_layer_id" in algo_source
