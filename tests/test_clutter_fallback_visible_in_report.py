@@ -41,4 +41,4 @@ class TestClutterFallbackVisibleInReport:
         with open(source_path, encoding="utf-8") as f:
             source = f.read()
         assert "clutter_source" in source
-        assert "_clutter_model_label(clutter_enabled, clutter_model, clutter_source)" in source
+        assert "_clutter_model_label(params.clutter_enabled, params.clutter_model, clutter_source)" in source

@@ -452,6 +452,7 @@ _PACKAGE_SUBMODULES = (
     "radio_coverage.dem_validate",
     "radio_coverage._executor",
     "radio_coverage.result_dispatch",
+    "radio_coverage.coverage_grids",
     # clutter/ — package is registered as "clutter" (its __init__.py is the
     # facade); list only submodules below. Do NOT list "clutter.__init__".
     "clutter",

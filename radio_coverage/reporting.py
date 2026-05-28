@@ -39,6 +39,8 @@ from NoWires.report.payloads import (
     build_empty_coverage_report_payload,
 )
 from NoWires.raster_io import write_geotiff
+from NoWires.radio_coverage.coverage_grids import CoverageGrids
+from NoWires.radio_coverage.analysis_params import CoverageAnalysisParams
 
 
 def _clutter_model_label(enabled, model: ClutterModel = "simple", clutter_source: str = ""):
@@ -51,94 +53,70 @@ def _clutter_model_label(enabled, model: ClutterModel = "simple", clutter_source
 
 
 def build_coverage_report_payload_for_grid(
-    prx_grid,
-    loss_grid,
-    itm_loss_grid,
-    clutter_loss_grid,
-    clutter_rx_db_grid,
-    bel_rx_db_grid,
-    min_lat,
-    max_lat,
-    min_lon,
-    max_lon,
     *,
-    tx_lat,
-    tx_lon,
-    tx_h,
-    rx_h,
-    f_mhz,
-    radius_km,
-    grid_size,
-    polarization,
-    climate,
-    time_pct,
-    location_pct,
-    situation_pct,
-    tx_power,
-    tx_gain,
-    rx_gain,
-    cable_loss,
-    rx_sens,
-    clutter_enabled,
-    clutter_source,
-    antenna_preset,
-    tx_clutter_for_report,
-    clutter_model="simple",
-    extra_inputs=None,
+    grids: CoverageGrids,
+    params: CoverageAnalysisParams,
+    clutter_source: str = "",
+    tx_clutter_for_report=None,
+    extra_inputs: dict | None = None,
 ):
-    raster_grid = prx_grid[::-1]
+    raster_grid = grids.prx_grid[::-1]
     valid = ~np.isnan(raster_grid)
     if not valid.any():
         return build_empty_coverage_report_payload(
-            tx_lat=tx_lat, tx_lon=tx_lon, tx_h=tx_h, rx_h=rx_h,
-            f_mhz=f_mhz, radius_km=radius_km, grid_size=grid_size,
-            polarization_name=POLARIZATION_NAMES.get(polarization, str(polarization)),
-            climate_name=CLIMATE_NAMES.get(climate, str(climate)),
-            time_pct=time_pct, location_pct=location_pct,
-            situation_pct=situation_pct, tx_power=tx_power, tx_gain=tx_gain,
-            rx_gain=rx_gain, cable_loss=cable_loss,
-            rx_sensitivity_dbm=rx_sens, pixel_count=int(raster_grid.size),
-            clutter_model=_clutter_model_label(clutter_enabled, clutter_model, clutter_source),
+            tx_lat=params.tx_lat, tx_lon=params.tx_lon, tx_h=params.tx_h,
+            rx_h=params.rx_h, f_mhz=params.f_mhz, radius_km=params.radius_km,
+            grid_size=params.grid_size,
+            polarization_name=POLARIZATION_NAMES.get(params.polarization, str(params.polarization)),
+            climate_name=CLIMATE_NAMES.get(params.climate, str(params.climate)),
+            time_pct=params.time_pct, location_pct=params.location_pct,
+            situation_pct=params.situation_pct, tx_power=params.tx_power,
+            tx_gain=params.tx_gain, rx_gain=params.rx_gain,
+            cable_loss=params.cable_loss,
+            rx_sensitivity_dbm=params.rx_sens, pixel_count=int(raster_grid.size),
+            clutter_model=_clutter_model_label(params.clutter_enabled, params.clutter_model, clutter_source),
             clutter_source=clutter_source,
-            tx_antenna_preset=ANTENNA_PRESET_OPTIONS[antenna_preset],
+            tx_antenna_preset=ANTENNA_PRESET_OPTIONS[params.antenna_preset],
             clutter_tx_db=tx_clutter_for_report.tx_loss_db,
             **(extra_inputs or {}),
         ), raster_grid, valid, None
 
     pct_above = (
-        float((raster_grid[valid] >= rx_sens).sum()) / max(valid.sum(), 1) * 100
+        float((raster_grid[valid] >= params.rx_sens).sum()) / max(valid.sum(), 1) * 100
     )
     summary = summarize_coverage_grid(
-        prx_grid=raster_grid, tx_lat=tx_lat, tx_lon=tx_lon,
-        min_lat=min_lat, max_lat=max_lat, min_lon=min_lon, max_lon=max_lon,
-        rx_sensitivity_dbm=rx_sens,
+        prx_grid=raster_grid, tx_lat=params.tx_lat, tx_lon=params.tx_lon,
+        min_lat=grids.min_lat, max_lat=grids.max_lat,
+        min_lon=grids.min_lon, max_lon=grids.max_lon,
+        rx_sensitivity_dbm=params.rx_sens,
     )
-    component_valid = ~np.isnan(loss_grid)
+    component_valid = ~np.isnan(grids.loss_grid)
     itm_loss_db = (
-        float(np.nanmean(itm_loss_grid[component_valid]))
+        float(np.nanmean(grids.itm_loss_grid[component_valid]))
         if component_valid.any() else None
     )
     total_path_loss_db = (
-        float(np.nanmean(loss_grid[component_valid]))
+        float(np.nanmean(grids.loss_grid[component_valid]))
         if component_valid.any() else None
     )
     clutter_rx_db = (
-        float(np.nanmean(clutter_rx_db_grid[component_valid]))
+        float(np.nanmean(grids.clutter_rx_db_grid[component_valid]))
         if component_valid.any() else 0.0
     )
     bel_rx_db = (
-        float(np.nanmean(bel_rx_db_grid[component_valid]))
+        float(np.nanmean(grids.bel_rx_db_grid[component_valid]))
         if component_valid.any() else 0.0
     )
     report_payload = build_coverage_report_payload(
-        tx_lat=tx_lat, tx_lon=tx_lon, tx_h=tx_h, rx_h=rx_h,
-        f_mhz=f_mhz, radius_km=radius_km, grid_size=grid_size,
-        polarization_name=POLARIZATION_NAMES.get(polarization, str(polarization)),
-        climate_name=CLIMATE_NAMES.get(climate, str(climate)),
-        time_pct=time_pct, location_pct=location_pct,
-        situation_pct=situation_pct, tx_power=tx_power, tx_gain=tx_gain,
-        rx_gain=rx_gain, cable_loss=cable_loss,
-        rx_sensitivity_dbm=rx_sens, valid_pixel_count=int(valid.sum()),
+        tx_lat=params.tx_lat, tx_lon=params.tx_lon, tx_h=params.tx_h, rx_h=params.rx_h,
+        f_mhz=params.f_mhz, radius_km=params.radius_km, grid_size=params.grid_size,
+        polarization_name=POLARIZATION_NAMES.get(params.polarization, str(params.polarization)),
+        climate_name=CLIMATE_NAMES.get(params.climate, str(params.climate)),
+        time_pct=params.time_pct, location_pct=params.location_pct,
+        situation_pct=params.situation_pct, tx_power=params.tx_power,
+        tx_gain=params.tx_gain, rx_gain=params.rx_gain,
+        cable_loss=params.cable_loss,
+        rx_sensitivity_dbm=params.rx_sens, valid_pixel_count=int(valid.sum()),
         pixel_count=int(raster_grid.size),
         min_prx_dbm=float(np.nanmin(raster_grid)),
         max_prx_dbm=float(np.nanmax(raster_grid)),
@@ -148,9 +126,9 @@ def build_coverage_report_payload_for_grid(
         min_distance_km=summary["min_distance_km"],
         max_distance_km=summary["max_distance_km"],
         average_distance_km=summary["average_distance_km"],
-        clutter_model=_clutter_model_label(clutter_enabled, clutter_model, clutter_source),
+        clutter_model=_clutter_model_label(params.clutter_enabled, params.clutter_model, clutter_source),
         clutter_source=clutter_source,
-        tx_antenna_preset=ANTENNA_PRESET_OPTIONS[antenna_preset],
+        tx_antenna_preset=ANTENNA_PRESET_OPTIONS[params.antenna_preset],
         itm_loss_db=itm_loss_db,
         clutter_tx_db=tx_clutter_for_report.tx_loss_db,
         clutter_rx_db=clutter_rx_db,
