@@ -4,7 +4,6 @@
 
 import logging
 import math
-import os
 import numpy as np
 from osgeo import osr
 from qgis.core import QgsProcessingException
@@ -15,7 +14,7 @@ from NoWires.constants import (
 )
 from NoWires.constants import ITM_LOSS_UPPER_BOUND
 from NoWires.temp_manager import TempDirManager
-from NoWires.dem_downloader import ensure_dem_for_area, get_temp_dir
+from NoWires.dem_downloader import ensure_dem_for_area
 from NoWires.elevation import ElevationGrid, bearing_deg, haversine_m
 from NoWires.fresnel import C_LIGHT, fresnel_profile_analysis
 from NoWires.geo_bounds import aoi_padding_deg, shortest_longitude_bounds
@@ -28,6 +27,7 @@ from NoWires.clutter import (compute_terminal_clutter_losses,
 from NoWires.p2p.params import report_p2p_results
 from NoWires.processing_utils import queue_layer_for_loading, register_destination_layer
 from NoWires.p2p.chart import show_profile_chart
+from NoWires.three_d import remember_nowires_3d_layers
 from NoWires.p2p.outputs_internal import _write_p2p_output_layers, _write_p2p_reports
 
 logger = logging.getLogger(__name__)
@@ -74,6 +74,7 @@ def _load_p2p_qgis_layers(context, profile_path, fresnel_poly_path,
     if fresnel_lines_layer.isValid():
         apply_fresnel_lines_symbology(fresnel_lines_layer)
     queue_layer_for_loading(context, fresnel_lines_layer, "Fresnel Zone Lines")
+    remember_nowires_3d_layers(context.project())
     if show_chart:
         try:
             show_profile_chart(**chart_kwargs)
@@ -95,7 +96,8 @@ def run_p2p_analysis(params: P2PAnalysisParams):
     p.feedback.pushInfo("Path distance: {:.1f} m ({:.2f} km)".format(
         dist_m, dist_m / 1000.0))
     pad = aoi_padding_deg(dist_m)
-    south, north = min(p.tx_lat, p.rx_lat) - pad, max(p.tx_lat, p.rx_lat) + pad
+    south = max(-90.0, min(p.tx_lat, p.rx_lat) - pad)
+    north = min(90.0, max(p.tx_lat, p.rx_lat) + pad)
     west, east = shortest_longitude_bounds(p.tx_lon, p.rx_lon, padding_deg=pad)
     clutter_grid = p.clutter_grid
     owns_clutter_grid = False
@@ -171,14 +173,14 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             antenna_gain_adjustment_db(tx_bearing, vert_angle, p.tx_antenna_config)
             + antenna_gain_adjustment_db(rx_bearing, -vert_angle, p.rx_antenna_config))
         clutter_context = None
-        if p.clutter_enabled:
+        if p.clutter_enabled or p.bel_enabled:
             from NoWires.clutter.context import build_link_clutter_context
             clutter_context = build_link_clutter_context(
                 params=p, dist_m=dist_m, tx_h=p.tx_h, rx_h=p.rx_h,
                 tx_elev=float(tx_elev), rx_elev=float(rx_elev))
         cl = compute_terminal_clutter_losses(
             tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.rx_lat, rx_lon=p.rx_lon,
-            frequency_mhz=p.f_mhz, enabled=p.clutter_enabled,
+            frequency_mhz=p.f_mhz, enabled=p.clutter_enabled or p.bel_enabled,
             land_cover_grid=clutter_grid, tx_override=p.tx_clutter_override,
             rx_override=p.rx_clutter_override, context=clutter_context)
         total_path_loss_db = loss_db + cl.total_with_bel_db
@@ -190,17 +192,14 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         srs.ImportFromEPSG(4326)
         srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
         if needs_temp_dir:
-            temp_dir = os.path.join(get_temp_dir(), "p2p_outputs")
-            os.makedirs(temp_dir, exist_ok=True)
-            tmp_mgr.add_dir(temp_dir, persistent=True)
+            from NoWires.algorithm._project_paths import _project_or_temp_dir
+            temp_dir = _project_or_temp_dir(tmp_mgr, p.context, p.feedback, "p2p_outputs")
         else:
             temp_dir = None
         profile_path, fresnel_poly_path, fresnel_lines_path, markers_path = _write_p2p_output_layers(
                 srs, dict(profile_dest=p.profile_dest, fresnel_dest=p.fresnel_dest,
                     markers_dest=p.markers_dest, temp_dir=temp_dir),
-                p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon, dist_m, result,
-                dist_arr, terrain_bulge, los_h, fresnel_r,
-                p.tx_h, p.rx_h, p.tx_gain, p.rx_gain, p.tx_power, p.rx_sens,
+                p, dist_m, result, dist_arr, terrain_bulge, los_h, fresnel_r,
                 itm_loss_db=loss_db)
         report_payload = build_p2p_report_payload(
             tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.rx_lat, rx_lon=p.rx_lon,

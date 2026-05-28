@@ -69,7 +69,7 @@ def test_p2p_algorithm_defaults_polarization_to_vertical():
 def test_p2p_algorithm_exposes_k_factor_preset_and_legacy_numeric_parameter():
     source = _p2p_source()
     assert "K_FACTOR_PRESET" in source
-    assert "Earth radius factor preset (k)" in source
+    assert "Fresnel Earth-radius factor (display only)" in source
     assert "0.67 - Sub-refractive" in source
     assert "Custom" in source
     assert "defaultValue=2" in source
@@ -236,7 +236,7 @@ def test_p2p_algorithm_reports_total_path_loss_components():
 
 def test_p2p_algorithm_loads_auto_clutter_after_path_bounds_exist():
     source = _p2p_source()
-    bounds_idx = source.index("south, north = min(p.tx_lat, p.rx_lat) - pad")
+    bounds_idx = source.index("south = max(-90.0")
     auto_clutter_idx = source.index("clutter_grid = ensure_clutter_grid_for_area(")
     assert bounds_idx < auto_clutter_idx
 

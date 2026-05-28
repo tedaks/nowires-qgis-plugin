@@ -576,13 +576,13 @@ def longley_rice(
                     if kHat_1 < 0.0:
                         kHat_1 = 0.0
                         kHat_2 = max(A_sML__db - A_0__db, 0.0) / q
-                        if kHat_2 == 0.0:
+                        if abs(kHat_2) < 1e-12:
                             kHat_1 = M_d
 
         if not flag:
             kHat_1 = max(A_sML__db - A_1__db, 0.0) / (d_sML__meter - d_1__meter)
             kHat_2 = 0.0
-            if kHat_1 == 0.0:
+            if abs(kHat_1) < 1e-12:
                 kHat_1 = M_d
 
         A_o__db = A_sML__db - kHat_1 * d_sML__meter - kHat_2 * math.log(d_sML__meter)

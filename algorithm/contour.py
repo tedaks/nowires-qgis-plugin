@@ -48,7 +48,7 @@ from NoWires.contour.symbology import apply_contour_symbology
 from NoWires.dem_downloader import get_temp_dir
 from NoWires.processing_utils import queue_layer_for_loading, register_destination_layer
 from NoWires.temp_manager import TempDirManager
-from NoWires.three_d import configure_contours_for_3d
+from NoWires.three_d import configure_contours_for_3d, remember_nowires_3d_layers
 
 
 
@@ -202,9 +202,6 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             feedback.pushInfo("\nGenerating contour lines")
             contour_shp_path, tmp_shp_dir = generate_contour_lines(
                 merged_path, interval, self.temp_dir, gdal_callback)
-            if contour_shp_path is None:
-                feedback.reportError("Contour generation produced no output.")
-                return {}
             self._tmp.add_dir(tmp_shp_dir)
             if feedback.isCanceled():
                 return {}
@@ -260,6 +257,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
             else:
                 _style_contour(layer)
                 queue_layer_for_loading(context, layer, layer_name)
+            remember_nowires_3d_layers(context.project(), contour_layer=layer)
             feedback.pushInfo("\nDone.")
             return {self.OUTPUT: final_output_path, self.OUTPUT_DEM: dem_output}
         finally:

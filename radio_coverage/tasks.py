@@ -44,6 +44,11 @@ _MIN_COVERAGE_DISTANCE_M = 1.0
 _DISTANCE_BUCKET_M = 10.0
 
 
+def normalize_longitude_centers(lons):
+    """Normalize longitude cell centers to [-180, 180). Vectorized."""
+    return ((lons + 180.0) % 360.0) - 180.0
+
+
 def _bucket_key(distance_m, rx_ground_m):
     """Quantise continuous per-pixel parameters for LUT lookup."""
     return (round(distance_m / _DISTANCE_BUCKET_M) * _DISTANCE_BUCKET_M,
@@ -77,11 +82,18 @@ def _bearing_grid(tx_lat, tx_lon, lats, lons):
 
 
 def _coverage_axis_centers(min_value, max_value, size):
-    """Return evenly spaced cell centers for a raster extent."""
+    """Return evenly spaced cell centers for a raster extent.
+
+    Handles antimeridian wrapping (west > east) by unwrapping max_value
+    before computing centers, then normalizing each center back to [-180, 180).
+    """
     if size <= 0:
         return np.asarray([], dtype=np.float64)
+    if max_value < min_value:
+        max_value += 360.0
     step = (max_value - min_value) / float(size)
-    return min_value + ((np.arange(size, dtype=np.float64) + 0.5) * step)
+    centers = min_value + ((np.arange(size, dtype=np.float64) + 0.5) * step)
+    return normalize_longitude_centers(centers)
 
 
 def build_coverage_tasks(
@@ -125,7 +137,7 @@ def build_coverage_tasks(
     advanced = clutter_context is not None and clutter_context.model == "advanced"
 
     bel_db = 0.0
-    if clutter_enabled and clutter_context is not None and clutter_context.bel_enabled:
+    if clutter_context is not None and clutter_context.bel_enabled:
         from NoWires.clutter.p2109_bel import building_entry_loss
         bel_db = building_entry_loss(
             f_mhz / 1000.0,
