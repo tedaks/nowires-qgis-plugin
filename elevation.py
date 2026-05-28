@@ -140,7 +140,7 @@ class ElevationGrid:
                     "latitude indexing is correct after this flip.",
                     dem_path,
                 )
-                self.data = self.data[::-1]
+                self.data = np.ascontiguousarray(self.data[::-1])
                 self.min_lat, self.max_lat = self.max_lat, self.min_lat
 
             self.d_lat = (self.max_lat - self.min_lat) / self.n_rows
