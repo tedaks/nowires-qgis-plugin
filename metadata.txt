@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.6.6
+version=1.7.0
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,15 +14,18 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
-    Version 1.6.6
-    - Correctness: add P2P climate zone range validation to prevent silent clamp
-    - Correctness: surface WorldCover fallback in coverage report clutter_model field
-    - Correctness: enforce MAX_AOI_EXTENT_DEGREES in coverage_bounds with clamp-and-warn
-    - Correctness: extend coverage report input echo to include all engine-consumed params
-    - Correctness: update simple-mode clutter warnings to reflect mode-independent BEL/override
-    - Robustness: cap antenna pattern CSV reader at MAX_PATTERN_ROWS=3600
-    - Robustness: broaden TempDirManager.__del__ exception catch to (TypeError, AttributeError)
-    - Robustness: use 25D geometry types in all GPKG CreateLayer calls to suppress Z warnings
+    Version 1.7.0
+    - Correctness: handle antimeridian wrapping in coverage cell-center generation
+    - Correctness: use tolerance-based check for ITM kHat near-zero fallback
+    - Correctness: compute BEL in simple-clutter mode for P2P and Batch algorithms
+    - Correctness: decouple BEL computation from clutter_enabled flag
+    - Correctness: validate proxy realm URL hostname and port before building opener
+    - Correctness: relabel K-factor parameter to clarify Fresnel/LOS-only scope
+    - Robustness: broaden ElevationGrid/SharedDEMGrid __del__ exception guards
+    - Robustness: wrap ThreadPoolExecutor in with block to prevent thread leak
+    - Robustness: clamp P2P AOI latitude bounds to [-90, 90] for polar links
+    - Robustness: guard SAALOS above-canopy branch against NaN propagation
+    - Robustness: produce contiguous array after south-up DEM flip
     - Robustness: add 30s ComputeStatistics timeout guard in tile_merge
     - Changed: extract shared _compute_indices from triplicated bilinear index logic
     - Changed: interpolate_nan_elevations returns np.ndarray for consistency
