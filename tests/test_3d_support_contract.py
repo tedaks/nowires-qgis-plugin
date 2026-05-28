@@ -79,3 +79,12 @@ def test_plugin_uses_three_d_helper_for_launcher():
     assert "open_nowires_3d_view" in source
     assert "QInputDialog.getItem(" in source
     assert "QTimer.singleShot(" in source
+
+
+def test_remember_callers_exist_in_algorithm_files():
+    for filename in ("algorithm/_coverage_helpers.py", "algorithm/contour.py",
+                     "p2p/compute.py"):
+        path = os.path.join(PLUGIN_DIR, filename)
+        source = _text(path)
+        assert "remember_nowires_3d_layers" in source, \
+            "missing remember_nowires_3d_layers call in {}".format(filename)
