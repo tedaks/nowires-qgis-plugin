@@ -66,6 +66,12 @@ All Python source files in this project must strictly adhere to a maximum of **3
 - Before committing, verify: `find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/benchmarks/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}'` — must return zero files.
 - Ruff line-length is set to 99; use it consistently to keep lines compact.
 
+## Package Name Requirement
+
+The plugin MUST be installed at `<QGIS profile>/python/plugins/NoWires/` for imports to resolve. Every module uses `from NoWires.*` imports and `__init__.py:74` does `from NoWires.nowires import NoWiresPlugin`. A clone or QGIS-manager directory slug other than `NoWires` will cause `ModuleNotFoundError`.
+
+Test infrastructure in `tests/_qgis_mocks.py:register_nowires_package()` plants `NoWires` in `sys.modules` so bare `from NoWires.X` imports resolve outside the QGIS runtime. Renaming the package is a **MAJOR** change: every import line, `metadata.txt` name, the zip filename, and external uploaders must be updated.
+
 ## Changelog Structure
 
 `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions. It must always have `## [Unreleased]` as the first versioned section (after the header), before any released version sections. Planned or deferred work lives under `### Planned` subsections within `[Unreleased]`. When cutting a release, move completed items from `[Unreleased]` into a new dated `## [X.Y.Z] - YYYY-MM-DD` section that goes immediately after `[Unreleased]`.
