@@ -97,9 +97,9 @@ def clip_and_merge_tiles(
             continue
         band = check.GetRasterBand(1)
         try:
-            future = concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(
-                band.ComputeStatistics, False)
-            stats = future.result(timeout=_COMPUTE_STATS_TIMEOUT_S)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(band.ComputeStatistics, False)
+                stats = future.result(timeout=_COMPUTE_STATS_TIMEOUT_S)
         except concurrent.futures.TimeoutError:
             logger.warning("ComputeStatistics timeout for %s after %ds, skipping",
                            os.path.basename(path), _COMPUTE_STATS_TIMEOUT_S)
