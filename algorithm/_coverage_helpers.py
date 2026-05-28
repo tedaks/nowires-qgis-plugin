@@ -18,6 +18,7 @@ from NoWires.clutter import (
 )
 from NoWires.geo_bounds import aoi_padding_deg, coverage_bounds
 from NoWires.processing_utils import queue_layer_for_loading, register_destination_layer
+from NoWires.radio_coverage.coverage_grids import CoverageGrids
 from NoWires.three_d import remember_nowires_3d_layers
 from NoWires.radio_coverage.reporting import (
     build_coverage_report_payload_for_grid, report_coverage_results,
@@ -90,21 +91,15 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
 
     report_payload, raster_grid, valid, summary = (
         build_coverage_report_payload_for_grid(
-            prx_grid=result.prx_grid, loss_grid=result.loss_grid,
-            itm_loss_grid=result.itm_loss_grid,
-            clutter_loss_grid=result.clutter_loss_grid,
-            clutter_rx_db_grid=result.clutter_rx_db_grid,
-            bel_rx_db_grid=result.bel_rx_db_grid,
-            min_lat=result.min_lat, max_lat=result.max_lat,
-            min_lon=result.min_lon, max_lon=result.max_lon,
-            tx_lat=p.tx_lat, tx_lon=p.tx_lon, tx_h=p.tx_h, rx_h=p.rx_h,
-            f_mhz=p.f_mhz, radius_km=p.radius_km, grid_size=p.grid_size,
-            polarization=p.polarization, climate=p.climate,
-            time_pct=p.time_pct, location_pct=p.location_pct,
-            situation_pct=p.situation_pct, tx_power=p.tx_power,
-            tx_gain=p.tx_gain, rx_gain=p.rx_gain, cable_loss=p.cable_loss,
-            rx_sens=p.rx_sens, clutter_enabled=p.clutter_enabled,
-            clutter_model=p.clutter_model, antenna_preset=p.antenna_preset,
+            grids=CoverageGrids(
+                prx_grid=result.prx_grid, loss_grid=result.loss_grid,
+                itm_loss_grid=result.itm_loss_grid,
+                clutter_loss_grid=result.clutter_loss_grid,
+                clutter_rx_db_grid=result.clutter_rx_db_grid,
+                bel_rx_db_grid=result.bel_rx_db_grid,
+                min_lat=result.min_lat, max_lat=result.max_lat,
+                min_lon=result.min_lon, max_lon=result.max_lon),
+            params=p,
             clutter_source=clutter_source,
             tx_clutter_for_report=tx_clutter_for_report,
             extra_inputs={
