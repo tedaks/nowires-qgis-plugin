@@ -15,6 +15,7 @@ from NoWires.clutter import CLUTTER_MODEL_OPTIONS
 from NoWires.radio_coverage.params import PARAM_CONSTANTS, add_coverage_params, extract_coverage_params
 from NoWires.antenna import ANTENNA_PRESET_OPTIONS
 from NoWires.geo_bounds import aoi_padding_deg, coverage_bounds
+from NoWires.shared_params import warn_if_omni_preset_discards_directional
 from NoWires.temp_manager import TempDirManager
 from NoWires.algorithm._coverage_helpers import (
     _build_clutter_context, _write_coverage_outputs,
@@ -59,6 +60,9 @@ class CoverageAlgorithm(NoWiresAlgorithm):
             CLUTTER_MODEL_OPTIONS[2] if p.clutter_enabled and p.clutter_model == "advanced"
             else CLUTTER_MODEL_OPTIONS[1] if p.clutter_enabled else CLUTTER_MODEL_OPTIONS[0]))
         feedback.pushInfo("TX antenna preset: {}".format(ANTENNA_PRESET_OPTIONS[p.antenna_preset]))
+        warn_if_omni_preset_discards_directional(
+            feedback, antenna_preset=p.antenna_preset,
+            antenna_bw_override=p.antenna_bw_override, downtilt_deg=p.downtilt_deg)
 
         pad_deg = aoi_padding_deg(p.radius_km * 1000.0)
         south, north, west, east = coverage_bounds(
