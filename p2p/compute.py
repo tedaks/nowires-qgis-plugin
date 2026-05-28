@@ -4,7 +4,6 @@
 
 import logging
 import math
-import os
 import numpy as np
 from osgeo import osr
 from qgis.core import QgsProcessingException
@@ -15,7 +14,7 @@ from NoWires.constants import (
 )
 from NoWires.constants import ITM_LOSS_UPPER_BOUND
 from NoWires.temp_manager import TempDirManager
-from NoWires.dem_downloader import ensure_dem_for_area, get_temp_dir
+from NoWires.dem_downloader import ensure_dem_for_area
 from NoWires.elevation import ElevationGrid, bearing_deg, haversine_m
 from NoWires.fresnel import C_LIGHT, fresnel_profile_analysis
 from NoWires.geo_bounds import aoi_padding_deg, shortest_longitude_bounds
@@ -191,9 +190,8 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         srs.ImportFromEPSG(4326)
         srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
         if needs_temp_dir:
-            temp_dir = os.path.join(get_temp_dir(), "p2p_outputs")
-            os.makedirs(temp_dir, exist_ok=True)
-            tmp_mgr.add_dir(temp_dir, persistent=True)
+            from NoWires.algorithm._project_paths import _project_or_temp_dir
+            temp_dir = _project_or_temp_dir(tmp_mgr, p.context, p.feedback, "p2p_outputs")
         else:
             temp_dir = None
         profile_path, fresnel_poly_path, fresnel_lines_path, markers_path = _write_p2p_output_layers(
