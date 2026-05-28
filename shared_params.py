@@ -202,7 +202,7 @@ def add_advanced_itm_params(algorithm, attr_getter=None, include_k_factor=True, 
     label_prefix = f"{prefix} " if prefix else ""
     if include_k_factor:
         algorithm.addParameter(QgsProcessingParameterEnum(
-            ag("K_FACTOR_PRESET"), f"{label_prefix}Earth radius factor preset (k)",
+            ag("K_FACTOR_PRESET"), f"{label_prefix}Fresnel Earth-radius factor (display only)",
             options=K_FACTOR_PRESETS_OPTIONS, defaultValue=2))
         add_advanced_param(algorithm, ag("K_FACTOR"),
             f"{label_prefix}Custom Earth radius factor (k)",
