@@ -6,7 +6,6 @@
 import math
 
 import numpy as np
-import pytest
 
 from NoWires.clutter.constants import MAX_CLUTTER_LOSS
 from NoWires.clutter.saalos import clutter_loss_saalos, clutter_loss_saalos_vec
