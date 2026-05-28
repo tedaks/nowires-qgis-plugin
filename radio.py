@@ -82,8 +82,9 @@ ITM_MAX_CLIMATE = 6
 
 
 def resolve_k_factor(
-    has_preset, has_custom, custom_value, preset_index, presets=K_FACTOR_PRESETS
-):
+    has_preset: bool, has_custom: bool, custom_value: float | None,
+    preset_index: int, presets: list[float] = K_FACTOR_PRESETS,
+) -> float:
     """Pick the effective Earth-radius factor (k) for a P2P run.
 
     Prefers the preset enum; falls back to the legacy numeric K_FACTOR only
@@ -96,18 +97,19 @@ def resolve_k_factor(
             custom_value, preset_index,
         )
     if not has_preset and has_custom:
+        assert custom_value is not None
         return float(custom_value)
     return presets[preset_index]
 
 
 def validate_itm_input_ranges(
-    tx_height_m,
-    rx_height_m,
-    frequency_mhz,
-    surface_refractivity_n0,
-    earth_conductivity_sigma,
-    climate=0,
-):
+    tx_height_m: float,
+    rx_height_m: float,
+    frequency_mhz: float,
+    surface_refractivity_n0: float,
+    earth_conductivity_sigma: float,
+    climate: int = 0,
+) -> None:
     """Validate user inputs against the bundled ITM model's hard limits."""
     checks = [
         (
@@ -191,27 +193,27 @@ def _get_itm():
     return Climate, Polarization, TerrainProfile, predict_p2p
 
 
-def build_pfl(elevations, step_m):
+def build_pfl(elevations: list[float] | np.ndarray, step_m: float) -> list[float]:
     """Build a PFL (profile format list) from elevations and step distance."""
     n = max(len(elevations) - 1, 1)
     return [float(n), float(step_m)] + [float(x) for x in elevations]
 
 
 def itm_p2p_loss(
-    h_tx__meter,
-    h_rx__meter,
-    profile,
-    climate=1,
-    N0=DEFAULT_N0,
-    f__mhz=DEFAULT_FREQ_MHZ,
-    polarization=0,
-    epsilon=DEFAULT_EPSILON,
-    sigma=DEFAULT_SIGMA,
-    mdvar=0,
-    time_pct=50.0,
-    location_pct=50.0,
-    situation_pct=50.0,
-):
+    h_tx__meter: float,
+    h_rx__meter: float,
+    profile: list[float],
+    climate: int = 1,
+    N0: float = DEFAULT_N0,
+    f__mhz: float = DEFAULT_FREQ_MHZ,
+    polarization: int = 0,
+    epsilon: float = DEFAULT_EPSILON,
+    sigma: float = DEFAULT_SIGMA,
+    mdvar: int = 0,
+    time_pct: float = 50.0,
+    location_pct: float = 50.0,
+    situation_pct: float = 50.0,
+) -> ITMResult:
     """Compute ITM point-to-point basic transmission loss.
 
     Uses the bundled itm package from tedaks/pyitm.
