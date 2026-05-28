@@ -199,9 +199,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         profile_path, fresnel_poly_path, fresnel_lines_path, markers_path = _write_p2p_output_layers(
                 srs, dict(profile_dest=p.profile_dest, fresnel_dest=p.fresnel_dest,
                     markers_dest=p.markers_dest, temp_dir=temp_dir),
-                p.tx_lat, p.tx_lon, p.rx_lat, p.rx_lon, dist_m, result,
-                dist_arr, terrain_bulge, los_h, fresnel_r,
-                p.tx_h, p.rx_h, p.tx_gain, p.rx_gain, p.tx_power, p.rx_sens,
+                p, dist_m, result, dist_arr, terrain_bulge, los_h, fresnel_r,
                 itm_loss_db=loss_db)
         report_payload = build_p2p_report_payload(
             tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.rx_lat, rx_lon=p.rx_lon,
