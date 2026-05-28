@@ -42,6 +42,7 @@ from qgis.core import QgsProcessingException
 import math
 
 from NoWires.radio import validate_itm_input_ranges
+from NoWires.shared_params import warn_if_omni_preset_discards_directional
 from NoWires.comparison.params import collect_panel_params
 
 __all__ = ["run_panel_coverage"]
@@ -114,6 +115,9 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
         context=clutter_context,
     )
 
+    warn_if_omni_preset_discards_directional(
+        feedback, antenna_preset=p.antenna_preset,
+        antenna_bw_override=p.antenna_bw_override, downtilt_deg=p.downtilt_deg)
     try:
         result = compute_coverage(
             elev_grid=elev, tx_lat=p.tx_lat, tx_lon=p.tx_lon,
