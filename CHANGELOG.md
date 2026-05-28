@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - BEL: decouple BEL computation from `clutter_enabled` flag so BEL applies independently
 - Proxy: validate realm URL hostname and port before building opener URL
 - K-factor: relabel parameter to clarify it affects only Fresnel/LOS display, not ITM propagation
+- Coverage/Comparison: warn when ANTENNA_PRESET=0 (Omni) silently discards user-supplied beamwidth and downtilt values
+- Coverage/P2P: write temporary output layers under the saved project directory so layers survive reboot and cross-machine transfer
+
+### Changed
+
+- Coverage: extract algorithm helpers into `algorithm/_coverage_helpers.py` to stay under the 300-line source cap and prepare for Phase 3 dataclass migration
+- Contour: remove dead `contour_shp_path is None` check (the path is built unconditionally)
+- P2P algorithm: remove dead `try/finally` around `run_p2p_analysis` (the finally body was just `pass`)
 
 ### Robustness
 
