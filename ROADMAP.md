@@ -41,6 +41,42 @@ executor reused across calls, or wrap the `.submit()` in a `with` block.
 
 ### Correctness
 
+#### Coverage fails near the antimeridian — wrong-side cell centers
+
+`coverage_bounds` (`geo_bounds.py:42-48`) normalises `west` and `east`
+independently through `normalize_longitude`, so a TX near ±180° yields a
+wrapping pair where `west > east` (e.g. tx_lon=179.55 ⇒ west=179.45,
+east=−179.65). `radio_coverage/engine.py:117-121` passes that pair straight to
+`_coverage_axis_centers`, where `tasks.py:83` computes
+`step = (max_value - min_value) / size`. With wrapping bounds the step is
+strongly negative (≈ −5.6° / cell for a 64-grid), so the 64 cell centers
+sweep ~359° westward across the globe instead of the ~1° sliver near 180°.
+Every resulting cell is then farther than `radius_m` and discarded at
+`tasks.py:179`, producing zero tasks and a "No coverage pixels" error.
+
+**Fix:** In `_coverage_axis_centers` (or before calling it), detect the
+wrapping pair (`west > east`) and split into the two non-wrapping intervals
+that `geo_bounds.longitude_intervals` already returns. Generate centers for
+each interval, concatenate, and feed both halves into `_haversine_grid`.
+Regression test: TX at lat=0, lon=179.95, radius=20 km — assert
+`build_coverage_tasks` returns >0 tasks and that all cell longitudes lie
+within ±0.2° of the antimeridian (modulo 360).
+
+#### ITM exact float equality skips fallback propagation mode
+
+`itm/propagation.py:578-580` and `:583-586` test
+`if kHat_2 == 0.0` / `if kHat_1 == 0.0` to trigger the `kHat = M_d` fallback.
+Both `kHat` values are derived from `max(diff, 0.0) / divisor` where `diff`
+is a floating-point subtraction of dB losses. A mathematically-zero result
+can land at e.g. 1e-16 instead of exactly 0.0, so the fallback is silently
+skipped and the LOS branch continues with a non-physical near-zero slope.
+
+**Fix:** Replace both equality tests with a tolerance check, e.g.
+`if abs(kHat_2) < 1e-12`. Choose the tolerance against the dB-loss scale —
+1e-12 is conservative given typical `A_sML__db - A_0__db` magnitudes. Add a
+unit test that constructs a profile where `A_sML__db == A_0__db` to within
+float epsilon and asserts `propmode == LINE_OF_SIGHT` with `kHat == M_d`.
+
 #### BEL silently dropped in P2P/Batch simple-clutter mode
 
 `compute_terminal_clutter_losses` (`clutter/advanced.py:165-222`) splits on
@@ -221,6 +257,39 @@ Either change must update the user-facing docs to remove the implication that k
 affects propagation directly.
 
 ### Robustness
+
+#### Clamp P2P AOI latitude bounds to [-90, 90]
+
+`p2p/compute.py:98` computes
+`south, north = min(tx_lat, rx_lat) - pad, max(tx_lat, rx_lat) + pad`
+with no clamp. For polar links the padded bounds exceed ±90° and are then
+passed to `ensure_dem_for_area` (`p2p/compute.py:111-112`) and
+`ensure_clutter_grid_for_area`, producing invalid tile requests.
+`coverage_bounds` already does the clamp (`geo_bounds.py:40-41`); apply the
+same `max(-90.0, ...)` / `min(90.0, ...)` here. Regression test:
+`run_p2p_analysis` with TX/RX both at lat > 89° and a few-km link — assert
+the south/north arguments handed to the downloaders are within [-90, 90].
+
+#### Guard SAALOS above-canopy NaN propagation
+
+`clutter_loss_saalos` (`clutter/saalos.py:51-128`) computes `arte` through
+several `math.log10`, `math.sqrt`, and division expressions whose inputs can
+underflow to non-finite values; the below-canopy branch has an explicit
+`math.isnan(arte)` guard (`saalos.py:137-138`) but the above-canopy branch
+has none. The final clamp at `saalos.py:140-143` uses `< 0.0` / `> MAX`
+comparisons — both evaluate False for NaN, so a NaN `arte` passes through
+unchanged and contaminates downstream loss totals. The vectorised path has
+the same defect: `_saalos_vec_above` (`clutter/saalos.py:188-194`) lacks
+NaN sanitisation, and `np.clip` preserves NaN.
+
+**Fix:** After computing `arte` in the above-canopy branch, add the same
+`if math.isnan(arte): return MAX_CLUTTER_LOSS` guard used in the
+below-canopy branch. For the vectorised path, follow `np.clip` with
+`result[~np.isfinite(result)] = MAX_CLUTTER_LOSS` (restricted to the
+`active & above` mask). Regression test: feed inputs that drive `arte` to
+NaN in the above-canopy formula (e.g. `cch == h_tx`, very small `d`) and
+assert the scalar and vector outputs both return finite values within
+[0, MAX_CLUTTER_LOSS].
 
 #### Contiguous DEM array after south-up flip
 
