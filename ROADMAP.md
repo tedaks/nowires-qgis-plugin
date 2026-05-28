@@ -20,194 +20,7 @@ bump level is noted inline.
 
 ## Bug fixes (PATCH)
 
-### Resource leaks
-
-#### Broaden `__del__` exception guards
-
-`ElevationGrid.__del__` (`elevation.py:222`) has no try/except — crashes during
-interpreter shutdown with `AttributeError` when `__init__` was never called
-(confirmed in Docker integration warnings). `SharedDEMGrid.__del__`
-(`shared_dem_grid.py:190`) catches only `TypeError`, missing `AttributeError` for
-late-shutdown GC where module globals are `None`. Add `(TypeError, AttributeError)`
-to both, matching the pattern already in `TempDirManager.__del__`.
-
-#### ThreadPoolExecutor leak in tile_merge
-
-`tile_merge.py:100-102` creates `ThreadPoolExecutor(max_workers=1)` per clipped tile
-without `with` or explicit `shutdown()`. Orphan executors leave worker threads
-parked in `concurrent.futures.thread._threads_queues` until interpreter shutdown,
-so a 200-tile run accumulates ~200 idle threads. Fix: hoist a single module-level
-executor reused across calls, or wrap the `.submit()` in a `with` block.
-
 ### Correctness
-
-#### Coverage fails near the antimeridian — wrong-side cell centers
-
-`coverage_bounds` (`geo_bounds.py:42-48`) normalises `west` and `east`
-independently through `normalize_longitude`, so a TX near ±180° yields a
-wrapping pair where `west > east` (e.g. tx_lon=179.55 ⇒ west=179.45,
-east=−179.65). `radio_coverage/engine.py:117-121` passes that pair straight to
-`_coverage_axis_centers`, where `tasks.py:83` computes
-`step = (max_value - min_value) / size`. With wrapping bounds the step is
-strongly negative (≈ −5.6° / cell for a 64-grid), so the 64 cell centers
-sweep ~359° westward across the globe instead of the ~1° sliver near 180°.
-Every resulting cell is then farther than `radius_m` and discarded at
-`tasks.py:179`, producing zero tasks and a "No coverage pixels" error.
-
-**Fix:** In `_coverage_axis_centers` (or before calling it), detect the
-wrapping pair (`west > east`) and split into the two non-wrapping intervals
-that `geo_bounds.longitude_intervals` already returns. Generate centers for
-each interval, concatenate, and feed both halves into `_haversine_grid`.
-Regression test: TX at lat=0, lon=179.95, radius=20 km — assert
-`build_coverage_tasks` returns >0 tasks and that all cell longitudes lie
-within ±0.2° of the antimeridian (modulo 360).
-
-#### ITM exact float equality skips fallback propagation mode
-
-`itm/propagation.py:578-580` and `:583-586` test
-`if kHat_2 == 0.0` / `if kHat_1 == 0.0` to trigger the `kHat = M_d` fallback.
-Both `kHat` values are derived from `max(diff, 0.0) / divisor` where `diff`
-is a floating-point subtraction of dB losses. A mathematically-zero result
-can land at e.g. 1e-16 instead of exactly 0.0, so the fallback is silently
-skipped and the LOS branch continues with a non-physical near-zero slope.
-
-**Fix:** Replace both equality tests with a tolerance check, e.g.
-`if abs(kHat_2) < 1e-12`. Choose the tolerance against the dB-loss scale —
-1e-12 is conservative given typical `A_sML__db - A_0__db` magnitudes. Add a
-unit test that constructs a profile where `A_sML__db == A_0__db` to within
-float epsilon and asserts `propmode == LINE_OF_SIGHT` with `kHat == M_d`.
-
-#### BEL silently dropped in P2P/Batch simple-clutter mode
-
-`compute_terminal_clutter_losses` (`clutter/advanced.py:165-222`) splits on
-`advanced = context is not None and context.model == "advanced"`. The simple-mode
-branch (`clutter/advanced.py:174-180`) returns a `TerminalClutterLosses` with
-default `total_with_bel_db=0.0` and `rx_bel_db=0.0` — **BEL is never computed in
-simple mode**.
-
-P2P (`p2p/compute.py:184`) and Batch (`batch/outputs.py:140`) consume
-`cl.total_with_bel_db` directly, so simple-clutter runs in those algorithms
-produce byte-identical rasters/results whether BEL is enabled or disabled.
-
-Coverage is unaffected: it computes BEL on a separate path
-(`radio_coverage/tasks.py:127-135`) that fires in both simple and advanced modes.
-
-**Fix:** When `context.bel_enabled` is True, call `building_entry_loss` from the
-simple-mode branch at `clutter/advanced.py:174-180` and populate `rx_bel_db` /
-`total_with_bel_db` before returning. Add a regression test that asserts
-`total_with_bel_db > total_loss_db` for a simple-mode P2P link with BEL enabled.
-
-#### BEL gated on clutter_enabled across all algorithms
-
-Even after fixing the simple-mode path above, BEL still requires
-`clutter_enabled=True` to take effect:
-
-- Coverage: gate at `radio_coverage/tasks.py:128`
-  (`if clutter_enabled and clutter_context is not None and clutter_context.bel_enabled`)
-- P2P: `clutter_context` is built only when `p.clutter_enabled` is True
-  (`p2p/compute.py:174`); without it, BEL is skipped
-- Batch: same gating via `params.clutter_enabled` (`batch/outputs.py:124`)
-
-A user enabling BEL but leaving clutter off gets a byte-identical raster to a
-BEL-off run, with no warning.
-
-**Why this is wrong:** BEL models a receiver inside a building. It is
-physically independent of outdoor terrain clutter — a rural receiver inside a
-thermally-efficient building can have 25–35 dB BEL even when outdoor clutter
-loss is zero. The current gating ties two unrelated effects.
-
-**Fix:** Decouple BEL from `clutter_enabled`. Compute it whenever `bel_enabled`
-is True, regardless of clutter state. Cleanest path: lift BEL out of the
-clutter pipeline into a standalone helper that takes only the BEL inputs
-(`frequency_mhz`, `bel_building_type`, `bel_elevation_angle_deg`, `percentile`)
-and is applied to `prx` after the clutter total, with no precondition on
-`clutter_enabled`. Update UI so BEL parameters are visible/enabled even when
-"Clutter Correction" is off.
-
-Add regression tests:
-- P2P with `clutter_enabled=False, bel_enabled=True` produces non-zero BEL
-- Coverage with `clutter_enabled=False, bel_enabled=True` produces a raster
-  that differs from the same run with `bel_enabled=False`
-
-#### Proxy realm host/port validation
-
-`contour/pipeline.py:60-64` formats `proxy_base_url` from `parsed_realm.hostname`
-and `.port` without a None check. A malformed realm URL (e.g. a bare hostname with
-no scheme) yields `http://None:None` and downloads fail silently. Validate both
-fields, surface a clear `feedback.pushWarning`, and return None instead of building
-a broken opener.
-
-#### Omni-preset silent-snap warning
-
-When `ANTENNA_PRESET=0` (Omni), `radio_coverage/params.py:220-223` forces
-`antenna_az=None` and `antenna_bw_override=360.0` regardless of the
-`ANTENNA_AZ`, `ANTENNA_BW`, and `DOWNTILT_DEG` values the user supplied. The
-snap is intentional (omni means omni), but it is **silent** — the user gets no
-feedback that their directional inputs were discarded.
-
-**Evidence from run08:** four scenarios (`cov_antenna_downtilt`,
-`cov_antenna_sector_65deg`, `cov_antenna_downtilt_only`,
-`cov_antenna_sector_65deg_only`) all passed `ANTENNA_PRESET=0` with non-default
-BW (65) or DOWNTILT (6) values, and produced byte-identical rasters to the
-omni baseline (md5 `d3187996…`). A reasonable test author assumed the
-parameters would take effect; the plugin gave no hint they had not.
-
-**Fix:** When `ANTENNA_PRESET=0` and any of `ANTENNA_AZ`, `ANTENNA_BW != 360.0`,
-or `DOWNTILT_DEG != 0.0` is set, emit a single `feedback.pushInfo` line such as:
-
-> "Note: ANTENNA_BW=65.0 and DOWNTILT_DEG=6.0 ignored — preset=Omni snaps both
-> to omnidirectional defaults. Choose preset=Custom (or a sector preset) to
-> apply directional values."
-
-Apply the same guard to the Comparison and Batch algorithms (which share
-`shared_params.add_advanced_itm_params`). Add a regression test that asserts
-the info line is pushed when the snap fires.
-
-#### Project-relative output paths for temporary layers
-
-When coverage or P2P is run as "Temporary Output", the raster and marker GPKG
-are written to `/tmp/NoWires-<user>/`. The paths are stored in the QGIS project
-file but `/tmp` is cleaned by `systemd-tmpfiles` on reboot — layers are missing
-after reopen. Moving the project to another computer breaks the paths entirely.
-
-**Affected paths:**
-
-| Algorithm | File | Temporary output written to |
-|-----------|------|----------------------------|
-| Coverage | `algorithm/coverage.py:87` | `coverage_prx.tif` |
-| Coverage | `algorithm/coverage.py:148` | `tx_marker.gpkg` |
-| P2P | `p2p/compute.py:193` | `profile_line.gpkg`, `fresnel_poly.gpkg`, `markers.gpkg` |
-
-DEM/WorldCover caches, intermediate merges, and contour outputs are already
-transient or user-specified — not affected.
-
-**Design:**
-
-Extract a shared helper that detects whether the QGIS project has been saved:
-
-```python
-def _project_or_temp_dir(tmp_mgr, context, feedback, name):
-    proj = context.project().fileName()
-    if proj:
-        out = os.path.join(os.path.dirname(proj), "nowires_" + name)
-        os.makedirs(out, exist_ok=True)
-        return out
-    out = tmp_mgr.make_dir(name, persistent=True)
-    tmp_mgr.warn_persistent(feedback)
-    return out
-```
-
-- Saved project → write to `<project_dir>/nowires_coverage/` (or `nowires_p2p/`)
-- Unsaved project → fall back to existing `/tmp` behavior
-
-**Portability:** Cross-machine transfer works when the user enables QGIS project
-settings → General → "Save paths as relative". QGIS normalises absolute paths to
-`./nowires_coverage/` on save and resolves `./` relative to the project file on
-open. Same-machine reboot survival works without any user action.
-
-**Classification note:** PATCH because the saved-project case currently produces
-broken behavior (data loss on reboot). The conditional output-path logic is
-additive but framed as a robustness fix.
 
 #### K-factor parameter does not affect ITM propagation prediction
 
@@ -239,91 +52,23 @@ that is how the standard works. The bundled `itm` package has no k_factor input
 parameter. So the propagation prediction already responds to refractivity — it
 just responds to N0, not to k.
 
-**Fix options:**
+**Fix options (option 1 landed in v1.7.0; options 2-3 still open):**
 
-1. **Relabel/document** *(PATCH — this section)*. Rename the parameter
-   "Fresnel Earth-radius factor" and add a tooltip explaining it affects only
-   Fresnel/LOS display, not ITM loss. Direct users wanting to model anomalous
-   refractivity to the N0 advanced ITM parameter. Smallest blast radius.
-2. **Couple preset to N0** *(MAJOR — default change)*. Map each preset to a
+1. **Couple preset to N0** *(MAJOR — default change)*. Map each preset to a
    representative N0 value (sub-refractive → low N0, super-refractive → high
    N0) so changing the preset changes propagation prediction too. Requires
    care: presets currently let the user pick k independent of N0, and these
    two are physically related — coupling them removes a degree of freedom that
-   some users may rely on. Use an opt-in "tie k-factor to N0" checkbox if
-   going this route *(this opt-in form is MINOR — additive)*.
+   some users may rely on.
+2. **Opt-in "tie k-factor to N0" checkbox** *(MINOR — additive)*. Preserves
+   today's independence while letting users opt into the coupling above.
 
 Either change must update the user-facing docs to remove the implication that k
 affects propagation directly.
 
-### Robustness
-
-#### Clamp P2P AOI latitude bounds to [-90, 90]
-
-`p2p/compute.py:98` computes
-`south, north = min(tx_lat, rx_lat) - pad, max(tx_lat, rx_lat) + pad`
-with no clamp. For polar links the padded bounds exceed ±90° and are then
-passed to `ensure_dem_for_area` (`p2p/compute.py:111-112`) and
-`ensure_clutter_grid_for_area`, producing invalid tile requests.
-`coverage_bounds` already does the clamp (`geo_bounds.py:40-41`); apply the
-same `max(-90.0, ...)` / `min(90.0, ...)` here. Regression test:
-`run_p2p_analysis` with TX/RX both at lat > 89° and a few-km link — assert
-the south/north arguments handed to the downloaders are within [-90, 90].
-
-#### Guard SAALOS above-canopy NaN propagation
-
-`clutter_loss_saalos` (`clutter/saalos.py:51-128`) computes `arte` through
-several `math.log10`, `math.sqrt`, and division expressions whose inputs can
-underflow to non-finite values; the below-canopy branch has an explicit
-`math.isnan(arte)` guard (`saalos.py:137-138`) but the above-canopy branch
-has none. The final clamp at `saalos.py:140-143` uses `< 0.0` / `> MAX`
-comparisons — both evaluate False for NaN, so a NaN `arte` passes through
-unchanged and contaminates downstream loss totals. The vectorised path has
-the same defect: `_saalos_vec_above` (`clutter/saalos.py:188-194`) lacks
-NaN sanitisation, and `np.clip` preserves NaN.
-
-**Fix:** After computing `arte` in the above-canopy branch, add the same
-`if math.isnan(arte): return MAX_CLUTTER_LOSS` guard used in the
-below-canopy branch. For the vectorised path, follow `np.clip` with
-`result[~np.isfinite(result)] = MAX_CLUTTER_LOSS` (restricted to the
-`active & above` mask). Regression test: feed inputs that drive `arte` to
-NaN in the above-canopy formula (e.g. `cch == h_tx`, very small `d`) and
-assert the scalar and vector outputs both return finite values within
-[0, MAX_CLUTTER_LOSS].
-
-#### Contiguous DEM array after south-up flip
-
-`elevation.py:143` assigns `self.data = self.data[::-1]`, producing a reversed
-view rather than a contiguous copy. The sibling `clutter/grid.py:83` already does
-`data[::-1].copy()` — match it (`np.ascontiguousarray(self.data[::-1])`) so the
-bilinear hot path operates on contiguous memory.
-
 ## Cleanups (PATCH)
 
-### Dead code
-
-#### Remove dead `contour_shp_path is None` check in contour algorithm
-
-`algorithm/contour.py:205-207` checks `if contour_shp_path is None` but
-`generate_contour_lines()` (`contour/generation.py:71`) never returns `None` —
-it either returns the path or raises `RuntimeError`. The `None` branch is
-unreachable. Either remove it or replace with a feature-count validation.
-
-#### Remove dead try/finally in P2P algorithm
-
-`algorithm/p2p.py:182-191` wraps `run_p2p_analysis(p2p_params)` in `try/finally`
-where the finally body is `pass` plus an explanatory comment. The wrapper does
-nothing — drop it and keep the comment near the call site.
-
 ### Decomposition
-
-#### Split `algorithm/coverage.py` before next addition
-
-`algorithm/coverage.py` is at exactly 300 lines — the AGENTS.md cap. Any new
-helper or parameter forces an emergency extraction. Pre-emptively move
-`_build_clutter_context` and `_write_coverage_outputs` into a new
-`radio_coverage/coverage_outputs.py`. Golden-file tests
-(`tests/test_report_export_golden.py`) verify zero behavior change.
 
 #### Decompose `download_tile_with_retry` into staged helpers
 

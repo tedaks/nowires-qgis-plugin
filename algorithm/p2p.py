@@ -179,16 +179,9 @@ class P2PAlgorithm(NoWiresAlgorithm):
             output_report_html=self.OUTPUT_REPORT_HTML,
             post_processor_sink=self._p2p_post_processors,
         )
-        try:
-            return run_p2p_analysis(p2p_params)
-        finally:
-            # Clutter grid lifecycle: a user-provided grid (loaded from
-            # clutter_raster_path above) is owned by the caller and MUST NOT
-            # be closed here. Auto-downloaded grids are handled internally by
-            # run_p2p_analysis() which tracks owns_clutter_grid and cleans up
-            # in its own finally block. The algorithm-level clutter_grid is
-            # only non-None for user-provided rasters -- skip close entirely.
-            pass
+        # Clutter grid lifecycle: user-provided grids stay owned by the caller;
+        # auto-downloaded grids are closed inside run_p2p_analysis's own finally.
+        return run_p2p_analysis(p2p_params)
 
     def name(self):
         return "p2p_analysis"

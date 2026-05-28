@@ -28,6 +28,7 @@ import logging
 import os
 import sys
 import tempfile
+from typing import Any
 
 from qgis.PyQt.QtCore import QTimer
 from qgis.PyQt.QtGui import QAction, QIcon, QPixmap
@@ -83,15 +84,15 @@ class NoWiresPlugin:
     All functionality is exposed via QGIS Processing algorithms.
     """
 
-    def __init__(self, iface):
-        self.provider = None
+    def __init__(self, iface: Any) -> None:
+        self.provider: Any = None
         self.iface = iface
-        self._toolbar_actions = []
-        self._menu_actions = []
-        self._opacity_dialog = None
-        self._pattern_preview_dialog = None
+        self._toolbar_actions: list = []
+        self._menu_actions: list = []
+        self._opacity_dialog: Any = None
+        self._pattern_preview_dialog: Any = None
 
-    def initProcessing(self):
+    def initProcessing(self) -> None:
         """Register the processing provider."""
         registry = QgsApplication.processingRegistry()
         if self.provider is not None:
@@ -102,7 +103,7 @@ class NoWiresPlugin:
         self.provider = NoWiresProvider()
         registry.addProvider(self.provider)
 
-    def initGui(self):
+    def initGui(self) -> None:
         """Initialize GUI elements."""
         self.initProcessing()
 
@@ -139,7 +140,7 @@ class NoWiresPlugin:
         QTimer.singleShot(5000, self._warn_stale_temp_dirs)
         QTimer.singleShot(5000, self._cleanup_stale_shared_memory)
 
-    def _warn_stale_temp_dirs(self):
+    def _warn_stale_temp_dirs(self) -> None:
         """Log a warning about stale temporary directories (deferred from initGui)."""
         stale = _stale_temp_dir_count()
         if stale > 0:
@@ -160,7 +161,7 @@ class NoWiresPlugin:
         except OSError as exc:
             logger.debug("shared memory cleanup: %s", exc)
 
-    def run_clear_cache(self):
+    def run_clear_cache(self) -> None:
         """Show current cache size and clear DEM/WorldCover tiles on confirmation."""
         try:
             count, size_bytes = get_cache_size()
@@ -182,14 +183,14 @@ class NoWiresPlugin:
             self.iface.messageBar().pushWarning(
                 "NoWires", "Cache cleanup failed: {}".format(exc))
 
-    def unload(self):
+    def unload(self) -> None:
         """Remove plugin elements."""
         if self._opacity_dialog is not None:
             self._opacity_dialog.close()
             self._opacity_dialog = None
         if self._pattern_preview_dialog is not None:
             self._pattern_preview_dialog.close()
-            self._pattern_preview_dialog = None
+        self._pattern_preview_dialog = None
         remove_coverage_legend()
         if self.provider is not None:
             QgsApplication.processingRegistry().removeProvider(self.provider)
@@ -199,19 +200,19 @@ class NoWiresPlugin:
         for action in getattr(self, "_toolbar_actions", []):
             self.iface.removeToolBarIcon(action)
 
-    def run_p2p(self):
+    def run_p2p(self) -> None:
         import processing
         processing.execAlgorithmDialog("nowires:p2p_analysis")
 
-    def run_coverage(self):
+    def run_coverage(self) -> None:
         import processing
         processing.execAlgorithmDialog("nowires:coverage_analysis")
 
-    def run_contour(self):
+    def run_contour(self) -> None:
         import processing
         processing.execAlgorithmDialog("nowires:contour_lines")
 
-    def run_coverage_opacity(self):
+    def run_coverage_opacity(self) -> None:
         layer = find_latest_coverage_layer()
         if layer is None:
             self.iface.messageBar().pushWarning(
@@ -228,7 +229,7 @@ class NoWiresPlugin:
         self._opacity_dialog.destroyed.connect(lambda: setattr(self, '_opacity_dialog', None))
         self._opacity_dialog.show()
 
-    def run_open_3d_view(self):
+    def run_open_3d_view(self) -> None:
         parent = self.iface.mainWindow()
         mode_label, ok = QInputDialog.getItem(
             parent,
@@ -246,15 +247,15 @@ class NoWiresPlugin:
             0, lambda mode=scene_mode: open_nowires_3d_view(self.iface, scene_mode=mode)
         )
 
-    def run_comparison(self):
+    def run_comparison(self) -> None:
         import processing
         processing.execAlgorithmDialog("nowires:coverage_comparison")
 
-    def run_batch(self):
+    def run_batch(self) -> None:
         import processing
         processing.execAlgorithmDialog("nowires:batch_p2p_analysis")
 
-    def run_pattern_preview(self):
+    def run_pattern_preview(self) -> None:
         from NoWires.antenna_pattern_preview import AntennaPatternPreviewDialog
         if self._pattern_preview_dialog is not None:
             self._pattern_preview_dialog.close()

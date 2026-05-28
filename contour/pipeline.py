@@ -59,6 +59,13 @@ def setup_proxy_opener(auth_id, feedback):
         proxy_scheme = parsed_realm.scheme or "http"
         proxy_host = parsed_realm.hostname
         proxy_port = parsed_realm.port
+        if proxy_host is None or proxy_port is None:
+            if feedback:
+                feedback.pushWarning(
+                    "Proxy realm URL is malformed: '{}' — "
+                    "hostname and port are required. Proxy downloads disabled.".format(
+                        realm_url))
+            return None
         proxy_user = auth_info["username"]
         proxy_pass = auth_info["password"]
         proxy_base_url = "{}://{}:{}".format(proxy_scheme, proxy_host, proxy_port)

@@ -50,6 +50,112 @@ def _redact_query(url: str) -> str:
 def _backoff_seconds(attempt: int) -> float:
     return float(2 ** attempt + random.uniform(0, 1))
 
+
+def _serve_from_cache(local_tif, base_name_label, feedback):
+    if not os.path.exists(local_tif):
+        return None
+    test_ds = gdal.Open(local_tif)
+    if test_ds is not None:
+        try:
+            band_count = test_ds.RasterCount
+            xsize = test_ds.RasterXSize
+            ysize = test_ds.RasterYSize
+            if xsize > 0 and ysize > 0 and band_count >= 1:
+                if verify_checksum(local_tif):
+                    logger.debug("Cache hit: %s (%dx%d)", base_name_label, xsize, ysize)
+                    if feedback:
+                        feedback.pushInfo("Cache hit: " + base_name_label)
+                    return local_tif
+                logger.warning("Cached tile %s checksum mismatch; re-downloading",
+                               base_name_label)
+            else:
+                logger.warning("Cached tile %s has degenerate dimensions; re-downloading",
+                               base_name_label)
+        finally:
+            test_ds = None
+    else:
+        logger.warning("Cached tile %s failed validation; re-downloading",
+                       base_name_label)
+    try:
+        os.unlink(local_tif)
+    except OSError:
+        pass
+    cleanup_sidecar(local_tif)
+    return None
+
+
+def _download_to_tmp(opener, tile_url, tmp_path, base_url, socket_timeout,
+                     max_bytes, base_name_label, feedback):
+    with opener.open(tile_url, timeout=socket_timeout) as response:
+        final_url = response.geturl()
+        if base_url is not None:
+            base = urlsplit(base_url)
+            final = urlsplit(final_url)
+            if (final.netloc.lower() != base.netloc.lower()
+                    or final.scheme != base.scheme):
+                raise RuntimeError("Unexpected redirect to: " + final_url)
+        content_length_hdr = response.headers.get("Content-Length")
+        if content_length_hdr is None:
+            expected_size = 0
+        else:
+            expected_size = int(content_length_hdr)
+            if reject_oversized_content_length(
+                expected_size, max_bytes, base_name_label, feedback):
+                return None, 0
+        bytes_received = 0
+        with open(tmp_path, "wb") as f:
+            while True:
+                if feedback and feedback.isCanceled():
+                    f.flush()
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+                    return None, 0
+                chunk = response.read(65536)
+                if not chunk:
+                    break
+                if cap_exceeded(bytes_received, len(chunk), max_bytes,
+                                base_name_label, f, tmp_path):
+                    return None, 0
+                f.write(chunk)
+                bytes_received += len(chunk)
+            f.flush()
+            os.fsync(f.fileno())
+    return bytes_received, expected_size
+
+
+def _validate_downloaded_tile(tmp_path):
+    test_ds = gdal.Open(tmp_path)
+    if test_ds is None:
+        return False
+    test_ds = None
+    return True
+
+
+_GIVE_UP = "give_up"
+_RETRY_AFTER = "retry_after"
+_RETRY_BACKOFF = "retry_backoff"
+
+
+def _classify_http_error(e, attempt):
+    if isinstance(e, urllib.error.HTTPError):
+        if e.code == 404:
+            return _GIVE_UP, 0.0
+        retryable_codes = {408, 425, 429}
+        if e.code in retryable_codes or e.code >= 500:
+            retry_after = e.headers.get("Retry-After")
+            if retry_after:
+                try:
+                    wait_secs = float(max(int(retry_after), 1))
+                    return _RETRY_AFTER, wait_secs
+                except ValueError:
+                    pass
+            return _RETRY_BACKOFF, _backoff_seconds(attempt)
+        return _GIVE_UP, 0.0
+    return _RETRY_BACKOFF, _backoff_seconds(attempt)
+
+
 def download_tile_with_retry(
     tile_url, local_tif, base_name_label, feedback=None,
     max_retries=3, socket_timeout=60, valid_tile_re=None,
@@ -61,34 +167,10 @@ def download_tile_with_retry(
         logger.error("Invalid tile name rejected: %s", base_name_label)
         return None
 
-    if os.path.exists(local_tif):
-        test_ds = gdal.Open(local_tif)
-        if test_ds is not None:
-            try:
-                band_count = test_ds.RasterCount
-                xsize = test_ds.RasterXSize
-                ysize = test_ds.RasterYSize
-                if xsize > 0 and ysize > 0 and band_count >= 1:
-                    if verify_checksum(local_tif):
-                        logger.debug("Cache hit: %s (%dx%d)", base_name_label, xsize, ysize)
-                        if feedback:
-                            feedback.pushInfo("Cache hit: " + base_name_label)
-                        return local_tif
-                    logger.warning("Cached tile %s checksum mismatch; re-downloading",
-                                   base_name_label)
-                else:
-                    logger.warning("Cached tile %s has degenerate dimensions; re-downloading",
-                                   base_name_label)
-            finally:
-                test_ds = None
-        else:
-            logger.warning("Cached tile %s failed validation; re-downloading",
-                           base_name_label)
-        try:
-            os.unlink(local_tif)
-        except OSError:
-            pass
-        cleanup_sidecar(local_tif)
+    cached = _serve_from_cache(local_tif, base_name_label, feedback)
+    if cached is not None:
+        return cached
+
     if feedback:
         feedback.pushInfo("Downloading: " + _redact_query(tile_url))
     logger.debug("Downloading full URL: %s", tile_url)
@@ -106,42 +188,11 @@ def download_tile_with_retry(
                 feedback.pushInfo("Download budget exceeded: " + base_name_label)
             break
         try:
-            with opener.open(tile_url, timeout=socket_timeout) as response:
-                final_url = response.geturl()
-                if base_url is not None:
-                    base = urlsplit(base_url)
-                    final = urlsplit(final_url)
-                    if (final.netloc.lower() != base.netloc.lower()
-                            or final.scheme != base.scheme):
-                        raise RuntimeError("Unexpected redirect to: " + final_url)
-                content_length_hdr = response.headers.get("Content-Length")
-                if content_length_hdr is None:
-                    expected_size = 0
-                else:
-                    expected_size = int(content_length_hdr)
-                    if reject_oversized_content_length(
-                        expected_size, max_bytes, base_name_label, feedback):
-                        return None
-                bytes_received = 0
-                with open(tmp_path, "wb") as f:
-                    while True:
-                        if feedback and feedback.isCanceled():
-                            f.flush()
-                            try:
-                                os.unlink(tmp_path)
-                            except OSError:
-                                pass
-                            return None
-                        chunk = response.read(65536)
-                        if not chunk:
-                            break
-                        if cap_exceeded(bytes_received, len(chunk), max_bytes,
-                                        base_name_label, f, tmp_path):
-                            return None
-                        f.write(chunk)
-                        bytes_received += len(chunk)
-                    f.flush()
-                    os.fsync(f.fileno())
+            bytes_received, expected_size = _download_to_tmp(
+                opener, tile_url, tmp_path, base_url, socket_timeout,
+                max_bytes, base_name_label, feedback)
+            if bytes_received is None:
+                return None
 
             if expected_size > 0 and bytes_received != expected_size:
                 logger.warning("Incomplete download %s: %d/%d bytes",
@@ -156,8 +207,7 @@ def download_tile_with_retry(
                 raise ValueError("Incomplete download: {} of {} bytes".format(
                     bytes_received, expected_size))
 
-            test_ds = gdal.Open(tmp_path)
-            if test_ds is None:
+            if not _validate_downloaded_tile(tmp_path):
                 logger.warning("Downloaded tile is corrupt: %s", base_name_label)
                 try:
                     os.unlink(tmp_path)
@@ -167,41 +217,31 @@ def download_tile_with_retry(
                     time.sleep(_backoff_seconds(attempt))
                     continue
                 break
-            test_ds = None
             os.replace(tmp_path, local_tif)
             write_checksum(local_tif)
             downloaded = True
             break
 
         except urllib.error.HTTPError as e:
-            retryable_codes = {408, 425, 429}
-            if e.code == 404:
-                logger.info("Tile not available (404): %s", base_name_label)
-                if feedback:
-                    feedback.pushInfo("Tile not available (HTTP 404): " + base_name_label)
-                break
-            elif e.code in retryable_codes or e.code >= 500:
-                retry_after = e.headers.get("Retry-After")
-                if retry_after:
-                    try:
-                        wait_secs = float(max(int(retry_after), 1))
-                    except ValueError:
-                        wait_secs = _backoff_seconds(attempt)
+            action, wait_secs = _classify_http_error(e, attempt)
+            if action == _GIVE_UP:
+                if e.code == 404:
+                    logger.info("Tile not available (404): %s", base_name_label)
+                    if feedback:
+                        feedback.pushInfo("Tile not available (HTTP 404): " + base_name_label)
                 else:
-                    wait_secs = _backoff_seconds(attempt)
-                msg = "HTTP {} on {} (attempt {}/{}); retry in {}s".format(
-                    e.code, base_name_label, attempt + 1, max_retries, wait_secs)
-                logger.warning(msg)
-                if feedback:
-                    feedback.pushInfo(msg)
-                if attempt < max_retries - 1:
-                    time.sleep(wait_secs)
-            else:
-                msg = "HTTP {} on {} (non-retryable)".format(e.code, base_name_label)
-                logger.error(msg)
-                if feedback:
-                    feedback.pushWarning(msg)
+                    msg = "HTTP {} on {} (non-retryable)".format(e.code, base_name_label)
+                    logger.error(msg)
+                    if feedback:
+                        feedback.pushWarning(msg)
                 break
+            msg = "HTTP {} on {} (attempt {}/{}); retry in {:.1f}s".format(
+                e.code, base_name_label, attempt + 1, max_retries, wait_secs)
+            logger.warning(msg)
+            if feedback:
+                feedback.pushInfo(msg)
+            if attempt < max_retries - 1:
+                time.sleep(wait_secs)
         except Exception as e:
             logger.warning("Error downloading %s (attempt %d/%d): %s",
                 base_name_label, attempt + 1, max_retries, e)

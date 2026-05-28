@@ -13,36 +13,22 @@ from NoWires.radio_coverage.reporting import (
     report_coverage_results,
     write_coverage_geotiff,
 )
+from NoWires.radio_coverage.coverage_grids import CoverageGrids
+from NoWires.radio_coverage.analysis_params import CoverageAnalysisParams
 
 
 def _tx_clutter(loss=0.0):
     return SimpleNamespace(tx_loss_db=loss)
 
 
-def _base_payload_kwargs():
-    return {
-        "tx_lat": 1.75,
-        "tx_lon": 0.5,
-        "tx_h": 30.0,
-        "rx_h": 10.0,
-        "f_mhz": 900.0,
-        "radius_km": 1.0,
-        "grid_size": 2,
-        "polarization": 1,
-        "climate": 1,
-        "time_pct": 50.0,
-        "location_pct": 50.0,
-        "situation_pct": 50.0,
-        "tx_power": 43.0,
-        "tx_gain": 8.0,
-        "rx_gain": 2.0,
-        "cable_loss": 2.0,
-        "rx_sens": -100.0,
-        "clutter_enabled": True,
-        "antenna_preset": 0,
-        "clutter_source": "memory",
-        "tx_clutter_for_report": _tx_clutter(2.0),
-    }
+def _base_params():
+    return CoverageAnalysisParams(
+        tx_lat=1.75, tx_lon=0.5, tx_h=30.0, rx_h=10.0,
+        f_mhz=900.0, radius_km=1.0, grid_size=2, polarization=1,
+        climate=1, time_pct=50.0, location_pct=50.0, situation_pct=50.0,
+        tx_power=43.0, tx_gain=8.0, rx_gain=2.0, cable_loss=2.0,
+        rx_sens=-100.0, clutter_enabled=True, antenna_preset=0,
+    )
 
 
 def test_build_coverage_report_payload_flips_grid_for_raster_summary():
@@ -90,17 +76,14 @@ def test_build_coverage_report_payload_flips_grid_for_raster_summary():
     )
 
     payload, raster_grid, valid, summary = build_coverage_report_payload_for_grid(
-        prx_grid=prx_grid,
-        loss_grid=loss_grid,
-        itm_loss_grid=itm_loss_grid,
-        clutter_loss_grid=clutter_loss_grid,
-        clutter_rx_db_grid=clutter_rx_db_grid,
-        bel_rx_db_grid=bel_rx_db_grid,
-        min_lat=0.0,
-        max_lat=2.0,
-        min_lon=0.0,
-        max_lon=1.0,
-        **_base_payload_kwargs(),
+        grids=CoverageGrids(
+            prx_grid=prx_grid, loss_grid=loss_grid, itm_loss_grid=itm_loss_grid,
+            clutter_loss_grid=clutter_loss_grid, clutter_rx_db_grid=clutter_rx_db_grid,
+            bel_rx_db_grid=bel_rx_db_grid, min_lat=0.0, max_lat=2.0,
+            min_lon=0.0, max_lon=1.0),
+        params=_base_params(),
+        clutter_source="memory",
+        tx_clutter_for_report=_tx_clutter(2.0),
     )
 
     assert raster_grid.tolist() == [[-95.0, -130.0], [-130.0, -130.0]]
@@ -119,17 +102,14 @@ def test_build_coverage_report_payload_handles_all_nan_grid():
     prx_grid = np.full((2, 2), np.nan, dtype=np.float32)
 
     payload, raster_grid, valid, summary = build_coverage_report_payload_for_grid(
-        prx_grid=prx_grid,
-        loss_grid=prx_grid.copy(),
-        itm_loss_grid=prx_grid.copy(),
-        clutter_loss_grid=prx_grid.copy(),
-        clutter_rx_db_grid=prx_grid.copy(),
-        bel_rx_db_grid=prx_grid.copy(),
-        min_lat=0.0,
-        max_lat=2.0,
-        min_lon=0.0,
-        max_lon=1.0,
-        **_base_payload_kwargs(),
+        grids=CoverageGrids(
+            prx_grid=prx_grid, loss_grid=prx_grid.copy(),
+            itm_loss_grid=prx_grid.copy(), clutter_loss_grid=prx_grid.copy(),
+            clutter_rx_db_grid=prx_grid.copy(), bel_rx_db_grid=prx_grid.copy(),
+            min_lat=0.0, max_lat=2.0, min_lon=0.0, max_lon=1.0),
+        params=_base_params(),
+        clutter_source="memory",
+        tx_clutter_for_report=_tx_clutter(2.0),
     )
 
     assert summary is None
@@ -147,19 +127,17 @@ def test_build_coverage_report_payload_labels_advanced_clutter():
     clutter_loss_grid = np.array([[7.0]], dtype=np.float32)
     clutter_rx_db_grid = np.array([[5.0]], dtype=np.float32)
 
+    params = _base_params()
+    params.clutter_model = "advanced"
     payload, _raster_grid, _valid, _summary = build_coverage_report_payload_for_grid(
-        prx_grid=prx_grid,
-        loss_grid=loss_grid,
-        itm_loss_grid=itm_loss_grid,
-        clutter_loss_grid=clutter_loss_grid,
-        clutter_rx_db_grid=clutter_rx_db_grid,
-        bel_rx_db_grid=np.array([[0.0]], dtype=np.float32),
-        min_lat=0.0,
-        max_lat=1.0,
-        min_lon=0.0,
-        max_lon=1.0,
-        clutter_model="advanced",
-        **_base_payload_kwargs(),
+        grids=CoverageGrids(
+            prx_grid=prx_grid, loss_grid=loss_grid, itm_loss_grid=itm_loss_grid,
+            clutter_loss_grid=clutter_loss_grid, clutter_rx_db_grid=clutter_rx_db_grid,
+            bel_rx_db_grid=np.array([[0.0]], dtype=np.float32),
+            min_lat=0.0, max_lat=1.0, min_lon=0.0, max_lon=1.0),
+        params=params,
+        clutter_source="memory",
+        tx_clutter_for_report=_tx_clutter(2.0),
     )
 
     assert payload["inputs"]["clutter_model"] == "Advanced clutter correction"
