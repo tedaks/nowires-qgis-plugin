@@ -13,7 +13,8 @@ def _project_or_temp_dir(tmp_mgr, context, feedback, name):
     and cross-machine transfer (when QGIS "Save paths as relative" is enabled).
     Otherwise falls back to the existing ``/tmp``-based TempDirManager behavior.
     """
-    proj = context.project().fileName()
+    _project = context.project()
+    proj = _project.fileName() if _project is not None else ""
     if proj:
         out = os.path.join(os.path.dirname(proj), "nowires_" + name)
         os.makedirs(out, exist_ok=True)
