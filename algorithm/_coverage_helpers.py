@@ -18,6 +18,7 @@ from NoWires.clutter import (
 )
 from NoWires.geo_bounds import aoi_padding_deg, coverage_bounds
 from NoWires.processing_utils import queue_layer_for_loading, register_destination_layer
+from NoWires.three_d import remember_nowires_3d_layers
 from NoWires.radio_coverage.reporting import (
     build_coverage_report_payload_for_grid, report_coverage_results,
     write_coverage_geotiff,
@@ -150,6 +151,8 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
         if tx_layer.isValid():
             queue_layer_for_loading(context, tx_layer, "Coverage TX")
             algorithm._vector_layer_ids.append(tx_layer.id())
+        remember_nowires_3d_layers(
+            context.project(), dem_layer=dem_layer, coverage_layer=raster_layer)
     else:
         feedback.pushWarning(
             "Could not load coverage raster layer: {}".format(raster_layer.error().summary()))
