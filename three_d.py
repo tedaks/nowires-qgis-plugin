@@ -101,6 +101,8 @@ def remember_nowires_3d_layers(
     project, dem_layer=None, coverage_layer=None, contour_layer=None
 ):
     """Store the latest NoWires layers used for opening a 3D scene."""
+    if project is None:
+        return
     entries = {
         ENTRY_KEY_LAST_DEM: dem_layer.id() if dem_layer else "",
         ENTRY_KEY_LAST_COVERAGE: coverage_layer.id() if coverage_layer else "",

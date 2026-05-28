@@ -27,6 +27,7 @@ from NoWires.clutter import (compute_terminal_clutter_losses,
 from NoWires.p2p.params import report_p2p_results
 from NoWires.processing_utils import queue_layer_for_loading, register_destination_layer
 from NoWires.p2p.chart import show_profile_chart
+from NoWires.three_d import remember_nowires_3d_layers
 from NoWires.p2p.outputs_internal import _write_p2p_output_layers, _write_p2p_reports
 
 logger = logging.getLogger(__name__)
@@ -73,6 +74,7 @@ def _load_p2p_qgis_layers(context, profile_path, fresnel_poly_path,
     if fresnel_lines_layer.isValid():
         apply_fresnel_lines_symbology(fresnel_lines_layer)
     queue_layer_for_loading(context, fresnel_lines_layer, "Fresnel Zone Lines")
+    remember_nowires_3d_layers(context.project())
     if show_chart:
         try:
             show_profile_chart(**chart_kwargs)
