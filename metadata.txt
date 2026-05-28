@@ -22,6 +22,7 @@ changelog=
     - Correctness: validate proxy realm URL hostname and port before building opener
     - Correctness: relabel K-factor parameter to clarify Fresnel/LOS-only scope
     - Robustness: broaden ElevationGrid/SharedDEMGrid __del__ exception guards
+    - Robustness: move attribute check inside try block in TempDirManager.__del__
     - Robustness: wrap ThreadPoolExecutor in with block to prevent thread leak
     - Robustness: clamp P2P AOI latitude bounds to [-90, 90] for polar links
     - Robustness: guard SAALOS above-canopy branch against NaN propagation

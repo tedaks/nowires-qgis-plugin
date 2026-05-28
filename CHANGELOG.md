@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Robustness
 
 - `__del__`: broaden exception guards to catch `AttributeError` alongside `TypeError`
+- `__del__`: move attribute check inside try block in `TempDirManager`
 - `tile_merge`: wrap `ThreadPoolExecutor` in `with` block to prevent thread leak
 - P2P: clamp AOI latitude bounds to [-90, 90] for polar links
 - SAALOS: guard above-canopy branch against NaN propagation

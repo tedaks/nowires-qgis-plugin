@@ -136,9 +136,8 @@ class TempDirManager:
                 feedback.pushInfo(msg)
 
     def __del__(self):
-        """Safety net: clean up non-persistent dirs if cleanup() was not called."""
-        if self._dirs or self._files:
-            try:
+        try:
+            if self._dirs or self._files:
                 self.cleanup()
-            except (TypeError, AttributeError):
-                pass
+        except (TypeError, AttributeError):
+            pass
