@@ -176,8 +176,20 @@ def compute_terminal_clutter_losses(
         rx_cat, rx_src = _resolve_category(rx_lat, rx_lon, rx_override, land_cover_grid)
         tx_loss = clutter_loss_db(tx_cat, frequency_mhz)
         rx_loss = clutter_loss_db(rx_cat, frequency_mhz)
+        total = tx_loss + rx_loss
+        rx_bel = 0.0
+        if context is not None and context.bel_enabled:
+            f_ghz = frequency_mhz / 1000.0
+            rx_bel = building_entry_loss(
+                f_ghz, context.bel_building_type,
+                theta_deg=context.bel_elevation_angle_deg,
+                p=context.percentile,
+            )
         source = tx_src if tx_src == rx_src else "{},{}".format(tx_src, rx_src)
-        return TerminalClutterLosses(tx_cat, rx_cat, tx_loss, rx_loss, tx_loss + rx_loss, source)
+        return TerminalClutterLosses(
+            tx_cat, rx_cat, tx_loss, rx_loss, total, source,
+            tx_bel_db=0.0, rx_bel_db=rx_bel, total_with_bel_db=total + rx_bel,
+        )
     tx_cat, tx_src = resolve_category_advanced(tx_lat, tx_lon, tx_override, land_cover_grid)
     rx_cat, rx_src = resolve_category_advanced(rx_lat, rx_lon, rx_override, land_cover_grid)
     tx_comp = compute_advanced_loss(tx_cat, "tx", context)
