@@ -95,7 +95,8 @@ def run_p2p_analysis(params: P2PAnalysisParams):
     p.feedback.pushInfo("Path distance: {:.1f} m ({:.2f} km)".format(
         dist_m, dist_m / 1000.0))
     pad = aoi_padding_deg(dist_m)
-    south, north = min(p.tx_lat, p.rx_lat) - pad, max(p.tx_lat, p.rx_lat) + pad
+    south = max(-90.0, min(p.tx_lat, p.rx_lat) - pad)
+    north = min(90.0, max(p.tx_lat, p.rx_lat) + pad)
     west, east = shortest_longitude_bounds(p.tx_lon, p.rx_lon, padding_deg=pad)
     clutter_grid = p.clutter_grid
     owns_clutter_grid = False
