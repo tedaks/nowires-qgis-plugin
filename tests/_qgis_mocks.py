@@ -477,6 +477,7 @@ _PACKAGE_SUBMODULES = (
     "p2p.report_display",
     "p2p.analysis_params",
     "p2p.outputs_internal",
+    "p2p.chart_params",
     # report/
     "report.export",
     "report.markers",
