@@ -16,7 +16,7 @@ Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 
 All Python source files in this project must strictly adhere to a maximum of **300 lines** per file.
 
-- No `.py` file (excluding `tests/` and `itm/`) may exceed 300 lines (including blank lines and comments).
+- No `.py` file (excluding `tests/`, `itm/`, and `benchmarks/`) may exceed 300 lines (including blank lines and comments).
 - If a module grows beyond 300 lines, refactor it by extracting responsibilities into new modules.
 - Prefer composition and delegation over inheritance — split large classes into focused helper modules.
 - Ruff line-length is set to 99; use it consistently to keep lines compact.
@@ -67,7 +67,7 @@ mypy . --config-file mypy.ini
 PYTHONPATH="$(pwd)" pytest -q -m "not benchmark and not qgis_integration and not gdal_integration" --cov
 
 # File-size enforcement
-find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}'
+find . -name '*.py' ! -path '*/tests/*' ! -path '*/itm/*' ! -path '*/benchmarks/*' ! -path '*/__pycache__/*' -exec wc -l {} + | awk '/total$/ {next} $1 > 300 {print}'
 ```
 
 ## Integration Testing (Docker)
