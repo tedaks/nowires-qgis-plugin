@@ -143,7 +143,8 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         result = itm_p2p_loss(h_tx__meter=p.tx_h, h_rx__meter=p.rx_h, profile=pfl,
             climate=p.climate, N0=p.n0, f__mhz=p.f_mhz, polarization=p.polarization,
             epsilon=p.epsilon, sigma=p.sigma, time_pct=p.time_pct,
-            location_pct=p.location_pct, situation_pct=p.situation_pct)
+            location_pct=p.location_pct, situation_pct=p.situation_pct,
+            k_factor=p.k_factor)
         if result.failed or not math.isfinite(result.loss_db):
             raise QgsProcessingException(
                 "ITM prediction failed (loss_db={:.1f}, mode={}, "

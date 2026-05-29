@@ -119,6 +119,7 @@ def predict_p2p(
     location: float,
     situation: float,
     *,
+    k_factor: float = 4.0 / 3.0,
     return_intermediate: bool = False,
 ) -> PropagationResult:
     """Point-to-point propagation prediction.
@@ -171,6 +172,7 @@ def predict_p2p(
         h__meter,
         d__meter,
         MODE__P2P,
+        k_factor=k_factor,
     )
     warnings |= lr_warnings
 
