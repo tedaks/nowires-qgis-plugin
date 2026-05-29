@@ -7,10 +7,12 @@ The on-machine validation path can't be exercised from a non-Windows test
 machine (``find_windows_python_executable`` returns None early because
 ``os.name != "nt"``). What we CAN test here:
 
-  * the helper mirrors the macOS shape (`PYTHONHOME` is set, `_can_spawn`
-    is used, an `NOWIRES_PYTHON_EXE` override is honored);
+  * the helper mirrors the macOS shape (``PYTHONHOME`` is set, ``_can_spawn``
+    is used, an ``NOWIRES_PYTHON_EXE`` override is honored);
   * on non-Windows hosts the helper short-circuits to None — so the existing
-    contract "Windows MP is off in the unit test environment" still holds.
+    contract "Windows MP is off in the unit test environment" still holds;
+  * ``should_use_multiprocessing`` in ``pool.py`` gates Windows directly on
+    ``os_name == "nt"`` instead of consulting the helper.
 """
 
 import os
@@ -62,9 +64,10 @@ def test_executor_calls_configure_windows():
     assert "configure_windows_multiprocessing" in src
 
 
-def test_should_use_multiprocessing_consults_windows_helper():
+def test_should_use_multiprocessing_disabled_on_windows():
     src = _source("radio_coverage/pool.py")
-    assert "find_windows_python_executable" in src
+    assert 'os_name == "nt"' in src
+    assert "return False" in src
 
 
 def test_windows_compat_prefers_pythonw_over_python_exe():
