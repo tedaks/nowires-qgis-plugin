@@ -375,6 +375,70 @@ The code already uses the `qgis.PyQt` shim and the scoped Qt6 enum
 `Qgis.ProcessingAlgorithmFlag.NoThreading` (`base_algorithm.py:38`), which is
 correct for 4.0. No code change unless the floor is lowered → docs/metadata.
 
+#### Group each run's outputs into a named layer-tree group
+
+No `QgsLayerTreeGroup` usage exists anywhere. A coverage or P2P run drops 3–6
+loose layers (raster + markers + Fresnel + legend …) flat into the layer panel,
+and repeated runs pile up unmanageably. In `postProcessAlgorithm` (which already
+manipulates the layer tree — see the `context.project()` correctness fix above)
+create or find a named group like `"NoWires — Coverage 900 MHz 50 km"` and move
+the run's output nodes into it. Use `context.project()`, not the singleton.
+Visible behavior change (output placement), no new parameter → PATCH. Highest
+daily-ergonomics win for the least code.
+
+#### Pre-run AOI + download-size summary
+
+`required_tiles` only *raises* past `_MAX_TILES`; it gives no heads-up for a
+large-but-legal area. Before the blocking DEM download, push a `feedback` line
+with the AOI span, GLO-30 tile count, estimated download size, and pixel count
+(e.g. "AOI 0.8°×0.8°, 4 tiles ~120 MB, 1.0 M pixels"), so a mis-set radius is
+caught in seconds instead of after a long download. The tile list is already
+computed in `required_tiles` / `ensure_dem_for_area`. Feedback only → PATCH.
+
+#### Clickable "open report" pointer after a run
+
+HTML/PDF/CSV reports are declared file outputs, but nothing points the user at
+them. Push a clickable `file://` path via `feedback` (and `QDesktopServices.openUrl`
+in the menu-driven flows) so the report opens in one click rather than being
+hunted down. Wire near `algorithm/_coverage_helpers.py:160` and the P2P report
+write in `p2p/compute.py`. Polish → PATCH.
+
+#### Progress ETA / throughput in long runs
+
+Coverage and Batch already call `feedback.setProgress`, but give no sense of how
+long a run will take. Add a throughput (pixels/sec) and estimated-time-remaining
+line to the periodic progress update in `radio_coverage/_executor.py` and
+`batch/outputs.py`. Feedback only → PATCH.
+
+#### Fail-fast input validation before DEM download
+
+Validate all numeric ranges (terminal heights, frequency, time/location/situation
+percentages, k-factor) up front, *before* `ensure_dem_for_area`, so bad inputs
+error in ~1 s instead of after a 30 s download. Some validation already exists
+(`geo_bounds.validate_coordinates`, ITM terminal-height bounds in `radio.py`);
+consolidate it ahead of the download in `run_p2p_analysis` and the coverage
+entry. Robustness → PATCH.
+
+#### Result summary in the QGIS message bar with a "View report" action
+
+Completion feedback currently lives only in the Processing log. After a run,
+push a one-line summary to `iface.messageBar()` (e.g. "Coverage: 62% above
+sensitivity · 4 tiles · 12 s") with an inline action button that opens the HTML
+report — far more visible than log text, and the message-bar-native companion to
+the "open report" pointer above. The menu-driven launchers in `nowires.py`
+already hold an `iface` reference; thread a concise summary back from the
+algorithm result. Feedback/UX only → PATCH.
+
+#### Persist custom-dialog geometry/state
+
+The custom `QDialog`s (`AntennaPatternPreviewDialog` in
+`antenna_pattern_preview.py`, `CoverageOpacityDialog` in
+`radio_coverage/opacity.py`) open at a default size/position every time.
+Save/restore via `QSettings` on show/close so they reopen where the user left
+them. Touch carefully: this is the same custom-Qt layer where dialog-lifecycle
+leaks have occurred — the existing `destroyed.connect(...)` ref-nulling in
+`nowires.py` must be preserved. Polish → PATCH.
+
 ## Performance (PATCH)
 
 #### Speed up coverage compute: compile the ITM core
@@ -415,12 +479,33 @@ pfl[], climate, N_0, f__mhz, pol, epsilon, sigma, mdvar, time, location,
 situation, &A__db, &warnings)` is exactly the per-pixel call NoWires makes — so
 a **ctypes/cffi binding needs no pybind11**. License is clean: NTIA works are
 US-Government public domain with an explicit worldwide derivative/redistribution
-grant (already acknowledged in `NOTICE.md`), GPL-compatible. Native C++ is the
-biggest available speedup precisely because it sidesteps the bottleneck found
-above: the reference does this math as scalar `double` loops with **no numpy
-boundary**, so it has none of the small-array overhead that caps the mypyc path
-at ~15%. The reference also ships its own validation vectors (`p2p.csv`,
-`area.csv`, `pfls.csv`) so results match the canonical model by construction.
+grant (already acknowledged in `NOTICE.md`), GPL-compatible. Native C++ sidesteps
+the bottleneck found above — it does this math as scalar `double` loops with **no
+numpy boundary** — so the ITM call itself runs far faster than either Python
+path. The reference also ships its own validation vectors (`p2p.csv`, `area.csv`,
+`pfls.csv`).
+
+**Measured (Linux prototype, since removed).** A ctypes binding built from the
+vendored NTIA source was benchmarked against the Python port:
+
+- **ITM call alone: ~12×** (6.1 µs vs 74 µs/call), vs mypyc's ~1.15×.
+- **End-to-end coverage compute: only ~3.1×.** ITM is just ~73% of per-pixel
+  work (sampling, `build_pfl`, antenna, interpolation are the rest), so a 12× ITM
+  gain collapses under Amdahl: `1 / (0.27 + 0.73/12.2) ≈ 3.0×`, matching the
+  measured 3.10×. Total wall-clock is somewhat lower still after the
+  multiprocessing/IPC overhead common to both backends.
+- **Parity: bit-exact in 1194/1200 randomized cases.** The 6 divergences
+  (≤ 1.66 dB) are confined to a 50 MHz / sub-km / few-sample edge regime and are
+  the *port* deviating from the authoritative reference, not the binding — so
+  adopting C++ would slightly *correct* the port there, but the reference-vector
+  goldens would need re-baselining for those cases.
+- **Next bottleneck:** once ITM is native, bilinear terrain sampling
+  (`_bilinear.py`, ~16% of per-pixel time) dominates the remainder. Only the
+  shared-profile-reuse lever below pushes past ~3×; the C++ ITM alone will not.
+
+So the realistic payoff is **~3× compute** (less in wall-clock) for the full
+per-platform native-binary matrix + maintenance cost — a measured trade-off, not
+the headline 12×.
 
 *Caveats:* the upstream header guards exports with `__declspec(dllexport)`
 (Windows-only) — a cross-platform build needs an export-macro guard for
@@ -706,3 +791,117 @@ victim and one or more interferers, and coordination contours for spectrum
 sharing. High value for shared-spectrum and licensing work, but P.452 is a large
 model in its own right. Treat as a separate epic after P.1812 establishes the
 multi-model pattern. New algorithm + model → MINOR.
+
+### Export Portable Project (drop-and-open on any OS)
+
+Results are portable today only if the user saves the project *before* running an
+algorithm: `_project_or_temp_dir` (`algorithm/_project_paths.py`) writes outputs
+to `<project_dir>/nowires_<name>/` when the project is saved, but falls back to
+`/tmp/NoWires-<user>/…` otherwise — machine-local, user-specific, lost on reboot,
+with absolute paths baked into the `.qgz`. There is no one-click way to bundle a
+finished analysis for transfer to another PC/Mac/Linux machine. The one-off
+`scripts/export_portable.py` and `scripts/package_gpkg.py` prove the recipe but
+are hardcoded demos, not a feature.
+
+Add an **"Export Portable Project"** processing algorithm that bundles every
+NoWires layer + report into a chosen folder that opens unchanged on any OS:
+
+- Copy all output rasters as **GeoTIFF Float32** (ideally COG: tiled + LZW/DEFLATE
+  + internal overviews) — lossless for dBm/elevation, with CRS (EPSG:4326) and
+  explicit NoData already embedded. **Do not** push rasters into a GeoPackage
+  raster table: GPKG raster is a byte/PNG tile pyramid (see `package_gpkg.py`
+  rescaling Float32 dBm → byte 0–250), which *loses* precision. GPKG raster is a
+  display format, not lossless storage.
+- Consolidate **vectors** (TX/RX markers, Fresnel, contours, boundaries) into one
+  GeoPackage — lossless and portable, unlike Shapefile (10-char field
+  truncation, multi-file).
+- Write a **relative-path `.qgz`** (`writeEntry("Paths", "/Absolute", False)`)
+  with NoWires **styles embedded**, plus optional `.qml` sidecars for QGIS↔QGIS
+  fidelity (avoid SLD for the colour-ramp coverage style — lossy).
+- Copy the CSV/JSON/HTML reports alongside, and optionally zip the folder.
+
+**Bundled guardrail (robustness, PATCH on its own):** when an algorithm runs
+against an **unsaved** project, push a clear `feedback.pushWarning` that outputs
+are going to a machine-local temp dir and will not be portable until the project
+is saved — `_project_or_temp_dir` already detects this case (empty
+`context.project().fileName()`); it just needs to warn instead of silently
+falling back to `/tmp`. Pairs naturally with also setting
+`Paths/Absolute=False` on project write.
+
+Caveats to document: a QGIS 4.0 (Qt6) `.qgz` may not open in 3.x (open on
+same-or-newer QGIS); custom user-defined CRS and external SVG/fonts don't travel
+(NoWires styling uses built-in renderers, so this is normally a non-issue).
+
+New processing algorithm → MINOR; the unsaved-project warning is a small
+robustness fix that can ship first. Brainstorm the output-folder/zip UX before
+code; manual QGIS round-trip test (export on one OS, open on another) before
+tagging.
+
+### Selectable / colorblind-safe coverage palette
+
+`radio_coverage/palette.py` hardwires one discrete pseudocolor ramp. Add a
+palette-choice processing parameter offering the current ramp plus a
+**viridis/colorblind-safe** option and a grayscale option (print/contrast).
+Thread the choice through `apply_coverage_style` and the legend
+(`radio_coverage/legend.py`) so the raster and its legend stay consistent.
+Accessibility + print-quality win. New processing parameter → MINOR; keep the
+current ramp as the default so existing projects render unchanged.
+
+### Equipment presets (radio library)
+
+Antenna presets exist (`ANTENNA_PRESETS`), but link-budget parameters —
+frequency, TX power, RX sensitivity, cable loss — are entered raw every run. Add
+a small JSON-backed library of named radio profiles
+(e.g. "RF-7800V — 47 MHz, 10 W, −116 dBm") that populate those fields, editable
+via a dialog (mirror the `antenna_pattern_preview.py` dialog lifecycle). Ship a
+default library, allow user additions. Mirrors pro-tool equipment libraries and
+cuts repetitive, error-prone entry; pairs with the portability theme. New
+functionality + likely new parameters → MINOR.
+
+### Embed run parameters as QGIS layer metadata
+
+`scripts/package_gpkg.py` embeds rich metadata into its GPKG, but normal output
+layers carry none. Write the run inputs (frequency, TX power, climate,
+%time/location/situation, DEM/clutter source, plugin version) into
+`QgsLayerMetadata` on each output raster/vector, so a layer is self-describing a
+year later and the provenance travels inside the Export Portable Project bundle.
+Additive enrichment with no new parameter or UI → could scope as PATCH, but as a
+new user-facing capability it is classified MINOR here; decide at implementation
+time.
+
+### Live AOI / coverage-footprint preview on the canvas
+
+Today the user types a TX point + radius and learns the actual area only *after*
+the run (and the DEM download). Every professional tool shows the footprint as
+it is set. Draw a **rubber-band preview** — a circle/extent on the map canvas
+that updates as the TX point and radius change — so users see what they are
+about to compute before committing. This pairs with the pre-run AOI/tile-size
+summary above (numbers + visual together) and is the single biggest change to
+the plugin's feel.
+
+This is the legitimate case for a **custom Processing parameter widget** (via
+`createCustomParametersWidget` / a parameter widget wrapper) — the one thing the
+plugin deliberately avoids today, since all current dialogs are framework-
+generated — or a lightweight pre-run map tool launched from the menu. Higher
+effort and it adds custom-Qt surface that CI can't validate
+(`test_qt_widgets.py` is in the excluded `qgis_integration` set), so it needs a
+manual QGIS UI test before tagging. New interactive UI → MINOR.
+
+### Organize the plugin menu / add a NoWires dock panel
+
+`nowires.py` adds nine flat entries to the Plugins menu (P2P, Coverage, Contour,
+Opacity, 3D, Comparison, Batch, Pattern Preview, Clear Cache). Two options,
+escalating:
+
+1. **Submenu grouping** *(small, PATCH on its own)*: split into **Analysis ▸**
+   (P2P/Coverage/Contour/Comparison/Batch), **Visualize ▸**
+   (Opacity/Legend/3D/Pattern Preview), **Tools ▸** (Clear Cache). Pure menu
+   wiring in `initGui`; declutters the Plugins menu.
+2. **Dockable NoWires panel** *(MINOR)*: consolidate the visualize/tools actions
+   into one `QgsDockWidget` so the post-run controls live next to the layers
+   they act on, instead of being hunted in the Plugins menu. Adds custom-Qt
+   surface (manual UI test before tagging); keep the menu actions too for
+   discoverability.
+
+Start with option 1 (cheap win); option 2 only if the panel earns its
+maintenance cost.
