@@ -213,6 +213,7 @@ def itm_p2p_loss(
     time_pct: float = 50.0,
     location_pct: float = 50.0,
     situation_pct: float = 50.0,
+    k_factor: float = 4.0 / 3.0,
 ) -> ITMResult:
     """Compute ITM point-to-point basic transmission loss.
 
@@ -257,6 +258,7 @@ def itm_p2p_loss(
             time=time_pct,
             location=location_pct,
             situation=situation_pct,
+            k_factor=k_factor,
             return_intermediate=True,
         )
     except (ValueError, RuntimeError, FloatingPointError) as exc:

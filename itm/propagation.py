@@ -121,6 +121,7 @@ def smooth_earth_diffraction(
     d_hzn__meter: list[float],
     h_e__meter: list[float],
     Z_g: complex,
+    k_factor: float = K_FACTOR,
 ) -> float:
     """Smooth earth diffraction loss using the Vogler 3-radii method. [Vogler 1964]
 
@@ -142,7 +143,7 @@ def smooth_earth_diffraction(
         d_hzn__meter[1] / 1000.0,
     ]
 
-    C_0 = [pow(K_FACTOR * a_0__meter / a__meter[i], THIRD) for i in range(3)]
+    C_0 = [pow(k_factor * a_0__meter / a__meter[i], THIRD) for i in range(3)]
     # [Vogler 1964, Eqn 6a / 7a]
     K = [0.017778 * C_0[i] * pow(f__mhz, -THIRD) / abs(Z_g) for i in range(3)]
     # Clamp B_0 to a small positive minimum to prevent negative x__km values
@@ -336,6 +337,7 @@ def diffraction_loss(
     theta_los: float,
     d_sML__meter: float,
     f__mhz: float,
+    k_factor: float = K_FACTOR,
 ) -> float:
     """Combined diffraction loss (knife-edge + smooth earth + terrain clutter).
 
@@ -345,7 +347,8 @@ def diffraction_loss(
         d__meter, f__mhz, a_e__meter, theta_los, d_hzn__meter
     )
     A_se__db = smooth_earth_diffraction(
-        d__meter, f__mhz, a_e__meter, theta_los, d_hzn__meter, h_e__meter, Z_g
+        d__meter, f__mhz, a_e__meter, theta_los, d_hzn__meter, h_e__meter, Z_g,
+        k_factor=k_factor,
     )
 
     delta_h_dsML__meter = terrain_roughness(d_sML__meter, delta_h__meter)
@@ -419,6 +422,7 @@ def longley_rice(
     h__meter: tuple[float, float],
     d__meter: float,
     mode: int,
+    k_factor: float = K_FACTOR,
 ) -> tuple[float, int, PropMode]:
     """Core Longley-Rice reference attenuation computation.
 
@@ -485,6 +489,7 @@ def longley_rice(
         theta_los,
         d_sML__meter,
         f__mhz,
+        k_factor=k_factor,
     )
     A_4__db = diffraction_loss(
         d_4__meter,
@@ -498,6 +503,7 @@ def longley_rice(
         theta_los,
         d_sML__meter,
         f__mhz,
+        k_factor=k_factor,
     )
 
     M_d = (A_4__db - A_3__db) / (d_4__meter - d_3__meter)

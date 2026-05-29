@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- ITM: K-factor parameter now correctly flows into the smooth-earth diffraction
+  calculation. Previously `K_FACTOR_PRESET` and `K_FACTOR` were resolved to a
+  float but that value was never forwarded to `itm_p2p_loss` → `predict_p2p` →
+  `longley_rice` → `smooth_earth_diffraction`; the engine silently used the
+  hard-coded constant `4/3` for every run. The parameter now threads through all
+  five layers so sub-refractive (k=0.67) and super-refractive (k=2.0, 4.0)
+  atmospheres produce distinct diffraction losses on NLOS paths, as intended.
+  Fresnel-zone visualization and report display were already correct.
+
 ## [1.7.0] - 2026-05-28
 
 ### Correctness
