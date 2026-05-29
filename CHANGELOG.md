@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SAALOS: guard above-canopy branch against NaN propagation
 - Elevation: produce contiguous array after south-up DEM flip for bilinear hot path
 
+### Added
+
+- 3D view: remember the last Coverage, P2P, and Contour output layers so "Open 3D View" reuses them without re-running
+
 ## [1.6.6] - 2026-05-27
 
 ### Correctness

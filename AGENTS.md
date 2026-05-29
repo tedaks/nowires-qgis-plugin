@@ -12,7 +12,7 @@ Six GitHub Actions workflows guard the project:
 | `integration.yml` | push to main, push of `v*.*.*` tags, PR, workflow_dispatch, workflow_call | QGIS 4.0 Docker integration tests (digest-pinned); coverage is informational (`--cov-fail-under=0`) |
 | `benchmark.yml` | push, PR, workflow_dispatch | Benchmark smoke tests (15 min timeout) |
 | `codeql.yml` | push/PR to main, weekly Monday 06:00 UTC | CodeQL Python static analysis |
-| `version-check.yml` | PR to main, push to main | Fails if metadata.txt version not bumped or CHANGELOG.md empty; skips Dependabot PRs, `no-version-bump`/`release` labelled PRs, and docs-only diffs |
+| `version-check.yml` | PR to main, push to main | Fails if metadata.txt version not bumped or the `## [Unreleased]` section is missing; skips Dependabot PRs, `no-version-bump`/`release` labelled PRs, and docs-only diffs |
 | `release.yml` | push of `v*.*.*` tag, workflow_dispatch | Gates release on both `tests.yml` and `integration.yml` via workflow_call; verifies tag is valid semver and matches metadata.txt, builds the `NoWires-X.Y.Z.zip` plugin bundle, extracts the matching CHANGELOG section, and publishes a GitHub Release |
 
 Tool versions are pinned in `constraints-ci.txt`. Most jobs install via role-specific files (`requirements-lint.txt`, `requirements-typecheck.txt`, `requirements-test.txt`) using `pip install -c constraints-ci.txt -r requirements-<role>.txt`. Exceptions: the `audit` job installs `pip-audit` directly, and the `import-linter` job installs `import-linter` directly (both constrained by `constraints-ci.txt`). The single coverage threshold lives in `pyproject.toml` (`[tool.coverage.report] fail_under`); CI invokes `pytest --cov` without a CLI override so the project file is the source of truth.
@@ -74,7 +74,7 @@ Test infrastructure in `tests/_qgis_mocks.py:register_nowires_package()` plants 
 
 ## Changelog Structure
 
-`CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions. It must always have `## [Unreleased]` as the first versioned section (after the header), before any released version sections. Planned or deferred work lives under `### Planned` subsections within `[Unreleased]`. When cutting a release, move completed items from `[Unreleased]` into a new dated `## [X.Y.Z] - YYYY-MM-DD` section that goes immediately after `[Unreleased]`.
+`CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions. It must always have `## [Unreleased]` as the first versioned section (after the header), before any released version sections. Planned or deferred work lives in [ROADMAP.md](ROADMAP.md), not in the CHANGELOG; items move into `[Unreleased]` only once they land, so between releases `[Unreleased]` may be empty. When cutting a release, move completed items from `[Unreleased]` into a new dated `## [X.Y.Z] - YYYY-MM-DD` section that goes immediately after `[Unreleased]`.
 
 ### Entry Style
 
@@ -98,7 +98,7 @@ Refactors that touch the public API surface escalate to MINOR. Before merging an
 
 ### Release shape
 
-Releases are planned in `CHANGELOG.md` `[Unreleased]` subsections and shipped as one or more focused PRs, sequenced by risk. The preferred organization within a release version follows these shapes:
+Releases are planned in [ROADMAP.md](ROADMAP.md) and shipped as one or more focused PRs, sequenced by risk; landed items move into `CHANGELOG.md` `[Unreleased]` as they merge. The preferred organization within a release version follows these shapes:
 
 - **Bugfixes** (PATCH): group by category — security → resource leaks → correctness/robustness. Each fix lands with a regression test that fails without the patch (TDD convention since v1.5.0).
 - **Cleanups** (PATCH): group by theme — constants, dedup, decomposition, polish. Golden-file tests (`tests/test_report_export_golden.py`) must produce byte-identical output; zero behavior change is verified, not asserted. Small, tightly-scoped cleanups may be included in a feature-bearing MINOR release.
@@ -114,7 +114,7 @@ Releases are planned in `CHANGELOG.md` `[Unreleased]` subsections and shipped as
 
 - All PRs in the release merged in sequence
 - `tests.yml`, `integration.yml`, `benchmark.yml` green on the release commit
-- `version-check.yml` passes (metadata.txt bumped; `[Unreleased]` non-empty)
+- `version-check.yml` passes (metadata.txt bumped; `## [Unreleased]` section present)
 - CHANGELOG entries moved from `[Unreleased]` → `## [X.Y.Z] - YYYY-MM-DD`
 - Tag `vX.Y.Z` (triggers `release.yml`)
 - Features: manual QGIS UI test recorded in the PR description
