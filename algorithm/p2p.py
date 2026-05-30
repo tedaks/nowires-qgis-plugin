@@ -200,7 +200,7 @@ class P2PAlgorithm(NoWiresAlgorithm):
             try:
                 show_profile_chart(**chart_kwargs)
             except Exception:
-                pass
+                logger.warning("P2P profile chart failed", exc_info=True)
             self._pending_chart_kwargs = None
         return super().postProcessAlgorithm(context, feedback)
 
