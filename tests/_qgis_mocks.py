@@ -462,7 +462,7 @@ _PACKAGE_SUBMODULES = (
     "clutter.context",
     "clutter.grid",
     "clutter.resolve",
-    "clutter.saalos",
+    "clutter.p833",
     "clutter.p2108_common",
     "clutter.p2108_height_gain",
     "clutter.p2108_terrestrial_stat",

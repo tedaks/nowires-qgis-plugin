@@ -4,8 +4,8 @@
 # This program is free software under GPLv3 or later. See LICENSE.
 """Drift-guard snapshot tests for clutter-loss math.
 
-For each of the four clutter / building-entry modules added in v1.5.0
-(p2108_height_gain, p2108_terrestrial_stat, p2109_bel, clutter_saalos)
+For each of the four clutter / building-entry modules
+(p2108_height_gain, p2108_terrestrial_stat, p2109_bel, p833)
 this file pins a small grid of (inputs -> output) tuples and asserts
 math.isclose against them with rel_tol=1e-9.
 
@@ -19,7 +19,7 @@ otherwise sneak past the existing property tests.
 They do NOT validate that the implementation is correct against the
 spec. Spec validation is the job of the existing per-module tests
 (test_p2108_height_gain.py, test_p2108_terrestrial_stat.py,
-test_p2109_bel.py, test_clutter_saalos.py).
+test_p2109_bel.py, test_clutter_p833.py).
 
 If an intentional change to a formula causes one of these to fail,
 re-capture the snapshot by re-running the small generator at the
@@ -30,7 +30,7 @@ import math
 
 import pytest
 
-from clutter.saalos import clutter_loss_saalos
+from clutter.p833 import clutter_loss_p833
 from clutter.p2108_height_gain import height_gain_loss
 from clutter.p2108_terrestrial_stat import clutter_loss_p2108_terrestrial_stat
 from clutter.p2109_bel import building_entry_loss
@@ -79,16 +79,14 @@ _BEL_SNAPSHOTS = [
 ]
 
 
-# (d_m, cch_m, h_tx_m, h_rx_m, h_rx_gnd_m, pol, f_mhz) -> dB
-_SAALOS_SNAPSHOTS = [
-    ((500.0, 10.0, 30.0, 1.5, 0.0, 0, 900.0), 9.695079280800481),
-    ((500.0, 10.0, 30.0, 1.5, 0.0, 1, 900.0), 9.695079280800481),
-    ((1000.0, 15.0, 25.0, 2.0, 0.0, 0, 2400.0), 22.0),
-    ((200.0, 8.0, 30.0, 1.5, 0.0, 0, 5000.0), 0.9005055628239585),
-    ((1500.0, 12.0, 50.0, 1.5, 0.0, 0, 700.0), 22.0),
-    ((500.0, 0.0, 30.0, 1.5, 0.0, 0, 900.0), 0.0),     # cch=0 early return
-    ((0.0, 10.0, 30.0, 1.5, 0.0, 0, 900.0), 0.0),      # d=0 early return
-    ((500.0, 10.0, 30.0, 11.0, 0.0, 0, 900.0), 0.0),   # hrx > cch early return
+# (cch_m, h_rx_m, f_mhz) -> dB  (ITU-R P.833-9 §2.1 Am)
+_P833_SNAPSHOTS = [
+    ((12.0, 2.0, 450.0),  1.37 * (450.0  ** 0.42)),
+    ((12.0, 2.0, 900.0),  1.37 * (900.0  ** 0.42)),
+    ((12.0, 2.0, 1800.0), 1.37 * (1800.0 ** 0.42)),
+    ((12.0, 2.0, 2600.0), 1.37 * (2600.0 ** 0.42)),
+    ((12.0, 12.0, 900.0), 0.0),   # h_rx == cch → 0
+    ((12.0, 15.0, 900.0), 0.0),   # h_rx > cch  → 0
 ]
 
 
@@ -119,8 +117,8 @@ def test_bel_snapshot(inputs, expected):
     _assert_close(actual, expected, inputs)
 
 
-@pytest.mark.parametrize("inputs,expected", _SAALOS_SNAPSHOTS)
-def test_saalos_snapshot(inputs, expected):
-    d, cch, htx, hrx, hrxg, pol, f = inputs
-    actual = clutter_loss_saalos(d, cch, htx, hrx, hrxg, pol, f)
+@pytest.mark.parametrize("inputs,expected", _P833_SNAPSHOTS)
+def test_p833_snapshot(inputs, expected):
+    cch, hrx, f = inputs
+    actual = clutter_loss_p833(cch, hrx, f)
     _assert_close(actual, expected, inputs)

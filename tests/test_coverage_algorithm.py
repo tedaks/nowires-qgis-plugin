@@ -144,8 +144,8 @@ class TestBuildClutterContextExceptionSafety:
         with pytest.raises(ValueError, match="original boom"):
             _build_clutter_context(p, None, elev)
 
-    def test_elev_sample_inf_guarded(self, monkeypatch):
-        """elev.sample returns inf → tx_ground clamped to 0.0.  Lines 52-56."""
+    def test_build_initial_clutter_context_called_when_clutter_enabled(self, monkeypatch):
+        """build_initial_clutter_context is called when clutter_enabled=True."""
         from NoWires.algorithm import _coverage_helpers as helpers_mod
 
         p = CoverageAnalysisParams(
@@ -154,12 +154,12 @@ class TestBuildClutterContextExceptionSafety:
             tx_lat=14.0, tx_lon=121.0,
         )
         grid = _dummy_grid()
-        elev = _dummy_elev(tx_ground=float("inf"))
+        elev = _dummy_elev(tx_ground=0.0)
 
-        captured_tx_ground = []
+        call_count = []
 
         def _fake_build_ctx(**kw):
-            captured_tx_ground.append(kw["tx_ground_elevation_m"])
+            call_count.append(1)
             return mock.MagicMock()
 
         monkeypatch.setattr(helpers_mod, "coverage_bounds",
@@ -175,7 +175,7 @@ class TestBuildClutterContextExceptionSafety:
                             _fake_build_ctx)
 
         _build_clutter_context(p, None, elev)
-        assert captured_tx_ground == [0.0]
+        assert call_count == [1]
 
     def test_ensure_clutter_grid_for_area_called_when_enabled(self, monkeypatch):
         """When clutter_enabled=True and no grid provided,

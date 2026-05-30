@@ -11,7 +11,6 @@ from NoWires.clutter.advanced import (
 )
 from NoWires.clutter.categories import CLUTTER_CATEGORY_PARAMS, worldcover_class_to_advanced_category
 from NoWires.clutter.context import ClutterLossContext
-from NoWires.clutter.saalos import MAX_CLUTTER_LOSS, clutter_loss_saalos
 
 
 def _make_context(model="simple", distance_m=1000.0, frequency_mhz=900.0,
@@ -21,9 +20,6 @@ def _make_context(model="simple", distance_m=1000.0, frequency_mhz=900.0,
         distance_m=distance_m,
         tx_height_m=tx_height_m,
         rx_height_m=rx_height_m,
-        rx_ground_elevation_m=0.0,
-        tx_ground_elevation_m=0.0,
-        polarization=0,
         cch_override_m=cch_override_m,
         model=model,
         percentile=50.0,
@@ -32,42 +28,6 @@ def _make_context(model="simple", distance_m=1000.0, frequency_mhz=900.0,
         bel_building_type="traditional",
         bel_elevation_angle_deg=0.0,
     )
-
-
-# ---------------------------------------------------------------------------
-# clutter/saalos.py line 109 — tvsr > 1000 branch
-# ---------------------------------------------------------------------------
-
-
-def test_saalos_tvsr_over_1000_branch():
-    result = clutter_loss_saalos(
-        d__meter=15000.0,
-        cch__meter=10.0,
-        h_tx__meter=2000.0,
-        h_rx__meter=1.5,
-        h_rx_gnd__meter=0.0,
-        pol=0,
-        f__mhz=1000.0,
-    )
-    assert result == pytest.approx(0.243641920562219, rel=1e-9)
-
-
-# ---------------------------------------------------------------------------
-# clutter/saalos.py line 135 — NaN guard in below-canopy path
-# ---------------------------------------------------------------------------
-
-
-def test_saalos_nan_guard_below_canopy_returns_max_clutter_loss():
-    result = clutter_loss_saalos(
-        d__meter=float("nan"),
-        cch__meter=50.0,
-        h_tx__meter=1.0,
-        h_rx__meter=1.5,
-        h_rx_gnd__meter=0.0,
-        pol=0,
-        f__mhz=1000.0,
-    )
-    assert result == pytest.approx(MAX_CLUTTER_LOSS, abs=0.01)
 
 
 # ---------------------------------------------------------------------------
@@ -103,27 +63,19 @@ def test_compute_terminal_clutter_loss_unknown_model_returns_zero(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# clutter/advanced.py lines 196-201 — dual-saalos zero attribution
+# compute_path_clutter_loss — p833 dual-endpoint behaviour
 # ---------------------------------------------------------------------------
 
 
-def test_dual_saalos_zero_loss_attribution():
-    tx_comp = ClutterComponents(
-        terminal_loss_db=0.0, path_loss_db=0.0, model="saalos",
-    )
-    rx_comp = ClutterComponents(
-        terminal_loss_db=0.0, path_loss_db=0.0, model="saalos",
-    )
+def test_dual_p833_zero_loss_returns_zero():
+    tx_comp = ClutterComponents(terminal_loss_db=0.0, path_loss_db=0.0, model="p833")
+    rx_comp = ClutterComponents(terminal_loss_db=0.0, path_loss_db=0.0, model="p833")
     result = compute_path_clutter_loss(tx_comp, rx_comp)
     assert result == 0.0
 
 
-def test_dual_saalos_asymmetric_loss():
-    tx_comp = ClutterComponents(
-        terminal_loss_db=5.0, path_loss_db=0.0, model="saalos",
-    )
-    rx_comp = ClutterComponents(
-        terminal_loss_db=3.0, path_loss_db=0.0, model="saalos",
-    )
+def test_dual_p833_sums_both_terminals():
+    tx_comp = ClutterComponents(terminal_loss_db=5.0, path_loss_db=0.0, model="p833")
+    rx_comp = ClutterComponents(terminal_loss_db=3.0, path_loss_db=0.0, model="p833")
     result = compute_path_clutter_loss(tx_comp, rx_comp)
-    assert result == pytest.approx(5.0, abs=0.01)
+    assert result == pytest.approx(8.0, abs=0.01)

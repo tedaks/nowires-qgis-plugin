@@ -90,7 +90,7 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
 - [clutter/__init__.py](clutter/__init__.py)
   Terminal clutter correction dispatch and helpers
 - [clutter/advanced.py](clutter/advanced.py)
-  Advanced clutter mode dispatcher (saalos + P.2108 §3.1/§3.2 + P.2109 BEL)
+  Advanced clutter mode dispatcher (P.833-9 §2.1 + P.2108 §3.1/§3.2 + P.2109 BEL)
 - [clutter/categories.py](clutter/categories.py)
   Clutter category definitions, WorldCover class mapping, P.2108 model dispatch params
 - [clutter/constants.py](clutter/constants.py)
@@ -111,8 +111,8 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   ITU-R P.2108-1 §3.2 statistical clutter loss for terrestrial paths (scalar + vectorized)
 - [clutter/p2109_bel.py](clutter/p2109_bel.py)
   ITU-R P.2109-2 building entry loss (scalar + vectorized)
-- [clutter/saalos.py](clutter/saalos.py)
-  Saalos vegetation clutter loss (Python port from Rust)
+- [clutter/p833.py](clutter/p833.py)
+  ITU-R P.833-9 §2.1 vegetation clutter loss (Am formula, scalar + vectorised)
 - [worldcover_downloader.py](worldcover_downloader.py)
   ESA WorldCover 2020 v100 tile download, caching, and clip/merge
 - [overlay_raster.py](overlay_raster.py)
@@ -550,7 +550,7 @@ Three clutter modes are available:
 
 - **Off** — no terminal clutter correction.
 - **Simple clutter correction** — flat per-category losses (legacy behaviour).
-- **Advanced clutter correction** — saalos vegetation model for vegetation categories; ITU-R P.2108 site-general clutter loss for built and rural categories. Uses antenna height, distance, frequency, and polarization. If the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal.
+- **Advanced clutter correction** — ITU-R P.833-9 §2.1 Am vegetation model for vegetation categories; ITU-R P.2108 site-general clutter loss for built and rural categories. Uses antenna height and frequency. If the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal.
 
 Key helpers:
 
@@ -584,7 +584,7 @@ The advanced mode selects between four internal models based on the clutter cate
 1. **None** (`open` category) — returns 0.0 dB loss. Open areas have no applicable clutter model.
 2. **P.2108 §3.1 height-gain** (`open_rural` and `dense_rural` categories) — ITU-R P.2108-1 §3.1 height-gain terminal correction for frequencies 0.03–3 GHz. Uses method (2b) for open/rural categories, computing a height-gain correction based on antenna height, representative clutter height R, frequency, and street width. Not a function of distance or percentile. Returns 0.0 dB for antennas at or above the representative clutter height R.
 3. **P.2108 §3.1 + §3.2 combined** (`suburban` and `urban` categories) — applies both the §3.1 height-gain correction and the §3.2 statistical clutter loss, taking the maximum of the two in the overlap band (0.5–3 GHz). Above 3 GHz, only §3.2 applies. The §3.2 model is a combined urban+suburban statistic (not per-category) and is percentile-based with a 2 km distance cap.
-4. **Saalos** (`vegetation` category) — the saalos vegetation attenuation algorithm, ported from ITWOM 3.0 ClutterLoss by Sid Shumate (Givens & Bell, Inc.) via the MIT-licensed `clutterloss-itm` Rust crate. See Decision D9 for invocation geometry.
+4. **P.833-9 §2.1 Am** (`vegetation` category) — maximum woodland attenuation Am from ITU-R Recommendation P.833-9 §2.1, using the St. Petersburg fit (A1=1.37, α=0.42, valid 105.9–2117.5 MHz). Am is the d→∞ asymptote of the general Eq. 1 and is designated by the document as "equivalent to the clutter loss often quoted for a terminal obstructed by some form of ground cover or clutter." Returns 0.0 dB when the antenna is at or above the canopy height.
 
 The frequency-based dispatch table (per P.2108/P.2109 compliance design §6):
 
@@ -593,7 +593,7 @@ The frequency-based dispatch table (per P.2108/P.2109 compliance design §6):
 | open | 0 | 0 | 0 | 0 |
 | open_rural | §3.1 | §3.1 | 0 | 0 |
 | dense_rural | §3.1 | §3.1 | 0 | 0 |
-| vegetation | SAALOS | SAALOS | SAALOS | SAALOS (clamped) |
+| vegetation | P.833 Am | P.833 Am | P.833 Am | P.833 Am |
 | suburban | §3.1 | §3.1 + §3.2 (max) | §3.2 | §3.2 (clamped) |
 | urban | §3.1 | §3.1 + §3.2 (max) | §3.2 | §3.2 (clamped) |
 
@@ -647,13 +647,9 @@ API: `building_entry_loss(f_ghz, building_type, theta_deg=0.0, p=50.0)` returns 
 - `validate_frequency_ghz(f, f_min, f_max)` — clamps and warns on out-of-band frequencies.
 - `validate_distance_km(d, d_min)` — clamps and warns on short distances.
 
-#### Decision D9: Saalos Invocation Geometry
+#### Decision D9: P.833 Vegetation Clutter
 
-The saalos model is invoked with the **local terminal** as `h_rx` and the **far end** placed at the **canopy top**. This means:
-
-- The terminal antenna height is passed as the receiver height argument to saalos.
-- The canopy/clutter height is used as the transmitter height argument (representing the top of the vegetation canopy as the effective far-end source).
-- If the antenna height is at or above the canopy height, the geometry is unsupported and the loss is gated to 0.0 dB.
+The P.833-9 §2.1 Am formula uses antenna height and frequency only. The woodland boundary to receiver depth `d` (required for the general Eq. 1) is not available from the land-cover raster, so Am (the d→∞ limit, explicitly designated as clutter loss) is applied directly. If the antenna height is at or above the canopy height, the loss is gated to 0.0 dB.
 
 ### TerminalClutterLosses
 
@@ -672,15 +668,15 @@ The saalos model is invoked with the **local terminal** as `h_rx` and the **far 
 | `tx_bel_db` | `float` | TX building entry loss (always 0.0 — TX is outdoor) |
 | `rx_bel_db` | `float` | RX building entry loss (dB, P.2109-2; 0.0 when BEL not enabled) |
 | `total_with_bel_db` | `float` | Total clutter + BEL: `total_loss_db + rx_bel_db` |
-| `method` | `str` | Which sub-model fired (e.g. `"§3.1+§3.2/saalos"`) |
+| `method` | `str` | Which sub-model fired (e.g. `"§3.1+§3.2/p833"`) |
 | `percentile` | `float` | Location percentile used for §3.2 and BEL |
 
 The `method` field identifies which P.2108/P.2109 sub-models were applied for TX and RX. Examples:
 - `"none/none"` for open terrain on both terminals
 - `"§3.1/§3.1+§3.2"` for open_rural TX and urban RX
-- `"saalos/saalos"` for vegetation on both terminals
+- `"p833/p833"` for vegetation on both terminals
 
-The `tx_cch_m` and `rx_cch_m` fields are included in P2P report payloads. For simple mode, these are always 0.0. For advanced mode, they reflect the canopy height used in the saalos or P.2108 computation.
+The `tx_cch_m` and `rx_cch_m` fields are included in P2P report payloads. For simple mode, these are always 0.0. For advanced mode, they reflect the canopy height used in the P.833 or P.2108 computation.
 
 Key helpers:
 
@@ -706,7 +702,7 @@ Advanced mode category dispatch (per P.2108/P.2109 compliance design §6):
 | open | none | — | — | no |
 | open_rural | p2108_height_gain | (2b) | 10 | no |
 | dense_rural | p2108_height_gain | (2b) | 10 | no |
-| vegetation | saalos | (2a) | 15 | no |
+| vegetation | p833 | (2a) | 15 | no |
 | suburban | p2108_combined | (2a) | 10 | yes |
 | urban | p2108_combined | (2a) | 20 | yes |
 

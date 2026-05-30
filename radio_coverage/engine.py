@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import logging
-import math
 
 import numpy as np
 
@@ -23,56 +22,13 @@ from NoWires.defaults import DEFAULT_N0, DEFAULT_EPSILON, DEFAULT_SIGMA
 logger = logging.getLogger(__name__)
 
 
-def _get_tx_ground_elevation(elev_grid, tx_lat, tx_lon):
-    _sample_elev = getattr(elev_grid, "sample", None)
-    if callable(_sample_elev):
-        tx_ground_elev_m = float(_sample_elev(tx_lat, tx_lon))
-        if not math.isfinite(tx_ground_elev_m):
-            tx_ground_elev_m = 0.0
-    else:
-        tx_ground_elev_m = 0.0
-    return tx_ground_elev_m
-
-
-def _build_rx_ground_grid(elev_grid, clutter_enabled, clutter_model, lats, lons, grid_size):
-    if not clutter_enabled or clutter_model != "advanced":
-        return None
-    _sample_grid = getattr(elev_grid, "sample_grid", None)
-    if callable(_sample_grid):
-        raw = _sample_grid(lats, lons)
-        return np.where(np.isfinite(raw), raw, 0.0).astype(np.float32)
-    # Vectorized row-by-row fallback when sample_grid isn't available
-    # (mocked elevation grids in tests). N vector calls instead of N²
-    # scalar calls — 192× speedup at the default grid size.
-    _sample_line = getattr(elev_grid, "sample_line", None)
-    if callable(_sample_line):
-        rx_ground_grid = np.zeros((grid_size, grid_size), dtype=np.float32)
-        lon0, lon1 = float(lons[0]), float(lons[-1])
-        for i in range(grid_size):
-            lat_i = float(lats[i])
-            row = _sample_line(lat_i, lon0, lat_i, lon1, grid_size)
-            rx_ground_grid[i] = np.where(np.isfinite(row), row, 0.0)
-        return rx_ground_grid
-    _sample_elev = getattr(elev_grid, "sample", None)
-    if callable(_sample_elev):
-        rx_ground_grid = np.zeros((grid_size, grid_size), dtype=np.float32)
-        for i in range(grid_size):
-            lat_i = float(lats[i])
-            for j in range(grid_size):
-                v = _sample_elev(lat_i, float(lons[j]))
-                rx_ground_grid[i, j] = v if math.isfinite(v) else 0.0
-        return rx_ground_grid
-    return None
-
-
 def _build_clutter_context(clutter_enabled, clutter_context, f_mhz, tx_h_m, rx_h_m,
-                           tx_ground_elev_m, polarization, cch_override_m, clutter_model,
+                           cch_override_m, clutter_model,
                            clutter_percentile, street_width_m, bel_enabled, bel_building_type,
                            bel_elevation_angle_deg):
     if clutter_context is None and bel_enabled and not clutter_enabled:
         return build_initial_clutter_context(
             frequency_mhz=f_mhz, tx_height_m=tx_h_m, rx_height_m=rx_h_m,
-            tx_ground_elevation_m=tx_ground_elev_m, polarization=polarization,
             cch_override_m=cch_override_m, model="simple",
             percentile=clutter_percentile, street_width_m=street_width_m,
             bel_enabled=bel_enabled, bel_building_type=bel_building_type,
@@ -80,7 +36,6 @@ def _build_clutter_context(clutter_enabled, clutter_context, f_mhz, tx_h_m, rx_h
     if clutter_enabled and clutter_context is None:
         return build_initial_clutter_context(
             frequency_mhz=f_mhz, tx_height_m=tx_h_m, rx_height_m=rx_h_m,
-            tx_ground_elevation_m=tx_ground_elev_m, polarization=polarization,
             cch_override_m=cch_override_m, model=clutter_model,
             percentile=clutter_percentile, street_width_m=street_width_m,
             bel_enabled=bel_enabled, bel_building_type=bel_building_type,
@@ -93,8 +48,8 @@ def _compute_tx_clutter_loss(tx_lat, tx_lon, tx_clutter_loss_db, f_mhz,
                              rx_clutter_override, clutter_context):
     if tx_clutter_loss_db is not None:
         return tx_clutter_loss_db
-    # Advanced mode recomputes TX clutter per pixel (saalos / §3.2 depend on
-    # path distance), so the distance=0 precompute would be discarded. Skip it.
+    # Advanced mode recomputes TX clutter per pixel (P.2108 §3.2 is distance-dependent),
+    # so the distance=0 precompute would be discarded. Skip it.
     if clutter_context is not None and clutter_context.model == "advanced":
         return 0.0
     tx_clutter = compute_terminal_clutter_losses(
@@ -128,9 +83,6 @@ def compute_coverage(
     lats = _coverage_axis_centers(min_lat, max_lat, grid_size)
     lons = _coverage_axis_centers(min_lon, max_lon, grid_size)
 
-    tx_ground_elev_m = _get_tx_ground_elevation(elev_grid, tx_lat, tx_lon)
-    rx_ground_grid = _build_rx_ground_grid(elev_grid, clutter_enabled, clutter_model, lats, lons, grid_size)
-
     antenna_config = antenna_config_from_values(
         preset=antenna_preset, azimuth_deg=antenna_az_deg,
         horizontal_beamwidth_deg=antenna_beamwidth_deg,
@@ -140,7 +92,7 @@ def compute_coverage(
     )
     clutter_context = _build_clutter_context(
         clutter_enabled, clutter_context, f_mhz, tx_h_m, rx_h_m,
-        tx_ground_elev_m, polarization, cch_override_m, clutter_model,
+        cch_override_m, clutter_model,
         clutter_percentile, street_width_m, bel_enabled, bel_building_type,
         bel_elevation_angle_deg,
     )
@@ -163,7 +115,6 @@ def compute_coverage(
         antenna_config, clutter_enabled, clutter_grid, tx_clutter_loss,
         rx_clutter_override, lats, lons, clutter_context=clutter_context,
         tx_clutter_override=tx_clutter_override,
-        tx_ground_elev_m=tx_ground_elev_m, rx_ground_grid=rx_ground_grid,
     )
     if not tasks:
         logger.error("No coverage pixels within the specified radius.")

@@ -15,7 +15,7 @@ from NoWires.clutter.resolve import (
 from NoWires.clutter.p2108_height_gain import height_gain_loss
 from NoWires.clutter.p2108_terrestrial_stat import clutter_loss_p2108_terrestrial_stat
 from NoWires.clutter.p2109_bel import building_entry_loss
-from NoWires.clutter.saalos import clutter_loss_saalos
+from NoWires.clutter.p833 import clutter_loss_p833
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +40,6 @@ def _terminal_height_m(terminal, context):
     return context.tx_height_m if terminal == "tx" else context.rx_height_m
 
 
-def _terminal_ground_elev_m(terminal, context):
-    return context.tx_ground_elevation_m if terminal == "tx" else context.rx_ground_elevation_m
-
-
 def compute_advanced_loss(category: str, terminal: str, context: ClutterLossContext) -> ClutterComponents:
     params = CLUTTER_CATEGORY_PARAMS.get(category, CLUTTER_CATEGORY_PARAMS["open"])
     model: str = str(params["model"])
@@ -57,17 +53,13 @@ def compute_advanced_loss(category: str, terminal: str, context: ClutterLossCont
     d_km = context.distance_m / 1000.0
     p = context.percentile
     s32_applicable = params.get("p2108_3_2_applicable", False)
-    if model == "saalos":
-        loss = clutter_loss_saalos(
-            d__meter=context.distance_m,
-            cch__meter=cch_m,
-            h_tx__meter=cch_m,
-            h_rx__meter=ant_h_m,
-            h_rx_gnd__meter=_terminal_ground_elev_m(terminal, context),
-            pol=context.polarization,
-            f__mhz=context.frequency_mhz,
+    if model == "p833":
+        loss = clutter_loss_p833(
+            cch_m=cch_m,
+            h_rx_m=ant_h_m,
+            f_mhz=context.frequency_mhz,
         )
-        return ClutterComponents(loss, 0.0, "saalos")
+        return ClutterComponents(loss, 0.0, "p833")
     if model == "p2108_height_gain":
         loss_hg = height_gain_loss(
             ant_h_m, f_ghz, category,
@@ -121,19 +113,9 @@ def compute_terminal_clutter_loss(category, terminal, context):
         return 0.0
     if ant_h_m >= cch_m:
         return 0.0
-    if context.distance_m <= 0.0:
+    if context.distance_m <= 0.0 and model in ("p2108_height_gain", "p2108_combined"):
         return 0.0
-    if model == "saalos":
-        return clutter_loss_saalos(
-            d__meter=context.distance_m,
-            cch__meter=cch_m,
-            h_tx__meter=cch_m,
-            h_rx__meter=ant_h_m,
-            h_rx_gnd__meter=_terminal_ground_elev_m(terminal, context),
-            pol=context.polarization,
-            f__mhz=context.frequency_mhz,
-        )
-    if model in ("p2108_height_gain", "p2108_combined"):
+    if model in ("p833", "p2108_height_gain", "p2108_combined"):
         comp = compute_advanced_loss(category, terminal, context)
         return comp.terminal_loss_db
     return 0.0
@@ -150,13 +132,6 @@ def compute_path_clutter_loss(tx_comp, rx_comp):
         return 0.0
     hg_total = tx_term + rx_term
     path_stat = max(tx_path, rx_path)
-    if tx_model == "saalos" and rx_model == "saalos":
-        return max(tx_term, rx_term)
-    if "saalos" in (tx_model, rx_model):
-        saalos_term = tx_term if tx_model == "saalos" else rx_term
-        other_term = rx_term if tx_model == "saalos" else tx_term
-        other_path = rx_path if tx_model == "saalos" else tx_path
-        return max(saalos_term + other_term, other_path)
     if path_stat > 0.0:
         return max(hg_total, path_stat)
     return hg_total
@@ -200,8 +175,7 @@ def compute_terminal_clutter_losses(
     method = "{}/{}".format(tx_comp.model, rx_comp.model)
     total = compute_path_clutter_loss(tx_comp, rx_comp)
     term_sum = tx_comp.terminal_loss_db + rx_comp.terminal_loss_db
-    both_saalos = (tx_comp.model == "saalos" and rx_comp.model == "saalos")
-    if both_saalos or term_sum > 0.0:
+    if term_sum > 0.0:
         if term_sum > 0.0:
             tx_loss = total * (tx_comp.terminal_loss_db / term_sum)
             rx_loss = total * (rx_comp.terminal_loss_db / term_sum)

@@ -210,8 +210,6 @@ class TestAdvancedClutterBuildsFromContext:
             rx_height_m=2.0,
             model="advanced",
             percentile=50.0,
-            rx_ground_elevation_m=0.0,
-            polarization=0,
         )
         result = compute_terminal_clutter_losses(
             tx_lat=14.0, tx_lon=121.0,
@@ -235,8 +233,6 @@ class TestAdvancedClutterBuildsFromContext:
             rx_height_m=2.0,
             model="advanced",
             percentile=50.0,
-            rx_ground_elevation_m=0.0,
-            polarization=0,
         )
         result_no_override = compute_terminal_clutter_losses(
             tx_lat=14.0, tx_lon=121.0,
@@ -255,8 +251,6 @@ class TestAdvancedClutterBuildsFromContext:
             rx_height_m=2.0,
             model="advanced",
             percentile=50.0,
-            rx_ground_elevation_m=0.0,
-            polarization=0,
             cch_override_m=5.0,
         )
         result_with_cch = compute_terminal_clutter_losses(

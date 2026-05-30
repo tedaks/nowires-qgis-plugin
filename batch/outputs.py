@@ -125,8 +125,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
     if params.clutter_enabled or params.bel_enabled:
         from NoWires.clutter.context import build_link_clutter_context
         clutter_context = build_link_clutter_context(
-            params=params, dist_m=dist_m, tx_h=tx_h_eff, rx_h=rx_h_eff,
-            tx_elev=float(elevations[0]), rx_elev=float(elevations[-1]))
+            params=params, dist_m=dist_m, tx_h=tx_h_eff, rx_h=rx_h_eff)
 
     clutter_losses = compute_terminal_clutter_losses(
         tx_lat=tx_def["lat"], tx_lon=tx_def["lon"],

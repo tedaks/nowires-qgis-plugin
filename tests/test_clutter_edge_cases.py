@@ -194,8 +194,6 @@ def test_build_initial_clutter_context_unknown_model_raises():
             frequency_mhz=900.0,
             tx_height_m=30.0,
             rx_height_m=2.0,
-            tx_ground_elevation_m=250.0,
-            polarization=0,
             cch_override_m=None,
             model="nonexistent",
             percentile=50.0,
