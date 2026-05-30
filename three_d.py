@@ -73,10 +73,11 @@ class Windows3DFallbackDialog(QMessageBox):
         self.highlight_checkbox = cb
 
 
-def highlight_nowires_layers(iface):
+def highlight_nowires_layers(iface, project=None):
     """Select and expand NoWires DEM, coverage, and contour layers in layer tree."""
     try:
-        project = QgsProject.instance()
+        if project is None:
+            project = QgsProject.instance()
         dem_id = project.readEntry(PROJECT_SCOPE, ENTRY_KEY_LAST_DEM)[0]
         coverage_id = project.readEntry(PROJECT_SCOPE, ENTRY_KEY_LAST_COVERAGE)[0]
         contour_id = project.readEntry(PROJECT_SCOPE, CONTOUR_LAYER_KEY)[0]
@@ -153,7 +154,7 @@ def _next_3d_view_name(iface: object) -> str:
     return "{} {}".format(VIEW_NAME_PREFIX, len(existing) + 1)
 
 
-def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
+def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL, project=None):
     """Create a new QGIS 3D map canvas using the latest NoWires layers."""
     is_windows = sys.platform == "win32"
     if is_windows:
@@ -161,10 +162,11 @@ def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL):
         dialog.exec()
         if dialog.clickedButton() == dialog.highlight_button:
             if dialog.highlight_checkbox and dialog.highlight_checkbox.isChecked():
-                highlight_nowires_layers(iface)
+                highlight_nowires_layers(iface, project=project)
         return None
 
-    project = QgsProject.instance()
+    if project is None:
+        project = QgsProject.instance()
     layers = resolve_nowires_3d_layers(project)
     dem_layer = layers["dem_layer"]
     coverage_layer = layers["coverage_layer"]

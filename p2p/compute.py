@@ -236,8 +236,11 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             cable_loss=p.cable_loss, rx_sens=p.rx_sens,
             prx_dbm=prx_dbm, margin_db=margin_db, itm_loss_db=loss_db)
         _load_p2p_qgis_layers(p.context, profile_path, fresnel_poly_path,
-            fresnel_lines_path, markers_path, p.show_chart, chart_kwargs,
-            p.post_processor_sink, feedback=p.feedback)
+            fresnel_lines_path, markers_path, show_chart=False,
+            chart_kwargs=chart_kwargs,
+            sink=p.post_processor_sink, feedback=p.feedback)
+        if p.show_chart:
+            p._pending_chart_kwargs = chart_kwargs
         p.feedback.setProgress(100)
         report_p2p_results(p.feedback, dist_m, p.f_mhz, result,
                            report_payload, p.k_factor, los_blocked,

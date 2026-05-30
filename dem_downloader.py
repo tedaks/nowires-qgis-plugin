@@ -178,6 +178,15 @@ def ensure_dem_for_area(south, north, west, east, feedback=None, proxy_opener=No
         return None
 
     if feedback:
+        aoi_w = east - west
+        aoi_h = north - south
+        est_mb = len(tiles) * 30
+        pixel_count = len(tiles) * 3600 * 3600
+        feedback.pushInfo(
+            "AOI {:.1f}\u00b0\u00d7{:.1f}\u00b0, {} tiles ~{:.0f} MB, {:.1f} M pixels".format(
+                aoi_w, aoi_h, len(tiles), est_mb, pixel_count / 1e6))
+
+    if feedback:
         feedback.pushInfo("Downloading DEM tiles")
 
     tile_paths = download_tiles(

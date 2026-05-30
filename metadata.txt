@@ -5,7 +5,7 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.7.0
+version=1.7.1
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
@@ -14,33 +14,17 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
+    Version 1.7.1
+    - Correctness: K-factor parameter now flows into ITM smooth-earth diffraction for both P2P and Batch
+    - Correctness: base_algorithm and contour postProcessAlgorithm use context.project() instead of QgsProject.instance()
+    - Correctness: queue_layer_for_loading resolves project from context.project() instead of singleton
+    - Correctness: Batch itm_p2p_loss now forwards k_factor parameter
+    - Robustness: validate_itm_input_ranges now also validates percentages, k-factor, and epsilon
+    - Robustness: coverage algorithm validates inputs before DEM download (fail-fast)
+    - Robustness: P2P and Contour opt into threading for responsive cancellable UI
+    - Robustness: pre-run AOI summary with tile count and estimated download size
+    - Changed: three_d highlight/view functions accept optional project parameter
     Version 1.7.0
-    - Correctness: handle antimeridian wrapping in coverage cell-center generation
-    - Correctness: use tolerance-based check for ITM kHat near-zero fallback
-    - Correctness: compute BEL in simple-clutter mode for P2P and Batch algorithms
-    - Correctness: decouple BEL computation from clutter_enabled flag
-    - Correctness: validate proxy realm URL hostname and port before building opener
-    - Correctness: relabel K-factor parameter to clarify Fresnel/LOS-only scope
-    - Robustness: broaden ElevationGrid/SharedDEMGrid __del__ exception guards
-    - Robustness: move attribute check inside try block in TempDirManager.__del__
-    - Robustness: wrap ThreadPoolExecutor in with block to prevent thread leak
-    - Robustness: clamp P2P AOI latitude bounds to [-90, 90] for polar links
-    - Robustness: guard SAALOS above-canopy branch against NaN propagation
-    - Robustness: produce contiguous array after south-up DEM flip
-    - Robustness: guard _project_or_temp_dir against None project context
-    - Robustness: add 30s ComputeStatistics timeout guard in tile_merge
-    - Changed: extract shared _compute_indices from triplicated bilinear index logic
-    - Changed: interpolate_nan_elevations returns np.ndarray for consistency
-    - Changed: expose test_batch_philippines.py to CI with @pytest.mark.slow
-    - Changed: document relatime/atime limitation in evict_cache_lru docstring
-    - Changed: rename _outputs_internal.py and _result_dispatch.py dropping underscore
-    - Changed: add omni preset guard for BW/AZ in coverage params matching comparison path
-    - Changed: simplify all CHANGELOG entries
-    - Added: QGIS integration tests for batch, comparison, and contour algorithms
-    - Added: advanced clutter mode QGIS integration test with WorldCover
-    - Added: concurrent SharedDEMGrid release safety tests
-    - Added: unit tests for coverage legend data builders
-    - Added: 16 new regression tests per TDD convention
     Version 1.6.4
     - Increase fail_under coverage threshold from 59% to 64% in pyproject.toml
     - Coverage push: 63% unit → 66.7% unit + GDAL → 80% combined via Docker QGIS 4.0 container

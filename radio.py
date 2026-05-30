@@ -79,6 +79,11 @@ ITM_MAX_N0 = 400.0
 ITM_MIN_SIGMA = 1e-6
 ITM_MIN_CLIMATE = 0
 ITM_MAX_CLIMATE = 6
+ITM_MIN_PERCENT = 0.01
+ITM_MAX_PERCENT = 99.99
+ITM_MIN_K_FACTOR = 0.01
+ITM_MAX_K_FACTOR = 100.0
+ITM_MIN_EPSILON = 1.0
 
 
 def resolve_k_factor(
@@ -103,58 +108,33 @@ def resolve_k_factor(
 
 
 def validate_itm_input_ranges(
-    tx_height_m: float,
-    rx_height_m: float,
-    frequency_mhz: float,
-    surface_refractivity_n0: float,
-    earth_conductivity_sigma: float,
-    climate: int = 0,
+    tx_height_m: float, rx_height_m: float, frequency_mhz: float,
+    surface_refractivity_n0: float, earth_conductivity_sigma: float,
+    climate: int = 0, time_pct: float | None = None,
+    location_pct: float | None = None, situation_pct: float | None = None,
+    k_factor: float | None = None, epsilon: float | None = None,
 ) -> None:
     """Validate user inputs against the bundled ITM model's hard limits."""
-    checks = [
-        (
-            "TX antenna height",
-            tx_height_m,
-            ITM_MIN_TERMINAL_HEIGHT_M,
-            ITM_MAX_TERMINAL_HEIGHT_M,
-            "m",
-        ),
-        (
-            "RX antenna height",
-            rx_height_m,
-            ITM_MIN_TERMINAL_HEIGHT_M,
-            ITM_MAX_TERMINAL_HEIGHT_M,
-            "m",
-        ),
-        (
-            "Frequency",
-            frequency_mhz,
-            ITM_MIN_FREQUENCY_MHZ,
-            ITM_MAX_FREQUENCY_MHZ,
-            "MHz",
-        ),
-        (
-            "Surface refractivity N0",
-            surface_refractivity_n0,
-            ITM_MIN_N0,
-            ITM_MAX_N0,
-            "N-units",
-        ),
-        (
-            "Climate zone",
-            climate,
-            ITM_MIN_CLIMATE,
-            ITM_MAX_CLIMATE,
-            "",
-        ),
+    checks: list[tuple[str, float, float, float, str]] = [
+        ("TX antenna height", tx_height_m, ITM_MIN_TERMINAL_HEIGHT_M, ITM_MAX_TERMINAL_HEIGHT_M, "m"),
+        ("RX antenna height", rx_height_m, ITM_MIN_TERMINAL_HEIGHT_M, ITM_MAX_TERMINAL_HEIGHT_M, "m"),
+        ("Frequency", frequency_mhz, ITM_MIN_FREQUENCY_MHZ, ITM_MAX_FREQUENCY_MHZ, "MHz"),
+        ("Surface refractivity N0", surface_refractivity_n0, ITM_MIN_N0, ITM_MAX_N0, "N-units"),
+        ("Climate zone", float(climate), float(ITM_MIN_CLIMATE), float(ITM_MAX_CLIMATE), ""),
     ]
+    if time_pct is not None:
+        checks.append(("Time percentage", time_pct, ITM_MIN_PERCENT, ITM_MAX_PERCENT, "%"))
+    if location_pct is not None:
+        checks.append(("Location percentage", location_pct, ITM_MIN_PERCENT, ITM_MAX_PERCENT, "%"))
+    if situation_pct is not None:
+        checks.append(("Situation percentage", situation_pct, ITM_MIN_PERCENT, ITM_MAX_PERCENT, "%"))
+    if k_factor is not None:
+        checks.append(("K-factor", k_factor, ITM_MIN_K_FACTOR, ITM_MAX_K_FACTOR, ""))
+    if epsilon is not None:
+        checks.append(("Earth permittivity epsilon", epsilon, ITM_MIN_EPSILON, 1e6, ""))
     for label, value, min_value, max_value, unit in checks:
         if value < min_value or value > max_value:
-            raise ValueError(
-                "{} must be between {} and {} {}.".format(
-                    label, min_value, max_value, unit
-                )
-            )
+            raise ValueError("{} must be between {} and {} {}.".format(label, min_value, max_value, unit))
 
     if earth_conductivity_sigma < ITM_MIN_SIGMA:
         raise ValueError(

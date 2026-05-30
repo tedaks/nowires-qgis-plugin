@@ -36,7 +36,7 @@ from qgis.core import (
 logger = logging.getLogger(__name__)
 
 
-def queue_layer_for_loading(context, layer, name):
+def queue_layer_for_loading(context, layer, name, project=None):
     if layer is None or not layer.isValid():
         return False
     if not (
@@ -44,7 +44,10 @@ def queue_layer_for_loading(context, layer, name):
         and hasattr(context, "addLayerToLoadOnCompletion")
     ):
         return False
-    project = QgsProject.instance()
+    if project is None:
+        project = context.project() if (
+            hasattr(context, "project") and context.project() is not None
+        ) else QgsProject.instance()
     context.temporaryLayerStore().addMapLayer(layer)
     context.addLayerToLoadOnCompletion(
         layer.id(), QgsProcessingContext.LayerDetails(name, project, name)
