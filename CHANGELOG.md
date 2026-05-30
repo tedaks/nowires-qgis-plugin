@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+## [1.7.1] - 2026-05-30
+
+### Correctness
 
 - ITM: K-factor parameter now correctly flows into the smooth-earth diffraction
   calculation. Previously `K_FACTOR_PRESET` and `K_FACTOR` were resolved to a
@@ -19,6 +21,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   five layers so sub-refractive (k=0.67) and super-refractive (k=2.0, 4.0)
   atmospheres produce distinct diffraction losses on NLOS paths, as intended.
   Fresnel-zone visualization and report display were already correct.
+- Batch: `itm_p2p_loss` call in `_compute_single_link` was missing the
+  `k_factor` parameter; the batch algorithm silently used the default 4/3 for
+  every link regardless of the user's K-factor preset selection
+- Post-processing: `base_algorithm.py` and `contour.py` `postProcessAlgorithm`
+  now use `context.project()` instead of `QgsProject.instance()` for layer-tree
+  reorder and `writeEntry`, so layers and metadata land on the correct project
+  in Model Designer, batch processing, and headless contexts
+- `queue_layer_for_loading` now resolves the project from `context.project()`
+  instead of always using the global singleton, fixing layer placement in
+  non-interactive execution contexts
+
+### Robustness
+
+- Validation: `validate_itm_input_ranges` now also validates time/location/situation
+  percentages (0.01–99.99%), k-factor (> 0.01), and earth permittivity epsilon
+  (≥ 1.0), failing fast before the potentially long DEM download
+- Coverage algorithm now calls `validate_itm_input_ranges` before `ensure_dem_for_area`,
+  so invalid inputs error in ~1 s instead of after a 30 s download
+- P2P and Contour algorithms now opt into threading (`ALLOW_THREADING = True`),
+  restoring a responsive, cancellable UI during DEM downloads; chart creation is
+  deferred to `postProcessAlgorithm` which runs on the context's affinity thread
+- Pre-run AOI summary: `ensure_dem_for_area` now pushes a one-line feedback
+  message with AOI dimensions, tile count, estimated download size, and pixel count
+  before the blocking download (e.g. "AOI 0.8°×0.8°, 4 tiles ~120 MB, 5.2 M pixels")
+
+### Changed
+
+- `highlight_nowires_layers` and `open_nowires_3d_view` accept an optional
+  `project` parameter for testability; default remains `QgsProject.instance()`
 
 ## [1.7.0] - 2026-05-28
 

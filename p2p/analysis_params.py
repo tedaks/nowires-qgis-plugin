@@ -89,3 +89,4 @@ class P2PAnalysisParams:
     output_report_json: str = ""
     output_report_html: str = ""
     post_processor_sink: list[str] = field(default_factory=list)
+    _pending_chart_kwargs: dict | None = field(default=None)

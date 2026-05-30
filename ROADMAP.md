@@ -24,7 +24,10 @@ item includes its regression test specification per the TDD convention
 
 ---
 
-## v1.7.1 — PATCH: bugfixes and dead-code cleanup
+## v1.7.1 — PATCH: bugfixes and dead-code cleanup ✅ Shipped 2026-05-30
+
+All items below have landed and moved to CHANGELOG.md. Kept for historical
+reference; see CHANGELOG.md §[1.7.1] for the shipped entries.
 
 Bug fixes ordered security → leaks → correctness → robustness, then
 dead-code cleanup. Each fix lands with a named regression test that fails
@@ -32,140 +35,55 @@ without the patch.
 
 ### Correctness
 
-#### Post-processing uses `QgsProject.instance()` instead of `context.project()`
+#### Post-processing uses `QgsProject.instance()` instead of `context.project()` ✅
 
-Several post-processing and layer-load paths reach for the global project
-singleton instead of the algorithm's context project:
+Fixed in v1.7.1. `base_algorithm.py`, `contour.py` `postProcessAlgorithm`, and
+`processing_utils.queue_layer_for_loading` now use `context.project()` with
+fallback to `QgsProject.instance()`. `three_d.py` functions accept an optional
+`project` parameter.
 
-- `base_algorithm.py:51` and `:68` — layer-tree reorder + `writeEntry`
-- `processing_utils.py:47` — `queue_layer_for_loading` forces the layer into
-  `QgsProject.instance()` via `LayerDetails(name, project, name)`
-- `three_d.py:79,167`
+Regression test: `test_project_context_layer_placement.py`
 
-`QgsProcessingContext` carries explicit thread/project affinity and exposes
-`context.project()` — the project the algorithm is actually running against, and
-the project `LayerDetails` loads completion layers into (per the
-[QgsProcessingContext reference](https://qgis.org/pyqgis/master/core/QgsProcessingContext.html)).
-`postProcessAlgorithm` "will always be called from the same thread that context
-has thread affinity with… generally the main thread… not guaranteed"
-([QgsProcessingAlgorithm reference](https://qgis.org/pyqgis/3.44/core/QgsProcessingAlgorithm.html)).
+#### K-factor threading: batch `itm_p2p_loss` missing `k_factor` ✅
 
-When the algorithm runs interactively from the plugin menu, `context.project()`
-*is* the active project, so today's code works. It diverges in the **Model
-Designer**, **batch processing**, and `processing.run()` headless contexts: the
-layer-tree reorder runs on the singleton's root while layers loaded on
-completion land in the context project (reorder finds nothing), and `writeEntry`
-lands on the wrong project. `algorithm/contour.py:212,260` already uses
-`context.project()` correctly — so the codebase is internally inconsistent.
+Fixed in v1.7.1. `batch/outputs.py:_compute_single_link` now forwards
+`k_factor=params.k_factor` to `itm_p2p_loss`.
 
-**Fix:** thread `context.project()` through these paths, falling back to
-`QgsProject.instance()` only when no context is available. No public signature
-change; correctness in model/batch/headless contexts → PATCH.
-
-**Regression test:** `test_project_context_layer_placement.py` — create a
-`QgsProcessingContext` with a mock project; assert `writeEntry` and layer-tree
-reorder land on the context project, not the singleton. Test the fallback path
-where context has no project (assert singleton is used).
+Regression test: `test_batch_k_factor_forwarding.py`
 
 ### Robustness
 
-#### Thread P2P and Contour off the main thread (and restore cancellability)
+#### Thread P2P and Contour off the main thread (and restore cancellability) ✅
 
-`P2PAlgorithm` and `ContourLinesAlgorithm` run with `NoThreading`
-(`ALLOW_THREADING` unset → `False` in `base_algorithm.py:33`) while performing
-network DEM/tile downloads and compute on the GUI thread. Per the QGIS API a
-`NoThreading` algorithm is initialized with `QgsTask::Flag()` rather than
-`QgsTask::CanCancel` — QGIS treats it as **non-cancellable by design** and does
-not wire the dialog cancel button
-([QGIS PR #9026](https://github.com/qgis/QGIS/pull/9026)). Consequences: the UI
-freezes for the download duration, and the in-loop `feedback.isCanceled()`
-checks in `tile_download_base.py` / `contour/pipeline.py` can never observe a
-cancel from the dialog.
+Fixed in v1.7.1. Both `P2PAlgorithm` and `ContourLinesAlgorithm` now set
+`ALLOW_THREADING = True`. Chart creation (`show_profile_chart`) is deferred
+to `postProcessAlgorithm` which runs on the context's affinity thread.
 
-P2P cannot simply flip the flag: it builds the matplotlib chart
-(`show_profile_chart`) and loads layers inside `processAlgorithm`, and GUI
-objects must be created on the context's affinity thread. Since
-`postProcessAlgorithm` runs on that thread (generally the main thread for
-interactive runs), the rework is:
+Regression tests: `test_p2p_contour_threading.py`, `test_algorithm_threading_optin.py`
 
-1. Keep the download/ITM/Fresnel compute in `processAlgorithm` (now threadable).
-2. Move chart creation + `queue_layer_for_loading` into `postProcessAlgorithm`.
-3. Put any thread-unsafe setup in `prepareAlgorithm` (runs on the main thread).
-4. Set `ALLOW_THREADING = True` on both once the GUI work is relocated.
+#### Fail-fast input validation before DEM download ✅
 
-This restores a responsive, cancellable UI for the two network-bound
-algorithms and pairs naturally with the `run_p2p_analysis` decomposition under
-Decomposition. Output layers/reports are byte-identical (existing P2P/contour
-contract and golden-file tests verify this) — only the execution thread changes.
-Robustness, no public signature change → PATCH.
-
-**Regression tests:**
-- `test_p2p_threading_flag.py` — assert `P2PAlgorithm.ALLOW_THREADING is True`
-  after the fix.
-- `test_contour_threading_flag.py` — assert
-  `ContourLinesAlgorithm.ALLOW_THREADING is True` after the fix.
-- `test_p2p_cancel_feedback.py` — mock `feedback.isCanceled()` returning True
-  mid-download; assert `processAlgorithm` exits cleanly without hanging.
-- Golden-file tests (`test_report_export_golden.py`) must produce byte-identical
-  output (no behavior change).
-
-#### Fail-fast input validation before DEM download
-
-Validate all numeric ranges (terminal heights, frequency, time/location/situation
-percentages, k-factor) up front, *before* `ensure_dem_for_area`, so bad inputs
-error in ~1 s instead of after a 30 s download. Some validation already exists
-(`geo_bounds.validate_coordinates`, ITM terminal-height bounds in `radio.py`);
-consolidate it ahead of the download in `run_p2p_analysis` and the coverage
-entry. Robustness → PATCH.
-
-**Regression test:** `test_fail_fast_input_validation.py` — for each algorithm
-(P2P, Coverage, Batch), assert that invalid inputs (negative frequency, height
-out of ITM range, percentages > 100, invalid k-factor) raise
-`QgsProcessingException` before any network call. Mock `ensure_dem_for_area` and
-assert it is never invoked with bad inputs.
-
-#### Pre-run AOI + download-size summary
-
-`required_tiles` only *raises* past `_MAX_TILES`; it gives no heads-up for a
-large-but-legal area. Before the blocking DEM download, push a `feedback` line
-with the AOI span, GLO-30 tile count, estimated download size, and pixel count
-(e.g. "AOI 0.8°×0.8°, 4 tiles ~120 MB, 1.0 M pixels"), so a mis-set radius is
-caught in seconds instead of after a long download. The tile list is already
-computed in `required_tiles` / `ensure_dem_for_area`. Feedback only → PATCH.
-
-**Regression test:** `test_aoi_feedback_summary.py` — call `required_tiles` with
-a known bounding box; assert `feedback.pushInfo` was called with a message
-containing tile count and estimated size. Verify the message is emitted *before*
+Fixed in v1.7.1. `validate_itm_input_ranges` now validates time/location/situation
+percentages, k-factor, and epsilon in addition to the existing checks.
+Coverage algorithm now calls `validate_itm_input_ranges` before
 `ensure_dem_for_area`.
+
+Regression tests: `test_fail_fast_input_validation.py`, `test_coverage_validate_before_dem.py`
+
+#### Pre-run AOI + download-size summary ✅
+
+Fixed in v1.7.1. `ensure_dem_for_area` pushes a summary message with AOI
+dimensions, tile count, estimated size, and pixel count before downloading.
+
+Regression test: `test_aoi_feedback_summary.py`
 
 ### Cleanups
 
 #### K-factor parameter: remaining open options
 
-The P2P/Batch UI exposes `K_FACTOR_PRESET` with options labelled
-"Sub-refractive / Geometric / Standard atmosphere / Super-refractive /
-Strong super-refractive". The label strongly implies the value affects propagation
-prediction; in fact it only affects Fresnel-zone/LOS curvature display.
-
-**Status:** an interim label-clarification mitigation shipped in v1.7.0 — the
-parameter is now relabelled to make clear it affects only Fresnel/LOS display,
-not ITM propagation. Neither full fix below has landed; both remain open:
-
-1. **Couple preset to N0** *(MAJOR — default change)*. Map each preset to a
-   representative N0 value (sub-refractive → low N0, super-refractive → high
-   N0) so changing the preset changes propagation prediction too. Requires
-   care: presets currently let the user pick k independent of N0, and these
-   two are physically related — coupling them removes a degree of freedom that
-   some users may rely on.
-2. **Opt-in "tie k-factor to N0" checkbox** *(MINOR — additive)*. Preserves
-   today's independence while letting users opt into the coupling above.
-
-Either change must update the user-facing docs to remove the implication that k
-affects propagation directly.
-
-**Note:** Both options change behavior and would ship in a MINOR or MAJOR
-release, not this PATCH. Documented here for sequencing — if option 2 is chosen
-it targets v2.1.0; if option 1, v2.0.0.
+Status unchanged. The interim label-clarification shipped in v1.7.0.
+Neither full fix (option 1 — MAJOR, or option 2 — MINOR) has landed;
+both remain targeted at v2.0.0 / v2.1.0 per the original classification.
 
 ---
 
