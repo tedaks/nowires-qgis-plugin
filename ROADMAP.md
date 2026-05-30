@@ -165,11 +165,69 @@ affects propagation directly.
 
 **Note:** Both options change behavior and would ship in a MINOR or MAJOR
 release, not this PATCH. Documented here for sequencing — if option 2 is chosen
-it targets v1.8.0; if option 1, v2.0.0.
+it targets v2.1.0; if option 1, v2.0.0.
 
 ---
 
-## v1.8.0 — MINOR: dataclass migration, proxy auth, UX polish, and cleanups
+## v2.0.0 — MAJOR: saalos replacement and k-factor N0 coupling
+
+This release ships immediately after v1.7.1, prioritised by licence risk. The
+saalos → P.833-9 §2.1 replacement removes `clutter_loss_saalos` and
+`clutter_loss_saalos_vec` from the public API and changes the default numeric
+output for the vegetation clutter category (removed symbols + default change →
+MAJOR). The k-factor N0 coupling (option 1) is bundled here if chosen; option 2
+(opt-in checkbox) is MINOR and targets v2.1.0+.
+
+### Replace saalos vegetation model with ITU-R P.833-9 §2.1 (default change)
+
+Removes `clutter/saalos.py`, `clutter/_saalos_vec.py`, `MAX_CLUTTER_LOSS` from
+`clutter/constants.py`, three dead `ClutterLossContext` fields (`polarization`,
+`rx_ground_elevation_m`, `tx_ground_elevation_m`), `_build_rx_ground_grid` from
+`radio_coverage/engine.py`, and six saalos-specific test files. Replaces with
+`clutter/p833.py` implementing Am from P.833-9 §2.1 Equation 2
+(`Am = A1 · f^α`, St. Petersburg fit A1=1.37, α=0.42).
+
+**Numeric change:** saalos was frequency-independent in practice — it always
+returned `MAX_CLUTTER_LOSS = 22 dB` at any practical link distance. P.833-9 Am
+is frequency-dependent: 17 dB at 450 MHz, 23 dB at 900 MHz, 31 dB at 1800 MHz,
+37 dB at 2600 MHz. Users below ~850 MHz see less vegetation loss; users above
+1 GHz see more.
+
+**Pipeline clean-up included:** removing `_build_rx_ground_grid` eliminates an
+O(grid²) DEM sample pass from advanced-mode coverage analysis; removing the
+three dead context fields simplifies per-pixel context construction in
+`radio_coverage/tasks.py`.
+
+See [saalos-replacement.md](saalos-replacement.md) for the full implementation
+plan, file inventory, and test specification.
+
+**Regression tests:** all tests listed in saalos-replacement.md §Tests.
+Golden-file tests for the vegetation clutter category must be re-baselined.
+
+### K-factor preset coupled to N0 (default change)
+
+Map each `K_FACTOR_PRESET` to a representative N0 value (sub-refractive → low
+N0, super-refractive → high N0) so changing the preset changes propagation
+prediction too. This changes the default behavior: users who previously picked
+a K-factor preset expecting it to affect only Fresnel/LOS display now get
+different N0 values and different ITM predictions. The degree of freedom
+(k independent of N0) is removed.
+
+MAJOR — default change per AGENTS.md. Keep the opt-in checkbox (option 2)
+available so users who need k independent of N0 can still work.
+
+**Regression tests:**
+- `test_k_factor_n0_coupling.py` — for each K_FACTOR_PRESET, verify the
+  corresponding N0 value; run ITM with the coupled N0 and assert propagation
+  loss changes vs. the uncoupled baseline.
+- `test_k_factor_preset_backward_compat.py` — assert that the opt-in "decouple
+  k from N0" checkbox restores the old behavior (k affects only Fresnel, N0
+  stays at default).
+- Golden-file P2P and Batch report tests must be re-baselined.
+
+---
+
+## v2.1.0 — MINOR: dataclass migration, proxy auth, UX polish, and cleanups
 
 This release batches the dataclass migration (prerequisite for deeper
 decompositions), proxy auth, and several high-impact UX/robustness items.
@@ -429,7 +487,7 @@ no version bump.
 
 **Priority: ship early in this release.** This migration is a prerequisite for
 the `run_p2p_analysis` and `compute_coverage` decompositions planned for later
-(v1.9.0 cleanups) — the 19-arg helper calls block meaningful slicing. It also
+(v2.2.0 cleanups) — the 19-arg helper calls block meaningful slicing. It also
 stands alone as a robustness win (call-site fragility).
 
 Two functions still take 19 positional/keyword arguments, well past the point
@@ -490,10 +548,10 @@ so until then the conservative/institutional base remains on the 3.x series
 spanning both from one codebase is real work if any Qt6-only or PyQGIS-4-only
 API is used.
 
-**Decision needed by v1.8.0 at the latest:** either keep the 4.0-only floor and
+**Decision needed by v2.1.0 at the latest:** either keep the 4.0-only floor and
 document the rationale in `README.md` (riding the Qt6 line, awaiting the 4.2 LTR),
 or audit the code for Qt6/PyQGIS-4-only API usage and lower the floor to a 3.x LTR
-to widen reach. Delaying past v1.8.0 risks a growing 3.x user base that cannot
+to widen reach. Delaying past v2.1.0 risks a growing 3.x user base that cannot
 install the plugin, and the decision informs whether the Export Portable Project
 feature needs cross-version `.qgz` considerations.
 The code already uses the `qgis.PyQt` shim and the scoped Qt6 enum
@@ -510,17 +568,17 @@ API usage exists in the codebase.
 
 ---
 
-## v1.9.0 — MINOR: decompositions, coverage UX, and P.530
+## v2.2.0 — MINOR: decompositions, coverage UX, and P.530
 
 Decompositions (pure refactor → PATCH) bundled with the P.530 feature (MINOR)
-and coverage/palette UX (MINOR). The decompositions depend on the v1.8.0
+and coverage/palette UX (MINOR). The decompositions depend on the v2.1.0
 dataclass migration landing first.
 
 ### Cleanups (PATCH — bundled in this release)
 
 #### Decompose `run_p2p_analysis` into pipeline stages
 
-**Depends on:** v1.8.0 dataclass migration (the 19-arg `_write_p2p_output_layers`
+**Depends on:** v2.1.0 dataclass migration (the 19-arg `_write_p2p_output_layers`
 call becomes a one-liner once `P2PAnalysisParams` is passed).
 
 `p2p/compute.py:86-260` is 174 lines of straight-line code that mixes nine
@@ -558,8 +616,12 @@ output. No new tests needed — decomposition preserves the public signature.
 
 #### Decompose `compute_coverage` into pipeline stages
 
-**Depends on:** v1.8.0 dataclass migration (the 30+ positional/keyword arguments
+**Depends on:** v2.1.0 dataclass migration (the 30+ positional/keyword arguments
 bundle into `CoverageAnalysisParams` first).
+
+**Affected by v2.0.0:** `_build_rx_ground_grid` (lines 37–65) is removed in the
+saalos replacement. Do not reference or split this function; it will not exist
+when this decomposition lands.
 
 `radio_coverage/engine.py:101-207` is one of only two functions in the repo
 flagged as a brain method (81 NLOC, CCN 10, 8 dependents). It takes 30+
@@ -593,11 +655,12 @@ after the dataclass migration → PATCH.
 
 #### Decompose remaining functions over 100 lines
 
-Six functions still exceed the 100-line single-responsibility threshold after
+Five functions still exceed the 100-line single-responsibility threshold after
 the targeted decompositions above land:
 `build_coverage_tasks()` (189), `show_profile_chart()` (172),
 `add_panel_params()` (156), `_compute_single_link()` (145),
-`write_fresnel_zone()` (117), `clutter_loss_saalos()` (110).
+`write_fresnel_zone()` (117).
+(`clutter_loss_saalos()` was also on this list but is removed entirely in v2.0.0.)
 
 Each should split into 2-3 focused helpers per the 300-line file gate convention.
 Behavior preserved by the existing golden-file tests.
@@ -690,7 +753,7 @@ keywords.
 
 ---
 
-## v1.10.0 — MINOR: best-server, export, antenna patterns
+## v2.3.0 — MINOR: best-server, export, antenna patterns
 
 Three high-impact features that share the "new algorithm + new output" pattern.
 
@@ -866,36 +929,6 @@ MINOR.
 
 ---
 
-## v2.0.0 — MAJOR: k-factor N0 coupling (option 1 only)
-
-Only if option 1 (couple K-factor presets to N0) is chosen. Option 2 (opt-in
-checkbox) is MINOR and would ship in v1.x instead. If neither option is chosen
-and the current label-only mitigation is deemed sufficient, this release is
-skipped entirely.
-
-### K-factor preset coupled to N0 (default change)
-
-Map each `K_FACTOR_PRESET` to a representative N0 value (sub-refractive → low
-N0, super-refractive → high N0) so changing the preset changes propagation
-prediction too. This changes the default behavior: users who previously picked
-a K-factor preset expecting it to affect only Fresnel/LOS display now get
-different N0 values and different ITM predictions. The degree of freedom
-(k independent of N0) is removed.
-
-MAJOR — default change per AGENTS.md. Keep the opt-in checkbox (option 2)
-available so users who need k independent of N0 can still work.
-
-**Regression tests:**
-- `test_k_factor_n0_coupling.py` — for each K_FACTOR_PRESET, verify the
-  corresponding N0 value; run ITM with the coupled N0 and assert propagation
-  loss changes vs. the uncoupled baseline.
-- `test_k_factor_preset_backward_compat.py` — assert that the opt-in "decouple
-  k from N0" checkbox restores the old behavior (k affects only Fresnel, N0
-  stays at default).
-- Golden-file P2P and Batch report tests must be re-baselined.
-
----
-
 ## Backlog — longer-horizon items
 
 Items not assigned to a specific release. Sequenced by dependency and impact.
@@ -903,6 +936,11 @@ Items not assigned to a specific release. Sequenced by dependency and impact.
 ### Performance
 
 #### Speed up coverage compute: compile the ITM core
+
+**Note:** v2.0.0 (saalos replacement) already removes `_build_rx_ground_grid`
+from `radio_coverage/engine.py`, eliminating an O(grid²) DEM sample pass that
+ran before every advanced-mode coverage analysis. That win ships before this
+item; the bottleneck addressed here is the per-pixel ITM loop, which remains.
 
 Coverage generation time is dominated by the per-pixel ITM computation, not by
 the QGIS plumbing. `radio_coverage/_executor.py` maps pixel chunks across a
