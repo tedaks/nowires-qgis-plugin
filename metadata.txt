@@ -5,15 +5,24 @@ name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=1.7.1
+version=2.0.0
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
-about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's Irregular Terrain Model (ITM), using the Qt 6 / PyQt 6 runtime bundled with QGIS 4. It provides point-to-point path loss analysis with Fresnel zone visualization, batch P2P analysis (one-to-many and many-to-one), unified Coverage Analysis heatmap prediction with raster-derived range metrics, Coverage Comparison producing delta rasters, and contour line generation. Clutter correction supports simple per-category losses and advanced mode (saalos vegetation model, ITU-R P.2108 for built/rural). DEM data is automatically downloaded from the Copernicus GLO-30 dataset hosted on AWS Open Data. The plugin bundles the ITM library from https://github.com/tedaks/pyitm and adapts code from https://github.com/tedaks/nowires and https://github.com/tedaks/ContourLines. See NOTICE.md for attribution and third-party licensing details.
+about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's Irregular Terrain Model (ITM), using the Qt 6 / PyQt 6 runtime bundled with QGIS 4. It provides point-to-point path loss analysis with Fresnel zone visualization, batch P2P analysis (one-to-many and many-to-one), unified Coverage Analysis heatmap prediction with raster-derived range metrics, Coverage Comparison producing delta rasters, and contour line generation. Clutter correction supports simple per-category losses and advanced mode (ITU-R P.833-9 §2.1 vegetation model, ITU-R P.2108 for built/rural). DEM data is automatically downloaded from the Copernicus GLO-30 dataset hosted on AWS Open Data. The plugin bundles the ITM library from https://github.com/tedaks/pyitm and adapts code from https://github.com/tedaks/nowires and https://github.com/tedaks/ContourLines. See NOTICE.md for attribution and third-party licensing details.
 
 hasProcessingProvider=yes
 
 changelog=
+    Version 2.0.0
+    - BREAKING: Replace saalos vegetation clutter model with ITU-R P.833-9 §2.1 Am
+    - Removes ITWOM 3.0 code (Shumate/Givens & Bell, proprietary licence)
+    - Vegetation clutter loss now frequency-dependent: ~17.8 dB at 450 MHz, ~23.9 dB at 900 MHz, ~31.9 dB at 1800 MHz, ~37.2 dB at 2600 MHz
+    - Removes MAX_CLUTTER_LOSS = 22.0 dB cap; Am is unbounded above the canopy threshold
+    - Removes polarization, rx_ground_elevation_m, tx_ground_elevation_m from ClutterLossContext
+    - Removes per-pixel rx_ground DEM pass (_build_rx_ground_grid) from coverage engine
+    - NOTICE.md §7 updated with ITU-R P.833 attribution; no proprietary upstream code remains
+
     Version 1.7.1
     - Correctness: K-factor parameter now flows into ITM smooth-earth diffraction for both P2P and Batch
     - Correctness: base_algorithm and contour postProcessAlgorithm use context.project() instead of QgsProject.instance()
