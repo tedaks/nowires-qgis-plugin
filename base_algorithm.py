@@ -48,7 +48,8 @@ class NoWiresAlgorithm(QgsProcessingAlgorithm):
         return self.GROUP_ID
 
     def postProcessAlgorithm(self, context, feedback):
-        root = QgsProject.instance().layerTreeRoot()
+        project = context.project() if context.project() is not None else QgsProject.instance()
+        root = project.layerTreeRoot()
         for layer_ids in (getattr(self, "_raster_layer_ids", []),
                          getattr(self, "_vector_layer_ids", [])):
             for layer_id in layer_ids:
@@ -65,5 +66,5 @@ class NoWiresAlgorithm(QgsProcessingAlgorithm):
         ]:
             layer_id = getattr(self, attr_name, None)
             if layer_id is not None:
-                QgsProject.instance().writeEntry("NoWires", entry_key, layer_id)
+                project.writeEntry("NoWires", entry_key, layer_id)
         return {}

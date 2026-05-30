@@ -50,9 +50,12 @@ from NoWires.shared_params import extract_clutter_params, extract_link_budget_pa
 class P2PAlgorithm(NoWiresAlgorithm):
     """Point-to-point radio link analysis."""
 
+    ALLOW_THREADING = True
+
     def __init__(self):
         super().__init__()
         self._p2p_post_processors = []
+        self._pending_chart_kwargs = None
 
     def initAlgorithm(self, config):
         add_p2p_params(self)
@@ -113,6 +116,11 @@ class P2PAlgorithm(NoWiresAlgorithm):
                 surface_refractivity_n0=n0,
                 earth_conductivity_sigma=sigma,
                 climate=climate,
+                time_pct=time_pct,
+                location_pct=location_pct,
+                situation_pct=situation_pct,
+                k_factor=k_factor,
+                epsilon=epsilon,
             )
         except ValueError as exc:
             raise QgsProcessingException(str(exc))
@@ -181,7 +189,20 @@ class P2PAlgorithm(NoWiresAlgorithm):
         )
         # Clutter grid lifecycle: user-provided grids stay owned by the caller;
         # auto-downloaded grids are closed inside run_p2p_analysis's own finally.
-        return run_p2p_analysis(p2p_params)
+        result = run_p2p_analysis(p2p_params)
+        self._pending_chart_kwargs = p2p_params._pending_chart_kwargs
+        return result
+
+    def postProcessAlgorithm(self, context, feedback):
+        chart_kwargs = self._pending_chart_kwargs
+        if chart_kwargs is not None:
+            from NoWires.p2p.chart import show_profile_chart
+            try:
+                show_profile_chart(**chart_kwargs)
+            except Exception:
+                pass
+            self._pending_chart_kwargs = None
+        return super().postProcessAlgorithm(context, feedback)
 
     def name(self):
         return "p2p_analysis"

@@ -7,6 +7,7 @@ from qgis.core import QgsProcessingException
 from NoWires.base_algorithm import NoWiresAlgorithm, install_constants
 from NoWires.dem_downloader import ensure_dem_for_area
 from NoWires.elevation import ElevationGrid
+from NoWires.radio import validate_itm_input_ranges
 from NoWires.radio_coverage.legend import show_coverage_legend
 from NoWires.radio_coverage.compute import DEFAULT_MAX_PROFILE_PTS, coverage_profile_step_m
 from NoWires.radio_coverage.dem_validate import validate_dem_coverage
@@ -67,6 +68,22 @@ class CoverageAlgorithm(NoWiresAlgorithm):
         pad_deg = aoi_padding_deg(p.radius_km * 1000.0)
         south, north, west, east = coverage_bounds(
             p.tx_lat, p.tx_lon, p.radius_km, padding_deg=pad_deg)
+
+        try:
+            validate_itm_input_ranges(
+                tx_height_m=p.tx_h,
+                rx_height_m=p.rx_h,
+                frequency_mhz=p.f_mhz,
+                surface_refractivity_n0=p.n0,
+                earth_conductivity_sigma=p.sigma,
+                climate=p.climate,
+                time_pct=p.time_pct,
+                location_pct=p.location_pct,
+                situation_pct=p.situation_pct,
+                epsilon=p.epsilon,
+            )
+        except ValueError as exc:
+            raise QgsProcessingException(str(exc))
 
         feedback.pushInfo("Downloading DEM data...")
         feedback.setProgress(5)

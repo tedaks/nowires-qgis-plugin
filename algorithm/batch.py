@@ -97,7 +97,9 @@ def _extract_batch_radio_params(algorithm, parameters, context):
     epsilon = _pD(p, algorithm.EPSILON, context)
     sigma = _pD(p, algorithm.SIGMA, context)
     validate_itm_input_ranges(tx_height_m=tx_h, rx_height_m=rx_h, frequency_mhz=f_mhz,
-        surface_refractivity_n0=n0, earth_conductivity_sigma=sigma)
+        surface_refractivity_n0=n0, earth_conductivity_sigma=sigma,
+        time_pct=time_pct, location_pct=location_pct, situation_pct=situation_pct,
+        k_factor=kf, epsilon=epsilon)
     c = extract_clutter_params(algorithm, parameters, context)
     tfb = _pD(p, algorithm.TX_FRONT_BACK_DB, context)
     rfb = _pD(p, algorithm.RX_FRONT_BACK_DB, context)

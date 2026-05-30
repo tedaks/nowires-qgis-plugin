@@ -115,6 +115,7 @@ def _compute_single_link(tx_def, rx_def, params: BatchAnalysisParams, wavelength
         time_pct=params.time_pct,
         location_pct=params.location_pct,
         situation_pct=params.situation_pct,
+        k_factor=params.k_factor,
     )
 
     if itm_result.failed or not math.isfinite(itm_result.loss_db):
