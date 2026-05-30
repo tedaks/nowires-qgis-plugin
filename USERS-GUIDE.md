@@ -25,7 +25,7 @@ You will need:
 Use the official QGIS download page:
 
 - Main download page: https://qgis.org/download/
-- Installation guide: https://version.qgis.org/resources/installation-guide/
+- Installation guide: https://docs.qgis.org/latest/en/docs/user_manual/introduction/getting_started.html
 
 Always check the official QGIS page for the latest 4.x installer and platform-specific notes.
 
@@ -315,7 +315,7 @@ The simple loss table is:
 | suburban | 8.0 |
 | urban | 10.0 |
 
-- **Advanced clutter correction** — ITU-R P.2108-1 §3.1 height-gain terminal correction for low-frequency (0.03–3 GHz) rural categories; P.2108-1 §3.2 statistical clutter loss for suburban/urban (0.5–67 GHz); saalos vegetation model for vegetation categories. Suburban and urban categories apply both §3.1 and §3.2 in the overlap band (0.5–3 GHz) and take the maximum. Loss increases with frequency for built categories, consistent with P.2108-1. When the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal. An optional canopy/clutter height override (CCH_OVERRIDE) parameter lets you specify the effective canopy height.
+- **Advanced clutter correction** — ITU-R P.2108-1 §3.1 height-gain terminal correction for low-frequency (0.03–3 GHz) rural categories; P.2108-1 §3.2 statistical clutter loss for suburban/urban (0.5–67 GHz); ITU-R P.833-9 §2.1 Am vegetation model (Am = 1.37 × f⁰·⁴², valid 105.9–2117.5 MHz, St. Petersburg fit) for vegetation categories. Suburban and urban categories apply both §3.1 and §3.2 in the overlap band (0.5–3 GHz) and take the maximum. Loss increases with frequency for all categories — P.833 Am is frequency-dependent (17 dB at 450 MHz, 23 dB at 900 MHz, 31 dB at 1800 MHz, 37 dB at 2600 MHz), and P.2108-1 path loss also scales with frequency. When the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal. An optional canopy/clutter height override (CCH_OVERRIDE) parameter lets you specify the effective canopy height.
 - **Building entry loss (BEL)** — ITU-R P.2109-2 building entry loss model. When enabled, adds indoor penetration loss at the receiver based on building type (Traditional or Thermally-efficient), elevation angle, and frequency. Applied to RX only (TX is assumed outdoor). Available under advanced clutter settings.
 
 Use TX/RX overrides when the raster is unavailable or visibly wrong. Neither simple nor advanced clutter models sample clutter along the full path — they apply terminal corrections only.
@@ -336,7 +336,7 @@ When advanced clutter correction is enabled, additional parameters become availa
 - **BEL Building Type** (Traditional / Thermally-efficient, default Traditional): Building type for P.2109-2. Thermally-efficient buildings have substantially higher loss at most frequencies.
 - **BEL Elevation Angle** (0–90°, default 0): Elevation angle of the path at the building façade. Higher angles increase BEL at 0.212 dB per degree. Default 0° corresponds to horizontal incidence.
 
-#### P.2108 Model Dispatch
+#### Clutter Model Dispatch
 
 The advanced clutter mode automatically selects the correct ITU-R sub-model based on clutter category and frequency:
 
@@ -344,7 +344,7 @@ The advanced clutter mode automatically selects the correct ITU-R sub-model base
 |---|---|---|---|---|
 | Open | 0 | 0 | 0 | 0 |
 | Open rural / Dense rural | §3.1 | §3.1 | 0 | 0 |
-| Vegetation | SAALOS | SAALOS | SAALOS | SAALOS (clamped) |
+| Vegetation | P.833 Am | P.833 Am | P.833 Am | P.833 Am |
 | Suburban | §3.1 | §3.1 + §3.2 (max) | §3.2 | §3.2 (clamped) |
 | Urban | §3.1 | §3.1 + §3.2 (max) | §3.2 | §3.2 (clamped) |
 

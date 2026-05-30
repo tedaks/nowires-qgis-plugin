@@ -15,8 +15,11 @@ with mocks, which segfaults against compiled QGIS extensions.
 
 import os
 import sys
+from pathlib import Path
 
 import pytest
+
+_ROOT = Path(__file__).parent.parent
 
 _HAS_REAL_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
 
@@ -92,7 +95,7 @@ class TestProviderAlgorithmSource:
 
     def test_provider_source_lists_expected_algorithms(self):
         """Verify the provider source code references all 5 algorithm modules."""
-        source = open("provider.py").read()
+        source = (_ROOT / "provider.py").read_text()
         for module_name, class_name in [
             ("algorithm.p2p", "P2PAlgorithm"),
             ("algorithm.coverage", "CoverageAlgorithm"),
@@ -115,7 +118,7 @@ class TestProviderAlgorithmSource:
             ("algorithm.batch", "BatchAnalysisAlgorithm"),
         ]
         for module_name, class_name in algorithms:
-            source = open("{}.py".format(module_name.replace(".", "/"))).read()
+            source = (_ROOT / "{}.py".format(module_name.replace(".", "/"))).read_text()
             assert "NoWiresAlgorithm" in source, \
                 "{} must inherit from NoWiresAlgorithm".format(class_name)
 
@@ -129,7 +132,7 @@ class TestProviderAlgorithmSource:
             ("algorithm.batch", "BatchAnalysisAlgorithm"),
         ]
         for module_name, class_name in algorithms:
-            source = open("{}.py".format(module_name.replace(".", "/"))).read()
+            source = (_ROOT / "{}.py".format(module_name.replace(".", "/"))).read_text()
             assert "def name(" in source, \
                 "{} must define a name() method".format(class_name)
 
@@ -143,7 +146,7 @@ class TestProviderAlgorithmSource:
             ("algorithm.batch", "BatchAnalysisAlgorithm"),
         ]
         for module_name, class_name in algorithms:
-            source = open("{}.py".format(module_name.replace(".", "/"))).read()
+            source = (_ROOT / "{}.py".format(module_name.replace(".", "/"))).read_text()
             assert "def createInstance(" in source, \
                 "{} must define a createInstance() method".format(class_name)
 

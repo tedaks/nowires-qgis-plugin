@@ -27,7 +27,7 @@ The following files are derived from or inspired by the nowires project (adapted
 | `radio.py` (ITM bridge, Fresnel, signal levels) | `apps/api/app/itm_bridge.py`, `apps/api/app/math_kernels.py`, `apps/api/app/signal_levels.py` |
 | `antenna.py` | `apps/api/app/antenna.py` |
 | `clutter/__init__.py`, `clutter/advanced.py`, `clutter/categories.py`, `clutter/constants.py`, `clutter/context.py`, `clutter/grid.py`, `clutter/resolve.py` | `apps/api/app/clutter/__init__.py` |
-| `clutter/p833.py` | original code (see section 7 below) |
+| `clutter/p833.py` | original code replacing previously-derived saalos model (see section 7) |
 | `elevation.py` (terrain utilities, ElevationGrid) | `apps/api/app/elevation_grid.py`, `apps/api/app/terrain.py` |
 | `radio_coverage/palette.py` (signal level palette) | `apps/api/app/signal_levels.py`, `apps/api/app/coverage_render.py` |
 
@@ -85,7 +85,7 @@ NTIA Disclaimer:
 
 **Source:** <https://github.com/tedaks/ContourLines> (forked from <https://github.com/DanielHSMartin/ContourLines>)  
 **License:** GPL-licensed upstream. The repository `LICENSE` file contains GNU GPL v3 text, while the upstream file headers and README describe the plugin as GPL v2 or later. This plugin as distributed is GPL v3 or later.  
-**Copyright:** © 2026 Daniel Hulshof Saint Martin <daniel.hulshof@gmail.com>
+**Copyright:** © 2023 Daniel Hulshof Saint Martin <daniel.hulshof@gmail.com>; modifications © 2026 Bortre Tenamo
 
 The following files are derived from the ContourLines plugin:
 
@@ -171,3 +171,4 @@ Union.
 - Files adapted from `nowires` retain the original MIT attribution in this notice and are redistributed as part of this GPLv3-or-later plugin.
 - Files adapted from `ContourLines` carry preserved upstream attribution where practical and are redistributed as part of this GPLv3-or-later plugin.
 - Files in `itm/` are derived from `pyitm` and carry local import-path adjustments for plugin packaging. These modified works should not be treated as verbatim upstream copies.
+- The saalos vegetation model (`clutter/saalos.py`, `clutter/_saalos_vec.py`) was removed in v2.0.0 and replaced with original code based on ITU-R P.833-9 (§7).

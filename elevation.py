@@ -223,7 +223,7 @@ class ElevationGrid:
         try:
             if self.data is not None:
                 self.close()
-        except (TypeError, AttributeError):
+        except Exception:
             pass
 
 

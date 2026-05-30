@@ -36,7 +36,6 @@ attribution details.
 """
 
 import logging
-import math
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +240,7 @@ def itm_p2p_loss(
             k_factor=k_factor,
             return_intermediate=True,
         )
-    except (ValueError, RuntimeError, FloatingPointError) as exc:
+    except (ValueError, RuntimeError) as exc:
         logger.warning("ITM call failed: %s", exc, exc_info=True)
         return ITMResult(loss_db=float('nan'), mode=-1, warnings=1, failed=True)
 
@@ -249,10 +248,11 @@ def itm_p2p_loss(
     mode = 0
     if inter is not None:
         mode_val = inter.mode
-        if mode_val is not None and not (
-            isinstance(mode_val, float) and math.isnan(mode_val)
-        ):
-            mode = int(mode_val)
+        try:
+            if mode_val is not None:
+                mode = int(mode_val)
+        except (ValueError, OverflowError):
+            pass
 
     warnings_val = int(result.warnings)
 

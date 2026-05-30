@@ -178,7 +178,7 @@ def build_coverage_tasks(
     # NOTE: This double loop is O(grid_size^2) in Python.  For large grids
     # with clutter enabled, per-pixel compute_advanced_loss calls in
     # advanced mode dominate task generation time.  A LUT keyed on
-    # (category, terminal, distance_bucket, ground_bucket) avoids redundant
+    # (category, terminal, distance_bucket) avoids redundant
     # invocations for pixels sharing the same quantised parameters.
     _clutter_lut: dict[tuple[str, ...], ClutterComponents] = {}
     tasks: list[_CoverageTask] = []

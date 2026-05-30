@@ -165,7 +165,7 @@ def _read_pattern_points(path: str) -> list[tuple[float, float]]:
             try:
                 angle = float(row[0])
                 gain = float(row[1])
-            except ValueError:
+            except (ValueError, csv.Error):
                 logger.warning("Skipping malformed row in pattern file %s: %s", path, row)
                 continue
             points.append((angle, gain))

@@ -1,4 +1,4 @@
-# NoWires Technical Documentation
+# NoWires Technical Documentation — v2.0.0
 
 SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -94,7 +94,7 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
 - [clutter/categories.py](clutter/categories.py)
   Clutter category definitions, WorldCover class mapping, P.2108 model dispatch params
 - [clutter/constants.py](clutter/constants.py)
-  Shared clutter constants (simple loss table, limits)
+  Retained for compatibility; `MAX_CLUTTER_LOSS` removed in v2.0.0
 - [clutter/context.py](clutter/context.py)
   ClutterLossContext dataclass
 - [clutter/grid.py](clutter/grid.py)
@@ -564,13 +564,12 @@ Key helpers:
 
 | Field | Type | Description |
 |---|---|---|
-| `category` | `str` | Clutter category (`open`, `open_rural`, `dense_rural`, `vegetation`, `suburban`, `urban`) |
-| `freq_hz` | `float` | Frequency in Hz |
-| `polarization` | `int` | ITM polarization code (0 = horizontal, 1 = vertical) |
-| `htx_m` | `float` | TX antenna height above ground (m) |
-| `hrx_m` | `float` | RX antenna height above ground (m) |
-| `dist_m` | `float` | Path distance (m) |
-| `cch_m` | `float` | Canopy/clutter height override (m); `0.0` means no override |
+| `model` | `ClutterModel` | Clutter model in use (`"simple"` or `"advanced"`) |
+| `frequency_mhz` | `float` | Frequency in MHz |
+| `distance_m` | `float` | Path distance (m) |
+| `tx_height_m` | `float` | TX antenna height above ground (m) |
+| `rx_height_m` | `float` | RX antenna height above ground (m) |
+| `cch_override_m` | `float \| None` | Canopy/clutter height override (m); `None` means no override |
 | `percentile` | `float` | Location percentile (0.01–99.99) for P.2108 §3.2 and P.2109 BEL |
 | `street_width_m` | `float` | Street width (m) for P.2108 §3.1 (default 27) |
 | `bel_enabled` | `bool` | Whether P.2109 building entry loss is enabled |
@@ -651,6 +650,24 @@ API: `building_entry_loss(f_ghz, building_type, theta_deg=0.0, p=50.0)` returns 
 
 The P.833-9 §2.1 Am formula uses antenna height and frequency only. The woodland boundary to receiver depth `d` (required for the general Eq. 1) is not available from the land-cover raster, so Am (the d→∞ limit, explicitly designated as clutter loss) is applied directly. If the antenna height is at or above the canopy height, the loss is gated to 0.0 dB.
 
+### P.833-9 §2.1 — Vegetation Clutter Loss (Am)
+
+Located in `clutter/p833.py`. Implements the maximum woodland attenuation
+formula from ITU-R P.833-9 §2.1 Eq. 2:
+
+```
+Am = 1.37 × f⁰·⁴²  (St. Petersburg fit, valid 105.9–2117.5 MHz)
+```
+
+Extrapolation outside the validated range is not sanctioned by the document.
+
+**API:**
+
+- `clutter_loss_p833(cch_m: float, h_rx_m: float, f_mhz: float) -> float` —
+  returns Am when `h_rx_m < cch_m`, 0.0 otherwise (scalar, no numpy import).
+- `clutter_loss_p833_vec(cch_m, h_rx_m, f_mhz) -> np.ndarray` —
+  vectorised variant with lazy numpy import; inputs broadcast to a common shape.
+
 ### TerminalClutterLosses
 
 `TerminalClutterLosses` is a dataclass returned by `compute_terminal_clutter_losses()`. Its fields are:
@@ -671,7 +688,7 @@ The P.833-9 §2.1 Am formula uses antenna height and frequency only. The woodlan
 | `method` | `str` | Which sub-model fired (e.g. `"§3.1+§3.2/p833"`) |
 | `percentile` | `float` | Location percentile used for §3.2 and BEL |
 
-The `method` field identifies which P.2108/P.2109 sub-models were applied for TX and RX. Examples:
+The `method` field identifies which clutter sub-models were applied for TX and RX. Examples:
 - `"none/none"` for open terrain on both terminals
 - `"§3.1/§3.1+§3.2"` for open_rural TX and urban RX
 - `"p833/p833"` for vegetation on both terminals
@@ -684,13 +701,14 @@ Key helpers:
 - `LandCoverGrid.sample_category()`: samples the grid at a given lat/lon and returns a clutter category string.
 - `ensure_clutter_grid_for_area()`: auto-downloads WorldCover tiles when clutter is enabled and no raster is supplied.
 
-Simple mode clutter categories and loss table:
+Simple mode clutter categories and loss table (five categories; advanced-mode
+categories `open_rural` and `dense_rural` remap to `rural` and `vegetation`
+respectively via `remap_simple_category`):
 
 | Category | Loss (dB) |
 |---|---|
 | open | 0.0 |
-| open_rural | 2.0 |
-| dense_rural | 2.0 |
+| rural | 2.0 |
 | vegetation | 6.0 |
 | suburban | 8.0 |
 | urban | 10.0 |
@@ -702,7 +720,7 @@ Advanced mode category dispatch (per P.2108/P.2109 compliance design §6):
 | open | none | — | — | no |
 | open_rural | p2108_height_gain | (2b) | 10 | no |
 | dense_rural | p2108_height_gain | (2b) | 10 | no |
-| vegetation | p833 | (2a) | 15 | no |
+| vegetation | p833 | — | — | no |
 | suburban | p2108_combined | (2a) | 10 | yes |
 | urban | p2108_combined | (2a) | 20 | yes |
 
@@ -717,14 +735,14 @@ Simple mode:
 | 50 | urban |
 | 60, 70, 80, 90 | open |
 
-Advanced mode splits `rural` into `open_rural` (classes 40, 90) and `dense_rural` (classes 20, 30, 100), with classes 10, 95 mapping to `vegetation` and class 50 to `urban` as in simple mode.
+Advanced mode splits `rural` into `open_rural` (classes 30, 40) and `dense_rural` (classes 20, 100), with classes 10, 95 mapping to `vegetation`, class 50 to `urban`, and classes 60, 70, 80, 90 to `open` as in simple mode.
 
 ### Clutter Reporting
 
 Both P2P and coverage reports expose clutter loss breakdown:
 
 - `clutter_source`: a descriptive label produced by `clutter_source_label()` rather than a raw file path.
-- `clutter_method`: which P.2108/P.2109 sub-model fired (e.g. `"§3.1/§3.1+§3.2"`).
+- `clutter_method`: which clutter sub-model fired (e.g. `"§3.1/§3.1+§3.2"` or `"p833/none"`).
 - `clutter_percentile`: the location percentile used for §3.2 and BEL calculations.
 - `clutter_tx_db`: TX terminal clutter loss (dB).
 - `clutter_rx_db`: RX terminal clutter loss (dB).

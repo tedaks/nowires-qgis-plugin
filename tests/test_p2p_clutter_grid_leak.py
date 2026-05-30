@@ -11,14 +11,16 @@ never closed — a significant leak in long-running QGIS sessions with
 large land-cover rasters.
 """
 import ast
+from pathlib import Path
+
+_ROOT = Path(__file__).parent.parent
 
 
 def test_try_covers_clutter_grid_acquisition():
     """The try block must start no later than 3 lines after owns_clutter_grid
     assignment so that exceptions during DEM download, elevation processing,
     or ITM prediction trigger the finally clause that closes the clutter grid."""
-    with open("p2p/compute.py") as f:
-        source = f.read()
+    source = (_ROOT / "p2p/compute.py").read_text()
 
     lines = source.splitlines()
     owns_line = None
