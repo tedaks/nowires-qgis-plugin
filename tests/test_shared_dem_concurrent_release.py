@@ -10,11 +10,18 @@ import time
 import weakref
 
 import numpy as np
+import pytest
 
 from NoWires.shared_dem_grid import SharedDEMGrid
 
+_posix_shm = pytest.mark.skipif(
+    not os.path.exists("/dev/shm"),
+    reason="/dev/shm not available on this platform",
+)
+
 
 class TestConcurrentRelease:
+    @_posix_shm
     def test_eight_threads_release_no_double_unlink(self):
         grid_data = np.zeros((10, 10), dtype=np.float64)
         grid = SharedDEMGrid(grid_data)
@@ -67,6 +74,7 @@ class TestConcurrentRelease:
         assert released_flag == ["done"]
         assert not os.path.exists(os.path.join("/dev/shm", name))
 
+    @_posix_shm
     def test_del_removes_shm_segment(self):
         grid_data = np.zeros((10, 10), dtype=np.float64)
         grid = SharedDEMGrid(grid_data)
@@ -87,6 +95,7 @@ class TestSharedDemGridEdgeCases:
         grid.release()
         grid.release()
 
+    @_posix_shm
     def test_context_manager_releases(self):
         grid_data = np.zeros((10, 10), dtype=np.float64)
         with SharedDEMGrid(grid_data) as grid:

@@ -61,7 +61,7 @@ def test_increases_with_frequency():
 # ---------------------------------------------------------------------------
 
 def test_no_max_clutter_loss_cap():
-    # At 2600 MHz Am ≈ 37 dB — must not be capped at 22 dB (old saalos cap).
+    # At 2600 MHz Am ≈ 37 dB — must not be capped at 22 dB.
     result = clutter_loss_p833(CCH, H_RX_BELOW, F_2600)
     assert result > 22.0
 
