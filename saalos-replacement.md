@@ -9,153 +9,184 @@ restricted). The reimplementation intentionally targets bit-for-bit numeric pari
 with the ITWOM 3.0 reference C code (`_saalos_vec.py:15–20`), which makes the
 independent-expression defence difficult to sustain.
 
-**Goal:** Replace both files with a clean implementation of ITU-R P.833-9 §2.1
-Equation 1 ("one terminal in woodland"), remove all saalos test files, update
-attribution in NOTICE.md, and leave every existing caller working without any
-change to their public API.
+**Goal:** Replace both files with a clean implementation of Am from ITU-R P.833-9
+§2.1, remove all saalos test files, clean up the dead context fields and pipeline
+code that only existed to support saalos, update attribution in NOTICE.md, and
+leave every existing caller working without any change to their public API.
 
 ---
 
-## Chosen model: P.833-9 §2.1 Equation 1
+## Source document
 
-```
-Aev = Am · [1 − exp(−d · γ / Am)]     (dB)
-```
+**ITU-R Recommendation P.833-9 (2016), "Attenuation in vegetation," Annex 1 §2.1,
+"Terrestrial path with one terminal in woodland."**
 
-| Symbol | Description |
-|--------|-------------|
-| `d`    | Estimated penetration depth through vegetation (m); see §Depth proxy below |
-| `γ`    | Specific attenuation for short vegetative paths (dB/m); frequency-dependent |
-| `Am`   | Maximum total attenuation from one vegetative obstruction (dB); frequency-dependent |
-
-### Why this model
-
-* Explicitly designed for "one terminal inside woodland" — the exact clutter scenario.
-* P.833-9 notes: *"Am is equivalent to the clutter loss often quoted for a terminal
-  obstructed by some form of ground cover or clutter."*
-* Natural saturation at `Am`: loss can't grow without bound as depth increases,
-  reflecting the surface-wave / diffraction bypass mechanism.
-* Entirely specified by a publicly available ITU-R Recommendation; no third-party
-  code or proprietary reference required.
-* More physically correct than the §3.1 linear model (which is for a single-tree
-  obstruction with both terminals outside) and more relevant than §2.2 (satellite
-  slant paths with elevation angle).
-
-### Model is NOT selected
-
-| Model | Why not |
-|-------|---------|
-| P.833-9 §3.1 `Aet = γ·d` | Linear, only valid ≤1 GHz, for single-tree obstruction — wrong geometry |
-| P.833-9 §2.2 `L = 0.25·f^0.39·d^0.25·θ^0.05` | Satellite slant paths; includes elevation angle; Austrian pine only |
-| P.833-9 §3.2 RET model | Requires leaf area index, LAI, species tables — impractical for a clutter model |
+All parameter values, formula text, and quoted statements are taken directly from
+this document. Nothing is inferred or extrapolated beyond what the document states.
 
 ---
 
-## Parameter functions
+## Model selection: Am as clutter loss
 
-### γ(f) — specific attenuation
+### P.833-9 §2.1 Equation 1
 
-P.833-9 Table 1 (St. Petersburg mixed coniferous-deciduous forest, tree height 16 m):
-
-| f (MHz)  | γ (dB/m) |
-|----------|----------|
-|   105.9  |   0.04   |
-|   466.5  |   0.12   |
-|   949.0  |   0.17   |
-|  1 852   |   0.30   |
-|  2 118   |   0.34   |
-
-Implementation: log-linear interpolation between these anchor points.
-Below 105.9 MHz: clamp to 0.04 dB/m.
-Above 2 118 MHz: extrapolate on the log-log trend of the last two points.
-
-### Am(f) — maximum attenuation
-
-P.833-9 §2.1 power-law formula:
+The document gives:
 
 ```
-Am = A1 · f^α    (f in MHz)
+Aev = Am · [1 − exp(−d · γ / Am)]     (Eq. 1)
 ```
 
-St. Petersburg fit (matches Table 1, mean-tree-height 16 m): **A1 = 1.37, α = 0.42**.
+where:
 
-### Depth proxy
+| Symbol | Definition (verbatim from document) |
+|--------|-------------------------------------|
+| `d`    | length of path within woodland (m) |
+| `γ`    | specific attenuation for very short vegetative paths (dB/m) |
+| `Am`   | maximum attenuation for one terminal within a specific type and depth of vegetation (dB) |
 
-P.833-9 §2.1 defines `d` as horizontal path length through the forest. The
-available inputs are canopy height `cch_m` and RX antenna height `h_rx_m`.
-Use:
+The document defines `d` as the distance from the **woodland boundary** to the
+receiver. Figure 1: "the transmitter is outside the woodland and the receiver is a
+certain distance, d, within it."
+
+### Why Eq. 1 with a proxied d is not used
+
+`d` (woodland boundary → receiver depth) is not available from the inputs to
+`compute_advanced_loss`. The land-cover raster classifies each pixel as vegetation
+or not; it does not give distance from the pixel to the nearest forest boundary.
+No proxy is derived from or sanctioned by the document.
+
+### Why Am alone is used
+
+P.833-9 §2.1 states directly:
+
+> "It may also be noted that Am is equivalent to the clutter loss often quoted for
+> a terminal obstructed by some form of ground cover or clutter."
+
+This is the document's explicit statement that Am is the appropriate value when
+modelling a terminal "obstructed by ground cover or clutter." It is the d → ∞
+asymptote of Eq. 1, and it is what the document recommends for clutter modelling.
+
+Therefore: **`Aev = Am`**.
+
+### Am formula (P.833-9 §2.1, Equation 2)
+
+```
+Am = A1 · f^α     (f in MHz)
+```
+
+Three sets of measured (A1, α) are cited in the document:
+
+| Location | Frequency range | Tree height | RX height | A1 (dB) | α |
+|----------|----------------|-------------|-----------|---------|---|
+| Rio de Janeiro, Brazil | 900–1 800 MHz | 15 m | 2.4 m | 0.18 | 0.752 |
+| Mulhouse, France | 900–2 200 MHz | 15 m | 1.6 m | 1.15 | 0.43 |
+| St. Petersburg, Russia | 105.9–2 117.5 MHz | 12–16 m | 1.5 m | 1.37 | 0.42 |
+
+**Implementation uses St. Petersburg: A1 = 1.37, α = 0.42.** Rationale: widest
+frequency range, matches Table 1 (also St. Petersburg), RX height (1.5 m)
+representative of a ground-level mobile terminal.
+
+### Am dependence on vertical antenna–canopy distance
+
+P.833-9 §2.1 states Am "depends on the species and density of the vegetation, plus
+the antenna pattern of the terminal within the vegetation and **the vertical
+distance between the antenna and the top of the vegetation**." The document
+acknowledges this dependence but **provides no formula for it**. The (A1, α) fits
+are ensemble measurements at fixed receiver heights. No h_rx scaling below the
+canopy can be implemented without going beyond the document.
+
+The only h_rx check within scope: P.833-9 §2.1 is scoped to "one terminal located
+within woodland." A terminal at or above the canopy top is not within woodland.
+
+---
+
+## Numeric behaviour: saalos vs. P.833
+
+### What saalos actually returns
+
+`MAX_CLUTTER_LOSS = 22.0` (`clutter/constants.py:5`). `saalos.py:142–145` clamps
+every result to it. The below-canopy formula (the only branch that fires, since
+`h_tx` is always passed as `cch_m` in `advanced.py:64`) produces `arte > 22 dB`
+at any distance greater than ~0.45 m. Every practical call to saalos returns
+**exactly 22.0 dB**, with no frequency dependence and no h_rx sensitivity.
+
+### Comparison table (cch=12 m, h_rx=2 m, any practical distance)
+
+| f (MHz) | saalos | P.833 Am | Δ |
+|---------|--------|----------|---|
+| 450     | 22.0 dB | 17.3 dB | P.833 −4.7 dB |
+| 900     | 22.0 dB | 23.1 dB | P.833 +1.1 dB |
+| 1 800   | 22.0 dB | 30.8 dB | P.833 +8.8 dB |
+| 2 600   | 22.0 dB | 37.2 dB | P.833 +15.2 dB |
+| any, h_rx ≥ cch | 22.0 dB | 0.0 dB | P.833 correctly returns 0 |
+
+**Behavioural change:** users below ~850 MHz will see less vegetation clutter loss;
+users above 1 GHz will see more. Both directions are physically correct — saalos
+could not model this because it was always clamped to a single constant.
+
+---
+
+## Implementation
+
+### Function signature
 
 ```python
-d = max(0.0, cch_m - h_rx_m)
+def clutter_loss_p833(cch_m: float, h_rx_m: float, f_mhz: float) -> float:
 ```
 
-This is the vertical burial depth (metres from RX antenna to canopy top), used as a
-proxy for horizontal penetration depth. It is an approximation: document it with a
-one-line comment. Future work could derive a proper geometric depth from DEM slope,
-but that is out of scope here.
+`d_m` is dropped — not used by the Am model.
+`pol` is dropped — P.833-9 §2.1 provides no polarisation-dependent Am formula.
 
----
-
-## Full replacement formula (Python)
+### Scalar implementation
 
 ```python
-import math
+def clutter_loss_p833(cch_m: float, h_rx_m: float, f_mhz: float) -> float:
+    """Vegetation clutter loss, ITU-R P.833-9 §2.1.
 
-# P.833-9 §2.1 Table 1 anchor points for γ(f)
-_GAMMA_TABLE = [
-    (105.9,  0.04),
-    (466.5,  0.12),
-    (949.0,  0.17),
-    (1852.0, 0.30),
-    (2118.0, 0.34),
-]
-
-def _gamma_p833(f_mhz: float) -> float:
-    """Specific attenuation γ (dB/m) via log-linear interpolation, P.833-9 Table 1."""
-    if f_mhz <= _GAMMA_TABLE[0][0]:
-        return _GAMMA_TABLE[0][1]
-    if f_mhz >= _GAMMA_TABLE[-1][0]:
-        f0, g0 = _GAMMA_TABLE[-2]
-        f1, g1 = _GAMMA_TABLE[-1]
-        slope = math.log(g1 / g0) / math.log(f1 / f0)
-        return g1 * (f_mhz / f1) ** slope
-    for i in range(len(_GAMMA_TABLE) - 1):
-        f0, g0 = _GAMMA_TABLE[i]
-        f1, g1 = _GAMMA_TABLE[i + 1]
-        if f0 <= f_mhz <= f1:
-            t = math.log(f_mhz / f0) / math.log(f1 / f0)
-            return math.exp(math.log(g0) + t * math.log(g1 / g0))
-    return _GAMMA_TABLE[-1][1]  # unreachable
-
-def clutter_loss_p833(d_m: float, cch_m: float, h_rx_m: float,
-                      f_mhz: float) -> float:
-    """Vegetation clutter loss, P.833-9 §2.1 Eq. 1.
-
-    d_m     — link distance (unused; kept for interface symmetry with saalos)
-    cch_m   — canopy/clutter height (m)
-    h_rx_m  — RX antenna height above ground (m)
-    f_mhz   — frequency (MHz)
-
-    Returns excess attenuation Aev in dB (non-negative).
-    d_v = cch - h_rx is used as a proxy for horizontal penetration depth (P.833-9 §2.1).
+    Returns Am when h_rx < cch, 0 otherwise.
+    Am = A1 * f^alpha is the maximum woodland attenuation (P.833-9 §2.1 Eq. 2),
+    defined as "equivalent to the clutter loss often quoted for a terminal
+    obstructed by some form of ground cover or clutter."
+    A1=1.37, alpha=0.42 is the St. Petersburg fit (P.833-9 §2.1, 105.9-2117.5 MHz).
     """
-    d_v = max(0.0, cch_m - h_rx_m)
-    if d_v == 0.0:
+    if h_rx_m >= cch_m:
         return 0.0
-    gamma = _gamma_p833(f_mhz)
-    Am = 1.37 * (f_mhz ** 0.42)          # P.833-9 §2.1, St. Petersburg fit
-    return Am * (1.0 - math.exp(-d_v * gamma / Am))
+    return 1.37 * (f_mhz ** 0.42)
 ```
 
-Notes on `d_m` (link distance): saalos uses distance in its below-canopy formula.
-P.833-9 §2.1 does not use link distance in Eq. 1 — distance effects are captured
-by ITM's path-loss model, not the clutter term. Keep `d_m` in the signature for
-drop-in compatibility but leave it unused with a comment.
+### Vectorised path (inline in `clutter/p833.py`)
 
-Notes on `pol` (polarisation): P.833-9 §2.1 does not distinguish polarisation at
-this level (below ~1 GHz there is a tendency for V > H but no parametric formula is
-given). Drop `pol` from the public signature entirely — it was an artefact of
-saalos's internals and is not meaningful in P.833.
+```python
+def clutter_loss_p833_vec(cch_m, h_rx_m, f_mhz):
+    """Vectorised clutter_loss_p833. Inputs broadcast to common shape."""
+    import numpy as np
+    cch = np.asarray(cch_m, dtype=np.float64)
+    hrx = np.asarray(h_rx_m, dtype=np.float64)
+    f   = np.asarray(f_mhz,  dtype=np.float64)
+    return np.where(hrx < cch, 1.37 * (f ** 0.42), 0.0)
+```
+
+Both functions live in `clutter/p833.py`. No separate `_p833_vec.py` needed.
+
+### Frequency validity
+
+The St. Petersburg fit is validated for **105.9–2 117.5 MHz**. Add a comment in
+the implementation noting extrapolation outside this range.
+
+---
+
+## Am cross-check against P.833-9 Table 1
+
+| f (MHz) | Table 1 Am (dB) | Formula Am (dB) | Δ |
+|---------|----------------|-----------------|---|
+| 105.9   | 9.4            | 8.7             | 0.7 |
+| 466.5   | 18.0           | 17.5            | 0.5 |
+| 949.0   | 26.5           | 23.2            | 3.3 |
+| 1 852   | 29.0           | 30.7            | 1.7 |
+| 2 118   | 34.1           | 33.3            | 0.8 |
+
+Largest divergence is 3.3 dB at 949 MHz, within typical vegetation measurement
+scatter (Mulhouse campaign standard deviation: 8.7 dB per P.833-9 §2.1).
 
 ---
 
@@ -165,89 +196,204 @@ saalos's internals and is not meaningful in P.833.
 
 | File | Contents |
 |------|----------|
-| `clutter/p833.py` | `clutter_loss_p833(d_m, cch_m, h_rx_m, f_mhz) → float` (scalar) |
-| `clutter/_p833_vec.py` | `clutter_loss_p833_vec(...)` vectorised over numpy arrays; same pattern as `_saalos_vec.py` |
+| `clutter/p833.py` | `clutter_loss_p833` (scalar) and `clutter_loss_p833_vec` (vectorised) |
 | `tests/test_clutter_p833.py` | See §Tests below |
 
 ### Modify
 
-| File | Change |
-|------|--------|
-| `clutter/categories.py:55` | `"model": "saalos"` → `"model": "p833"` |
-| `clutter/advanced.py` | Replace saalos import + two `if model == "saalos":` call sites + `compute_path_clutter_loss` string comparisons. Drop `pol` arg from p833 calls. |
-| `clutter/__init__.py` | Swap saalos exports for p833. Remove `_saalos_pol`, `clutter_loss_saalos`, `clutter_loss_saalos_vec`. |
-| `tests/test_clutter_advanced.py` | Update `@patch` target from `clutter.advanced.clutter_loss_saalos` to `clutter.advanced.clutter_loss_p833`. Drop `pol` from mock argument assertions. |
-| `tests/test_clutter_edge_coverage.py` | Replace direct `clutter_loss_saalos(...)` calls with `clutter_loss_p833(...)`. Remove unused `pol` argument. |
-| `tests/test_clutter_math_snapshot.py` | Recompute and update snapshot values for the vegetation category. |
-| `NOTICE.md §7` | Replace entire §7 with a short P.833 attribution note (see §NOTICE below). |
+**`clutter/categories.py:55`**
+- `"model": "saalos"` → `"model": "p833"`
+
+**`clutter/advanced.py`**
+- Replace `from NoWires.clutter.saalos import clutter_loss_saalos` with
+  `from NoWires.clutter.p833 import clutter_loss_p833`.
+- In `compute_advanced_loss`: replace the `if model == "saalos":` block (lines
+  60–70) with a `if model == "p833":` block calling `clutter_loss_p833(cch_m,
+  ant_h_m, context.frequency_mhz)`.
+- In `compute_terminal_clutter_loss`: remove the duplicate saalos block
+  (lines 126–135). Extend the existing p2108 delegation (lines 136–138) to cover
+  p833: `if model in ("p833", "p2108_height_gain", "p2108_combined"):`.
+  The `if context.distance_m <= 0.0: return 0.0` guard (line 124) is no longer
+  needed for p833 but can remain as a guard for p2108 §3.2.
+- In `compute_path_clutter_loss`: delete both saalos special cases (lines 153–159).
+  P.833 returns `ClutterComponents(Am, 0.0, "p833")`; with `path_loss_db = 0.0`
+  it falls through correctly to `return hg_total` (line 162).
+- In `compute_terminal_clutter_losses`: remove `both_saalos` (line 203) — dead
+  code. When both endpoints are vegetation, `term_sum = 2·Am > 0` so the
+  `term_sum > 0.0` branch always fires. Simplify line 204 to
+  `if term_sum > 0.0:`.
+- Update `ClutterComponents` model label strings from `"saalos"` to `"p833"`.
+
+**`clutter/context.py`**
+- Remove `polarization: int = 0` field — only consumed by saalos.
+- Remove `rx_ground_elevation_m: float = 0.0` field — only consumed by saalos.
+- Remove `tx_ground_elevation_m: float = 0.0` field — only consumed by saalos.
+- Update `build_initial_clutter_context` and `build_link_clutter_context`
+  factories to stop accepting/passing these three fields.
+
+**`clutter/constants.py`**
+- Remove `MAX_CLUTTER_LOSS = 22.0`. Its only consumer in the clutter pipeline is
+  saalos (which is being deleted). `p833.py` must not import or apply it —
+  Am is a model output, not a cap. Confirm no other file imports this constant
+  before deleting (grep `MAX_CLUTTER_LOSS` across the repo).
+
+**`clutter/__init__.py`**
+- Remove `clutter_loss_saalos`, `clutter_loss_saalos_vec`, `_saalos_pol` exports.
+- Add `clutter_loss_p833`, `clutter_loss_p833_vec` exports.
+
+**`radio_coverage/engine.py`**
+- Delete `_build_rx_ground_grid` (lines 37–65) entirely. It existed solely to
+  populate `rx_ground_elevation_m` per pixel for saalos.
+- Remove the `rx_ground_grid` parameter from `build_coverage_tasks` call.
+- In `_compute_tx_clutter_loss`: remove the advanced-mode skip guard (comment
+  "distance=0 would be wrong"). P.833 has no distance term; TX clutter can be
+  precomputed in advanced mode identically to simple mode.
+
+**`radio_coverage/tasks.py`**
+- Remove `rx_ground_m = float(rx_ground_grid[i, j]) ...` per-pixel extraction
+  (advanced mode pixel loop).
+- Remove `rx_ground_elevation_m` and `tx_ground_elevation_m` from the
+  per-pixel `ClutterLossContext(...)` construction.
+- Remove `polarization` from the per-pixel context construction.
+- Remove `rx_ground_grid` parameter from `build_coverage_tasks`.
+
+**`p2p/compute.py`** and **`batch/outputs.py`**
+- Remove `polarization` from `build_link_clutter_context` calls (or confirm
+  `build_link_clutter_context` no longer accepts it after context.py is updated).
+- No ground elevation removal needed here — `tx_elev` and `rx_elev` are passed
+  for ITM, not for clutter.
+
+**`tests/test_clutter_advanced.py`**
+- Update `@patch` target: `clutter.advanced.clutter_loss_saalos` →
+  `clutter.advanced.clutter_loss_p833`.
+- Remove `d__meter`, `h_tx__meter`, `h_rx_gnd__meter`, `pol` from mock
+  argument assertions.
+- Update expected model string from `"saalos"` to `"p833"`.
+
+**`tests/test_clutter_edge_coverage.py`**
+- Replace `clutter_loss_saalos(...)` calls with `clutter_loss_p833(...)`.
+- Remove `d_m`, `h_tx_m`, `h_rx_gnd_m`, `pol` arguments.
+
+**`tests/test_clutter_math_snapshot.py`**
+- Recompute and update snapshot values for the vegetation category at each
+  tested frequency.
+
+**`tests/test_clutter_categories.py:46,51`**
+- Replace `"saalos"` with `"p833"` in the valid-model set assertion (line 46).
+- Update `assert CLUTTER_CATEGORY_PARAMS["vegetation"]["model"] == "saalos"` →
+  `== "p833"` (line 51).
+
+**`tests/test_clutter.py:214`**
+- Rename `test_advanced_helper_saalos_for_vegetation` and update its body to
+  exercise `clutter_loss_p833` and expect model string `"p833"`.
+
+**`tests/test_clutter_pipeline.py:125`**
+- Rename the "saalos hot path" performance test and lower the timing threshold:
+  P.833 is a single multiply; the 3.0 s budget was sized for saalos iterations.
+
+**`tests/test_clutter_context.py`**
+- Remove all assertions on `polarization`, `rx_ground_elevation_m`, and
+  `tx_ground_elevation_m` (lines 20–21, 34, 39, 84–85, 88, 130, 136–137).
+- Remove those keyword arguments from every `ClutterLossContext(...)` and factory
+  call in the test file.
+
+**`tests/_qgis_mocks.py:465`**
+- Change `"clutter.saalos"` → `"clutter.p833"` in the module allowlist.
+
+**`comparison/panel.py:104–105`**
+- Remove `tx_ground_elevation_m=float(tx_ground)` and `polarization=p.polarization`
+  from the `build_initial_clutter_context(...)` call. These keyword arguments will
+  no longer exist after `context.py` is updated.
+
+**`algorithm/_coverage_helpers.py:56–57`**
+- Remove `tx_ground_elevation_m=tx_ground` and `polarization=p.polarization`
+  from the `build_initial_clutter_context(...)` call. Same reason.
+
+**`radio_coverage/engine.py:96`**
+- Update the comment `"Advanced mode recomputes TX clutter per pixel (saalos /
+  §3.2 depend on..."` to reflect that only P.2108 §3.2 has a distance dependency;
+  P.833 does not.
+
+**`Technical_Documentation.md`**
+- Line 93: module description `"saalos + P.2108 §3.1/§3.2"` → `"P.833-9 §2.1 + P.2108 §3.1/§3.2"`.
+- Line 114: module listing `clutter/saalos.py` → `clutter/p833.py`.
+- Line 553: advanced clutter description — remove "distance" and "polarization"
+  from the P.833 inputs; update algorithm name.
+- Lines 587, 652–654: Decision D9 / invocation geometry — rewrite to describe
+  P.833 Am; remove ITWOM 3.0 / Rust crate provenance.
+- Lines 675, 681, 683: `method` field examples — replace `"saalos"` with `"p833"`.
+- Line 709: table row `vegetation | saalos | ...` → `vegetation | p833 | ...`.
+
+**`USERS-GUIDE.md`**
+- Line 327: remove the performance note "Advanced clutter mode adds a saalos
+  calculation per coverage pixel for vegetation cells... several seconds." P.833
+  is a single multiply and adds no measurable overhead.
+- Line 358: `clutter_method` field description — replace `"§3.1+§3.2/saalos"`
+  example with `"§3.1+§3.2/p833"`.
+
+**`README.md:23,92,103,235`**
+- Replace four references to "saalos" in the advanced clutter mode description
+  with "ITU-R P.833-9 §2.1 vegetation model".
+
+**`NOTICE.md §7`**
+- Replace with P.833 attribution note (see §NOTICE below).
 
 ### Delete
 
 | File | Reason |
 |------|--------|
 | `clutter/saalos.py` | Replaced by `clutter/p833.py` |
-| `clutter/_saalos_vec.py` | Replaced by `clutter/_p833_vec.py` |
-| `tests/test_clutter_saalos.py` | All cases superseded by `test_clutter_p833.py` |
-| `tests/test_saalos_nan_guard.py` | NaN guard tests specific to saalos internals |
+| `clutter/_saalos_vec.py` | Replaced; vectorised path inlined in `clutter/p833.py` |
+| `tests/test_clutter_saalos.py` | Superseded by `test_clutter_p833.py` |
+| `tests/test_saalos_nan_guard.py` | Saalos-specific; not applicable to Am formula |
 | `tests/test_saalos_above_canopy_nan.py` | Above-canopy branch does not exist in P.833 |
+| `tests/test_clutter_constants.py` | Tests `MAX_CLUTTER_LOSS == 22.0`; constant is deleted with saalos |
 
 ---
 
-## API changes
+## `clutter/advanced.py` call site diff
 
-### `clutter/advanced.py` call sites
-
-Current (×2):
+Current (×2 — `compute_advanced_loss:61–69` and `compute_terminal_clutter_loss:127–134`):
 ```python
 loss = clutter_loss_saalos(
     d__meter=context.distance_m,
     cch__meter=cch_m,
-    h_tx__meter=cch_m,        # always == cch_m; only below-canopy branch fires
+    h_tx__meter=cch_m,
     h_rx__meter=ant_h_m,
     h_rx_gnd__meter=_terminal_ground_elev_m(terminal, context),
     pol=context.polarization,
     f__mhz=context.frequency_mhz,
 )
+return ClutterComponents(loss, 0.0, "saalos")
 ```
 
-Replacement:
+Replacement (×1 — only in `compute_advanced_loss`; `compute_terminal_clutter_loss`
+delegates to `compute_advanced_loss` as described above):
 ```python
 loss = clutter_loss_p833(
-    d_m=context.distance_m,   # kept for symmetry; unused by model
     cch_m=cch_m,
     h_rx_m=ant_h_m,
     f_mhz=context.frequency_mhz,
 )
+return ClutterComponents(loss, 0.0, "p833")
 ```
-
-`h_tx`, `h_rx_gnd`, and `pol` are dropped. Note: in every saalos call in
-`advanced.py`, `h_tx__meter` was always passed as `cch_m` (not the actual TX
-height), meaning the above-canopy branch of saalos never fired in production. The
-below-canopy branch similarly never used `h_rx_gnd` for its core formula. P.833
-§2.1 confirms neither is needed.
-
-### `ClutterComponents` model label
-
-Change string from `"saalos"` to `"p833"` in the `ClutterComponents` return
-values in `advanced.py`.
 
 ---
 
 ## Tests to write (`tests/test_clutter_p833.py`)
 
 | Test | What it checks |
-|------|---------------|
+|------|----------------|
 | `test_zero_when_rx_at_canopy` | `h_rx == cch` → 0.0 dB |
 | `test_zero_when_rx_above_canopy` | `h_rx > cch` → 0.0 dB |
-| `test_positive_loss_below_canopy` | `h_rx < cch`, typical inputs → loss > 0 |
-| `test_increases_with_depth` | loss increases as `h_rx` decreases (deeper under canopy) |
-| `test_increases_with_frequency` | loss increases as `f_mhz` increases (at fixed depth) |
-| `test_saturates_below_am` | loss ≤ Am(f) for any depth |
-| `test_reference_values` | spot-check Eq. 1 at (d_v=10 m, 900 MHz), (d_v=5 m, 1800 MHz) |
-| `test_scalar_vec_agreement` | scalar and vectorised paths agree to 1e-10 |
-| `test_nan_guard_vec` | NaN inputs produce 0.0 or MAX_CLUTTER_LOSS, not NaN propagation |
-| `test_zero_distance_scalar` | `d_m=0` → 0.0 (P.833 §2.1 has no distance term; confirm it doesn't break) |
-| `test_gamma_interpolation_endpoints` | `_gamma_p833` below 105.9 MHz clamps; above 2118 MHz extrapolates continuously |
+| `test_positive_loss_below_canopy` | `h_rx < cch` → loss > 0 |
+| `test_distance_independent` | result identical for any two distinct `d_m` values (Am has no d term; confirm no accidental coupling) |
+| `test_increases_with_frequency` | Am increases as f increases (f^0.42 monotone) |
+| `test_am_reference_900mhz` | `clutter_loss_p833(12, 2, 900)` ≈ 23.1 dB (1.37 · 900^0.42) |
+| `test_am_reference_1800mhz` | `clutter_loss_p833(12, 2, 1800)` ≈ 30.8 dB |
+| `test_scalar_vec_agreement` | scalar and vectorised agree to floating-point equality |
+| `test_vec_broadcasts` | vectorised handles arrays of cch, h_rx, f |
+| `test_no_max_clutter_loss_cap` | result at 2600 MHz ≈ 37.2 dB — confirm it is NOT capped at 22 dB |
 
 ---
 
@@ -256,55 +402,70 @@ values in `advanced.py`.
 ```markdown
 ## 7. Vegetation Clutter Model — ITU-R P.833
 
-The vegetation clutter-loss model in `clutter/p833.py` and `clutter/_p833_vec.py`
-implements Equation 1 from §2.1 of ITU-R Recommendation P.833-9 (2016), "Attenuation
-in vegetation." The γ and Am parameter values are taken from P.833-9 Table 1
-(St. Petersburg mixed-forest measurements) and the Am power-law fit cited therein.
+The vegetation clutter-loss model in `clutter/p833.py` implements the Am
+(maximum woodland attenuation) value from §2.1 of ITU-R Recommendation P.833-9
+(2016), "Attenuation in vegetation." P.833-9 §2.1 states that Am is "equivalent
+to the clutter loss often quoted for a terminal obstructed by some form of ground
+cover or clutter." Am = A1 · f^α uses the St. Petersburg fit (A1=1.37, α=0.42)
+cited in P.833-9 §2.1 for mixed coniferous-deciduous forest, 105.9–2117.5 MHz.
 The implementation is original code; no third-party source code was used.
 
-ITU-R Recommendations are published freely by the International Telecommunication
-Union. The algorithms and data tables in P.833-9 are not subject to copyright
-protection as factual/scientific content.
+ITU-R Recommendations are freely published by the International Telecommunication
+Union.
 ```
-
----
-
-## Numeric behaviour comparison
-
-| Scenario | saalos (current) | P.833-9 §2.1 |
-|----------|-----------------|--------------|
-| `h_rx = cch` (at canopy) | 0 dB | 0 dB |
-| `h_rx = 0`, `cch = 12 m`, 900 MHz | ~18–22 dB (distance-dependent) | `Am·(1−e^(−12·0.17/Am))` ≈ 7.7 dB (Am≈28.7) |
-| `h_rx = 2`, `cch = 12 m`, 1800 MHz | distance/geometry-dependent | `Am·(1−e^(−10·0.29/Am))` ≈ 9.5 dB (Am≈32.0) |
-| Very large depth | grows unboundedly (with distance) | saturates at Am |
-
-**P.833 values will be lower and distance-independent (in the clutter term).**
-This is the correct behaviour: ITM already accounts for path loss over distance;
-the clutter term should only model the terminal-obstruction excess, which P.833-9
-§2.1 is specifically designed to give.
 
 ---
 
 ## CHANGELOG entry
 
 ```
-- Replace saalos vegetation clutter model with ITU-R P.833-9 §2.1 (Equation 1).
+- Replace saalos vegetation clutter model with ITU-R P.833-9 §2.1 Am.
   Removes files derived from ITWOM 3.0 (Shumate / Givens & Bell); replaces with
   original code based on a publicly available ITU Recommendation. Removes
   clutter/saalos.py, clutter/_saalos_vec.py, and three saalos-specific test files.
+  Removes dead clutter pipeline fields (polarization, rx/tx_ground_elevation_m
+  in ClutterLossContext) and the per-pixel rx_ground_grid DEM pass in the coverage
+  engine. Vegetation clutter loss is now frequency-dependent and bounded by Am
+  (23 dB at 900 MHz, 31 dB at 1800 MHz); saalos was frequency-independent and
+  always capped at MAX_CLUTTER_LOSS = 22 dB.
 ```
 
 ---
 
 ## Implementation order
 
-1. Create `clutter/p833.py` (scalar) and `clutter/_p833_vec.py` (vectorised).
-2. Write `tests/test_clutter_p833.py` and confirm tests pass against the new code.
-3. Update `clutter/categories.py` and `clutter/advanced.py`.
-4. Update `clutter/__init__.py`.
-5. Update `tests/test_clutter_advanced.py`, `test_clutter_edge_coverage.py`,
-   `test_clutter_math_snapshot.py`.
-6. Delete `clutter/saalos.py`, `clutter/_saalos_vec.py`, and the three saalos test
-   files.
-7. Replace NOTICE.md §7.
-8. Run full test suite; confirm no regressions outside the deleted saalos tests.
+1. Create `clutter/p833.py` (scalar + vectorised).
+2. Write `tests/test_clutter_p833.py`; confirm all tests pass.
+3. Update `clutter/categories.py` and `clutter/advanced.py` (model switch, dead
+   code removal, call site simplification).
+4. Update `clutter/context.py` (remove three dead fields and update both factory
+   signatures).
+5. Update `clutter/constants.py` (remove `MAX_CLUTTER_LOSS` — first grep the full
+   repo to confirm `test_clutter_constants.py` is the only non-saalos consumer).
+6. Update `clutter/__init__.py`.
+7. Update call sites for the removed context factory fields:
+   - `radio_coverage/engine.py` (remove `_build_rx_ground_grid`, update TX clutter
+     guard comment)
+   - `radio_coverage/tasks.py` (remove ground elevation and polarization from
+     per-pixel context construction)
+   - `comparison/panel.py` (remove `tx_ground_elevation_m`, `polarization`)
+   - `algorithm/_coverage_helpers.py` (same)
+   - `p2p/compute.py` and `batch/outputs.py` (confirm factory calls compile)
+8. Update test files that reference removed fields or the "saalos" string:
+   - `tests/test_clutter_advanced.py`
+   - `tests/test_clutter_edge_coverage.py`
+   - `tests/test_clutter_math_snapshot.py`
+   - `tests/test_clutter_categories.py`
+   - `tests/test_clutter.py`
+   - `tests/test_clutter_pipeline.py`
+   - `tests/test_clutter_context.py`
+   - `tests/_qgis_mocks.py`
+9. Delete `clutter/saalos.py`, `clutter/_saalos_vec.py`, and four test files
+   (`test_clutter_saalos.py`, `test_saalos_nan_guard.py`,
+   `test_saalos_above_canopy_nan.py`, `test_clutter_constants.py`).
+10. Replace `NOTICE.md §7`.
+11. Update docs:
+    - `Technical_Documentation.md` (7 locations)
+    - `USERS-GUIDE.md` (2 locations)
+    - `README.md` (4 locations)
+12. Run full test suite; confirm no regressions outside the deleted saalos tests.
