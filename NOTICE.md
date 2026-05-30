@@ -23,13 +23,13 @@ The following files are derived from or inspired by the nowires project (adapted
 | `algorithm/coverage_comparison.py` | `apps/api/app/coverage.py`, `apps/api/app/coverage_render.py` |
 | `algorithm/p2p.py` | `apps/api/app/p2p.py` |
 
-| `coverage/engine.py` | `apps/api/app/coverage_workers.py`, `apps/api/app/coverage_render.py` |
+| `radio_coverage/engine.py` | `apps/api/app/coverage_workers.py`, `apps/api/app/coverage_render.py` |
 | `radio.py` (ITM bridge, Fresnel, signal levels) | `apps/api/app/itm_bridge.py`, `apps/api/app/math_kernels.py`, `apps/api/app/signal_levels.py` |
 | `antenna.py` | `apps/api/app/antenna.py` |
 | `clutter/__init__.py`, `clutter/advanced.py`, `clutter/categories.py`, `clutter/constants.py`, `clutter/context.py`, `clutter/grid.py`, `clutter/resolve.py` | `apps/api/app/clutter/__init__.py` |
 | `clutter/saalos.py` | clutterloss-itm Rust crate (see section 7 below) |
 | `elevation.py` (terrain utilities, ElevationGrid) | `apps/api/app/elevation_grid.py`, `apps/api/app/terrain.py` |
-| `coverage/palette.py` (signal level palette) | `apps/api/app/signal_levels.py`, `apps/api/app/coverage_render.py` |
+| `radio_coverage/palette.py` (signal level palette) | `apps/api/app/signal_levels.py`, `apps/api/app/coverage_render.py` |
 
 Original MIT license text:
 
@@ -147,14 +147,21 @@ The Irregular Terrain Model was originally developed by:
 
 ## 7. saalos / clutterloss-itm — Vegetation Clutter Loss
 
-**Source:** <https://github.com/tedaks/clutterloss-itm> (Rust crate v0.1.0)  
-**Original source:** ITWOM 3.0 ClutterLoss by Sid Shumate (Givens & Bell, Inc.)  
-**License:** MIT License  
-**Copyright:** © 2026 Bortre Tenamo (Python port), © 2026 Bortre Tenamo (Rust crate)
+**Original algorithm:** ITWOM 3.0 `saalos()` / ClutterLoss subroutine  
+**Original author:** Sid Shumate, Givens & Bell, Inc.  
+**Original copyright:** Copyright © 2011 Sid Shumate and Givens & Bell, Inc., all rights reserved.  
+**Original license:** Proprietary — commercial use and resale prohibited except under a Givens & Bell, Inc. license.
 
-`clutter/saalos.py` is a Python port of the saalos vegetation clutter loss algorithm from the MIT-licensed `clutterloss-itm` Rust crate. ITWOM is a derivative of the public-domain Longley-Rice ITM model.
+**Rust reimplementation:** <https://github.com/tedaks/clutterloss-itm> (Rust crate v0.1.0)  
+**Python reimplementation:** `clutter/saalos.py`, `clutter/_saalos_vec.py`  
+**Reimplementation copyright:** Copyright © 2026 Bortre Tenamo  
+**Reimplementation license:** MIT License (see text below)
 
-MIT license text:
+`clutter/saalos.py` and `clutter/_saalos_vec.py` are Python reimplementations of the saalos vegetation clutter-loss algorithm originally written by Sid Shumate and published in ITWOM 3.0 (`itwom3.0.cpp`). The Rust crate at `tedaks/clutterloss-itm` is an intermediate Rust reimplementation of the same algorithm, also authored by Bortre Tenamo. Both reimplementations were developed by studying Shumate's published algorithm and the ITWOM 3.0 reference implementation to verify behavioral parity; they do not reproduce Shumate's C++ source code verbatim.
+
+**Note on upstream license:** The ITWOM 3.0 file carrying the original `saalos()` subroutine asserts a proprietary copyright by Sid Shumate and Givens & Bell, Inc., with commercial use and resale restricted. The public-domain status of NTIA's original Longley-Rice ITM core does not extend to Shumate's additions. The MIT license below applies to the reimplementation (original expression) in this repository; it does not purport to relicense or supersede Shumate's/G&B's rights in the original algorithm or source code.
+
+MIT license text (applies to reimplementation only):
 
 > Copyright (c) 2026 Bortre Tenamo
 >
