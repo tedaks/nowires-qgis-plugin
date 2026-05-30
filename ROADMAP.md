@@ -96,7 +96,7 @@ output for the vegetation clutter category (removed symbols + default change →
 MAJOR). The k-factor N0 coupling (option 1) is bundled here if chosen; option 2
 (opt-in checkbox) is MINOR and targets v2.1.0+.
 
-### Replace saalos vegetation model with ITU-R P.833-9 §2.1 (default change)
+### Replace saalos vegetation model with ITU-R P.833-9 §2.1 (default change)  ✅ Shipped in v2.0.0
 
 Removes `clutter/saalos.py`, `clutter/_saalos_vec.py`, `MAX_CLUTTER_LOSS` from
 `clutter/constants.py`, three dead `ClutterLossContext` fields (`polarization`,
@@ -115,11 +115,6 @@ is frequency-dependent: 17 dB at 450 MHz, 23 dB at 900 MHz, 31 dB at 1800 MHz,
 O(grid²) DEM sample pass from advanced-mode coverage analysis; removing the
 three dead context fields simplifies per-pixel context construction in
 `radio_coverage/tasks.py`.
-
-See [saalos-replacement.md](saalos-replacement.md) for the full implementation
-plan, file inventory, and test specification.
-
-**Regression tests:** all tests listed in saalos-replacement.md §Tests.
 Golden-file tests for the vegetation clutter category must be re-baselined.
 
 ### K-factor preset coupled to N0 (default change)

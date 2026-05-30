@@ -176,15 +176,8 @@ def compute_terminal_clutter_losses(
     total = compute_path_clutter_loss(tx_comp, rx_comp)
     term_sum = tx_comp.terminal_loss_db + rx_comp.terminal_loss_db
     if term_sum > 0.0:
-        if term_sum > 0.0:
-            tx_loss = total * (tx_comp.terminal_loss_db / term_sum)
-            rx_loss = total * (rx_comp.terminal_loss_db / term_sum)
-        elif tx_comp.terminal_loss_db >= rx_comp.terminal_loss_db:
-            tx_loss = total
-            rx_loss = 0.0
-        else:
-            tx_loss = 0.0
-            rx_loss = total
+        tx_loss = total * (tx_comp.terminal_loss_db / term_sum)
+        rx_loss = total * (rx_comp.terminal_loss_db / term_sum)
     else:
         tx_loss = 0.0
         rx_loss = total

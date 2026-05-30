@@ -26,7 +26,11 @@ def clutter_loss_p833(cch_m: float, h_rx_m: float, f_mhz: float) -> float:
     return 1.37 * (f_mhz ** 0.42)
 
 
-def clutter_loss_p833_vec(cch_m, h_rx_m, f_mhz):
+def clutter_loss_p833_vec(
+    cch_m: "np.ndarray | float",
+    h_rx_m: "np.ndarray | float",
+    f_mhz: "np.ndarray | float",
+) -> "np.ndarray":
     """Vectorised clutter_loss_p833. Inputs broadcast to a common shape."""
     import numpy as np
     cch = np.asarray(cch_m, dtype=np.float64)
