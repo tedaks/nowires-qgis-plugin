@@ -27,7 +27,7 @@ The following files are derived from or inspired by the nowires project (adapted
 | `radio.py` (ITM bridge, Fresnel, signal levels) | `apps/api/app/itm_bridge.py`, `apps/api/app/math_kernels.py`, `apps/api/app/signal_levels.py` |
 | `antenna.py` | `apps/api/app/antenna.py` |
 | `clutter/__init__.py`, `clutter/advanced.py`, `clutter/categories.py`, `clutter/constants.py`, `clutter/context.py`, `clutter/grid.py`, `clutter/resolve.py` | `apps/api/app/clutter/__init__.py` |
-| `clutter/saalos.py` | clutterloss-itm Rust crate (see section 7 below) |
+| `clutter/p833.py` | original code (see section 7 below) |
 | `elevation.py` (terrain utilities, ElevationGrid) | `apps/api/app/elevation_grid.py`, `apps/api/app/terrain.py` |
 | `radio_coverage/palette.py` (signal level palette) | `apps/api/app/signal_levels.py`, `apps/api/app/coverage_render.py` |
 
@@ -145,43 +145,18 @@ The Irregular Terrain Model was originally developed by:
 
 ---
 
-## 7. saalos / clutterloss-itm — Vegetation Clutter Loss
+## 7. Vegetation Clutter Model — ITU-R P.833
 
-**Original algorithm:** ITWOM 3.0 `saalos()` / ClutterLoss subroutine  
-**Original author:** Sid Shumate, Givens & Bell, Inc.  
-**Original copyright:** Copyright © 2011 Sid Shumate and Givens & Bell, Inc., all rights reserved.  
-**Original license:** Proprietary — commercial use and resale prohibited except under a Givens & Bell, Inc. license.
+The vegetation clutter-loss model in `clutter/p833.py` implements the Am
+(maximum woodland attenuation) value from §2.1 of ITU-R Recommendation P.833-9
+(2016), "Attenuation in vegetation." P.833-9 §2.1 states that Am is "equivalent
+to the clutter loss often quoted for a terminal obstructed by some form of ground
+cover or clutter." Am = A1 · f^α uses the St. Petersburg fit (A1=1.37, α=0.42)
+cited in P.833-9 §2.1 for mixed coniferous-deciduous forest, 105.9–2117.5 MHz.
+The implementation is original code; no third-party source code was used.
 
-**Rust reimplementation:** <https://github.com/tedaks/clutterloss-itm> (Rust crate v0.1.0)  
-**Python reimplementation:** `clutter/saalos.py`, `clutter/_saalos_vec.py`  
-**Reimplementation copyright:** Copyright © 2026 Bortre Tenamo  
-**Reimplementation license:** MIT License (see text below)
-
-`clutter/saalos.py` and `clutter/_saalos_vec.py` are Python reimplementations of the saalos vegetation clutter-loss algorithm originally written by Sid Shumate and published in ITWOM 3.0 (`itwom3.0.cpp`). The Rust crate at `tedaks/clutterloss-itm` is an intermediate Rust reimplementation of the same algorithm, also authored by Bortre Tenamo. Both reimplementations were developed by studying Shumate's published algorithm and the ITWOM 3.0 reference implementation to verify behavioral parity; they do not reproduce Shumate's C++ source code verbatim.
-
-**Note on upstream license:** The ITWOM 3.0 file carrying the original `saalos()` subroutine asserts a proprietary copyright by Sid Shumate and Givens & Bell, Inc., with commercial use and resale restricted. The public-domain status of NTIA's original Longley-Rice ITM core does not extend to Shumate's additions. The MIT license below applies to the reimplementation (original expression) in this repository; it does not purport to relicense or supersede Shumate's/G&B's rights in the original algorithm or source code.
-
-MIT license text (applies to reimplementation only):
-
-> Copyright (c) 2026 Bortre Tenamo
->
-> Permission is hereby granted, free of charge, to any person obtaining a copy
-> of this software and associated documentation files (the "Software"), to deal
-> in the Software without restriction, including without limitation the rights
-> to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-> copies of the Software, and to permit persons to whom the Software is
-> furnished to do so, subject to the following conditions:
->
-> The above copyright notice and this permission notice shall be included in all
-> copies or substantial portions of the Software.
->
-> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-> IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-> FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-> AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-> LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-> OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-> SOFTWARE.
+ITU-R Recommendations are freely published by the International Telecommunication
+Union.
 
 ---
 

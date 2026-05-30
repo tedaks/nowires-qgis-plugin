@@ -211,7 +211,7 @@ def test_advanced_helper_p2108_for_urban():
     assert v > 0.0
 
 
-def test_advanced_helper_saalos_for_vegetation():
+def test_advanced_helper_p833_for_vegetation():
     v = compute_terminal_clutter_loss("vegetation", "rx", _ctx())
     assert v > 0.0
 

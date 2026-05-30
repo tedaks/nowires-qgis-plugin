@@ -52,7 +52,7 @@ CLUTTER_CATEGORY_PARAMS = {
         "R_m": 15,
         "p2108_3_1_method": "2a",
         "p2108_3_2_applicable": False,
-        "model": "saalos",
+        "model": "p833",
         "description": "Tree cover, mangroves",
     },
     "suburban": {

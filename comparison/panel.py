@@ -39,7 +39,6 @@ from NoWires.clutter import (
     ensure_clutter_grid_for_area,
 )
 from qgis.core import QgsProcessingException
-import math
 
 from NoWires.radio import validate_itm_input_ranges
 from NoWires.shared_params import warn_if_omni_preset_discards_directional
@@ -97,12 +96,8 @@ def run_panel_coverage(algorithm_instance, prefix, parameters, context, feedback
     clutter_context = None
     if p.clutter_enabled:
         from NoWires.clutter.context import build_initial_clutter_context
-        tx_ground = elev.sample(p.tx_lat, p.tx_lon) if elev is not None else 0.0
-        if tx_ground is None or math.isnan(tx_ground):
-            tx_ground = 0.0
         clutter_context = build_initial_clutter_context(
             frequency_mhz=p.f_mhz, tx_height_m=p.tx_h, rx_height_m=p.rx_h,
-            tx_ground_elevation_m=float(tx_ground), polarization=p.polarization,
             cch_override_m=p.cch_override_m, model=p.clutter_model,
             percentile=p.clutter_percentile, street_width_m=p.street_width_m,
             bel_enabled=p.bel_enabled, bel_building_type=p.bel_building_type,

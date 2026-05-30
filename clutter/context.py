@@ -35,9 +35,6 @@ class ClutterLossContext:
     distance_m: float
     tx_height_m: float
     rx_height_m: float
-    rx_ground_elevation_m: float = 0.0
-    tx_ground_elevation_m: float = 0.0
-    polarization: int = 0
     cch_override_m: float | None = None
     model: ClutterModel = "simple"
     percentile: float = 50.0
@@ -55,21 +52,20 @@ class ClutterLossContext:
 
 def build_initial_clutter_context(
     *, frequency_mhz: float, tx_height_m: float, rx_height_m: float,
-    tx_ground_elevation_m: float, polarization: int, cch_override_m: float | None,
+    cch_override_m: float | None,
     model: ClutterModel, percentile: float, street_width_m: float,
     bel_enabled: bool, bel_building_type: BuildingType, bel_elevation_angle_deg: float,
 ) -> ClutterLossContext:
-    """Build a ClutterLossContext with distance=0 and rx_ground=0 placeholders.
+    """Build a ClutterLossContext with distance=0 placeholder.
 
-    Per-pixel rx_ground and distance are filled in later during task building
-    (coverage) or per-link recomputation (P2P/batch). The single factory keeps
-    the placeholder semantics consistent between algorithm and engine callers.
+    Per-pixel distance is filled in later during task building (coverage) or
+    per-link recomputation (P2P/batch). The single factory keeps the placeholder
+    semantics consistent between algorithm and engine callers.
     """
     return ClutterLossContext(
         frequency_mhz=frequency_mhz, distance_m=0.0,
         tx_height_m=tx_height_m, rx_height_m=rx_height_m,
-        rx_ground_elevation_m=0.0, tx_ground_elevation_m=tx_ground_elevation_m,
-        polarization=polarization, cch_override_m=cch_override_m, model=model,
+        cch_override_m=cch_override_m, model=model,
         percentile=percentile, street_width_m=street_width_m,
         bel_enabled=bel_enabled, bel_building_type=bel_building_type,
         bel_elevation_angle_deg=bel_elevation_angle_deg,
@@ -78,12 +74,11 @@ def build_initial_clutter_context(
 
 def build_link_clutter_context(
     *, params, dist_m: float, tx_h: float, rx_h: float,
-    tx_elev: float, rx_elev: float,
 ) -> ClutterLossContext:
     """Build a per-link ClutterLossContext from a params object.
 
     Duck-types over P2PAnalysisParams and BatchAnalysisParams: both expose
-    f_mhz, polarization, cch_override_m, clutter_model, clutter_percentile,
+    f_mhz, cch_override_m, clutter_model, clutter_percentile,
     street_width_m, bel_enabled, bel_building_type, bel_elevation_angle_deg.
     tx_h/rx_h are explicit because batch overrides per-link from feature
     attributes; the rest are read from params directly.
@@ -91,8 +86,7 @@ def build_link_clutter_context(
     return ClutterLossContext(
         frequency_mhz=params.f_mhz, distance_m=dist_m,
         tx_height_m=tx_h, rx_height_m=rx_h,
-        rx_ground_elevation_m=rx_elev, tx_ground_elevation_m=tx_elev,
-        polarization=params.polarization, cch_override_m=params.cch_override_m,
+        cch_override_m=params.cch_override_m,
         model=params.clutter_model, percentile=params.clutter_percentile,
         street_width_m=params.street_width_m, bel_enabled=params.bel_enabled,
         bel_building_type=params.bel_building_type,

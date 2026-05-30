@@ -144,7 +144,6 @@ class TestBuildCoverageTasks:
             distance_m=0.0,
             tx_height_m=2.0,
             rx_height_m=2.0,
-            polarization=1,
             model="advanced",
         )
 

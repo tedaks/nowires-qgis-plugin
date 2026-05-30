@@ -324,7 +324,7 @@ When clutter is enabled and the land-cover raster field is left blank, NoWires a
 
 #### Advanced Mode Runtime Cost
 
-Advanced clutter mode adds a saalos calculation per coverage pixel for vegetation cells. On a 250×250 grid with vegetation-dominated land cover this can add several seconds. Built-environment categories use vectorized P.2108 and are essentially free in comparison.
+Advanced clutter mode applies ITU-R P.833-9 §2.1 Am for vegetation cells (a single multiply per pixel — essentially no overhead) and vectorized P.2108 for built-environment categories.
 
 #### Advanced Clutter Parameters
 
@@ -355,7 +355,7 @@ No user configuration is needed for this dispatch — the correct model is appli
 Both P2P and coverage reports include clutter loss fields:
 
 - `clutter_source`: describes where the clutter data came from (e.g. `override`, a raster path, or `fallback_open`)
-- `clutter_method`: which P.2108/P.2109 sub-models were applied (e.g. `§3.1+§3.2/saalos`)
+- `clutter_method`: which sub-models were applied (e.g. `§3.1+§3.2/p833`)
 - `clutter_percentile`: the location percentile used for §3.2 and BEL calculations
 - `clutter_tx_db`: TX terminal clutter loss
 - `clutter_rx_db`: RX terminal clutter loss
