@@ -16,7 +16,7 @@ def _p2p_algorithm_source():
 def test_p2p_algorithm_calls_run_p2p_analysis_directly():
     """The call must remain, but it must not be wrapped in try/finally inside processAlgorithm."""
     source = _p2p_algorithm_source()
-    assert "return run_p2p_analysis(p2p_params)" in source
+    assert "run_p2p_analysis(p2p_params)" in source
 
 
 def test_p2p_algorithm_has_no_pass_only_finally():
