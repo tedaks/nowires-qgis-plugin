@@ -63,7 +63,7 @@ class TestShouldUseMultiprocessing:
     def test_darwin_returns_true_when_python_exe_found(self):
         with patch.object(sys, "platform", "darwin"), \
              patch("NoWires.radio_coverage.pool.find_macos_python_executable", return_value="/usr/bin/python3"):
-            result = should_use_multiprocessing()
+            result = should_use_multiprocessing(os_name="posix")
             assert result is True
 
     def test_default_uses_os_name(self):

@@ -374,15 +374,22 @@ def install_qgis_mocks():
     _qgis_pyqtQtCore.QTimer = MagicMock()
     _qgis_pyqtQtCore.QEvent = MagicMock()
     _qgis_pyqtQtCore.QCoreApplication = MagicMock()
+    _qgis_pyqtQtCore.QPointF = MagicMock()
     _qgis_pyqtQtCore.QT_VERSION_STR = "6.0.0"
     _qgis_pyqtQtGui.QAction = _make_qaction
     _qgis_pyqtQtGui.QIcon = _make_qicon
     _qgis_pyqtQtGui.QPixmap = _make_qpixmap
     _qgis_pyqtQtGui.QColor = _make_qcolor
     _qgis_pyqtQtGui.QPainter = _make_qpainter
+    _qgis_pyqtQtGui.QFont = MagicMock()
+    _qgis_pyqtQtGui.QPen = MagicMock()
+    _qgis_pyqtQtGui.QPolygonF = MagicMock()
 
     for attr, val in _QGIS_PYQT_WIDGETS_ATTRS.items():
         setattr(_qgis_pyqtQtWidgets, attr, val)
+    _qgis_pyqtQtWidgets.__getattr__ = lambda name: MagicMock(name=f"qgis.PyQt.QtWidgets.{name}")
+    _qgis_pyqtQtGui.__getattr__ = lambda name: MagicMock(name=f"qgis.PyQt.QtGui.{name}")
+    _qgis_pyqtQtCore.__getattr__ = lambda name: MagicMock(name=f"qgis.PyQt.QtCore.{name}")
 
     _qgis_pyqt.QtCore = _qgis_pyqtQtCore
     _qgis_pyqt.QtGui = _qgis_pyqtQtGui
