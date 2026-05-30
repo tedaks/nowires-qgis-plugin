@@ -38,8 +38,6 @@ def test_coverage_comparison_algorithm_opts_into_threading():
     assert "ALLOW_THREADING = True" in _source("algorithm/coverage_comparison.py")
 
 
-def test_p2p_and_contour_keep_no_threading():
-    # Quick-compute algorithms intentionally stay on the main thread; they
-    # must NOT set ALLOW_THREADING.
+def test_p2p_and_contour_opt_into_threading():
     for name in ("algorithm/p2p.py", "algorithm/contour.py"):
-        assert "ALLOW_THREADING = True" not in _source(name), name
+        assert "ALLOW_THREADING = True" in _source(name), name

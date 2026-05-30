@@ -57,6 +57,7 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
 
     GROUP_NAME = "Terrain Analysis"
     GROUP_ID = "terrain_analysis"
+    ALLOW_THREADING = True
 
     AREA_OF_INTEREST = "AREA_OF_INTEREST"
     INTERVAL = "INTERVAL"
@@ -267,7 +268,8 @@ class ContourLinesAlgorithm(NoWiresAlgorithm):
     def postProcessAlgorithm(self, context, feedback):
         """Persist layer tracking state after successful algorithm execution."""
         if self._contour_layer_id is not None:
-            QgsProject.instance().writeEntry(
+            project = context.project() if context.project() is not None else QgsProject.instance()
+            project.writeEntry(
                 "NoWires", "last_contour_layer_id", self._contour_layer_id)
         return super().postProcessAlgorithm(context, feedback)
 
