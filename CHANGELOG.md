@@ -9,6 +9,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-05-30
+
+### Breaking Changes
+
+- **`ClutterLossContext`** — removes three fields that were only consumed by
+  saalos: `polarization`, `rx_ground_elevation_m`, `tx_ground_elevation_m`.
+  Any code constructing `ClutterLossContext` directly or calling
+  `build_initial_clutter_context` / `build_link_clutter_context` with those
+  keyword arguments must be updated.
+- **`clutter/saalos.py` deleted** — `clutter_loss_saalos`,
+  `clutter_loss_saalos_vec`, and `_saalos_pol` are no longer importable.
+  Replace with `clutter_loss_p833` / `clutter_loss_p833_vec` from
+  `clutter/p833.py`.
+- **`MAX_CLUTTER_LOSS` removed** from `clutter/constants.py` — the constant no
+  longer exists; the P.833-9 Am formula has no cap.
+- **Vegetation clutter values change** — saalos returned a fixed 22.0 dB at any
+  frequency. P.833-9 Am is frequency-dependent: lower below ~850 MHz, higher
+  above 1 GHz. Results for existing coverage analyses will differ.
+
+### Security / Licence
+
+- Replace `clutter/saalos.py` and `clutter/_saalos_vec.py` (derived from
+  ITWOM 3.0, copyright © 2011 Sid Shumate / Givens & Bell, Inc., proprietary)
+  with a clean implementation of ITU-R P.833-9 §2.1 Am. No proprietary upstream
+  code remains in the repository. `NOTICE.md §7` updated accordingly.
+
+### Added
+
+- `clutter/p833.py` — `clutter_loss_p833(cch_m, h_rx_m, f_mhz)` (scalar) and
+  `clutter_loss_p833_vec` (vectorised NumPy). Implements Am = 1.37 × f^0.42
+  from ITU-R P.833-9 §2.1 (St. Petersburg fit, 105.9–2117.5 MHz). Returns 0.0
+  when the antenna is at or above the canopy height.
+- `tests/test_clutter_p833.py` — 10 tests covering boundary conditions, Am
+  reference values, frequency monotonicity, no-cap assertion, and scalar/vec
+  agreement.
+
+### Removed
+
+- `clutter/saalos.py`, `clutter/_saalos_vec.py` — replaced by `clutter/p833.py`.
+- `tests/test_clutter_saalos.py`, `tests/test_saalos_nan_guard.py`,
+  `tests/test_saalos_above_canopy_nan.py` — superseded by
+  `tests/test_clutter_p833.py`.
+- `tests/test_clutter_constants.py` — tested `MAX_CLUTTER_LOSS == 22.0`;
+  constant deleted.
+- `_build_rx_ground_grid` and `_get_tx_ground_elevation` from
+  `radio_coverage/engine.py` — eliminated an O(grid²) DEM sample pass that ran
+  before every advanced-mode coverage analysis.
+- `both_saalos` dead-code branch in `clutter/advanced.py:compute_terminal_clutter_losses`.
+- Saalos special-cases in `compute_path_clutter_loss` (both-saalos max and
+  mixed-saalos logic). P.833 terminal losses are now summed like any other
+  independent clutter contribution.
+
+### Changed
+
+- `clutter/categories.py` — `"vegetation"` model key changed from `"saalos"` to
+  `"p833"`.
+- `ClutterLossContext` — fields `polarization`, `rx_ground_elevation_m`,
+  `tx_ground_elevation_m` removed (see Breaking Changes).
+- `compute_path_clutter_loss` — saalos-specific path logic removed; vegetation
+  (p833) losses are now summed across both terminals.
+- `radio_coverage/tasks.py` — LUT key simplified to distance bucket only
+  (ground elevation bucket removed).
+- All documentation updated: `Technical_Documentation.md`, `USERS-GUIDE.md`,
+  `README.md`, `NOTICE.md §7`.
+
 ## [1.7.1] - 2026-05-30
 
 ### Correctness
