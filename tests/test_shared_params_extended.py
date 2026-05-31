@@ -43,6 +43,7 @@ class _Alg:
         self.BEL_ELEVATION_ANGLE = "BEL_ELEVATION_ANGLE"
         self.K_FACTOR_PRESET = "K_FACTOR_PRESET"
         self.K_FACTOR = "K_FACTOR"
+        self.DECOUPLE_N0 = "DECOUPLE_N0"
         self.N0 = "N0"
         self.EPSILON = "EPSILON"
         self.SIGMA = "SIGMA"

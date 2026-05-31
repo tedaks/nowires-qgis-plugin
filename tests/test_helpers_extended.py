@@ -4,7 +4,6 @@
 """Extended tests for shared_dem_grid, temp_manager, and nan_utils."""
 
 import os
-import sys
 
 import pytest
 

@@ -32,7 +32,9 @@ from NoWires.constants import METERS_PER_DEGREE_LAT, WGS84_CRS
 from NoWires.dem_downloader import ensure_dem_for_area
 from NoWires.elevation import ElevationGrid
 from NoWires.geo_bounds import aoi_padding_deg, shortest_longitude_bounds_for, validate_coordinates
-from NoWires.radio import K_FACTOR_PRESETS, resolve_k_factor, validate_itm_input_ranges
+from NoWires.radio import (
+    K_FACTOR_PRESETS, resolve_k_factor, resolve_n0, validate_itm_input_ranges,
+)
 from NoWires.antenna import antenna_preset_key
 from NoWires.clutter import ensure_clutter_grid_for_area
 from NoWires.shared_params import extract_clutter_params, extract_link_budget_params
@@ -69,7 +71,7 @@ def _features_to_points(features, source_crs, transform_fn, default_height):
     return points
 
 
-def _extract_batch_radio_params(algorithm, parameters, context):
+def _extract_batch_radio_params(algorithm, parameters, context, feedback=None):
     p = parameters
     _pD = algorithm.parameterAsDouble
     _pE = algorithm.parameterAsEnum
@@ -93,7 +95,15 @@ def _extract_batch_radio_params(algorithm, parameters, context):
     kf = resolve_k_factor(
         has_preset=pi < len(K_FACTOR_PRESETS), has_custom=True,
         custom_value=_pD(p, algorithm.K_FACTOR, context), preset_index=pi)
-    n0 = _pD(p, algorithm.N0, context)
+    decouple_n0 = algorithm.parameterAsBool(p, algorithm.DECOUPLE_N0, context)
+    user_n0 = _pD(p, algorithm.N0, context)
+    n0 = resolve_n0(pi, decouple_n0, user_n0)
+    if n0 != user_n0 and feedback is not None:
+        feedback.pushInfo(
+            "Surface refractivity N0 set to {:.0f} N-units by the selected "
+            "k-factor preset (was {:.0f}). Enable 'Decouple N0 from k-factor "
+            "preset' or choose the Custom preset to use your own N0.".format(
+                n0, user_n0))
     epsilon = _pD(p, algorithm.EPSILON, context)
     sigma = _pD(p, algorithm.SIGMA, context)
     validate_itm_input_ranges(tx_height_m=tx_h, rx_height_m=rx_h, frequency_mhz=f_mhz,
@@ -161,7 +171,7 @@ def _collect_batch_inputs(algorithm, parameters, context, feedback):
         for tx in candidate_tx:
             validate_coordinates(tx["lat"], tx["lon"], "TX")
         feedback.pushInfo("Many-to-One: {} TX sites".format(len(candidate_tx)))
-    rp = _extract_batch_radio_params(algorithm, parameters, context)
+    rp = _extract_batch_radio_params(algorithm, parameters, context, feedback)
     lats = [pt["lat"] for pt in candidate_tx] + [pt["lat"] for pt in rx_points]
     lons = [pt["lon"] for pt in candidate_tx] + [pt["lon"] for pt in rx_points]
     south, north = min(lats), max(lats)

@@ -9,7 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.0] - 2026-05-30
+### Correctness
+
+- Import `logging` and define `logger` in `algorithm/p2p.py` to fix `NameError` on chart display failure.
+- Move `import numpy as np` to module level in `clutter/p833.py` and wrap return with `float()` for type-safety.
+- Make `_FakeQgsApplication` mock accept constructor arguments so QGIS integration tests can run without a real QGIS runtime.
+
+### Cleanups
+
+- Remove unused imports (`pytest`, `math`, `sys`) and a duplicate `sys` import from four test files.
 
 ### Breaking Changes
 
@@ -27,6 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Vegetation clutter values change** — saalos returned a fixed 22.0 dB at any
   frequency. P.833-9 Am is frequency-dependent: lower below ~850 MHz, higher
   above 1 GHz. Results for existing coverage analyses will differ.
+- **K-factor preset now sets surface refractivity N0** — selecting a
+  non-default `K_FACTOR_PRESET` in P2P/Batch overrides N0 (0.67→250, 1.00→280,
+  1.33→301, 2.00→350, 4.00→400 N-units) and therefore changes the ITM
+  propagation prediction, not just the Fresnel/LOS display. The standard 1.33
+  default still maps to N0=301, so default-preset runs are unchanged. Enable
+  the new "Decouple N0 from k-factor preset" checkbox or choose the Custom
+  preset to keep N0 independent (the pre-2.0.0 behaviour).
 
 ### Security / Licence
 
@@ -44,6 +59,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tests/test_clutter_p833.py` — 10 tests covering boundary conditions, Am
   reference values, frequency monotonicity, no-cap assertion, and scalar/vec
   agreement.
+- `DECOUPLE_N0` processing parameter on the P2P and Batch algorithms — an
+  opt-in checkbox that restores the pre-2.0.0 behaviour where the k-factor
+  preset affects only the Fresnel/LOS display and N0 stays user-controlled.
+- `k_factor_presets.py` — houses `K_FACTOR_PRESETS`, the new
+  `K_FACTOR_PRESET_N0` coupling table, and `resolve_k_factor` / `resolve_n0`
+  (re-exported from `radio` for compatibility).
+- `tests/test_k_factor_n0_coupling.py`,
+  `tests/test_k_factor_preset_backward_compat.py` — lock the coupled N0 values,
+  the Custom-preset and decouple escape hatches, and the ITM loss change.
 
 ### Removed
 
@@ -69,6 +93,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tx_ground_elevation_m` removed (see Breaking Changes).
 - `compute_path_clutter_loss` — saalos-specific path logic removed; vegetation
   (p833) losses are now summed across both terminals.
+- K-factor preset label changed from "Fresnel Earth-radius factor (display
+  only)" to "Earth-radius factor (k) — sets N0"; the N0 field is now
+  documented as preset-driven unless decoupled.
 - `radio_coverage/tasks.py` — LUT key simplified to distance bucket only
   (ground elevation bucket removed).
 - All documentation updated: `Technical_Documentation.md`, `USERS-GUIDE.md`,

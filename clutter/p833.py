@@ -15,6 +15,8 @@ Extrapolation outside this range is not sanctioned by the document.
 """
 from __future__ import annotations
 
+import numpy as np
+
 
 def clutter_loss_p833(cch_m: float, h_rx_m: float, f_mhz: float) -> float:
     """Vegetation clutter loss, ITU-R P.833-9 §2.1 Am.
@@ -23,16 +25,15 @@ def clutter_loss_p833(cch_m: float, h_rx_m: float, f_mhz: float) -> float:
     """
     if h_rx_m >= cch_m:
         return 0.0
-    return 1.37 * (f_mhz ** 0.42)
+    return float(1.37 * (f_mhz ** 0.42))
 
 
 def clutter_loss_p833_vec(
-    cch_m: "np.ndarray | float",
-    h_rx_m: "np.ndarray | float",
-    f_mhz: "np.ndarray | float",
-) -> "np.ndarray":
+    cch_m: np.ndarray | float,
+    h_rx_m: np.ndarray | float,
+    f_mhz: np.ndarray | float,
+) -> np.ndarray:
     """Vectorised clutter_loss_p833. Inputs broadcast to a common shape."""
-    import numpy as np
     cch = np.asarray(cch_m, dtype=np.float64)
     hrx = np.asarray(h_rx_m, dtype=np.float64)
     f   = np.asarray(f_mhz,  dtype=np.float64)

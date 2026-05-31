@@ -10,8 +10,6 @@ import sys
 import types
 from unittest.mock import MagicMock
 
-import sys
-
 import pytest
 
 _posix_symlink = pytest.mark.skipif(
