@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Correctness
+
+- Fix `test_decouple_n0_registered_and_not_advanced` failing on Python 3.13 — replace `MagicMock.called` (removed in 3.13) with dual-path check that also works against real QGIS bindings.
+
 ## [2.0.0] - 2026-05-31
 
 ### Correctness
