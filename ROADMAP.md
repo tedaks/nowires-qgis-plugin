@@ -79,11 +79,12 @@ Regression test: `test_aoi_feedback_summary.py`
 
 ### Cleanups
 
-#### K-factor parameter: remaining open options
+#### K-factor parameter: remaining open options ✅ Resolved in v2.0.0
 
-Status unchanged. The interim label-clarification shipped in v1.7.0.
-Neither full fix (option 1 — MAJOR, or option 2 — MINOR) has landed;
-both remain targeted at v2.0.0 / v2.1.0 per the original classification.
+The interim label-clarification shipped in v1.7.0. Both full fixes have now
+landed together in v2.0.0: option 1 (preset→N0 coupling, MAJOR default change)
+and option 2 (the opt-in `DECOUPLE_N0` checkbox, MINOR). See the v2.0.0 entry
+above.
 
 ---
 
@@ -117,26 +118,30 @@ three dead context fields simplifies per-pixel context construction in
 `radio_coverage/tasks.py`.
 Golden-file tests for the vegetation clutter category must be re-baselined.
 
-### K-factor preset coupled to N0 (default change)
+### K-factor preset coupled to N0 (default change)  ✅ Shipped in v2.0.0
 
-Map each `K_FACTOR_PRESET` to a representative N0 value (sub-refractive → low
-N0, super-refractive → high N0) so changing the preset changes propagation
-prediction too. This changes the default behavior: users who previously picked
-a K-factor preset expecting it to affect only Fresnel/LOS display now get
-different N0 values and different ITM predictions. The degree of freedom
-(k independent of N0) is removed.
+Each `K_FACTOR_PRESET` now maps to a representative N0 (0.67→250, 1.00→280,
+1.33→301, 2.00→350, 4.00→400 N-units; full-range spread) so changing the preset
+changes the ITM propagation prediction, not only the Fresnel/LOS display. The
+standard 1.33 preset is pinned to `DEFAULT_N0=301`, so default-preset runs are
+numerically unchanged. The mapping and resolvers live in the new
+`k_factor_presets.py` (`K_FACTOR_PRESET_N0`, `resolve_n0`), re-exported from
+`radio`. Coupling is applied in the P2P and Batch algorithm readers, which push
+a feedback note when the preset overrides the user's N0.
 
-MAJOR — default change per AGENTS.md. Keep the opt-in checkbox (option 2)
-available so users who need k independent of N0 can still work.
+Both options landed together: option 1 (coupling, MAJOR — default change) and
+option 2 (the opt-in `DECOUPLE_N0` checkbox, MINOR) so users who need k
+independent of N0 can still work. The Custom preset also leaves N0 free.
 
-**Regression tests:**
-- `test_k_factor_n0_coupling.py` — for each K_FACTOR_PRESET, verify the
-  corresponding N0 value; run ITM with the coupled N0 and assert propagation
-  loss changes vs. the uncoupled baseline.
-- `test_k_factor_preset_backward_compat.py` — assert that the opt-in "decouple
-  k from N0" checkbox restores the old behavior (k affects only Fresnel, N0
-  stays at default).
-- Golden-file P2P and Batch report tests must be re-baselined.
+**Regression tests (landed):**
+- `test_k_factor_n0_coupling.py` — verifies the coupled N0 for each preset, the
+  Custom-preset pass-through, and that the coupled N0 changes ITM loss.
+- `test_k_factor_preset_backward_compat.py` — verifies the `DECOUPLE_N0`
+  checkbox restores the old behavior (preset affects Fresnel only, N0 stays as
+  entered) and that the control is wired through P2P/Batch.
+- Golden-file report tests are unaffected: they exercise the report writers
+  with fixed payloads, not the algorithm readers where coupling happens, and
+  the default-preset path is byte-identical. No re-baseline was needed.
 
 ---
 

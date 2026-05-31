@@ -185,6 +185,9 @@ def _make_param_bool(*a, **kw):
 
 
 class _ParamBoolean:
+    Flag = _ParamFlag
+    FlagAdvanced = 2
+
     def __new__(cls, *a, **kw):
         return _make_param_bool(*a, **kw)
 
@@ -259,6 +262,9 @@ _mock_registry = MagicMock()
 
 
 class _FakeQgsApplication:
+    def __init__(self, *args, **kwargs):
+        pass
+
     @staticmethod
     def processingRegistry():
         return _mock_registry
@@ -266,6 +272,14 @@ class _FakeQgsApplication:
     @staticmethod
     def instance():
         return None
+
+    @staticmethod
+    def initQgis():
+        pass
+
+    @staticmethod
+    def exitQgis():
+        pass
 
 
 _QGIS_CORE_ATTRS = {
@@ -363,6 +377,7 @@ def install_qgis_mocks():
 
     sys.modules.setdefault("qgis", _qgis)
     sys.modules.setdefault("qgis.core", _qgis_core)
+    _qgis.core = _qgis_core
 
     # --- PyQt stubs ---
     _qgis_pyqt = types.ModuleType("qgis.PyQt")
@@ -404,6 +419,7 @@ def install_qgis_mocks():
     _qgis_utils = types.ModuleType("qgis.utils")
     _qgis_utils.iface = None
     sys.modules.setdefault("qgis.utils", _qgis_utils)
+    _qgis.utils = _qgis_utils
 
     # --- processing stub ---
     sys.modules.setdefault("processing", MagicMock())

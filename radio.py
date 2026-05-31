@@ -44,7 +44,12 @@ from dataclasses import dataclass
 import numpy as np
 
 from NoWires.defaults import (
-    DEFAULT_EPSILON, DEFAULT_FREQ_MHZ, DEFAULT_K_FACTOR, DEFAULT_N0, DEFAULT_SIGMA,
+    DEFAULT_EPSILON, DEFAULT_FREQ_MHZ, DEFAULT_N0, DEFAULT_SIGMA,
+)
+
+# Re-exported for backward compatibility (split out under the 300-line gate).
+from NoWires.k_factor_presets import (  # noqa: F401
+    K_FACTOR_PRESETS, K_FACTOR_PRESET_N0, resolve_k_factor, resolve_n0,
 )
 
 
@@ -66,9 +71,8 @@ PROP_MODE_NAMES = {
 
 # --- Constants ---
 
-# Earth-radius factor (k) presets exposed by the P2P algorithm UI.
-# Index 2 (4/3) is the standard-atmosphere default.
-K_FACTOR_PRESETS = [0.67, 1.0, DEFAULT_K_FACTOR, 2.0, 4.0]
+# K-factor presets and their v2.0.0 N0 coupling live in k_factor_presets.py
+# (300-line gate); re-exported here for backward-compatible imports.
 ITM_MIN_TERMINAL_HEIGHT_M = 0.5
 ITM_MAX_TERMINAL_HEIGHT_M = 3000.0
 ITM_MIN_FREQUENCY_MHZ = 20.0
@@ -83,27 +87,6 @@ ITM_MAX_PERCENT = 99.99
 ITM_MIN_K_FACTOR = 0.01
 ITM_MAX_K_FACTOR = 100.0
 ITM_MIN_EPSILON = 1.0
-
-
-def resolve_k_factor(
-    has_preset: bool, has_custom: bool, custom_value: float | None,
-    preset_index: int, presets: list[float] = K_FACTOR_PRESETS,
-) -> float:
-    """Pick the effective Earth-radius factor (k) for a P2P run.
-
-    Prefers the preset enum; falls back to the legacy numeric K_FACTOR only
-    when the preset is absent and the custom value was supplied.
-    """
-    if has_preset and has_custom:
-        logger.warning(
-            "K_FACTOR preset selected; custom K_FACTOR=%s is ignored, "
-            "using preset index %s instead.",
-            custom_value, preset_index,
-        )
-    if not has_preset and has_custom:
-        assert custom_value is not None
-        return float(custom_value)
-    return presets[preset_index]
 
 
 def validate_itm_input_ranges(

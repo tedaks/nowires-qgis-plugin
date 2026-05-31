@@ -4,7 +4,6 @@
 # This program is free software under GPLv3 or later. See LICENSE.
 """Tests for clutter_advanced pure-logic functions."""
 
-import pytest
 from unittest.mock import MagicMock, patch
 
 from clutter.advanced import (

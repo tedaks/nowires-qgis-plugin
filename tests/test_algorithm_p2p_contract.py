@@ -69,7 +69,10 @@ def test_p2p_algorithm_defaults_polarization_to_vertical():
 def test_p2p_algorithm_exposes_k_factor_preset_and_legacy_numeric_parameter():
     source = _p2p_source()
     assert "K_FACTOR_PRESET" in source
-    assert "Fresnel Earth-radius factor (display only)" in source
+    # v2.0.0: the preset now drives N0 (no longer "display only").
+    assert "Fresnel Earth-radius factor (display only)" not in source
+    assert "sets N0" in source
+    assert "DECOUPLE_N0" in source
     assert "0.67 - Sub-refractive" in source
     assert "Custom" in source
     assert "defaultValue=2" in source
