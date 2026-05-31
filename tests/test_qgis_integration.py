@@ -98,7 +98,11 @@ class TestCoverageStyleIntegration:
         apply_coverage_style(layer)
         assert layer.renderer() is not None
 
-        os.unlink(tmp)
+        del layer  # release Windows file lock before unlinking
+        try:
+            os.unlink(tmp)
+        except PermissionError:
+            pass  # QGIS may still hold the handle; temp file will be cleaned by OS
 
 
 class TestWriteGeotiffIntegration:

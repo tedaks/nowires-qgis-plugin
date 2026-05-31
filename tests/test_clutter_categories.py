@@ -43,12 +43,12 @@ def test_all_categories_have_required_params():
         assert "p2108_3_2_applicable" in params
         assert "model" in params
         assert params["model"] in (
-            "none", "saalos", "p2108_height_gain", "p2108_combined",
+            "none", "p833", "p2108_height_gain", "p2108_combined",
         )
 
 
 def test_category_model_assignments():
-    assert CLUTTER_CATEGORY_PARAMS["vegetation"]["model"] == "saalos"
+    assert CLUTTER_CATEGORY_PARAMS["vegetation"]["model"] == "p833"
     assert CLUTTER_CATEGORY_PARAMS["urban"]["model"] == "p2108_combined"
     assert CLUTTER_CATEGORY_PARAMS["suburban"]["model"] == "p2108_combined"
     assert CLUTTER_CATEGORY_PARAMS["open"]["model"] == "none"

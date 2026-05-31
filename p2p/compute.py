@@ -177,8 +177,7 @@ def run_p2p_analysis(params: P2PAnalysisParams):
         if p.clutter_enabled or p.bel_enabled:
             from NoWires.clutter.context import build_link_clutter_context
             clutter_context = build_link_clutter_context(
-                params=p, dist_m=dist_m, tx_h=p.tx_h, rx_h=p.rx_h,
-                tx_elev=float(tx_elev), rx_elev=float(rx_elev))
+                params=p, dist_m=dist_m, tx_h=p.tx_h, rx_h=p.rx_h)
         cl = compute_terminal_clutter_losses(
             tx_lat=p.tx_lat, tx_lon=p.tx_lon, rx_lat=p.rx_lat, rx_lon=p.rx_lon,
             frequency_mhz=p.f_mhz, enabled=p.clutter_enabled or p.bel_enabled,

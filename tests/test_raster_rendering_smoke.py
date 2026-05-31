@@ -8,6 +8,10 @@ SKIPPED when real QGIS is available because they pass MagicMock layers to
 QgsSingleBandPseudoColorRenderer, which expects a real QgsRasterDataProvider.
 """
 
+from pathlib import Path
+
+_ROOT = Path(__file__).parent.parent
+
 import os
 import pytest
 from unittest.mock import MagicMock
@@ -101,20 +105,20 @@ class TestApplyDeltaStylePipeline:
 class TestRasterIOContract:
     def test_write_geotiff_uses_gdal_driver(self):
         """Contract: raster_io uses gdal.GetDriverByName('GTiff')."""
-        source = open("raster_io.py").read()
+        source = (_ROOT / "raster_io.py").read_text()
         assert "from NoWires.constants import COVERAGE_NODATA, GDAL_DRIVER_NAME" in source or \
             'GetDriverByName("GTiff")' in source
 
     def test_write_geotiff_closes_dataset_in_finally(self):
-        source = open("raster_io.py").read()
+        source = (_ROOT / "raster_io.py").read_text()
         assert "del ds" in source
 
     def test_write_geotiff_sets_projection(self):
-        source = open("raster_io.py").read()
+        source = (_ROOT / "raster_io.py").read_text()
         assert "SetProjection" in source
 
     def test_write_geotiff_sets_nodata(self):
-        source = open("raster_io.py").read()
+        source = (_ROOT / "raster_io.py").read_text()
         assert "SetNoDataValue" in source
 
 

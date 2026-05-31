@@ -25,7 +25,7 @@ You will need:
 Use the official QGIS download page:
 
 - Main download page: https://qgis.org/download/
-- Installation guide: https://version.qgis.org/resources/installation-guide/
+- Installation guide: https://docs.qgis.org/latest/en/docs/user_manual/introduction/getting_started.html
 
 Always check the official QGIS page for the latest 4.x installer and platform-specific notes.
 
@@ -172,12 +172,14 @@ Main inputs include:
 - time, location, and situation percentages
 - TX power, antenna gains, cable loss
 - RX sensitivity
-- Earth radius factor preset
+- Earth radius factor preset (also sets surface refractivity `N0` — see below)
+- Decouple N0 from k-factor preset (checkbox; keeps `N0` independent)
 
 Advanced inputs include:
 
 - custom Earth radius factor (`k`) for backward compatibility
-- surface refractivity (`N0`)
+- surface refractivity (`N0`) — overridden by the Earth-radius-factor preset
+  unless you decouple it or use the Custom preset
 - earth permittivity (`epsilon`)
 - earth conductivity (`sigma`)
 - antenna preset, azimuth, beamwidth, front-to-back ratio, downtilt, and optional pattern CSV files
@@ -245,11 +247,36 @@ Point-to-point analysis can produce an interactive profile chart showing:
 - toggle buttons for Fresnel zone, LOS, and profile line visibility
 - chart export to PNG/SVG
 
+### Earth Radius Factor And Surface Refractivity (N0)
+
+The Earth-radius-factor preset does two things in point-to-point and batch
+analysis. As before, it shapes the Fresnel-zone and earth-bulge display. Since
+v2.0.0 it also sets the surface refractivity `N0`, which feeds the propagation
+calculation, so choosing a more (or less) refractive preset changes the
+predicted path loss — not just the picture:
+
+| Preset | N0 (N-units) | Atmosphere |
+|--------|--------------|------------|
+| `0.67 - Sub-refractive`          | 250 | dry, signal bends upward |
+| `1.00 - Geometric`               | 280 | no bending |
+| `1.33 - Standard atmosphere`     | 301 | typical default |
+| `2.00 - Super-refractive`        | 350 | moist, signal bends down |
+| `4.00 - Strong super-refractive` | 400 | ducting conditions |
+
+The default preset (`1.33`) maps to `N0 = 301`, the same value used before
+v2.0.0, so existing default runs are unchanged. When a preset overrides the
+`N0` you typed, the Processing log shows a note with the value it used.
+
+If you want to set `N0` yourself and let the preset affect only the Fresnel/LOS
+display (the older behavior), tick **Decouple N0 from k-factor preset**, or
+choose the **Custom** preset and enter a custom `k`.
+
 ### Good Defaults for New Users
 
 - Polarization: `Vertical`
 - Time / Location / Situation: `50 / 50 / 50`
-- Earth radius factor preset: `1.33 - Standard atmosphere`
+- Earth radius factor preset: `1.33 - Standard atmosphere` (sets `N0 = 301`)
+- Leave **Decouple N0 from k-factor preset** unticked unless you need a custom `N0`
 
 ## Basic Workflow: Coverage Analysis
 
@@ -315,7 +342,7 @@ The simple loss table is:
 | suburban | 8.0 |
 | urban | 10.0 |
 
-- **Advanced clutter correction** — ITU-R P.2108-1 §3.1 height-gain terminal correction for low-frequency (0.03–3 GHz) rural categories; P.2108-1 §3.2 statistical clutter loss for suburban/urban (0.5–67 GHz); saalos vegetation model for vegetation categories. Suburban and urban categories apply both §3.1 and §3.2 in the overlap band (0.5–3 GHz) and take the maximum. Loss increases with frequency for built categories, consistent with P.2108-1. When the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal. An optional canopy/clutter height override (CCH_OVERRIDE) parameter lets you specify the effective canopy height.
+- **Advanced clutter correction** — ITU-R P.2108-1 §3.1 height-gain terminal correction for low-frequency (0.03–3 GHz) rural categories; P.2108-1 §3.2 statistical clutter loss for suburban/urban (0.5–67 GHz); ITU-R P.833-9 §2.1 Am vegetation model (Am = 1.37 × f⁰·⁴², valid 105.9–2117.5 MHz, St. Petersburg fit) for vegetation categories. Suburban and urban categories apply both §3.1 and §3.2 in the overlap band (0.5–3 GHz) and take the maximum. Loss increases with frequency for all categories — P.833 Am is frequency-dependent (17 dB at 450 MHz, 23 dB at 900 MHz, 31 dB at 1800 MHz, 37 dB at 2600 MHz), and P.2108-1 path loss also scales with frequency. When the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal. An optional canopy/clutter height override (CCH_OVERRIDE) parameter lets you specify the effective canopy height.
 - **Building entry loss (BEL)** — ITU-R P.2109-2 building entry loss model. When enabled, adds indoor penetration loss at the receiver based on building type (Traditional or Thermally-efficient), elevation angle, and frequency. Applied to RX only (TX is assumed outdoor). Available under advanced clutter settings.
 
 Use TX/RX overrides when the raster is unavailable or visibly wrong. Neither simple nor advanced clutter models sample clutter along the full path — they apply terminal corrections only.
@@ -324,7 +351,7 @@ When clutter is enabled and the land-cover raster field is left blank, NoWires a
 
 #### Advanced Mode Runtime Cost
 
-Advanced clutter mode adds a saalos calculation per coverage pixel for vegetation cells. On a 250×250 grid with vegetation-dominated land cover this can add several seconds. Built-environment categories use vectorized P.2108 and are essentially free in comparison.
+Advanced clutter mode applies ITU-R P.833-9 §2.1 Am for vegetation cells (a single multiply per pixel — essentially no overhead) and vectorized P.2108 for built-environment categories.
 
 #### Advanced Clutter Parameters
 
@@ -336,7 +363,7 @@ When advanced clutter correction is enabled, additional parameters become availa
 - **BEL Building Type** (Traditional / Thermally-efficient, default Traditional): Building type for P.2109-2. Thermally-efficient buildings have substantially higher loss at most frequencies.
 - **BEL Elevation Angle** (0–90°, default 0): Elevation angle of the path at the building façade. Higher angles increase BEL at 0.212 dB per degree. Default 0° corresponds to horizontal incidence.
 
-#### P.2108 Model Dispatch
+#### Clutter Model Dispatch
 
 The advanced clutter mode automatically selects the correct ITU-R sub-model based on clutter category and frequency:
 
@@ -344,7 +371,7 @@ The advanced clutter mode automatically selects the correct ITU-R sub-model base
 |---|---|---|---|---|
 | Open | 0 | 0 | 0 | 0 |
 | Open rural / Dense rural | §3.1 | §3.1 | 0 | 0 |
-| Vegetation | SAALOS | SAALOS | SAALOS | SAALOS (clamped) |
+| Vegetation | P.833 Am | P.833 Am | P.833 Am | P.833 Am |
 | Suburban | §3.1 | §3.1 + §3.2 (max) | §3.2 | §3.2 (clamped) |
 | Urban | §3.1 | §3.1 + §3.2 (max) | §3.2 | §3.2 (clamped) |
 
@@ -355,7 +382,7 @@ No user configuration is needed for this dispatch — the correct model is appli
 Both P2P and coverage reports include clutter loss fields:
 
 - `clutter_source`: describes where the clutter data came from (e.g. `override`, a raster path, or `fallback_open`)
-- `clutter_method`: which P.2108/P.2109 sub-models were applied (e.g. `§3.1+§3.2/saalos`)
+- `clutter_method`: which sub-models were applied (e.g. `§3.1+§3.2/p833`)
 - `clutter_percentile`: the location percentile used for §3.2 and BEL calculations
 - `clutter_tx_db`: TX terminal clutter loss
 - `clutter_rx_db`: RX terminal clutter loss

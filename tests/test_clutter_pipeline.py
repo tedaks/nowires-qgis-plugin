@@ -122,4 +122,4 @@ def test_advanced_per_pixel_is_bounded_for_small_grid():
             ),
         )
     elapsed = time.perf_counter() - start
-    assert elapsed < 3.0, f"saalos hot path slower than expected: {elapsed:.2f}s"
+    assert elapsed < 3.0, f"p833 hot path slower than expected: {elapsed:.2f}s"

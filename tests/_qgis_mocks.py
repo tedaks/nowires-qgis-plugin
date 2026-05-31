@@ -185,6 +185,9 @@ def _make_param_bool(*a, **kw):
 
 
 class _ParamBoolean:
+    Flag = _ParamFlag
+    FlagAdvanced = 2
+
     def __new__(cls, *a, **kw):
         return _make_param_bool(*a, **kw)
 
@@ -259,6 +262,9 @@ _mock_registry = MagicMock()
 
 
 class _FakeQgsApplication:
+    def __init__(self, *args, **kwargs):
+        pass
+
     @staticmethod
     def processingRegistry():
         return _mock_registry
@@ -266,6 +272,14 @@ class _FakeQgsApplication:
     @staticmethod
     def instance():
         return None
+
+    @staticmethod
+    def initQgis():
+        pass
+
+    @staticmethod
+    def exitQgis():
+        pass
 
 
 _QGIS_CORE_ATTRS = {
@@ -363,6 +377,7 @@ def install_qgis_mocks():
 
     sys.modules.setdefault("qgis", _qgis)
     sys.modules.setdefault("qgis.core", _qgis_core)
+    _qgis.core = _qgis_core
 
     # --- PyQt stubs ---
     _qgis_pyqt = types.ModuleType("qgis.PyQt")
@@ -374,15 +389,22 @@ def install_qgis_mocks():
     _qgis_pyqtQtCore.QTimer = MagicMock()
     _qgis_pyqtQtCore.QEvent = MagicMock()
     _qgis_pyqtQtCore.QCoreApplication = MagicMock()
+    _qgis_pyqtQtCore.QPointF = MagicMock()
     _qgis_pyqtQtCore.QT_VERSION_STR = "6.0.0"
     _qgis_pyqtQtGui.QAction = _make_qaction
     _qgis_pyqtQtGui.QIcon = _make_qicon
     _qgis_pyqtQtGui.QPixmap = _make_qpixmap
     _qgis_pyqtQtGui.QColor = _make_qcolor
     _qgis_pyqtQtGui.QPainter = _make_qpainter
+    _qgis_pyqtQtGui.QFont = MagicMock()
+    _qgis_pyqtQtGui.QPen = MagicMock()
+    _qgis_pyqtQtGui.QPolygonF = MagicMock()
 
     for attr, val in _QGIS_PYQT_WIDGETS_ATTRS.items():
         setattr(_qgis_pyqtQtWidgets, attr, val)
+    _qgis_pyqtQtWidgets.__getattr__ = lambda name: MagicMock(name=f"qgis.PyQt.QtWidgets.{name}")
+    _qgis_pyqtQtGui.__getattr__ = lambda name: MagicMock(name=f"qgis.PyQt.QtGui.{name}")
+    _qgis_pyqtQtCore.__getattr__ = lambda name: MagicMock(name=f"qgis.PyQt.QtCore.{name}")
 
     _qgis_pyqt.QtCore = _qgis_pyqtQtCore
     _qgis_pyqt.QtGui = _qgis_pyqtQtGui
@@ -397,6 +419,7 @@ def install_qgis_mocks():
     _qgis_utils = types.ModuleType("qgis.utils")
     _qgis_utils.iface = None
     sys.modules.setdefault("qgis.utils", _qgis_utils)
+    _qgis.utils = _qgis_utils
 
     # --- processing stub ---
     sys.modules.setdefault("processing", MagicMock())
@@ -462,7 +485,7 @@ _PACKAGE_SUBMODULES = (
     "clutter.context",
     "clutter.grid",
     "clutter.resolve",
-    "clutter.saalos",
+    "clutter.p833",
     "clutter.p2108_common",
     "clutter.p2108_height_gain",
     "clutter.p2108_terrestrial_stat",

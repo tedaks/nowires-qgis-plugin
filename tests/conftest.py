@@ -16,16 +16,30 @@ importable), all mocking is skipped so integration tests use the real QGIS.
 """
 
 import os
+import pathlib
 import sys
 
+# Auto-detect PROJ data directory when running against a QGIS bundle.
+# Must happen before any qgis.core import triggers PROJ initialisation.
+_qgis_prefix = os.environ.get("QGIS_PREFIX_PATH", "")
+if _qgis_prefix and not os.environ.get("PROJ_DATA"):
+    _proj_candidate = pathlib.Path(_qgis_prefix).parent / "Resources" / "qgis" / "proj"
+    if (_proj_candidate / "proj.db").exists():
+        os.environ["PROJ_DATA"] = str(_proj_candidate)
+        os.environ.setdefault("PROJ_LIB", str(_proj_candidate))
+
 sys.path.insert(0, os.path.dirname(__file__))
-from _qgis_mocks import install_qgis_mocks, register_nowires_package
+from _qgis_mocks import install_qgis_mocks, register_nowires_package, HAS_REAL_GDAL
 
 import numpy as np
 import pytest
 
 install_qgis_mocks()
 register_nowires_package()
+
+if HAS_REAL_GDAL:
+    from osgeo import gdal as _gdal
+    _gdal.UseExceptions()
 
 _DEM_DOWNLOADER_IMPORTERS = [
     "NoWires.algorithm.batch",

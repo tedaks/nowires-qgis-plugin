@@ -200,15 +200,22 @@ def extract_clutter_params(alg, parameters, context, attr_getter=None) -> Clutte
 def add_advanced_itm_params(algorithm, attr_getter=None, include_k_factor=True, prefix=""):
     ag = attr_getter or (lambda name: getattr(algorithm, name))
     label_prefix = f"{prefix} " if prefix else ""
+    n0_label = f"{label_prefix}Surface refractivity N0 (N-units)"
     if include_k_factor:
         algorithm.addParameter(QgsProcessingParameterEnum(
-            ag("K_FACTOR_PRESET"), f"{label_prefix}Fresnel Earth-radius factor (display only)",
+            ag("K_FACTOR_PRESET"), f"{label_prefix}Earth-radius factor (k) — sets N0",
             options=K_FACTOR_PRESETS_OPTIONS, defaultValue=2))
         add_advanced_param(algorithm, ag("K_FACTOR"),
             f"{label_prefix}Custom Earth radius factor (k)",
             DEFAULT_K_FACTOR, min_val=0.1)
-    add_advanced_param(algorithm, ag("N0"),
-        f"{label_prefix}Surface refractivity N0 (N-units)", DEFAULT_N0,
+        # Main (non-advanced) param: it sits beside the K_FACTOR_PRESET enum it
+        # governs, so it must be as visible as the preset itself.
+        algorithm.addParameter(QgsProcessingParameterBoolean(
+            ag("DECOUPLE_N0"),
+            f"{label_prefix}Decouple N0 from k-factor preset (preset affects "
+            f"Fresnel display only)", defaultValue=False))
+        n0_label += " — overridden by k-factor preset unless decoupled"
+    add_advanced_param(algorithm, ag("N0"), n0_label, DEFAULT_N0,
         min_val=ITM_MIN_N0, max_val=ITM_MAX_N0)
     add_advanced_param(algorithm, ag("EPSILON"),
         f"{label_prefix}Earth permittivity (epsilon)", DEFAULT_EPSILON, min_val=1.0)

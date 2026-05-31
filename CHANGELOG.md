@@ -9,6 +9,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Correctness
+
+- Fix `test_decouple_n0_registered_and_not_advanced` failing on Python 3.13 — replace `MagicMock.called` (removed in 3.13) with dual-path check that also works against real QGIS bindings.
+
+## [2.0.0] - 2026-05-31
+
+### Correctness
+
+- Import `logging` and define `logger` in `algorithm/p2p.py` to fix `NameError` on chart display failure.
+- Move `import numpy as np` to module level in `clutter/p833.py` and wrap return with `float()` for type-safety.
+- Make `_FakeQgsApplication` mock accept constructor arguments so QGIS integration tests can run without a real QGIS runtime.
+
+### Cleanups
+
+- Remove unused imports (`pytest`, `math`, `sys`) and a duplicate `sys` import from four test files.
+
+### Breaking Changes
+
+- **`ClutterLossContext`** — removes three fields that were only consumed by
+  saalos: `polarization`, `rx_ground_elevation_m`, `tx_ground_elevation_m`.
+  Any code constructing `ClutterLossContext` directly or calling
+  `build_initial_clutter_context` / `build_link_clutter_context` with those
+  keyword arguments must be updated.
+- **`clutter/saalos.py` deleted** — `clutter_loss_saalos`,
+  `clutter_loss_saalos_vec`, and `_saalos_pol` are no longer importable.
+  Replace with `clutter_loss_p833` / `clutter_loss_p833_vec` from
+  `clutter/p833.py`.
+- **`MAX_CLUTTER_LOSS` removed** from `clutter/constants.py` — the constant no
+  longer exists; the P.833-9 Am formula has no cap.
+- **Vegetation clutter values change** — saalos returned a fixed 22.0 dB at any
+  frequency. P.833-9 Am is frequency-dependent: lower below ~850 MHz, higher
+  above 1 GHz. Results for existing coverage analyses will differ.
+- **K-factor preset now sets surface refractivity N0** — selecting a
+  non-default `K_FACTOR_PRESET` in P2P/Batch overrides N0 (0.67→250, 1.00→280,
+  1.33→301, 2.00→350, 4.00→400 N-units) and therefore changes the ITM
+  propagation prediction, not just the Fresnel/LOS display. The standard 1.33
+  default still maps to N0=301, so default-preset runs are unchanged. Enable
+  the new "Decouple N0 from k-factor preset" checkbox or choose the Custom
+  preset to keep N0 independent (the pre-2.0.0 behaviour).
+
+### Security / Licence
+
+- Replace `clutter/saalos.py` and `clutter/_saalos_vec.py` (derived from
+  ITWOM 3.0, copyright © 2011 Sid Shumate / Givens & Bell, Inc., proprietary)
+  with a clean implementation of ITU-R P.833-9 §2.1 Am. No proprietary upstream
+  code remains in the repository. `NOTICE.md §7` updated accordingly.
+
+### Added
+
+- `clutter/p833.py` — `clutter_loss_p833(cch_m, h_rx_m, f_mhz)` (scalar) and
+  `clutter_loss_p833_vec` (vectorised NumPy). Implements Am = 1.37 × f^0.42
+  from ITU-R P.833-9 §2.1 (St. Petersburg fit, 105.9–2117.5 MHz). Returns 0.0
+  when the antenna is at or above the canopy height.
+- `tests/test_clutter_p833.py` — 10 tests covering boundary conditions, Am
+  reference values, frequency monotonicity, no-cap assertion, and scalar/vec
+  agreement.
+- `DECOUPLE_N0` processing parameter on the P2P and Batch algorithms — an
+  opt-in checkbox that restores the pre-2.0.0 behaviour where the k-factor
+  preset affects only the Fresnel/LOS display and N0 stays user-controlled.
+- `k_factor_presets.py` — houses `K_FACTOR_PRESETS`, the new
+  `K_FACTOR_PRESET_N0` coupling table, and `resolve_k_factor` / `resolve_n0`
+  (re-exported from `radio` for compatibility).
+- `tests/test_k_factor_n0_coupling.py`,
+  `tests/test_k_factor_preset_backward_compat.py` — lock the coupled N0 values,
+  the Custom-preset and decouple escape hatches, and the ITM loss change.
+
+### Removed
+
+- `clutter/saalos.py`, `clutter/_saalos_vec.py` — replaced by `clutter/p833.py`.
+- `tests/test_clutter_saalos.py`, `tests/test_saalos_nan_guard.py`,
+  `tests/test_saalos_above_canopy_nan.py` — superseded by
+  `tests/test_clutter_p833.py`.
+- `tests/test_clutter_constants.py` — tested `MAX_CLUTTER_LOSS == 22.0`;
+  constant deleted.
+- `_build_rx_ground_grid` and `_get_tx_ground_elevation` from
+  `radio_coverage/engine.py` — eliminated an O(grid²) DEM sample pass that ran
+  before every advanced-mode coverage analysis.
+- `both_saalos` dead-code branch in `clutter/advanced.py:compute_terminal_clutter_losses`.
+- Saalos special-cases in `compute_path_clutter_loss` (both-saalos max and
+  mixed-saalos logic). P.833 terminal losses are now summed like any other
+  independent clutter contribution.
+
+### Changed
+
+- `clutter/categories.py` — `"vegetation"` model key changed from `"saalos"` to
+  `"p833"`.
+- `ClutterLossContext` — fields `polarization`, `rx_ground_elevation_m`,
+  `tx_ground_elevation_m` removed (see Breaking Changes).
+- `compute_path_clutter_loss` — saalos-specific path logic removed; vegetation
+  (p833) losses are now summed across both terminals.
+- K-factor preset label changed from "Fresnel Earth-radius factor (display
+  only)" to "Earth-radius factor (k) — sets N0"; the N0 field is now
+  documented as preset-driven unless decoupled.
+- `radio_coverage/tasks.py` — LUT key simplified to distance bucket only
+  (ground elevation bucket removed).
+- All documentation updated: `Technical_Documentation.md`, `USERS-GUIDE.md`,
+  `README.md`, `NOTICE.md §7`.
+
 ## [1.7.1] - 2026-05-30
 
 ### Correctness

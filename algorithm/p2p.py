@@ -32,11 +32,17 @@ and were originally distributed under the MIT License. See NOTICE.md for
 attribution details.
 """
 
+import logging
+
 from qgis.core import QgsProcessingException
 
 from NoWires.base_algorithm import NoWiresAlgorithm, install_constants
+
+logger = logging.getLogger(__name__)
 from NoWires.constants import WGS84_CRS
-from NoWires.radio import K_FACTOR_PRESETS, validate_itm_input_ranges, resolve_k_factor
+from NoWires.radio import (
+    K_FACTOR_PRESETS, validate_itm_input_ranges, resolve_k_factor, resolve_n0,
+)
 from NoWires.antenna import antenna_config_from_values
 from NoWires.p2p.params import (
     PARAM_CONSTANTS,
@@ -105,7 +111,15 @@ class P2PAlgorithm(NoWiresAlgorithm):
             custom_value=custom_k_factor,
             preset_index=preset_index,
         )
-        n0 = self.parameterAsDouble(parameters, self.N0, context)
+        decouple_n0 = self.parameterAsBool(parameters, self.DECOUPLE_N0, context)
+        user_n0 = self.parameterAsDouble(parameters, self.N0, context)
+        n0 = resolve_n0(preset_index, decouple_n0, user_n0)
+        if n0 != user_n0:
+            feedback.pushInfo(
+                "Surface refractivity N0 set to {:.0f} N-units by the selected "
+                "k-factor preset (was {:.0f}). Enable 'Decouple N0 from k-factor "
+                "preset' or choose the Custom preset to use your own N0.".format(
+                    n0, user_n0))
         epsilon = self.parameterAsDouble(parameters, self.EPSILON, context)
         sigma = self.parameterAsDouble(parameters, self.SIGMA, context)
         try:
@@ -200,7 +214,7 @@ class P2PAlgorithm(NoWiresAlgorithm):
             try:
                 show_profile_chart(**chart_kwargs)
             except Exception:
-                pass
+                logger.warning("P2P profile chart failed", exc_info=True)
             self._pending_chart_kwargs = None
         return super().postProcessAlgorithm(context, feedback)
 

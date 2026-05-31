@@ -12,6 +12,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
+_posix_symlink = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Symlink creation requires elevated privileges on Windows",
+)
+
 try:
     import qgis.core  # noqa: F401
     _HAS_REAL_QGIS = True
@@ -110,6 +115,7 @@ class FakeOpener:
 # get_temp_dir edge cases (lines 78‑79, 80‑82, 102‑103, 113‑114)
 # ---------------------------------------------------------------------------
 class TestGetTempDirEdgeCases:
+    @_posix_symlink
     def test_removes_symlink(self, tmp_path, monkeypatch):
         """Lines 78‑79: symlink at target is unlinked before directory creation."""
         dd, _ = _import_dem_downloader()

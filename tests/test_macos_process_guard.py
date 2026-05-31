@@ -9,7 +9,14 @@ import multiprocessing
 import os
 import sys
 
+import pytest
+
 import macos_compat
+
+_posix_only = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX chmod/executable-bit semantics not applicable on Windows",
+)
 from macos_compat import (
     configure_macos_multiprocessing,
     find_macos_python_executable,
@@ -109,6 +116,7 @@ class TestFindMacosPythonExecutable:
         monkeypatch.setattr(sys, "platform", "linux")
         assert find_macos_python_executable() is None
 
+    @_posix_only
     def test_prefers_base_executable_when_distinct(self, monkeypatch, tmp_path):
         monkeypatch.setattr(sys, "platform", "darwin")
         fake_python = tmp_path / "real_python"
@@ -118,6 +126,7 @@ class TestFindMacosPythonExecutable:
         monkeypatch.setattr(sys, "_base_executable", str(fake_python), raising=False)
         assert find_macos_python_executable() == str(fake_python)
 
+    @_posix_only
     def test_skips_base_executable_when_same_as_executable(self, monkeypatch, tmp_path):
         monkeypatch.setattr(sys, "platform", "darwin")
         qgis_dir = tmp_path / "MacOS"
@@ -134,6 +143,7 @@ class TestFindMacosPythonExecutable:
         monkeypatch.setattr(sys, "_base_executable", str(qgis_bin), raising=False)
         assert find_macos_python_executable() == str(py_bin)
 
+    @_posix_only
     def test_falls_back_to_bin_python(self, monkeypatch, tmp_path):
         monkeypatch.setattr(sys, "platform", "darwin")
         qgis_dir = tmp_path / "MacOS"

@@ -1,4 +1,4 @@
-# NoWires Technical Documentation
+# NoWires Technical Documentation — v2.0.0
 
 SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -90,11 +90,11 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
 - [clutter/__init__.py](clutter/__init__.py)
   Terminal clutter correction dispatch and helpers
 - [clutter/advanced.py](clutter/advanced.py)
-  Advanced clutter mode dispatcher (saalos + P.2108 §3.1/§3.2 + P.2109 BEL)
+  Advanced clutter mode dispatcher (P.833-9 §2.1 + P.2108 §3.1/§3.2 + P.2109 BEL)
 - [clutter/categories.py](clutter/categories.py)
   Clutter category definitions, WorldCover class mapping, P.2108 model dispatch params
 - [clutter/constants.py](clutter/constants.py)
-  Shared clutter constants (simple loss table, limits)
+  Retained for compatibility; `MAX_CLUTTER_LOSS` removed in v2.0.0
 - [clutter/context.py](clutter/context.py)
   ClutterLossContext dataclass
 - [clutter/grid.py](clutter/grid.py)
@@ -111,8 +111,8 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   ITU-R P.2108-1 §3.2 statistical clutter loss for terrestrial paths (scalar + vectorized)
 - [clutter/p2109_bel.py](clutter/p2109_bel.py)
   ITU-R P.2109-2 building entry loss (scalar + vectorized)
-- [clutter/saalos.py](clutter/saalos.py)
-  Saalos vegetation clutter loss (Python port from Rust)
+- [clutter/p833.py](clutter/p833.py)
+  ITU-R P.833-9 §2.1 vegetation clutter loss (Am formula, scalar + vectorised)
 - [worldcover_downloader.py](worldcover_downloader.py)
   ESA WorldCover 2020 v100 tile download, caching, and clip/merge
 - [overlay_raster.py](overlay_raster.py)
@@ -331,12 +331,13 @@ Point-to-point reports carry reliability and clutter fields:
 - RX gain
 - cable loss
 - RX sensitivity
-- Earth radius factor preset
+- Earth radius factor (`k`) preset — also sets surface refractivity `N0`
+- Decouple `N0` from k-factor preset (boolean; restores Fresnel-display-only `k`)
 
 #### Advanced inputs
 
 - custom Earth radius factor (`K_FACTOR`)
-- `N0`
+- `N0` (overridden by the k-factor preset unless decoupled)
 - `epsilon`
 - `sigma`
 - antenna preset, azimuth, beamwidth, front-to-back ratio, downtilt, and optional pattern CSV files
@@ -353,28 +354,59 @@ Point-to-point reports carry reliability and clutter fields:
 
 ### Earth Radius Factor Handling
 
-Visible presets:
+Visible presets and their coupled surface refractivity `N0` (since v2.0.0):
 
-- `0.67 - Sub-refractive`
-- `1.00 - Geometric`
-- `1.33 - Standard atmosphere`
-- `2.00 - Super-refractive`
-- `4.00 - Strong super-refractive`
+| Preset | `k` | Coupled `N0` (N-units) |
+|--------|-----|------------------------|
+| `0.67 - Sub-refractive`         | 0.67 | 250 |
+| `1.00 - Geometric`              | 1.00 | 280 |
+| `1.33 - Standard atmosphere`    | 1.33 | 301 |
+| `2.00 - Super-refractive`       | 2.00 | 350 |
+| `4.00 - Strong super-refractive`| 4.00 | 400 |
+| `Custom`                        | numeric `K_FACTOR` | user `N0` (free) |
 
-Default:
+Default: `1.33 - Standard atmosphere`, which couples to `N0 = 301`
+(`DEFAULT_N0`), so the out-of-box default is numerically unchanged from earlier
+releases.
 
-- `1.33 - Standard atmosphere`
+The mapping table (`K_FACTOR_PRESET_N0`) and the resolvers
+(`resolve_k_factor`, `resolve_n0`) live in `k_factor_presets.py` and are
+re-exported from `radio` for backward-compatible imports.
+
+**N0 coupling (default change in v2.0.0):** selecting a non-Custom preset now
+overrides the surface refractivity `N0`, so the preset changes the ITM
+propagation prediction — not only the Fresnel/LOS earth-bulge display. The
+sub-/super-refractive `N0` values are representative planning values spanning
+the valid `[250, 400]` N-unit band; the standard preset is pinned to
+`DEFAULT_N0` so existing default-preset runs are unaffected. When a preset
+overrides the user's `N0`, the algorithm pushes a feedback note stating the new
+value and how to opt out. The coupling is applied in the P2P and Batch
+algorithm readers (`algorithm/p2p.py`, `algorithm/batch.py`).
+
+Keeping `N0` independent of `k` (the pre-v2.0.0 behavior):
+
+- enable the **Decouple N0 from k-factor preset** checkbox — the preset then
+  affects only the Fresnel/earth-bulge display and `N0` is taken from the field
+  as entered; or
+- choose the **Custom** preset, which uses the numeric `K_FACTOR` and likewise
+  leaves `N0` under direct user control.
 
 Backward compatibility:
 
 - the older numeric `K_FACTOR` parameter is still present as an advanced field
-- if an older Processing model supplies `K_FACTOR` without the new preset parameter, the numeric value is still honored
+- if an older Processing model supplies `K_FACTOR` without the new preset
+  parameter, the numeric value is still honored
+- a Processing model that predates the `DECOUPLE_N0` parameter defaults it to
+  `False` (coupling on); add the parameter or switch to Custom to restore the
+  old `N0`-independent behavior
 
-This preserves compatibility with legacy workflows while giving interactive users clearer defaults.
+### How `k` and the Preset Affect Each Analysis
 
-### Why `k` Only Affects P2P
-
-In the current codebase, Earth radius factor is used in the Fresnel and earth-bulge visualization path for point-to-point analysis. Coverage analysis does not currently expose `k` as a coverage parameter.
+The Earth-radius factor `k` drives the Fresnel and earth-bulge visualization in
+point-to-point analysis. Since v2.0.0 the **preset** additionally sets `N0`,
+which feeds the ITM propagation calculation in **both P2P and Batch**. Coverage
+analysis exposes neither the preset nor `k` (it sets `N0` directly), so coverage
+behavior is unchanged.
 
 ## Coverage Analysis
 
@@ -550,7 +582,7 @@ Three clutter modes are available:
 
 - **Off** — no terminal clutter correction.
 - **Simple clutter correction** — flat per-category losses (legacy behaviour).
-- **Advanced clutter correction** — saalos vegetation model for vegetation categories; ITU-R P.2108 site-general clutter loss for built and rural categories. Uses antenna height, distance, frequency, and polarization. If the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal.
+- **Advanced clutter correction** — ITU-R P.833-9 §2.1 Am vegetation model for vegetation categories; ITU-R P.2108 site-general clutter loss for built and rural categories. Uses antenna height and frequency. If the antenna is at or above the canopy/clutter height, the model gates the loss to zero for that terminal.
 
 Key helpers:
 
@@ -564,13 +596,12 @@ Key helpers:
 
 | Field | Type | Description |
 |---|---|---|
-| `category` | `str` | Clutter category (`open`, `open_rural`, `dense_rural`, `vegetation`, `suburban`, `urban`) |
-| `freq_hz` | `float` | Frequency in Hz |
-| `polarization` | `int` | ITM polarization code (0 = horizontal, 1 = vertical) |
-| `htx_m` | `float` | TX antenna height above ground (m) |
-| `hrx_m` | `float` | RX antenna height above ground (m) |
-| `dist_m` | `float` | Path distance (m) |
-| `cch_m` | `float` | Canopy/clutter height override (m); `0.0` means no override |
+| `model` | `ClutterModel` | Clutter model in use (`"simple"` or `"advanced"`) |
+| `frequency_mhz` | `float` | Frequency in MHz |
+| `distance_m` | `float` | Path distance (m) |
+| `tx_height_m` | `float` | TX antenna height above ground (m) |
+| `rx_height_m` | `float` | RX antenna height above ground (m) |
+| `cch_override_m` | `float \| None` | Canopy/clutter height override (m); `None` means no override |
 | `percentile` | `float` | Location percentile (0.01–99.99) for P.2108 §3.2 and P.2109 BEL |
 | `street_width_m` | `float` | Street width (m) for P.2108 §3.1 (default 27) |
 | `bel_enabled` | `bool` | Whether P.2109 building entry loss is enabled |
@@ -584,7 +615,7 @@ The advanced mode selects between four internal models based on the clutter cate
 1. **None** (`open` category) — returns 0.0 dB loss. Open areas have no applicable clutter model.
 2. **P.2108 §3.1 height-gain** (`open_rural` and `dense_rural` categories) — ITU-R P.2108-1 §3.1 height-gain terminal correction for frequencies 0.03–3 GHz. Uses method (2b) for open/rural categories, computing a height-gain correction based on antenna height, representative clutter height R, frequency, and street width. Not a function of distance or percentile. Returns 0.0 dB for antennas at or above the representative clutter height R.
 3. **P.2108 §3.1 + §3.2 combined** (`suburban` and `urban` categories) — applies both the §3.1 height-gain correction and the §3.2 statistical clutter loss, taking the maximum of the two in the overlap band (0.5–3 GHz). Above 3 GHz, only §3.2 applies. The §3.2 model is a combined urban+suburban statistic (not per-category) and is percentile-based with a 2 km distance cap.
-4. **Saalos** (`vegetation` category) — the saalos vegetation attenuation algorithm, ported from ITWOM 3.0 ClutterLoss by Sid Shumate (Givens & Bell, Inc.) via the MIT-licensed `clutterloss-itm` Rust crate. See Decision D9 for invocation geometry.
+4. **P.833-9 §2.1 Am** (`vegetation` category) — maximum woodland attenuation Am from ITU-R Recommendation P.833-9 §2.1, using the St. Petersburg fit (A1=1.37, α=0.42, valid 105.9–2117.5 MHz). Am is the d→∞ asymptote of the general Eq. 1 and is designated by the document as "equivalent to the clutter loss often quoted for a terminal obstructed by some form of ground cover or clutter." Returns 0.0 dB when the antenna is at or above the canopy height.
 
 The frequency-based dispatch table (per P.2108/P.2109 compliance design §6):
 
@@ -593,7 +624,7 @@ The frequency-based dispatch table (per P.2108/P.2109 compliance design §6):
 | open | 0 | 0 | 0 | 0 |
 | open_rural | §3.1 | §3.1 | 0 | 0 |
 | dense_rural | §3.1 | §3.1 | 0 | 0 |
-| vegetation | SAALOS | SAALOS | SAALOS | SAALOS (clamped) |
+| vegetation | P.833 Am | P.833 Am | P.833 Am | P.833 Am |
 | suburban | §3.1 | §3.1 + §3.2 (max) | §3.2 | §3.2 (clamped) |
 | urban | §3.1 | §3.1 + §3.2 (max) | §3.2 | §3.2 (clamped) |
 
@@ -647,13 +678,27 @@ API: `building_entry_loss(f_ghz, building_type, theta_deg=0.0, p=50.0)` returns 
 - `validate_frequency_ghz(f, f_min, f_max)` — clamps and warns on out-of-band frequencies.
 - `validate_distance_km(d, d_min)` — clamps and warns on short distances.
 
-#### Decision D9: Saalos Invocation Geometry
+#### Decision D9: P.833 Vegetation Clutter
 
-The saalos model is invoked with the **local terminal** as `h_rx` and the **far end** placed at the **canopy top**. This means:
+The P.833-9 §2.1 Am formula uses antenna height and frequency only. The woodland boundary to receiver depth `d` (required for the general Eq. 1) is not available from the land-cover raster, so Am (the d→∞ limit, explicitly designated as clutter loss) is applied directly. If the antenna height is at or above the canopy height, the loss is gated to 0.0 dB.
 
-- The terminal antenna height is passed as the receiver height argument to saalos.
-- The canopy/clutter height is used as the transmitter height argument (representing the top of the vegetation canopy as the effective far-end source).
-- If the antenna height is at or above the canopy height, the geometry is unsupported and the loss is gated to 0.0 dB.
+### P.833-9 §2.1 — Vegetation Clutter Loss (Am)
+
+Located in `clutter/p833.py`. Implements the maximum woodland attenuation
+formula from ITU-R P.833-9 §2.1 Eq. 2:
+
+```
+Am = 1.37 × f⁰·⁴²  (St. Petersburg fit, valid 105.9–2117.5 MHz)
+```
+
+Extrapolation outside the validated range is not sanctioned by the document.
+
+**API:**
+
+- `clutter_loss_p833(cch_m: float, h_rx_m: float, f_mhz: float) -> float` —
+  returns Am when `h_rx_m < cch_m`, 0.0 otherwise (scalar, no numpy import).
+- `clutter_loss_p833_vec(cch_m, h_rx_m, f_mhz) -> np.ndarray` —
+  vectorised variant with lazy numpy import; inputs broadcast to a common shape.
 
 ### TerminalClutterLosses
 
@@ -672,15 +717,15 @@ The saalos model is invoked with the **local terminal** as `h_rx` and the **far 
 | `tx_bel_db` | `float` | TX building entry loss (always 0.0 — TX is outdoor) |
 | `rx_bel_db` | `float` | RX building entry loss (dB, P.2109-2; 0.0 when BEL not enabled) |
 | `total_with_bel_db` | `float` | Total clutter + BEL: `total_loss_db + rx_bel_db` |
-| `method` | `str` | Which sub-model fired (e.g. `"§3.1+§3.2/saalos"`) |
+| `method` | `str` | Which sub-model fired (e.g. `"§3.1+§3.2/p833"`) |
 | `percentile` | `float` | Location percentile used for §3.2 and BEL |
 
-The `method` field identifies which P.2108/P.2109 sub-models were applied for TX and RX. Examples:
+The `method` field identifies which clutter sub-models were applied for TX and RX. Examples:
 - `"none/none"` for open terrain on both terminals
 - `"§3.1/§3.1+§3.2"` for open_rural TX and urban RX
-- `"saalos/saalos"` for vegetation on both terminals
+- `"p833/p833"` for vegetation on both terminals
 
-The `tx_cch_m` and `rx_cch_m` fields are included in P2P report payloads. For simple mode, these are always 0.0. For advanced mode, they reflect the canopy height used in the saalos or P.2108 computation.
+The `tx_cch_m` and `rx_cch_m` fields are included in P2P report payloads. For simple mode, these are always 0.0. For advanced mode, they reflect the canopy height used in the P.833 or P.2108 computation.
 
 Key helpers:
 
@@ -688,13 +733,14 @@ Key helpers:
 - `LandCoverGrid.sample_category()`: samples the grid at a given lat/lon and returns a clutter category string.
 - `ensure_clutter_grid_for_area()`: auto-downloads WorldCover tiles when clutter is enabled and no raster is supplied.
 
-Simple mode clutter categories and loss table:
+Simple mode clutter categories and loss table (five categories; advanced-mode
+categories `open_rural` and `dense_rural` remap to `rural` and `vegetation`
+respectively via `remap_simple_category`):
 
 | Category | Loss (dB) |
 |---|---|
 | open | 0.0 |
-| open_rural | 2.0 |
-| dense_rural | 2.0 |
+| rural | 2.0 |
 | vegetation | 6.0 |
 | suburban | 8.0 |
 | urban | 10.0 |
@@ -706,7 +752,7 @@ Advanced mode category dispatch (per P.2108/P.2109 compliance design §6):
 | open | none | — | — | no |
 | open_rural | p2108_height_gain | (2b) | 10 | no |
 | dense_rural | p2108_height_gain | (2b) | 10 | no |
-| vegetation | saalos | (2a) | 15 | no |
+| vegetation | p833 | — | — | no |
 | suburban | p2108_combined | (2a) | 10 | yes |
 | urban | p2108_combined | (2a) | 20 | yes |
 
@@ -721,14 +767,14 @@ Simple mode:
 | 50 | urban |
 | 60, 70, 80, 90 | open |
 
-Advanced mode splits `rural` into `open_rural` (classes 40, 90) and `dense_rural` (classes 20, 30, 100), with classes 10, 95 mapping to `vegetation` and class 50 to `urban` as in simple mode.
+Advanced mode splits `rural` into `open_rural` (classes 30, 40) and `dense_rural` (classes 20, 100), with classes 10, 95 mapping to `vegetation`, class 50 to `urban`, and classes 60, 70, 80, 90 to `open` as in simple mode.
 
 ### Clutter Reporting
 
 Both P2P and coverage reports expose clutter loss breakdown:
 
 - `clutter_source`: a descriptive label produced by `clutter_source_label()` rather than a raw file path.
-- `clutter_method`: which P.2108/P.2109 sub-model fired (e.g. `"§3.1/§3.1+§3.2"`).
+- `clutter_method`: which clutter sub-model fired (e.g. `"§3.1/§3.1+§3.2"` or `"p833/none"`).
 - `clutter_percentile`: the location percentile used for §3.2 and BEL calculations.
 - `clutter_tx_db`: TX terminal clutter loss (dB).
 - `clutter_rx_db`: RX terminal clutter loss (dB).
@@ -1026,6 +1072,12 @@ Default:
 
 - `301.0`
 
+In P2P and Batch, a non-Custom Earth-radius-factor preset overrides this field
+via the `K_FACTOR_PRESET_N0` coupling table (see *Earth Radius Factor
+Handling*), unless the **Decouple N0 from k-factor preset** checkbox is enabled
+or the Custom preset is selected. Coverage uses the entered `N0` directly (no
+preset).
+
 ### `epsilon`
 
 Earth permittivity.
@@ -1128,7 +1180,7 @@ GitHub Actions runs `pytest -q` for pushes and pull requests.
 
 When changing parameter keys or types, compatibility with stored Processing models and scripts must be considered explicitly.
 
-The `K_FACTOR` / `K_FACTOR_PRESET` handling in `algorithm/p2p.py` is an example of preserving legacy behavior while evolving the UI.
+The `K_FACTOR` / `K_FACTOR_PRESET` / `DECOUPLE_N0` handling in `algorithm/p2p.py` is an example of evolving behavior while preserving an escape hatch: the preset now drives `N0` by default (a deliberate v2.0.0 change), while the Decouple checkbox and the Custom preset keep the legacy `N0`-independent workflow available.
 
 Output parameters for algorithms use `QgsProcessingParameterFileDestination` rather than `RasterDestination` or `VectorDestination`. This avoids a double-loading conflict: the `*Destination` types tell QGIS Processing to auto-load the output layer, but the algorithms also queue layers via `addLayerToLoadOnCompletion` with custom styling. Using `FileDestination` means only the manually-queued load with proper styling occurs.
 

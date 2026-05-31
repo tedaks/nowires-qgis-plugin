@@ -4,7 +4,7 @@ Radio propagation analysis and terrain tools powered by NTIA's Irregular Terrain
 
 ## Status
 
-This repository contains the QGIS 4 plugin source for **NoWires** version 1.7.1.
+This repository contains the QGIS 4 plugin source for **NoWires** version 2.0.0.
 
 Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 SPDX-License-Identifier: GPL-3.0-or-later
@@ -20,7 +20,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 - **Clutter / Land-Cover Correction**: Three clutter modes are available:
   - **Off** — no terminal clutter correction.
   - **Simple clutter correction** — flat per-category losses (legacy behaviour, unchanged).
-  - **Advanced clutter correction** — ITU-R P.2108-1 §3.1 height-gain terminal correction for rural categories (0.03–3 GHz); P.2108-1 §3.2 statistical clutter loss for suburban/urban (0.5–67 GHz); saalos for vegetation. Suburban/urban categories use both §3.1 and §3.2 in the overlap band (0.5–3 GHz) and take the maximum. When the antenna is at or above the canopy height, the model gates the loss to zero for that terminal.
+  - **Advanced clutter correction** — ITU-R P.2108-1 §3.1 height-gain terminal correction for rural categories (0.03–3 GHz); P.2108-1 §3.2 statistical clutter loss for suburban/urban (0.5–67 GHz); ITU-R P.833-9 §2.1 Am for vegetation. Suburban/urban categories use both §3.1 and §3.2 in the overlap band (0.5–3 GHz) and take the maximum. When the antenna is at or above the canopy height, the model gates the loss to zero for that terminal.
   - **Building entry loss (BEL)** — ITU-R P.2109-2 indoor penetration loss for the RX terminal, with traditional/thermally-efficient building types and elevation angle support. Enabled under advanced clutter settings.
   Reports include per-terminal clutter loss (`clutter_tx_db`, `clutter_rx_db`), canopy heights (`tx_cch_m`, `rx_cch_m`), `total_path_loss_db` breakdown, BEL (`bel_rx_db`), and combined total (`total_with_bel_db`). WorldCover 2020 tiles are auto-downloaded from the ESA AWS open data bucket when clutter is enabled and no raster is supplied; users can also provide a local raster.
 - **Reliability Outputs**: P2P and coverage reports now include fade-margin classes plus formal-or-fallback availability guidance.
@@ -89,7 +89,7 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 - `base_algorithm.py`: shared base class for NoWires Processing algorithms
 - `antenna.py`: antenna radiation pattern model with presets and pattern files
 - `clutter/__init__.py`: terminal clutter correction dispatch and helpers
-- `clutter/advanced.py`: advanced clutter mode dispatcher (saalos + P.2108 §3.1/§3.2 + P.2109 BEL)
+- `clutter/advanced.py`: advanced clutter mode dispatcher (P.833-9 §2.1 + P.2108 §3.1/§3.2 + P.2109 BEL)
 - `clutter/categories.py`: clutter category definitions, WorldCover class mapping, P.2108 model dispatch params
 - `clutter/constants.py`: shared clutter constants (simple loss table, limits)
 - `clutter/context.py`: ClutterLossContext dataclass definition
@@ -100,7 +100,7 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 - `clutter/p2108_height_gain.py`: ITU-R P.2108-1 §3.1 height-gain terminal correction
 - `clutter/p2108_terrestrial_stat.py`: ITU-R P.2108-1 §3.2 statistical clutter loss for terrestrial paths
 - `clutter/p2109_bel.py`: ITU-R P.2109-2 building entry loss
-- `clutter/saalos.py`: saalos vegetation clutter loss (Python port from Rust)
+- `clutter/p833.py`: ITU-R P.833-9 §2.1 vegetation clutter loss (Am formula)
 - `coverage/engine.py`: coverage raster computation engine
 - `coverage/compute.py`: shared coverage propagation helpers
 - `coverage/analysis_params.py`: coverage algorithm parameter registration
@@ -141,6 +141,7 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 - `contour/_smoothing_vrt.py`: Gaussian kernel, raster calc, and blur VRT helpers (extracted from smoothing.py)
 - `contour/symbology.py`: rule-based contour symbology
 - `radio.py`: ITM bridge, Fresnel analysis, signal-level definitions
+- `k_factor_presets.py`: Earth-radius-factor presets and their N0 coupling (`resolve_k_factor`, `resolve_n0`), re-exported from `radio`
 - `fresnel.py`: Fresnel zone and LOS analysis
 - `elevation.py`: DEM sampling, terrain profiles, ElevationGrid class
 - `reliability.py`: formal-or-fallback availability and reliability helpers
@@ -232,10 +233,8 @@ See [CHANGELOG.md](CHANGELOG.md) for notable project changes.
 
 ## Attribution
 
-The advanced clutter model uses the saalos vegetation algorithm,
-ported from ITWOM 3.0 (Sid Shumate, Givens & Bell, Inc.) via an
-intermediate MIT-licensed Rust crate. See [NOTICE.md](NOTICE.md)
-for the full upstream notice and MIT license text.
+The vegetation clutter model implements ITU-R P.833-9 §2.1 (Am formula).
+See [NOTICE.md](NOTICE.md) for the full attribution.
 
 The P.2108-1 and P.2109-2 clutter and building entry loss models are
 implemented from ITU-R Recommendations P.2108-1 (09/2021) and

@@ -62,9 +62,8 @@ class TestP2PClimateRangeCheck:
         )
 
     def test_p2p_algorithm_calls_validate_with_climate(self):
-        source_path = "algorithm/p2p.py"
-        with open(source_path, encoding="utf-8") as f:
-            source = f.read()
+        import pathlib
+        source = (pathlib.Path(__file__).parent.parent / "algorithm/p2p.py").read_text(encoding="utf-8")
         assert "climate=climate" in source
         assert "QgsProcessingException" in source
 

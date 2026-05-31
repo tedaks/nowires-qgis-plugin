@@ -49,10 +49,9 @@ def normalize_longitude_centers(lons):
     return ((lons + 180.0) % 360.0) - 180.0
 
 
-def _bucket_key(distance_m, rx_ground_m):
-    """Quantise continuous per-pixel parameters for LUT lookup."""
-    return (round(distance_m / _DISTANCE_BUCKET_M) * _DISTANCE_BUCKET_M,
-            round(rx_ground_m, 1))
+def _bucket_key(distance_m):
+    """Quantise distance for LUT lookup."""
+    return round(distance_m / _DISTANCE_BUCKET_M) * _DISTANCE_BUCKET_M
 
 
 def _haversine_grid(tx_lat, tx_lon, lats, lons):
@@ -125,8 +124,6 @@ def build_coverage_tasks(
     lons,
     clutter_context=None,
     tx_clutter_override=None,
-    tx_ground_elev_m=0.0,
-    rx_ground_grid=None,
 ):
     dist_grid = _haversine_grid(tx_lat, tx_lon, lats, lons)
     bearing_grid = _bearing_grid(tx_lat, tx_lon, lats, lons)
@@ -181,7 +178,7 @@ def build_coverage_tasks(
     # NOTE: This double loop is O(grid_size^2) in Python.  For large grids
     # with clutter enabled, per-pixel compute_advanced_loss calls in
     # advanced mode dominate task generation time.  A LUT keyed on
-    # (category, terminal, distance_bucket, ground_bucket) avoids redundant
+    # (category, terminal, distance_bucket) avoids redundant
     # invocations for pixels sharing the same quantised parameters.
     _clutter_lut: dict[tuple[str, ...], ClutterComponents] = {}
     tasks: list[_CoverageTask] = []
@@ -196,10 +193,7 @@ def build_coverage_tasks(
             )
             step_m = d_m / (n_pts - 1)
             if advanced and rx_category_grid is not None:
-                rx_ground_m = (
-                    float(rx_ground_grid[i, j]) if rx_ground_grid is not None else 0.0
-                )
-                bucket = _bucket_key(d_m, rx_ground_m)
+                bucket = _bucket_key(d_m)
                 tx_lut_key = ("tx", tx_category, bucket)
                 rx_cat = rx_category_grid[i, j]
                 rx_lut_key = ("rx", rx_cat, bucket)
@@ -210,9 +204,6 @@ def build_coverage_tasks(
                     distance_m=d_m,
                     tx_height_m=tx_h_m,
                     rx_height_m=rx_h_m,
-                    rx_ground_elevation_m=rx_ground_m,
-                    tx_ground_elevation_m=tx_ground_elev_m,
-                    polarization=polarization,
                     cch_override_m=clutter_context.cch_override_m,
                     model="advanced",
                     percentile=clutter_context.percentile,
@@ -233,8 +224,6 @@ def build_coverage_tasks(
                     rx_comp = rx_cached
                 # Combine terminal-level and path-level clutter correctly.
                 # §3.2 stat_loss must be applied once per path, not summed.
-                # SAALOS applied to both endpoints must use the larger
-                # value, not be summed.
                 path_total = compute_path_clutter_loss(tx_comp, rx_comp)
                 # Split total across tx/rx proportional to per-terminal
                 # contributions so clutter_tx_db + clutter_rx_db ==

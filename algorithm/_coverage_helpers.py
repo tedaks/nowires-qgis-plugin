@@ -6,7 +6,6 @@ Extracted from algorithm/coverage.py to keep the algorithm class within the
 300-line source-file cap and to give Phase 3's dataclass migration a stable
 extraction point for further coverage-side logic.
 """
-import math
 import os
 
 from qgis.core import Qgis, QgsRasterLayer, QgsVectorLayer
@@ -47,14 +46,8 @@ def _build_clutter_context(p, clutter_grid, elev):
             tx_override=p.tx_clutter_override, rx_override=p.rx_clutter_override)
         clutter_context = None
         if p.clutter_enabled:
-            tx_ground = float(elev.sample(p.tx_lat, p.tx_lon))
-            if not math.isfinite(tx_ground):
-                tx_ground = 0.0
-            # rx_ground=0 is a placeholder — coverage_tasks.py fills the per-pixel
-            # value during task build; this context is for TX clutter + the report.
             clutter_context = build_initial_clutter_context(
                 frequency_mhz=p.f_mhz, tx_height_m=p.tx_h, rx_height_m=p.rx_h,
-                tx_ground_elevation_m=tx_ground, polarization=p.polarization,
                 cch_override_m=p.cch_override_m, model=p.clutter_model,
                 percentile=p.clutter_percentile, street_width_m=p.street_width_m,
                 bel_enabled=p.bel_enabled, bel_building_type=p.bel_building_type,

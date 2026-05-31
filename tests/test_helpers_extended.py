@@ -5,6 +5,14 @@
 
 import os
 
+import pytest
+
+_getuid = getattr(os, "getuid", lambda: 99999)
+_posix_uid = pytest.mark.skipif(
+    not hasattr(os, "getuid"),
+    reason="uid-based file ownership semantics require POSIX",
+)
+
 
 
 class TestTempManagerEdges:
@@ -133,21 +141,22 @@ class TestCleanupStaleSharedMemory:
 
     def test_cleanup_empty_dir(self, tmp_path):
         from shared_dem_grid import cleanup_stale_shm_entries
-        cleanup_stale_shm_entries(str(tmp_path), os.getuid())
+        cleanup_stale_shm_entries(str(tmp_path), _getuid())
         assert True
 
     def test_cleanup_skips_non_matching_entries(self, tmp_path):
         from shared_dem_grid import cleanup_stale_shm_entries
         for name in ("other_file", "nowires_other", "nowires_dem_x_abc"):
             (tmp_path / name).write_text("")
-        cleanup_stale_shm_entries(str(tmp_path), os.getuid())
+        cleanup_stale_shm_entries(str(tmp_path), _getuid())
         assert (tmp_path / "other_file").exists()
 
+    @_posix_uid
     def test_cleanup_removes_stale_pid(self, tmp_path, monkeypatch):
         from shared_dem_grid import cleanup_stale_shm_entries
         entry = tmp_path / "nowires_dem_99999_abc123def"
         entry.write_text("")
-        cleanup_stale_shm_entries(str(tmp_path), os.getuid())
+        cleanup_stale_shm_entries(str(tmp_path), _getuid())
         assert not entry.exists()
 
     def test_atexit_release_with_empty_registry(self):

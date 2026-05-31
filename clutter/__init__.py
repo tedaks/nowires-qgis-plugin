@@ -27,6 +27,7 @@ from NoWires.clutter.resolve import (  # noqa: F401
     resolve_category_advanced,
 )
 from NoWires.clutter.grid import LandCoverGrid  # noqa: F401
+from NoWires.clutter.p833 import clutter_loss_p833, clutter_loss_p833_vec  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

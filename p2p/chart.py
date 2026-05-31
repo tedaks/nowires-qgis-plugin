@@ -64,8 +64,8 @@ def show_profile_chart(
                                           QToolBar, QCheckBox, QPushButton)
         from qgis.PyQt.QtCore import Qt
         from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
-    except ImportError:
-        logger.warning("matplotlib not available, skipping profile chart")
+    except Exception as _e:
+        logger.warning("matplotlib/Qt backend unavailable, skipping profile chart: %s", _e)
         return
 
     existing = getattr(show_profile_chart, "_dock", None)

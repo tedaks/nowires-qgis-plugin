@@ -34,7 +34,7 @@ The project uses six GitHub Actions workflows run on every push and pull request
 | `audit` | Runs `pip-audit --requirement constraints-ci.txt` against the pinned dependency list, then audits the full dependency tree |
 | `mypy` | Runs `mypy . --config-file mypy.ini` for static type checking |
 | `import-linter` | Runs `lint-imports` to check import architecture rules |
-| `pytest` | Runs `pytest -m "not benchmark and not qgis_integration and not gdal_integration" --cov` on Python 3.12. Coverage threshold lives in `pyproject.toml` (currently 64%). Isolation-sensitive tests run separately. |
+| `pytest` | Runs `pytest -m "not benchmark and not qgis_integration and not gdal_integration" --cov` on Python 3.12. Coverage threshold lives in `pyproject.toml` (currently 60%). Isolation-sensitive tests run separately. |
 
 ### integration.yml — QGIS Integration Tests (Docker)
 
@@ -100,7 +100,7 @@ stdlib layout. Four setup steps are required:
    symlinks back to the flat directory:
 
    ```bash
-   QGIS_STDLIB=/Applications/QGIS-final-4_0_2.app/Contents/Resources/python3.11
+   QGIS_STDLIB=/Applications/QGIS-final-4_0_3.app/Contents/Resources/python3.11
    mkdir -p "$QGIS_STDLIB/lib/python3.12"
    for item in "$QGIS_STDLIB"/*; do
      name=$(basename "$item")
@@ -115,7 +115,7 @@ stdlib layout. Four setup steps are required:
 
    ```bash
    codesign -f -s - --entitlements /path/to/entitlement.plist \
-     /Applications/QGIS-final-4_0_2.app/Contents/MacOS/python3.12
+     /Applications/QGIS-final-4_0_3.app/Contents/MacOS/python3.12
    ```
 
    where `entitlement.plist` contains:
@@ -137,32 +137,32 @@ stdlib layout. Four setup steps are required:
    sizes changed between major versions:
 
    ```bash
-   QGIS_PYTHON=/Applications/QGIS-final-4_0_2.app/Contents/MacOS/python3.12
-   PYTHONHOME=/Applications/QGIS-final-4_0_2.app/Contents/Resources/python3.11 \
-   DYLD_FRAMEWORK_PATH=/Applications/QGIS-final-4_0_2.app/Contents/Frameworks \
-   QGIS_PREFIX_PATH=/Applications/QGIS-final-4_0_2.app/Contents/MacOS \
-   PROJ_LIB=/Applications/QGIS-final-4_0_2.app/Contents/Resources/qgis/proj \
-   PROJ_DATA=/Applications/QGIS-final-4_0_2.app/Contents/Resources/qgis/proj \
+   QGIS_PYTHON=/Applications/QGIS-final-4_0_3.app/Contents/MacOS/python3.12
+   PYTHONHOME=/Applications/QGIS-final-4_0_3.app/Contents/Resources/python3.11 \
+   DYLD_FRAMEWORK_PATH=/Applications/QGIS-final-4_0_3.app/Contents/Frameworks \
+   QGIS_PREFIX_PATH=/Applications/QGIS-final-4_0_3.app/Contents/MacOS \
+   PROJ_LIB=/Applications/QGIS-final-4_0_3.app/Contents/Resources/qgis/proj \
+   PROJ_DATA=/Applications/QGIS-final-4_0_3.app/Contents/Resources/qgis/proj \
    "$QGIS_PYTHON" -m pip install --break-system-packages numpy==1.26.4 pytest-cov
    ```
 
 4. **Run the tests** with PYTHONHOME, DYLD_FRAMEWORK_PATH, and PROJ paths set:
 
    ```bash
-   PYTHONHOME=/Applications/QGIS-final-4_0_2.app/Contents/Resources/python3.11 \
-   DYLD_FRAMEWORK_PATH=/Applications/QGIS-final-4_0_2.app/Contents/Frameworks \
-   QGIS_PREFIX_PATH=/Applications/QGIS-final-4_0_2.app/Contents/MacOS \
-   PROJ_LIB=/Applications/QGIS-final-4_0_2.app/Contents/Resources/qgis/proj \
-   PROJ_DATA=/Applications/QGIS-final-4_0_2.app/Contents/Resources/qgis/proj \
+   PYTHONHOME=/Applications/QGIS-final-4_0_3.app/Contents/Resources/python3.11 \
+   DYLD_FRAMEWORK_PATH=/Applications/QGIS-final-4_0_3.app/Contents/Frameworks \
+   QGIS_PREFIX_PATH=/Applications/QGIS-final-4_0_3.app/Contents/MacOS \
+   PROJ_LIB=/Applications/QGIS-final-4_0_3.app/Contents/Resources/qgis/proj \
+   PROJ_DATA=/Applications/QGIS-final-4_0_3.app/Contents/Resources/qgis/proj \
    QT_QPA_PLATFORM=offscreen \
-   PYTHONPATH=/Applications/QGIS-final-4_0_2.app/Contents/Resources/python3.11/site-packages:$(pwd) \
-   /Applications/QGIS-final-4_0_2.app/Contents/MacOS/python3.12 \
+   PYTHONPATH=/Applications/QGIS-final-4_0_3.app/Contents/Resources/python3.11/site-packages:$(pwd) \
+   /Applications/QGIS-final-4_0_3.app/Contents/MacOS/python3.12 \
      -m pytest -m qgis_integration -v --tb=short && \
-   /Applications/QGIS-final-4_0_2.app/Contents/MacOS/python3.12 \
+   /Applications/QGIS-final-4_0_3.app/Contents/MacOS/python3.12 \
      -m pytest tests/test_gdal_compat.py -v --tb=short && \
-   /Applications/QGIS-final-4_0_2.app/Contents/MacOS/python3.12 \
+   /Applications/QGIS-final-4_0_3.app/Contents/MacOS/python3.12 \
      -m pytest tests/test_raster_io_integration.py -v --tb=short && \
-   /Applications/QGIS-final-4_0_2.app/Contents/MacOS/python3.12 \
+   /Applications/QGIS-final-4_0_3.app/Contents/MacOS/python3.12 \
      -m pytest -m gdal_integration -v --tb=short
    ```
 
