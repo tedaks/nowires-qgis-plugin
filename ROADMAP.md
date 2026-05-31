@@ -151,6 +151,11 @@ This release batches the dataclass migration (prerequisite for deeper
 decompositions), proxy auth, and several high-impact UX/robustness items.
 PATCH-level cleanups and decompositions may be bundled under this MINOR bump.
 
+_Items that landed early in v2.0.0 (tile-download decomposition, batch/params
+tests, gitignore entries, pip-audit noise fix, CONTRIBUTING.md bootstrap,
+package-name docs) have been removed from this section and recorded in
+CHANGELOG.md §[2.0.0]._
+
 ### Bug fixes (PATCH — bundled in this release)
 
 #### Group each run's outputs into a named layer-tree group
@@ -226,7 +231,7 @@ assert the dialog writes geometry on close and reads it on show. Verify the
 #### Provide in-dialog help on every algorithm
 
 `shortHelpString()` is implemented only on `BatchAnalysisAlgorithm`
-(`algorithm/batch.py:258`) and `CoverageComparisonAlgorithm`
+(`algorithm/batch.py:270`) and `CoverageComparisonAlgorithm`
 (`algorithm/coverage_comparison.py:244`). P2P, Coverage, and Contour show an
 empty help panel in their Processing dialogs. Add `shortHelpString()` — and
 optionally `helpUrl()` deep-linking to the hosted `USERS-GUIDE.md` — to all
@@ -249,93 +254,7 @@ Processing toolbox. Add a one-line `icon()` on `NoWiresAlgorithm` reusing
 **Regression test:** `test_algorithm_icon.py` — assert each registered
 `NoWiresAlgorithm` subclass returns a non-null `QIcon` from `icon()`.
 
-#### Clear the `pip-audit` job's pip-self noise
-
-The `audit` job currently reports CVEs in `pip` itself (the build tool), not in
-any shipped dependency — harmless, but it dirties the one job whose value is a
-clean signal, so a real future CVE in a real dependency would hide in the
-noise. Either upgrade pip in the audit venv before running
-(`python -m pip install --upgrade pip`) or add an explicit, commented
-`--ignore-vuln` for the pip-self advisories so genuine findings stand out.
-CI tweak → PATCH.
-
-**Regression test:** no code test needed; CI job output is the gate. Verify the
-audit job output shows no pip-self advisories after the fix.
-
-#### Gitignore local-only tool config
-
-`.mcp.json` (contains a hardcoded absolute path,
-`/home/bortre/03-final/nowires_qgis_plugin`) and `provider_config.json` are
-untracked developer-environment files — not in the release include-list, so no
-shipping risk. But the absolute path in `.mcp.json` makes it non-portable if
-ever shared, and either could be committed by accident. Decide intent: add both
-to `.gitignore` to keep them explicitly local-only, or make `.mcp.json`'s path
-relative if it is meant to be shared. Hygiene only → no version bump.
-
-**Regression test:** no code test needed; verify `.gitignore` contains the
-entries and `git status --ignored` confirms they are ignored.
-
 ### Cleanups (PATCH — bundled in this release)
-
-#### Decompose `download_tile_with_retry` into staged helpers
-
-`tile_download_base.py:53-219` fires every function-level biomarker at once:
-CCN 53, nesting 8, 155 lines, 11 parameters, 15 commits of churn. It is the
-single most extreme function in the repo and is still being modified, so each
-future change pays the complexity tax. The function is really two functions
-glued together (cache check + retry loop) with a tangled HTTP-error tree.
-
-**Extractions, in order of leverage:**
-
-1. **`_serve_from_cache(local_tif, base_name_label, feedback) -> str | None`** —
-   pull out lines 64-91 (the cache-hit / checksum-verify / cleanup block).
-   Drops ~30 lines of nested `if`s out of the retry loop.
-
-2. **`_download_to_tmp(opener, tile_url, tmp_path, base_url, socket_timeout,
-   max_bytes, base_name_label, feedback) -> int | None`** — lines 108-144. Just
-   the HTTP request, redirect check, content-length validation, and chunked
-   write. No retry logic. Returns bytes received or `None` on cancel/cap.
-
-3. **`_classify_http_error(e, attempt, max_retries) -> tuple[Action, float]`** —
-   collapse the 404 / 408,425,429 / 5xx / other tree at lines 176-204 into a
-   small dispatcher returning `(GIVE_UP | RETRY_AFTER(s) | RETRY_BACKOFF)`. This
-   is the highest-leverage extraction; the nested `if/elif` is the main reason
-   CCN reached 53.
-
-4. **`_validate_downloaded_tile(tmp_path) -> bool`** — `gdal.Open` + raster
-   dimension/band check from lines 159-170.
-
-After extraction, `download_tile_with_retry` becomes ~30 lines: cache check →
-for attempt in range → `_download_to_tmp` → `_validate_downloaded_tile` → break.
-Behavior identical; nesting drops from 8 to 3; each helper is independently
-unit-testable. Use existing `tests/test_tile_download_base.py` patterns and add
-focused tests for the error-classification matrix.
-
-All extracted helpers are underscore-prefixed (private); behavior is byte-identical.
-Pure refactor → PATCH per AGENTS.md.
-
-**Regression tests:** golden-file tests
-(`tests/test_report_export_golden.py`) must produce byte-identical output. Add:
-- `test_download_serve_from_cache.py` — unit tests for cache-hit/miss/verify paths.
-- `test_http_error_classification.py` — parametrized tests for 404, 408, 425, 429,
-  5xx, and unknown status codes, verifying correct action/retry-delay dispatch.
-
-#### Add unit tests for `batch/params.py`
-
-`batch/params.py` is a heavily depended-on module (16 dependents) with no
-focused unit tests of its own. It is referenced by
-`tests/test_batch_writer.py` and `tests/_qgis_mocks.py`, but those exercise
-it incidentally rather than locking down its behavior.
-
-Follow the `tests/test_dataclass_params.py` pattern that exists for
-`CoverageAnalysisParams`. Cover: validation branches, default values,
-parameter-registration order, QGIS-parameter to dataclass extraction.
-Unit-testable with `tests/_qgis_mocks.py` — no QGIS runtime required.
-Expect ~80 test LOC. Tests only → PATCH.
-
-**Regression test:** `test_batch_params.py` — new file covering validation
-branches, default values, parameter-registration order, QGIS-parameter to
-dataclass extraction.
 
 #### Add unit tests for `_compute_single_link` and `ElevationGrid`
 
@@ -365,39 +284,13 @@ pairs with the existing `batch/params.py` test entry above and the
 
 #### Add type hints to `antenna.py`, `nowires.py`, and `radio.py`
 
-These three core modules have the highest concentration of untyped function
-arguments. The rest of the codebase is well-typed. Closing this gap would enable
+`nowires.py` and `radio.py` are now fully typed (landed in v2.0.0). One
+function remains untyped: `clear_pattern_cache()` in `antenna.py:177` — the
+only function in the repo without annotations. Closing this gap enables
 `mypy --strict` on the full project. Pure refactor → PATCH.
 
-**Regression test:** `mypy --strict` passes with no errors on these three
-modules. No new runtime tests needed; typecheck is the gate.
-
-#### Document NoWires package-name requirement
-
-`__init__.py:74` does `from NoWires.nowires import NoWiresPlugin` and every other
-module uses `from NoWires.*` imports. The plugin install directory must be exactly
-`NoWires` for any import to resolve — a clone into `nowires_qgis_plugin/` or any
-QGIS-manager slug other than `NoWires` breaks the plugin. Either document the
-requirement in README/INSTALL or convert to package-relative imports. Docs only →
-no version bump.
-
-#### Document a reproducible local dev-environment bootstrap
-
-The CI pipeline is the source of truth (`uv.lock` + `constraints-ci.txt` +
-role-specific `requirements-*.txt`), but a hand-rolled local `.venv` drifts
-from it silently. Observed failure mode: a venv whose `pytest` shebang resolved
-to Python 3.11 while `.venv/bin/python` was 3.12, missing `hypothesis` and
-`pytest-cov`, so a bare `pytest` collection-errored on the four
-`tests/test_hypothesis_*.py` files with `ModuleNotFoundError: No module named
-'hypothesis'` — looking like a repo breakage when it was purely an environment
-mismatch.
-
-Add a short "Local setup" stanza to `CONTRIBUTING.md` that pins one
-interpreter and one install path — e.g. `uv sync` against `uv.lock`, or
-`pip install -c constraints-ci.txt -r requirements-test.txt` into a single
-fresh venv — and the exact `pytest -m "not qgis_integration and not
-gdal_integration and not benchmark"` invocation the unit job uses. Docs only →
-no version bump.
+**Regression test:** `mypy --strict` passes on `antenna.py` after the fix.
+No new runtime tests needed; typecheck is the gate.
 
 ### Features (MINOR — this release's new functionality)
 
@@ -455,34 +348,6 @@ Adds new processing parameters → MINOR. One PR.
 - `test_proxy_auth_threading.py` — assert `proxy_opener` is passed through to
   `ensure_dem_for_area` and `ensure_worldcover_for_area` in the four newly-wired
   algorithms. Mock the download functions and verify the opener is used.
-
-#### Decide and document the `qgisMinimumVersion` floor
-
-`metadata.txt` sets `qgisMinimumVersion=4.0` / `qgisMaximumVersion=4.99`. QGIS
-4.0 (Qt6) shipped February 2026, but the first 4.x LTR is **4.2, not due until
-October 2026** ([QGIS.org blog](https://blog.qgis.org/2025/10/07/update-on-qgis-4-0-release-schedule-and-ltr-plans/)),
-so until then the conservative/institutional base remains on the 3.x series
-(3.40 LTR), excluded by this floor. QGIS 4.0 is a hard Qt5→Qt6 break, so
-spanning both from one codebase is real work if any Qt6-only or PyQGIS-4-only
-API is used.
-
-**Decision needed by v2.1.0 at the latest:** either keep the 4.0-only floor and
-document the rationale in `README.md` (riding the Qt6 line, awaiting the 4.2 LTR),
-or audit the code for Qt6/PyQGIS-4-only API usage and lower the floor to a 3.x LTR
-to widen reach. Delaying past v2.1.0 risks a growing 3.x user base that cannot
-install the plugin, and the decision informs whether the Export Portable Project
-feature needs cross-version `.qgz` considerations.
-The code already uses the `qgis.PyQt` shim and the scoped Qt6 enum
-`Qgis.ProcessingAlgorithmFlag.NoThreading` (`base_algorithm.py:38`), which is
-correct for 4.0. No code change unless the floor is lowered → docs/metadata.
-
-**If the floor is lowered to 3.x:** this is a MINOR change (new users can
-install). One PR: audit all `Qgis.` and `qgis.PyQt` shims for 3.x compat, set
-`qgisMinimumVersion=3.40` in `metadata.txt`, document in `README.md`.
-
-**Regression test:** `test_qgis_version_floor.py` — assert `metadata.txt`
-`qgisMinimumVersion` matches the documented floor; if 3.x, assert no 4.0-only
-API usage exists in the codebase.
 
 ---
 

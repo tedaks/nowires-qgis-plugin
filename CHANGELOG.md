@@ -24,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Cleanups
 
 - Remove unused imports (`pytest`, `math`, `sys`) and a duplicate `sys` import from four test files.
+- Decompose `download_tile_with_retry` into four staged helpers: `_serve_from_cache`, `_download_to_tmp`, `_validate_downloaded_tile`, `_classify_http_error` (`tile_download_base.py`).
+- Add `.mcp.json` and `provider_config.json` to `.gitignore`.
+- Add pip upgrade step to `audit` CI job to suppress pip-self CVE noise.
+- Add focused unit tests for `batch/params.py` (`tests/test_batch_params.py`).
+- Document package-name requirement (`NoWires`) in `AGENTS.md` and `USERS-GUIDE.md`.
+- Add reproducible local dev-environment bootstrap to `CONTRIBUTING.md`.
 
 ### Breaking Changes
 

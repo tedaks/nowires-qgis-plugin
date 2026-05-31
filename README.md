@@ -79,6 +79,22 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
    - **Windows:** `%APPDATA%\QGIS\QGIS4\profiles\default\python\plugins\`
 2. Restart QGIS and enable the plugin in **Plugins → Manage and Install Plugins**.
 
+> **Important:** The plugin install directory must be named exactly `NoWires`
+> (not `nowires_qgis_plugin`, `NoWires-main`, or any other name). Every module
+> uses `from NoWires.*` imports, and renaming the folder causes
+> `ModuleNotFoundError`. The ZIP release always extracts to the correct name;
+> this only matters when cloning the repository manually.
+
+### QGIS version floor
+
+NoWires targets QGIS 4.0+ (Qt 6 / PyQt 6). QGIS 4.0 is the first release built
+on Qt 6, and Qt 5→Qt 6 is a hard break — the two API surfaces are incompatible
+at the C++ and Python levels and cannot be bridged from one codebase without a
+compatibility shim layer. The earliest LTR on the Qt 6 line will be QGIS 4.2
+(expected October 2026); until then, institutional users on the 3.40 LTR
+(Qt 5 / PyQt 5) are excluded. NoWires does not maintain a Qt 5 compatibility
+layer and has no plans to add one.
+
 ## Repository Layout
 
 - `algorithm/p2p.py`: point-to-point ITM analysis
