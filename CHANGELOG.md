@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-05-31
+
 ### Correctness
 
 - Import `logging` and define `logger` in `algorithm/p2p.py` to fix `NameError` on chart display failure.
