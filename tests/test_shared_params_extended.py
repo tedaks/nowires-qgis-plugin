@@ -136,11 +136,21 @@ class TestAddAdvancedITMParams:
         add_advanced_itm_params(alg)
         decouple = [p for p in alg.params if _param_name(p) == "DECOUPLE_N0"]
         assert decouple, "DECOUPLE_N0 must be registered when include_k_factor"
-        # Advanced params call setFlags(... FlagAdvanced); a main param does not.
-        assert not decouple[0].setFlags.called, (
-            "DECOUPLE_N0 must not be flagged advanced — it must show beside the "
-            "k-factor preset it controls"
-        )
+        # flags() returns an int with real QGIS but a MagicMock with the test
+        # mock classes. call_count works on both real MagicMock and (Python 3.13
+        # compat) mock.called replacement; on real QGIS setFlags is a native
+        # method that will never have call_count, so fall through to flags().
+        _setflags = decouple[0].setFlags
+        if hasattr(_setflags, "call_count"):
+            assert _setflags.call_count == 0, (
+                "DECOUPLE_N0 must not be flagged advanced — it must show beside "
+                "the k-factor preset it controls"
+            )
+        else:
+            assert not (decouple[0].flags() & 2), (
+                "DECOUPLE_N0 must not be flagged advanced — it must show beside "
+                "the k-factor preset it controls"
+            )
 
     def test_decouple_n0_absent_when_k_factor_excluded(self):
         """Coverage (include_k_factor=False) has no preset, so no decouple toggle."""
