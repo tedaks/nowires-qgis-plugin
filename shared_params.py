@@ -208,12 +208,12 @@ def add_advanced_itm_params(algorithm, attr_getter=None, include_k_factor=True, 
         add_advanced_param(algorithm, ag("K_FACTOR"),
             f"{label_prefix}Custom Earth radius factor (k)",
             DEFAULT_K_FACTOR, min_val=0.1)
-        decouple = QgsProcessingParameterBoolean(
+        # Main (non-advanced) param: it sits beside the K_FACTOR_PRESET enum it
+        # governs, so it must be as visible as the preset itself.
+        algorithm.addParameter(QgsProcessingParameterBoolean(
             ag("DECOUPLE_N0"),
             f"{label_prefix}Decouple N0 from k-factor preset (preset affects "
-            f"Fresnel display only)", defaultValue=False)
-        decouple.setFlags(decouple.flags() | QgsProcessingParameterBoolean.Flag.FlagAdvanced)
-        algorithm.addParameter(decouple)
+            f"Fresnel display only)", defaultValue=False))
         n0_label += " — overridden by k-factor preset unless decoupled"
     add_advanced_param(algorithm, ag("N0"), n0_label, DEFAULT_N0,
         min_val=ITM_MIN_N0, max_val=ITM_MAX_N0)
