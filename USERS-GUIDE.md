@@ -172,12 +172,14 @@ Main inputs include:
 - time, location, and situation percentages
 - TX power, antenna gains, cable loss
 - RX sensitivity
-- Earth radius factor preset
+- Earth radius factor preset (also sets surface refractivity `N0` — see below)
+- Decouple N0 from k-factor preset (checkbox; keeps `N0` independent)
 
 Advanced inputs include:
 
 - custom Earth radius factor (`k`) for backward compatibility
-- surface refractivity (`N0`)
+- surface refractivity (`N0`) — overridden by the Earth-radius-factor preset
+  unless you decouple it or use the Custom preset
 - earth permittivity (`epsilon`)
 - earth conductivity (`sigma`)
 - antenna preset, azimuth, beamwidth, front-to-back ratio, downtilt, and optional pattern CSV files
@@ -245,11 +247,36 @@ Point-to-point analysis can produce an interactive profile chart showing:
 - toggle buttons for Fresnel zone, LOS, and profile line visibility
 - chart export to PNG/SVG
 
+### Earth Radius Factor And Surface Refractivity (N0)
+
+The Earth-radius-factor preset does two things in point-to-point and batch
+analysis. As before, it shapes the Fresnel-zone and earth-bulge display. Since
+v2.0.0 it also sets the surface refractivity `N0`, which feeds the propagation
+calculation, so choosing a more (or less) refractive preset changes the
+predicted path loss — not just the picture:
+
+| Preset | N0 (N-units) | Atmosphere |
+|--------|--------------|------------|
+| `0.67 - Sub-refractive`          | 250 | dry, signal bends upward |
+| `1.00 - Geometric`               | 280 | no bending |
+| `1.33 - Standard atmosphere`     | 301 | typical default |
+| `2.00 - Super-refractive`        | 350 | moist, signal bends down |
+| `4.00 - Strong super-refractive` | 400 | ducting conditions |
+
+The default preset (`1.33`) maps to `N0 = 301`, the same value used before
+v2.0.0, so existing default runs are unchanged. When a preset overrides the
+`N0` you typed, the Processing log shows a note with the value it used.
+
+If you want to set `N0` yourself and let the preset affect only the Fresnel/LOS
+display (the older behavior), tick **Decouple N0 from k-factor preset**, or
+choose the **Custom** preset and enter a custom `k`.
+
 ### Good Defaults for New Users
 
 - Polarization: `Vertical`
 - Time / Location / Situation: `50 / 50 / 50`
-- Earth radius factor preset: `1.33 - Standard atmosphere`
+- Earth radius factor preset: `1.33 - Standard atmosphere` (sets `N0 = 301`)
+- Leave **Decouple N0 from k-factor preset** unticked unless you need a custom `N0`
 
 ## Basic Workflow: Coverage Analysis
 

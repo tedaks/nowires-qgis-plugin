@@ -141,6 +141,7 @@ CI uses pinned versions from [constraints-ci.txt](constraints-ci.txt) — instal
 - `contour/_smoothing_vrt.py`: Gaussian kernel, raster calc, and blur VRT helpers (extracted from smoothing.py)
 - `contour/symbology.py`: rule-based contour symbology
 - `radio.py`: ITM bridge, Fresnel analysis, signal-level definitions
+- `k_factor_presets.py`: Earth-radius-factor presets and their N0 coupling (`resolve_k_factor`, `resolve_n0`), re-exported from `radio`
 - `fresnel.py`: Fresnel zone and LOS analysis
 - `elevation.py`: DEM sampling, terrain profiles, ElevationGrid class
 - `reliability.py`: formal-or-fallback availability and reliability helpers

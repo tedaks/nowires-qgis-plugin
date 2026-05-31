@@ -331,12 +331,13 @@ Point-to-point reports carry reliability and clutter fields:
 - RX gain
 - cable loss
 - RX sensitivity
-- Earth radius factor preset
+- Earth radius factor (`k`) preset — also sets surface refractivity `N0`
+- Decouple `N0` from k-factor preset (boolean; restores Fresnel-display-only `k`)
 
 #### Advanced inputs
 
 - custom Earth radius factor (`K_FACTOR`)
-- `N0`
+- `N0` (overridden by the k-factor preset unless decoupled)
 - `epsilon`
 - `sigma`
 - antenna preset, azimuth, beamwidth, front-to-back ratio, downtilt, and optional pattern CSV files
@@ -353,28 +354,59 @@ Point-to-point reports carry reliability and clutter fields:
 
 ### Earth Radius Factor Handling
 
-Visible presets:
+Visible presets and their coupled surface refractivity `N0` (since v2.0.0):
 
-- `0.67 - Sub-refractive`
-- `1.00 - Geometric`
-- `1.33 - Standard atmosphere`
-- `2.00 - Super-refractive`
-- `4.00 - Strong super-refractive`
+| Preset | `k` | Coupled `N0` (N-units) |
+|--------|-----|------------------------|
+| `0.67 - Sub-refractive`         | 0.67 | 250 |
+| `1.00 - Geometric`              | 1.00 | 280 |
+| `1.33 - Standard atmosphere`    | 1.33 | 301 |
+| `2.00 - Super-refractive`       | 2.00 | 350 |
+| `4.00 - Strong super-refractive`| 4.00 | 400 |
+| `Custom`                        | numeric `K_FACTOR` | user `N0` (free) |
 
-Default:
+Default: `1.33 - Standard atmosphere`, which couples to `N0 = 301`
+(`DEFAULT_N0`), so the out-of-box default is numerically unchanged from earlier
+releases.
 
-- `1.33 - Standard atmosphere`
+The mapping table (`K_FACTOR_PRESET_N0`) and the resolvers
+(`resolve_k_factor`, `resolve_n0`) live in `k_factor_presets.py` and are
+re-exported from `radio` for backward-compatible imports.
+
+**N0 coupling (default change in v2.0.0):** selecting a non-Custom preset now
+overrides the surface refractivity `N0`, so the preset changes the ITM
+propagation prediction — not only the Fresnel/LOS earth-bulge display. The
+sub-/super-refractive `N0` values are representative planning values spanning
+the valid `[250, 400]` N-unit band; the standard preset is pinned to
+`DEFAULT_N0` so existing default-preset runs are unaffected. When a preset
+overrides the user's `N0`, the algorithm pushes a feedback note stating the new
+value and how to opt out. The coupling is applied in the P2P and Batch
+algorithm readers (`algorithm/p2p.py`, `algorithm/batch.py`).
+
+Keeping `N0` independent of `k` (the pre-v2.0.0 behavior):
+
+- enable the **Decouple N0 from k-factor preset** checkbox — the preset then
+  affects only the Fresnel/earth-bulge display and `N0` is taken from the field
+  as entered; or
+- choose the **Custom** preset, which uses the numeric `K_FACTOR` and likewise
+  leaves `N0` under direct user control.
 
 Backward compatibility:
 
 - the older numeric `K_FACTOR` parameter is still present as an advanced field
-- if an older Processing model supplies `K_FACTOR` without the new preset parameter, the numeric value is still honored
+- if an older Processing model supplies `K_FACTOR` without the new preset
+  parameter, the numeric value is still honored
+- a Processing model that predates the `DECOUPLE_N0` parameter defaults it to
+  `False` (coupling on); add the parameter or switch to Custom to restore the
+  old `N0`-independent behavior
 
-This preserves compatibility with legacy workflows while giving interactive users clearer defaults.
+### How `k` and the Preset Affect Each Analysis
 
-### Why `k` Only Affects P2P
-
-In the current codebase, Earth radius factor is used in the Fresnel and earth-bulge visualization path for point-to-point analysis. Coverage analysis does not currently expose `k` as a coverage parameter.
+The Earth-radius factor `k` drives the Fresnel and earth-bulge visualization in
+point-to-point analysis. Since v2.0.0 the **preset** additionally sets `N0`,
+which feeds the ITM propagation calculation in **both P2P and Batch**. Coverage
+analysis exposes neither the preset nor `k` (it sets `N0` directly), so coverage
+behavior is unchanged.
 
 ## Coverage Analysis
 
@@ -1040,6 +1072,12 @@ Default:
 
 - `301.0`
 
+In P2P and Batch, a non-Custom Earth-radius-factor preset overrides this field
+via the `K_FACTOR_PRESET_N0` coupling table (see *Earth Radius Factor
+Handling*), unless the **Decouple N0 from k-factor preset** checkbox is enabled
+or the Custom preset is selected. Coverage uses the entered `N0` directly (no
+preset).
+
 ### `epsilon`
 
 Earth permittivity.
@@ -1142,7 +1180,7 @@ GitHub Actions runs `pytest -q` for pushes and pull requests.
 
 When changing parameter keys or types, compatibility with stored Processing models and scripts must be considered explicitly.
 
-The `K_FACTOR` / `K_FACTOR_PRESET` handling in `algorithm/p2p.py` is an example of preserving legacy behavior while evolving the UI.
+The `K_FACTOR` / `K_FACTOR_PRESET` / `DECOUPLE_N0` handling in `algorithm/p2p.py` is an example of evolving behavior while preserving an escape hatch: the preset now drives `N0` by default (a deliberate v2.0.0 change), while the Decouple checkbox and the Custom preset keep the legacy `N0`-independent workflow available.
 
 Output parameters for algorithms use `QgsProcessingParameterFileDestination` rather than `RasterDestination` or `VectorDestination`. This avoids a double-loading conflict: the `*Destination` types tell QGIS Processing to auto-load the output layer, but the algorithms also queue layers via `addLayerToLoadOnCompletion` with custom styling. Using `FileDestination` means only the manually-queued load with proper styling occurs.
 
