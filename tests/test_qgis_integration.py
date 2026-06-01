@@ -79,7 +79,8 @@ class TestCoverageStyleIntegration:
         """Verify apply_coverage_style works on a real QgsRasterLayer."""
         from radio_coverage.palette import apply_coverage_style
         from osgeo import gdal, osr
-        tmp = tempfile.mktemp(suffix=".tif")
+        with tempfile.NamedTemporaryFile(suffix=".tif", delete=False) as f:
+            tmp = f.name
         driver = gdal.GetDriverByName("GTiff")
         ds = driver.Create(tmp, 4, 4, 1, gdal.GDT_Float32)
         srs = osr.SpatialReference()
@@ -107,7 +108,8 @@ class TestCoverageStyleIntegration:
 class TestWriteGeotiffIntegration:
     def test_write_geotiff_produces_valid_raster(self, qgis_app):
         from NoWires.raster_io import write_geotiff
-        tmp = tempfile.mktemp(suffix=".tif")
+        with tempfile.NamedTemporaryFile(suffix=".tif", delete=False) as f:
+            tmp = f.name
         grid = np.full((10, 10), -80.0, dtype=np.float32)
         write_geotiff(tmp, grid, 0.0, 0.1, 0.0, 0.1)
 
