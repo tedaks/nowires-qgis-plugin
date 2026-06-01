@@ -689,9 +689,10 @@ keywords.
 
 ---
 
-## v3.3.0 — MINOR: best-server, export, antenna patterns
+## v3.3.0 — MINOR: best-server, export, antenna patterns, P.526 diffraction
 
-Three high-impact features that share the "new algorithm + new output" pattern.
+Four high-impact features that share the "new algorithm + new output" pattern,
+plus a standards-grade P.526 diffraction diagnostic.
 
 ### Features (MINOR)
 
@@ -846,22 +847,96 @@ and unit-testable without a QGIS runtime.
 - `test_kmz_export.py` — verify KMZ contains expected overlays; verify KML
   contains P2P path coordinates.
 
-#### Diffraction-loss obstruction breakdown (diagnostic)
+#### Diffraction-loss obstruction breakdown (diagnostic) per ITU-R P.526
 
-ITM already accounts for diffraction in the predicted loss, but Pathloss and
-Radio Mobile show the *diagnostic*: per-obstacle knife-edge loss
-(Deygout / Bullington / Epstein-Peterson), which ridge dominates, and individual
-clearances. Add a diffraction breakdown to the P2P profile chart and report —
-explanatory depth that does **not** change the predicted loss number (the ITM
-result stays authoritative). Reuses the terrain profile and Fresnel geometry
-already in `fresnel.py` / `p2p/compute.py`. Additive report/chart content →
-MINOR.
+ITM already accounts for diffraction in the predicted loss via its internal
+knife-edge + smooth-earth (Vogler 3-radii) blend in `itm/propagation.py`, but
+that model operates on **smoothed horizon geometry** — it does not identify
+individual terrain peaks. Pathloss, Radio Mobile, and professional RF-planning
+tools (Atoll, ICS Telecom) show the per-obstacle breakdown as a diagnostic
+overlay: which ridge dominates, individual knife-edge loss contributions, and
+whether the path qualifies as Deygout (cascading), Epstein-Peterson
+(single-sum), or Bullington (equivalent single-knife).
+
+This feature adds a diffraction breakdown to the P2P profile chart and HTML
+report, implementing the obstruction-identification and knife-edge-diffraction
+methods of **ITU-R P.526** (Propagation by Diffraction) alongside the simpler
+Deygout/Bullington/Epstein-Peterson heuristics — explanatory depth that does
+**not** change the predicted loss number (the ITM result stays authoritative).
+
+**Scope (in implementation order):**
+
+1. **Obstruction extraction from terrain profile** — already partially done:
+   `fresnel_profile_analysis()` returns `obstructs_los` boolean arrays
+   (`fresnel.py:90-106`). Refine into a function `extract_diffraction_obstacles()`
+   that isolates each ridge's (distance_km, height_m, peak_idx) from the existing
+   terrain-bulge array, using the same `step_m` resolution as the profile.
+
+2. **Single knife-edge diffraction** — per-obstacle loss via `J(ν)` Fresnel
+   integral (P.526 §3.1, Eq. 4-6), where ν = h × √(2/λ × (1/d₁ + 1/d₂)). The
+   ITM codebase already has `fresnel_integral()` in `itm/propagation.py:49`
+   (TN101 approximation); reuse or re-derive from the same Abramowitz & Stegun
+   rational approximation that P.526 references.
+
+3. **Deygout cascading method** (P.526 §4.1) — the primary algorithm for
+   multiple obstacles. Find the dominant obstacle that maximizes per-knife
+   ν, split the path at that peak, recurse on both sub-paths, sum losses with
+   an empirical correction `C = 12 − 20 log₁₀(1 − α/π)` where α is the
+   sub-path separation angle. Converges in 1-3 levels for typical paths.
+
+4. **Bullington equivalent** (P.526 §4.2) — replace all obstructions with a
+   single equivalent knife-edge at the intersection of the horizon rays from TX
+   and RX. Fast upper bound; useful as a sanity check against Deygout.
+
+5. **Epstein-Peterson method** — sum individual knife-edge losses treating each
+   obstacle as the "RX" for the next. Less accurate than Deygout for tight
+   obstacle spacing but historically widespread and referenced in P.526
+   Attachment 1.
+
+6. **Rounded-obstacle correction** (P.526 §5) — when a ridge has a measurable
+   radius of curvature (estimated from DEM elevation profile), apply the
+   Dougherty & Maloney rounded-obstacle correction that increases loss for
+   smooth hilltops vs. sharp knife-edges. Moderate extra effort; enabled by a
+   toggle or automatic when the profile has ≤1 sample at the peak.
+
+7. **Chart and report surface** — extend `p2p/chart.py` to render per-obstacle
+   loss bars below the profile chart and annotate each ridge with its knife-edge
+   loss. Add a "Diffraction" section to the P2P HTML report payload
+   (`report/payloads.py`) and render it in `report/p2p_html.py`. The chart's
+   existing "Obstructions" toggle (`chart_format.py:29-58`) already identifies
+   up to 5 peak obstructions sorted by Fresnel deficit — extend it to show
+   Deygout loss per peak.
+
+**Implementation plan:**
+- New module `diffraction/` with `p526.py` (P.526 knife-edge + rounded-obstacle
+  functions), `deygout.py` (cascading solver), `bullington.py`,
+  `epstein_peterson.py`. Total ~400-600 lines across 4 files.
+- Each P.526 method accepts the same input shape: `(distances_km,
+  elevations_m, f_mhz, tx_h, rx_h)` and returns `(total_loss_db,
+  per_obstacle_losses: list[tuple[str, float, float]])`.
+- Expose a single dispatch `compute_p526_breakdown(method="deygout" | "bullington" | "epstein_peterson")`.
+- Call from `run_p2p_analysis()` in `p2p/compute.py` after the existing
+  `fresnel_profile_analysis()` call at line 162; feed results into
+  `chart_kwargs` and `report_payload`.
+- No new dependencies. Pure geometry + arithmetic on a list of ~100-500
+  elevation points. The Fresnel integral uses the same `sqrt()`, `log10()`,
+  `atan()` functions already available via `math` / `numpy`.
+
+**Classification:** additive report/chart content with no change to the ITM
+loss prediction → MINOR per AGENTS.md. Shipped in v3.3.0 alongside the other
+diagnostic/polish features.
 
 **Regression tests:**
-- `test_diffraction_breakdown.py` — synthetic terrain profile; assert
-  obstruction identification and knife-edge loss match hand-computed Deygout
-  values.
-- Golden-file P2P report tests must show the new obstruction breakdown section.
+- `test_diffraction_breakdown.py` — synthetic terrain profiles (single knife,
+  double knife separated by 5 km, triple knife, flat terrain, single rounded
+  obstacle); assert Deygout/Bullington/Epstein-Peterson loss matches
+  hand-computed values from P.526 reference examples.
+- `test_p526_knife_edge.py` — verify single-knife J(ν) against the ITU P.526
+  Annex 1 tabulated values (ν = 0, 0.5, 1.0, 2.0, 3.0, 5.0).
+- `test_p526_rounded_obstacle.py` — verify rounded-obstacle correction against
+  the Dou-gherty & Maloney reference curves for ρ/λ = 10, 100.
+- Golden-file P2P report tests must show the new obstruction breakdown section
+  with per-obstacle loss values.
 
 ---
 
