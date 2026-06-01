@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Regression test: batch itm_p2p_loss must forward k_factor parameter.
 
 The v1.7.1 K-factor fix landed for P2P but was missing from the batch

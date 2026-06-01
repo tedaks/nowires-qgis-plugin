@@ -1,6 +1,6 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-"""Verification that remember_nowires_3d_layers is wired from Coverage, P2P, and Contour."""
+# SPDX-License-Identifier: MIT
+"""Verification that remember_nowires_3d_layers is wired from Coverage and P2P."""
 
 import ast
 import os
@@ -31,11 +31,6 @@ def _all_call_names(source):
 
 def test_coverage_helpers_calls_remember():
     source = _source("algorithm/_coverage_helpers.py")
-    assert "remember_nowires_3d_layers" in source
-
-
-def test_contour_algorithm_calls_remember():
-    source = _source("algorithm/contour.py")
     assert "remember_nowires_3d_layers" in source
 
 

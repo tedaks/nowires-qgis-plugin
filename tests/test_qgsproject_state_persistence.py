@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Verify QgsProject state persistence used by NoWires algorithms."""
 
 import os
@@ -36,13 +36,6 @@ class TestQgsProjectStatePersistence:
         result, ok = project.readEntry("NoWires", "last_coverage_layer_id", "")
         assert ok
         assert result == "test_cov_id_456"
-
-    def test_write_and_read_contour_layer_id(self, qgis_app):
-        project = QgsProject.instance()
-        project.writeEntry("NoWires", "last_contour_layer_id", "test_contour_id_789")
-        result, ok = project.readEntry("NoWires", "last_contour_layer_id", "")
-        assert ok
-        assert result == "test_contour_id_789"
 
     def test_layer_tree_root_accessible(self, qgis_app):
         project = QgsProject.instance()

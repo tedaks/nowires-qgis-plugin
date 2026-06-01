@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """
 /***************************************************************************
  NoWires
@@ -12,21 +12,14 @@
         email                : tedaks@gmail.com
  ***************************************************************************/
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 3 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+ Licensed under the MIT License; see the LICENSE file for the full text.
 """
 
 
 # NoWires Processing Provider.
 #
 # Registers all processing algorithms: P2P analysis, coverage analysis,
-# and contour lines generation.
+# coverage comparison, and batch P2P analysis.
 
 import importlib
 import logging
@@ -42,7 +35,6 @@ _ALGORITHM_CLASSES = [
     ("algorithm.p2p", "P2PAlgorithm"),
     ("algorithm.coverage", "CoverageAlgorithm"),
     ("algorithm.coverage_comparison", "CoverageComparisonAlgorithm"),
-    ("algorithm.contour", "ContourLinesAlgorithm"),
     ("algorithm.batch", "BatchAnalysisAlgorithm"),
 ]
 

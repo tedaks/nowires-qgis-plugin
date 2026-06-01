@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Regression test: validate_itm_input_ranges must validate percentages, k_factor, epsilon.
 
 The v1.7.1 fail-fast validation extends validate_itm_input_ranges to also

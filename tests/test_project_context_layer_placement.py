@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Regression test: post-processing must use context.project() instead of QgsProject.instance().
 
-Ensures base_algorithm.py postProcessAlgorithm, contour.py postProcessAlgorithm,
-and processing_utils.queue_layer_for_loading prefer the context project over the
+Ensures base_algorithm.py postProcessAlgorithm and
+processing_utils.queue_layer_for_loading prefer the context project over the
 singleton, falling back only when no context project is available.
 """
 
@@ -23,18 +23,6 @@ def test_base_algorithm_postprocess_uses_context_project():
     assert "context.project()" in src
     assert 'QgsProject.instance().layerTreeRoot()' not in src
     assert 'QgsProject.instance().writeEntry(' not in src
-
-
-def test_contour_postprocess_uses_context_project():
-    src = _source("algorithm/contour.py")
-    lines = src.splitlines()
-    in_postprocess = False
-    for line in lines:
-        if "def postProcessAlgorithm" in line:
-            in_postprocess = True
-        if in_postprocess and "writeEntry" in line:
-            assert "context.project()" in line or "QgsProject.instance()" not in line.replace("context.project()", "")
-    assert "context.project()" in src
 
 
 def test_queue_layer_for_loading_resolves_project_from_context():

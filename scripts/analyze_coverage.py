@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Spatial analysis of NoWires coverage GeoTIFF."""
 import numpy as np
 from osgeo import gdal

@@ -1,11 +1,20 @@
 # NoWires QGIS Plugin — Notice & Attribution
 
-SPDX-License-Identifier: GPL-3.0-or-later
+SPDX-License-Identifier: MIT
 
-Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
+Copyright (c) 2026 Bortre Tenamo <tedaks@gmail.com>
 
-This plugin combines and adapts code from multiple open-source projects.
-The plugin as a whole is distributed under the **GNU General Public License v3 or later** because it includes and adapts GPL-licensed code from the ContourLines plugin alongside MIT-licensed and public-domain-compatible components.
+This plugin combines original work with code adapted from MIT-licensed and
+public-domain components. The plugin's own source is distributed under the
+**MIT License** (see LICENSE); the files under `itm/` are US-Government public
+domain (NTIA disclaimer). NoWires runs inside QGIS (GPL-2.0-or-later); MIT is
+one-way compatible with the GPL, so the running combination inside QGIS is
+governed by the GPL, which is normal for a QGIS plugin.
+
+**License history:** releases up to and including 2.x were GPL-3.0-or-later
+(the plugin then bundled GPL ContourLines-derived code). That code was removed
+or clean-room reimplemented for 3.0.0; **only 3.0.0 and later are MIT.**
+Pre-3.0.0 tags remain GPL.
 
 ---
 
@@ -81,23 +90,27 @@ NTIA Disclaimer:
 
 ---
 
-## 3. ContourLines — QGIS Plugin
+## 3. ContourLines — removed in 3.0.0
 
-**Source:** <https://github.com/tedaks/ContourLines> (forked from <https://github.com/DanielHSMartin/ContourLines>)  
-**License:** GPL-licensed upstream. The repository `LICENSE` file contains GNU GPL v3 text, while the upstream file headers and README describe the plugin as GPL v2 or later. This plugin as distributed is GPL v3 or later.  
-**Copyright:** © 2023 Daniel Hulshof Saint Martin <daniel.hulshof@gmail.com>; modifications © 2026 Bortre Tenamo
+The Contour Lines feature and **all** code derived from the GPL-licensed
+ContourLines plugin (© 2023 Daniel Hulshof Saint Martin, forked at
+<https://github.com/tedaks/ContourLines>) were **removed in 3.0.0** to make the
+plugin's own source MIT.
 
-The following files are derived from the ContourLines plugin:
+- `algorithm/contour.py` and the `contour/` package were deleted.
+- `dem_downloader.py` was previously listed here as ContourLines-derived. A
+  review of the upstream ContourLines source found that the only derived portion
+  was the **DEM tile-enumeration pattern** — dictated by the published Copernicus
+  GLO-30 1°×1° tile grid and the QGIS geometry API (a thin, spec-driven
+  expression, arguably *scène à faire*). It was independently reimplemented for
+  3.0.0 from those public specifications (see §9).
+- `tile_download_base.py` was **never** ContourLines-derived. It was always the
+  NoWires author's own download/retry/cache/integrity code, GPL-labeled only
+  because the aggregate was GPL; it is MIT in 3.0.0. (It was conservatively
+  reimplemented alongside `dem_downloader.py` — the source review confirmed this
+  was unnecessary but harmless.)
 
-| Plugin file | Original source |
-|---|---|
-| `algorithm/contour.py` | `contour_lines_algorithm.py` |
-| `dem_downloader.py` (DEM download, clip, merge logic) | `contour_lines_algorithm.py` (tile download and processing sections) |
-| `contour/generation.py` | `contour_lines_algorithm.py` (contour generation and export sections) |
-| `contour/pipeline.py` | `contour_lines_algorithm.py` (proxy, AOI, DEM pipeline, and layer-loading sections) |
-| `contour/symbology.py` | `contour_lines_algorithm.py` (rule-based contour renderer and labels) |
-| `contour/overlay.py` | `contour_lines_algorithm.py` (hillshade/elevation overlay sections) |
-| `contour/smoothing.py` | `contour_lines_algorithm.py` (smoothing sections) |
+No ContourLines-derived code remains in the 3.0.0+ distribution.
 
 ---
 
@@ -162,13 +175,14 @@ Union.
 
 ## 8. Project Assets
 
-`logo.png` is Original NoWires project artwork by Bortre Tenamo and is distributed as part of this GPLv3-or-later plugin.
+`logo.png` is Original NoWires project artwork by Bortre Tenamo and is distributed as part of this MIT-licensed plugin.
 
 ---
 
 ## 9. Local Modifications
 
-- Files adapted from `nowires` retain the original MIT attribution in this notice and are redistributed as part of this GPLv3-or-later plugin.
-- Files adapted from `ContourLines` carry preserved upstream attribution where practical and are redistributed as part of this GPLv3-or-later plugin.
+- Files adapted from `nowires` retain the original MIT attribution in this notice and are redistributed as part of this MIT-licensed plugin.
+- `tile_download_base.py` and `worldcover_downloader.py` are original NoWires work (previously GPL-labeled only by aggregate); `tile_download_base.py` was **never** ContourLines-derived. `dem_downloader.py` is original work whose only previously-ContourLines-derived portion — the spec-driven DEM tile-enumeration pattern — was independently reimplemented for 3.0.0 (see §3). All three are MIT in 3.0.0.
 - Files in `itm/` are derived from `pyitm` and carry local import-path adjustments for plugin packaging. These modified works should not be treated as verbatim upstream copies.
 - The saalos vegetation model (`clutter/saalos.py`, `clutter/_saalos_vec.py`) was removed in v2.0.0 and replaced with original code based on ITU-R P.833-9 (§7).
+- The Contour Lines feature and all ContourLines-derived code were removed in 3.0.0 (see §3).

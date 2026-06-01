@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """QGIS integration tests — require a real QGIS runtime.
 
 These tests are skipped unless QGIS_PREFIX_PATH is set.
@@ -53,11 +53,10 @@ class TestProviderRegistryIntegration:
         registry.addProvider(provider)
         provider.loadAlgorithms()
         alg_names = [alg.name() for alg in provider.algorithms()]
-        assert len(alg_names) == 5
+        assert len(alg_names) == 4
         assert "p2p_analysis" in alg_names
         assert "coverage_analysis" in alg_names
         assert "coverage_comparison" in alg_names
-        assert "contour_lines" in alg_names
         assert "batch_p2p_analysis" in alg_names
         registry.removeProvider(provider)
 
@@ -80,7 +79,8 @@ class TestCoverageStyleIntegration:
         """Verify apply_coverage_style works on a real QgsRasterLayer."""
         from radio_coverage.palette import apply_coverage_style
         from osgeo import gdal, osr
-        tmp = tempfile.mktemp(suffix=".tif")
+        with tempfile.NamedTemporaryFile(suffix=".tif", delete=False) as f:
+            tmp = f.name
         driver = gdal.GetDriverByName("GTiff")
         ds = driver.Create(tmp, 4, 4, 1, gdal.GDT_Float32)
         srs = osr.SpatialReference()
@@ -108,7 +108,8 @@ class TestCoverageStyleIntegration:
 class TestWriteGeotiffIntegration:
     def test_write_geotiff_produces_valid_raster(self, qgis_app):
         from NoWires.raster_io import write_geotiff
-        tmp = tempfile.mktemp(suffix=".tif")
+        with tempfile.NamedTemporaryFile(suffix=".tif", delete=False) as f:
+            tmp = f.name
         grid = np.full((10, 10), -80.0, dtype=np.float32)
         write_geotiff(tmp, grid, 0.0, 0.1, 0.0, 0.1)
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Regression test: P2P and coverage report payloads use consistent JSON key for ITM loss.
 
 Before v1.6.5, P2P reports used ``"itm_path_loss_db"`` while coverage reports

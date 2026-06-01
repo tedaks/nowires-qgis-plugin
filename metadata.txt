@@ -4,16 +4,23 @@
 name=NoWires
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
-description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, Coverage Comparison, and Contour Lines
-version=2.0.0
+description=Radio propagation analysis and terrain tools with P2P, Batch P2P, Coverage Analysis, and Coverage Comparison
+version=3.0.0
 author=Bortre Tenamo
 email=tedaks@gmail.com
 
-about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's Irregular Terrain Model (ITM), using the Qt 6 / PyQt 6 runtime bundled with QGIS 4. It provides point-to-point path loss analysis with Fresnel zone visualization, batch P2P analysis (one-to-many and many-to-one), unified Coverage Analysis heatmap prediction with raster-derived range metrics, Coverage Comparison producing delta rasters, and contour line generation. Clutter correction supports simple per-category losses and advanced mode (ITU-R P.833-9 §2.1 vegetation model, ITU-R P.2108 for built/rural). DEM data is automatically downloaded from the Copernicus GLO-30 dataset hosted on AWS Open Data. The plugin bundles the ITM library from https://github.com/tedaks/pyitm and adapts code from https://github.com/tedaks/nowires and https://github.com/tedaks/ContourLines. See NOTICE.md for attribution and third-party licensing details.
+about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's Irregular Terrain Model (ITM), using the Qt 6 / PyQt 6 runtime bundled with QGIS 4. It provides point-to-point path loss analysis with Fresnel zone visualization, batch P2P analysis (one-to-many and many-to-one), unified Coverage Analysis heatmap prediction with raster-derived range metrics, and Coverage Comparison producing delta rasters. Clutter correction supports simple per-category losses and advanced mode (ITU-R P.833-9 §2.1 vegetation model, ITU-R P.2108 for built/rural). DEM data is automatically downloaded from the Copernicus GLO-30 dataset hosted on AWS Open Data. The plugin is MIT-licensed; it bundles the ITM library from https://github.com/tedaks/pyitm and adapts code from https://github.com/tedaks/nowires. See NOTICE.md for attribution and third-party licensing details.
 
 hasProcessingProvider=yes
 
 changelog=
+    Version 3.0.0
+    - BREAKING: Relicensed the plugin's own source from GPL-3.0-or-later to the MIT License
+    - BREAKING: Removed the Contour Lines feature (use standalone ContourLines plugin instead)
+    - Clean-room reimplemented DEM download core as original work from public Copernicus GLO-30 specs
+    - Fix Coverage Analysis always running single-threaded on Windows
+    - Fix test_decouple_n0_registered_and_not_advanced failing on Python 3.13
+
     Version 2.0.0
     - BREAKING: Replace saalos vegetation clutter model with ITU-R P.833-9 §2.1 Am
     - Removes ITWOM 3.0 code (Shumate/Givens & Bell, proprietary licence)
@@ -260,7 +267,7 @@ changelog=
     - Add raster-derived coverage range statistics
     - Improve coverage raster styling with a heatmap presentation
 
-tags=radio, propagation, ITM, coverage, path loss, terrain, DEM, contour, GLO-30, elevation, antenna, Fresnel, batch, comparison, clutter
+tags=radio, propagation, ITM, coverage, path loss, terrain, DEM, GLO-30, elevation, antenna, Fresnel, batch, comparison, clutter
 category=Analysis
 icon=logo.png
 experimental=False

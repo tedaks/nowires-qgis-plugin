@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 from radio_coverage.result_dispatch import WorkerError, apply_batch_results
 import numpy as np
 

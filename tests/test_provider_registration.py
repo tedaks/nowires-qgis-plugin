@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Provider registration contract — metadata, algorithm registration, uniqueness.
 
 These tests verify the provider's contract structure (id, name, algorithm
@@ -86,21 +86,20 @@ class TestProviderMetadata:
 class TestProviderAlgorithmSource:
     """Source-scanning contract: verify the provider registers the expected algorithms."""
 
-    def test_provider_loads_five_algorithms(self):
-        """Verify loadAlgorithms() registers exactly 5 algorithms."""
+    def test_provider_loads_four_algorithms(self):
+        """Verify loadAlgorithms() registers exactly 4 algorithms."""
         p = _make_provider()
         p.loadAlgorithms()
         alg_list = list(p.algorithms())
-        assert len(alg_list) == 5
+        assert len(alg_list) == 4
 
     def test_provider_source_lists_expected_algorithms(self):
-        """Verify the provider source code references all 5 algorithm modules."""
+        """Verify the provider source code references all 4 algorithm modules."""
         source = (_ROOT / "provider.py").read_text()
         for module_name, class_name in [
             ("algorithm.p2p", "P2PAlgorithm"),
             ("algorithm.coverage", "CoverageAlgorithm"),
             ("algorithm.coverage_comparison", "CoverageComparisonAlgorithm"),
-            ("algorithm.contour", "ContourLinesAlgorithm"),
             ("algorithm.batch", "BatchAnalysisAlgorithm"),
         ]:
             assert module_name in source, \
@@ -114,7 +113,6 @@ class TestProviderAlgorithmSource:
             ("algorithm.p2p", "P2PAlgorithm"),
             ("algorithm.coverage", "CoverageAlgorithm"),
             ("algorithm.coverage_comparison", "CoverageComparisonAlgorithm"),
-            ("algorithm.contour", "ContourLinesAlgorithm"),
             ("algorithm.batch", "BatchAnalysisAlgorithm"),
         ]
         for module_name, class_name in algorithms:
@@ -128,7 +126,6 @@ class TestProviderAlgorithmSource:
             ("algorithm.p2p", "P2PAlgorithm"),
             ("algorithm.coverage", "CoverageAlgorithm"),
             ("algorithm.coverage_comparison", "CoverageComparisonAlgorithm"),
-            ("algorithm.contour", "ContourLinesAlgorithm"),
             ("algorithm.batch", "BatchAnalysisAlgorithm"),
         ]
         for module_name, class_name in algorithms:
@@ -142,7 +139,6 @@ class TestProviderAlgorithmSource:
             ("algorithm.p2p", "P2PAlgorithm"),
             ("algorithm.coverage", "CoverageAlgorithm"),
             ("algorithm.coverage_comparison", "CoverageComparisonAlgorithm"),
-            ("algorithm.contour", "ContourLinesAlgorithm"),
             ("algorithm.batch", "BatchAnalysisAlgorithm"),
         ]
         for module_name, class_name in algorithms:
@@ -150,8 +146,8 @@ class TestProviderAlgorithmSource:
             assert "def createInstance(" in source, \
                 "{} must define a createInstance() method".format(class_name)
 
-    def test_load_algorithms_registers_all_five(self):
-        """Verify loadAlgorithms registers exactly 5 algorithms."""
+    def test_load_algorithms_registers_all_four(self):
+        """Verify loadAlgorithms registers exactly 4 algorithms."""
         p = _make_provider()
         p.loadAlgorithms()
-        assert len(list(p.algorithms())) == 5
+        assert len(list(p.algorithms())) == 4

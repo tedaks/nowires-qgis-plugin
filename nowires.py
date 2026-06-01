@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """
 /***************************************************************************
  NoWires
@@ -12,14 +12,7 @@
         email                : tedaks@gmail.com
  ***************************************************************************/
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 3 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+ Licensed under the MIT License; see the LICENSE file for the full text.
 
 NoWires QGIS plugin entry point and initialisation.
 """
@@ -120,7 +113,6 @@ class NoWiresPlugin:
         action_specs = [
             ("Point-to-Point Analysis", self.run_p2p, True),
             ("Coverage Analysis", self.run_coverage, False),
-            ("Contour Lines", self.run_contour, False),
             ("Coverage Opacity", self.run_coverage_opacity, False),
             ("Open 3D View", self.run_open_3d_view, False),
             ("Coverage Comparison", self.run_comparison, True),
@@ -207,10 +199,6 @@ class NoWiresPlugin:
     def run_coverage(self) -> None:
         import processing
         processing.execAlgorithmDialog("nowires:coverage_analysis")
-
-    def run_contour(self) -> None:
-        import processing
-        processing.execAlgorithmDialog("nowires:contour_lines")
 
     def run_coverage_opacity(self) -> None:
         layer = find_latest_coverage_layer()

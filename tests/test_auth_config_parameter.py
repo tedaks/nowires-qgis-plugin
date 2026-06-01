@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Verify QgsProcessingParameterAuthConfig and QgsAuthMethodConfig APIs in QGIS 4."""
 
 import os
@@ -32,24 +32,6 @@ class TestAuthConfigParameter:
         from qgis.core import QgsProcessingParameterAuthConfig
         param = QgsProcessingParameterAuthConfig("PROXY_AUTH", "Proxy auth", optional=True)
         assert param.flags() & QgsProcessingParameterAuthConfig.Flag.FlagOptional
-
-    def test_contour_algorithm_has_auth_config_param(self, qgis_app):
-        from NoWires.provider import NoWiresProvider
-        from qgis.core import QgsApplication
-        registry = QgsApplication.processingRegistry()
-        provider = NoWiresProvider()
-        registry.addProvider(provider)
-        provider.loadAlgorithms()
-        for alg in provider.algorithms():
-            if alg.name() == "contour_lines":
-                alg.initAlgorithm("")
-                param = alg.parameterDefinition("PROXY_AUTH")
-                assert param is not None
-                assert isinstance(param, QgsProcessingParameterAuthConfig)
-                break
-        else:
-            pytest.skip("contour_lines algorithm not found")
-        registry.removeProvider(provider)
 
     def test_qgs_auth_method_config_can_be_created(self, qgis_app):
         try:

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Verify 3D terrain configuration APIs work with QGIS 4 runtime."""
 
 import os
@@ -43,21 +43,6 @@ def _create_contour_gpkg(path):
 
 
 class Test3DTerrainConfiguration:
-    def test_configure_contours_for_3d(self, qgis_app, tmp_path):
-        from NoWires.three_d import configure_contours_for_3d
-        gpkg = str(tmp_path / "contours_3d.gpkg")
-        _create_contour_gpkg(gpkg)
-        layer = QgsVectorLayer(gpkg, "3D Contours", "ogr")
-        assert layer.isValid()
-        result = configure_contours_for_3d(layer, elevation_field="ELEV")
-        assert result is not None or result is layer
-        elev_props = layer.elevationProperties()
-        assert elev_props is not None
-        if hasattr(elev_props, 'clamping'):
-            assert elev_props.clamping() == Qgis.AltitudeClamping.Terrain
-        if hasattr(elev_props, 'binding'):
-            assert elev_props.binding() == Qgis.AltitudeBinding.Vertex
-
     def test_vector_layer_elevation_properties(self, qgis_app, tmp_path):
         gpkg = str(tmp_path / "contours_elev.gpkg")
         _create_contour_gpkg(gpkg)

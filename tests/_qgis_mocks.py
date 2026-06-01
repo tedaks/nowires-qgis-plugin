@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """QGIS/osgeo mock stubs and NoWires package registration.
 
 Extracted from conftest.py so that conftest focuses on pytest fixtures
@@ -440,7 +440,6 @@ _PACKAGE_SUBMODULES = (
     "algorithm._coverage_helpers",
     "algorithm._project_paths",
     "algorithm.coverage_comparison",
-    "algorithm.contour",
     "algorithm.batch",
     # batch/
     "batch.outputs",
@@ -453,13 +452,6 @@ _PACKAGE_SUBMODULES = (
     "comparison.params",
     "comparison.reporting",
     "comparison.add_params",
-    # contour/
-    "contour.generation",
-    "contour.overlay",
-    "contour.pipeline",
-    "contour.smoothing",
-    "contour.symbology",
-    "contour._smoothing_vrt",
     # radio_coverage/
     "radio_coverage.compute",
     "radio_coverage.engine",
@@ -557,7 +549,6 @@ def register_nowires_package():
         "algorithm",
         "batch",
         "comparison",
-        "contour",
         "radio_coverage",
         "clutter",
         "p2p",

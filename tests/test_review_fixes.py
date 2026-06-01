@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Regression tests for issues found during full code review."""
 
 import os
@@ -367,42 +367,3 @@ def test_coverage_reports_are_written_even_when_raster_layer_is_invalid(monkeypa
         ("json", params[alg.OUTPUT_REPORT_JSON]),
         ("html", params[alg.OUTPUT_REPORT_HTML]),
     ]
-
-
-def test_contour_merge_uses_only_successfully_clipped_tiles(monkeypatch, tmp_path):
-    import NoWires.contour.pipeline as module
-
-    tile_a = str(tmp_path / "tile_a.tif")
-    tile_b = str(tmp_path / "tile_b.tif")
-    merge_inputs = []
-
-    class Dataset:
-        pass
-
-    def fake_warp(dest, src, **kwargs):
-        if isinstance(src, list):
-            merge_inputs.extend(src)
-            return Dataset()
-        if os.path.basename(src) == "tile_a.tif":
-            return None
-        return Dataset()
-
-    monkeypatch.setattr(module, "required_tiles", lambda *_args, **_kw: ["a", "b"])
-    monkeypatch.setattr(module, "download_tiles", lambda *_args, **_kw: [tile_a, tile_b])
-    monkeypatch.setattr(module.gdal, "Warp", fake_warp)
-    monkeypatch.setattr(module.gdal, "Open", lambda path: Dataset())
-
-    module.download_and_merge_tiles(
-        south=0.0,
-        north=1.0,
-        west=0.0,
-        east=1.0,
-        temp_dir=str(tmp_path),
-        aoi_shp_path=str(tmp_path / "aoi.shp"),
-        proxy_opener=None,
-        feedback=Feedback(),
-        progress=0.0,
-        status_total=1.0,
-    )
-
-    assert merge_inputs == [str(tmp_path / "tile_b_clip.tif")]

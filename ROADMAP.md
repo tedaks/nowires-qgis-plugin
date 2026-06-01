@@ -1,6 +1,6 @@
 # Roadmap
 
-SPDX-License-Identifier: GPL-3.0-or-later
+SPDX-License-Identifier: MIT
 
 Planned work not yet implemented. Items move to [CHANGELOG.md](CHANGELOG.md)
 once landed. Classification and ordering follow the
@@ -150,9 +150,8 @@ independent of N0 can still work. The Custom preset also leaves N0 free.
 This release removes the GPL-derived Contour feature and the GPL-derived DEM
 download core, then relicenses the entire repository from GPL-3.0-or-later to
 MIT. The technical plan with full file inventories, clean-room firewalls, and
-verification gates lives in [RELICENSE-MIT-PLAN.md](RELICENSE-MIT-PLAN.md). This
-roadmap entry summarizes the steps and classifies them per the AGENTS.md release
-shape convention.
+verification gates lives in this roadmap entry.
+The steps are classified per the AGENTS.md release shape convention.
 
 ### Context
 
@@ -237,7 +236,7 @@ plugin load.
 
 After Phase 0 and Phase 1 land (so no GPL-derived source remains):
 
-- Replace `SPDX-License-Identifier: GPL-3.0-or-later` → `MIT` in all remaining
+- Replace `SPDX-License-Identifier: MIT` → `MIT` in all remaining
   `.py` files (~380 minus deleted contour files)
 - Update the per-file copyright boilerplate to the MIT notice
 - **Do not touch** the 7 `itm/` files (`LicenseRef-NTIA-Software-Disclaimer`)

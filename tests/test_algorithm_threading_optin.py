@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Contract tests for the ALLOW_THREADING opt-in on heavy-compute algorithms.
 
 Source-level checks: avoid needing a QGIS runtime so these run in the unit
@@ -38,6 +38,5 @@ def test_coverage_comparison_algorithm_opts_into_threading():
     assert "ALLOW_THREADING = True" in _source("algorithm/coverage_comparison.py")
 
 
-def test_p2p_and_contour_opt_into_threading():
-    for name in ("algorithm/p2p.py", "algorithm/contour.py"):
-        assert "ALLOW_THREADING = True" in _source(name), name
+def test_p2p_opts_into_threading():
+    assert "ALLOW_THREADING = True" in _source("algorithm/p2p.py")

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Validation tests for extract_coverage_params — input validation error paths.
 
 Exercises validation branches in radio_coverage/params.py that are not reached by

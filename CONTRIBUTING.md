@@ -1,6 +1,6 @@
 # Contributing
 
-SPDX-License-Identifier: GPL-3.0-or-later
+SPDX-License-Identifier: MIT
 
 Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 

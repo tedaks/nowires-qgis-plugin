@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Regression tests for NoWires 3D support wiring."""
 
 import os
@@ -21,7 +21,6 @@ def test_three_d_module_exposes_scene_launcher_and_layer_helpers():
     source = _text(THREE_D_SOURCE)
     assert "def remember_nowires_3d_layers(" in source
     assert "def resolve_nowires_3d_layers(" in source
-    assert "def configure_contours_for_3d(" in source
     assert "def open_nowires_3d_view(" in source
     assert 'SCENE_MODE_LOCAL = "local"' in source
     assert 'SCENE_MODE_GLOBE = "globe"' in source
@@ -32,7 +31,6 @@ def test_three_d_module_uses_unified_nowires_project_keys():
     assert 'PROJECT_SCOPE = "NoWires"' in source
     assert "ENTRY_KEY_LAST_COVERAGE" in source
     assert "ENTRY_KEY_LAST_DEM" in source
-    assert 'CONTOUR_LAYER_KEY = "last_contour_layer_id"' in source
 
 
 def test_three_d_module_generates_unique_view_names():
@@ -82,8 +80,7 @@ def test_plugin_uses_three_d_helper_for_launcher():
 
 
 def test_remember_callers_exist_in_algorithm_files():
-    for filename in ("algorithm/_coverage_helpers.py", "algorithm/contour.py",
-                     "p2p/compute.py"):
+    for filename in ("algorithm/_coverage_helpers.py", "p2p/compute.py"):
         path = os.path.join(PLUGIN_DIR, filename)
         source = _text(path)
         assert "remember_nowires_3d_layers" in source, \

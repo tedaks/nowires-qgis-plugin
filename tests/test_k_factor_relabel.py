@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Regression test: K-factor preset label reflects v2.0.0 N0 coupling.
 
 v1.7.0 shipped an interim label ("Fresnel Earth-radius factor (display only)")

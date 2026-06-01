@@ -1,5 +1,5 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Vegetation clutter loss — ITU-R P.833-9 §2.1.
 
 P.833-9 §2.1 states that Am (maximum woodland attenuation) is

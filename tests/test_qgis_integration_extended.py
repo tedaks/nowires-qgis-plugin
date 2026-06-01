@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Docker QGIS integration tests for algorithm modules."""
 
 import os
@@ -132,48 +132,6 @@ class TestThreeDIntegration:
         finally:
             QgsProject.instance().removeMapLayer(layer)
 
-    def test_configure_contours_for_3d(self, qgis_app, tmp_path):
-        from qgis.core import QgsVectorLayer
-        gpkg_path = str(tmp_path / "contour3d.gpkg")
-        from osgeo import ogr, osr
-        driver = ogr.GetDriverByName("GPKG")
-        ds = driver.CreateDataSource(gpkg_path)
-        srs = osr.SpatialReference()
-        srs.ImportFromEPSG(4326)
-        srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-        lyr = ds.CreateLayer("contours", srs, ogr.wkbLineString)
-        lyr.CreateField(ogr.FieldDefn("ELEV", ogr.OFTReal))
-        feat = ogr.Feature(lyr.GetLayerDefn())
-        line = ogr.Geometry(ogr.wkbLineString)
-        line.AddPoint(0, 0)
-        line.AddPoint(1, 0)
-        feat.SetGeometry(line)
-        feat.SetField("ELEV", 100.0)
-        lyr.CreateFeature(feat)
-        ds = None
-
-        layer = QgsVectorLayer(gpkg_path, "Contours")
-        if layer.isValid():
-            from NoWires.three_d import configure_contours_for_3d
-            configure_contours_for_3d(layer)
-
-
-class TestContourIntegration:
-    def test_contour_smoothing_none(self, qgis_app, tmp_path):
-        tif = str(tmp_path / "smooth_dem.tif")
-        _create_dem(tif)
-        from NoWires.contour.smoothing import smooth_contour_dem, SMOOTHING_NONE
-        from NoWires.temp_manager import TempDirManager
-        mgr = TempDirManager()
-        tmp_dir = mgr.make_dir("smooth_test")
-        try:
-            smooth_contour_dem(
-                SMOOTHING_NONE, tif, tmp_dir,
-                Feedback(), 0.0, 1.0,
-            )
-        finally:
-            mgr.cleanup()
-
 
 class TestP2PIntegration:
     def test_p2p_link_param_class(self, qgis_app):
@@ -262,6 +220,5 @@ class TestNowiresPluginIntegration:
         assert "p2p_analysis" in names
         assert "coverage_analysis" in names
         assert "coverage_comparison" in names
-        assert "contour_lines" in names
         assert "batch_p2p_analysis" in names
-        assert len(names) == 5
+        assert len(names) == 4

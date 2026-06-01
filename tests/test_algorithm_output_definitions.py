@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Verify all 5 algorithms declare correct output definitions."""
 
 import os
@@ -52,8 +52,6 @@ EXPECTED_COVERAGE_OUTPUTS = [
     "OUTPUT_REPORT_JSON", "OUTPUT_REPORT_HTML", "OUTPUT_REPORT_PDF",
 ]
 
-EXPECTED_CONTOUR_OUTPUTS = ["OUTPUT", "OUTPUT_DEM"]
-
 EXPECTED_COMPARISON_OUTPUTS = [
     "OUTPUT_A", "OUTPUT_B", "OUTPUT_DELTA", "OUTPUT_REPORT_HTML",
 ]
@@ -93,20 +91,6 @@ class TestCoverageOutputDefinitions:
         from qgis.core import QgsProcessingOutputRasterLayer
         out = alg.outputDefinition("OUTPUT_RASTER")
         assert isinstance(out, QgsProcessingOutputRasterLayer)
-
-
-class TestContourOutputDefinitions:
-    def test_output_names(self, provider):
-        alg = _init_alg(provider, "contour_lines")
-        output_names = [o.name() for o in alg.outputDefinitions()]
-        for expected in EXPECTED_CONTOUR_OUTPUTS:
-            assert expected in output_names, "Missing output: {}".format(expected)
-
-    def test_contour_output_is_vector(self, provider):
-        alg = _init_alg(provider, "contour_lines")
-        from qgis.core import QgsProcessingOutputVectorLayer
-        out = alg.outputDefinition("OUTPUT")
-        assert isinstance(out, QgsProcessingOutputVectorLayer)
 
 
 class TestComparisonOutputDefinitions:

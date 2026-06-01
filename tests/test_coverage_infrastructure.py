@@ -1,21 +1,17 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
-"""Tests covering radio_coverage/pool.py, radio_coverage/_executor.py, radio_coverage/result_dispatch.py,
-and contour/pipeline.py."""
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
+"""Tests covering radio_coverage/pool.py, radio_coverage/_executor.py, and
+radio_coverage/result_dispatch.py."""
 
-import os
-import tempfile
 from unittest.mock import MagicMock, patch
 
 import numpy as np
-import pytest
 
 from NoWires.radio_coverage._executor import execute_coverage_tasks
 from NoWires.radio_coverage.result_dispatch import apply_batch_results
 from NoWires.radio_coverage.pool import _make_shared_grid, _release_shared_memory
-from NoWires.contour.pipeline import setup_proxy_opener, write_aoi_shapefile
 
 
 def _make_grids(n):
@@ -167,51 +163,3 @@ class TestPoolCreatesAndJoins:
 
     def test_pool_lifecycle_release_none_is_noop(self):
         _release_shared_memory(None)
-
-
-class TestSetupProxyOpenerReturnsNoneWhenNoAuthId:
-    def test_setup_proxy_opener_returns_none_when_no_auth_id(self):
-        feedback = MagicMock()
-        result = setup_proxy_opener("", feedback)
-        assert result is None
-
-    def test_setup_proxy_opener_returns_none_when_auth_id_is_none(self):
-        feedback = MagicMock()
-        result = setup_proxy_opener(None, feedback)
-        assert result is None
-
-    def test_setup_proxy_opener_returns_none_on_auth_failure(self):
-        feedback = MagicMock()
-        import NoWires.contour.pipeline as contour_pipeline
-        with patch.object(contour_pipeline, "QgsApplication") as MockApp:
-            MockApp.authManager.return_value.loadAuthenticationConfig.side_effect = (
-                RuntimeError("Auth system unavailable")
-            )
-            result = contour_pipeline.setup_proxy_opener("some-auth-id", feedback)
-        assert result is None
-        assert feedback.pushInfo.called
-
-
-@pytest.mark.qgis_integration
-class TestWriteAOIShapefileCreatesValidShapefile:
-    def test_write_aoi_shapefile_creates_valid_shapefile(self):
-        from qgis.core import QgsGeometry
-        from osgeo import ogr
-
-        rect_wkt = (
-            "Polygon ((10.0 50.0, 12.0 50.0, 12.0 52.0, 10.0 52.0, 10.0 50.0))"
-        )
-        aoi_geometry = QgsGeometry.fromWkt(rect_wkt)
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            shp_path = os.path.join(tmpdir, "aoi_test.shp")
-            write_aoi_shapefile(aoi_geometry, shp_path)
-            assert os.path.isfile(shp_path)
-
-            ds = ogr.Open(shp_path)
-            assert ds is not None
-            layer = ds.GetLayer(0)
-            assert layer is not None
-            feature_count = layer.GetFeatureCount()
-            assert feature_count == 1
-            ds = None

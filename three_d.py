@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """
 /***************************************************************************
  NoWires
@@ -12,14 +12,7 @@
         email                : tedaks@gmail.com
  ***************************************************************************/
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 3 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+ Licensed under the MIT License; see the LICENSE file for the full text.
 
 
 Shared helpers for NoWires 3D scene support.
@@ -40,7 +33,6 @@ logger = logging.getLogger(__name__)
 SCENE_MODE_LOCAL = "local"
 SCENE_MODE_GLOBE = "globe"
 PROJECT_SCOPE = "NoWires"
-CONTOUR_LAYER_KEY = "last_contour_layer_id"
 VIEW_NAME_PREFIX = "NoWires 3D View"
 
 
@@ -74,16 +66,15 @@ class Windows3DFallbackDialog(QMessageBox):
 
 
 def highlight_nowires_layers(iface, project=None):
-    """Select and expand NoWires DEM, coverage, and contour layers in layer tree."""
+    """Select and expand NoWires DEM and coverage layers in layer tree."""
     try:
         if project is None:
             project = QgsProject.instance()
         dem_id = project.readEntry(PROJECT_SCOPE, ENTRY_KEY_LAST_DEM)[0]
         coverage_id = project.readEntry(PROJECT_SCOPE, ENTRY_KEY_LAST_COVERAGE)[0]
-        contour_id = project.readEntry(PROJECT_SCOPE, CONTOUR_LAYER_KEY)[0]
 
         root = project.layerTreeRoot()
-        for layer_id in [dem_id, coverage_id, contour_id]:
+        for layer_id in [dem_id, coverage_id]:
             if not layer_id:
                 continue
             layer = project.mapLayer(layer_id)
@@ -99,7 +90,7 @@ def highlight_nowires_layers(iface, project=None):
 
 
 def remember_nowires_3d_layers(
-    project, dem_layer=None, coverage_layer=None, contour_layer=None
+    project, dem_layer=None, coverage_layer=None
 ):
     """Store the latest NoWires layers used for opening a 3D scene."""
     if project is None:
@@ -107,7 +98,6 @@ def remember_nowires_3d_layers(
     entries = {
         ENTRY_KEY_LAST_DEM: dem_layer.id() if dem_layer else "",
         ENTRY_KEY_LAST_COVERAGE: coverage_layer.id() if coverage_layer else "",
-        CONTOUR_LAYER_KEY: contour_layer.id() if contour_layer else "",
     }
     for key, value in entries.items():
         if value:
@@ -117,13 +107,12 @@ def remember_nowires_3d_layers(
 def resolve_nowires_3d_layers(project):
     """Resolve the latest stored NoWires layer ids back to project layers."""
     layer_ids = {}
-    for key in (ENTRY_KEY_LAST_DEM, ENTRY_KEY_LAST_COVERAGE, CONTOUR_LAYER_KEY):
+    for key in (ENTRY_KEY_LAST_DEM, ENTRY_KEY_LAST_COVERAGE):
         layer_id, ok = project.readEntry(PROJECT_SCOPE, key, "")
         layer_ids[key] = layer_id if ok else ""
     return {
         "dem_layer": project.mapLayer(layer_ids[ENTRY_KEY_LAST_DEM]),
         "coverage_layer": project.mapLayer(layer_ids[ENTRY_KEY_LAST_COVERAGE]),
-        "contour_layer": project.mapLayer(layer_ids[CONTOUR_LAYER_KEY]),
     }
 
 
@@ -134,16 +123,6 @@ def _set_layer_visible(project, layer):
     node = project.layerTreeRoot().findLayer(layer.id())
     if node is not None:
         node.setItemVisibilityChecked(True)
-
-
-def configure_contours_for_3d(layer, elevation_field="ELEV"):
-    """Apply terrain-aware elevation settings to contour output."""
-    props = layer.elevationProperties()
-    props.setClamping(Qgis.AltitudeClamping.Terrain)
-    props.setBinding(Qgis.AltitudeBinding.Vertex)
-    if hasattr(props, "setZOffsetExpression"):
-        props.setZOffsetExpression('coalesce("{field}", 0)'.format(field=elevation_field))
-    return layer
 
 
 def _next_3d_view_name(iface: object) -> str:
@@ -170,18 +149,14 @@ def open_nowires_3d_view(iface, scene_mode=SCENE_MODE_LOCAL, project=None):
     layers = resolve_nowires_3d_layers(project)
     dem_layer = layers["dem_layer"]
     coverage_layer = layers["coverage_layer"]
-    contour_layer = layers["contour_layer"]
 
     if dem_layer is None:
         iface.messageBar().pushWarning(
             "NoWires",
-            "No DEM layer found for 3D. Run Coverage Analysis or Contour Lines first.",
+            "No DEM layer found for 3D. Run Coverage Analysis first.",
         )
         return None
 
-    if contour_layer is not None:
-        configure_contours_for_3d(contour_layer, elevation_field="ELEV")
-        _set_layer_visible(project, contour_layer)
     if coverage_layer is not None:
         _set_layer_visible(project, coverage_layer)
     _set_layer_visible(project, dem_layer)

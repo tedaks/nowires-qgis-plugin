@@ -1,6 +1,6 @@
 # AGENTS.md
 
-SPDX-License-Identifier: GPL-3.0-or-later
+SPDX-License-Identifier: MIT
 
 ## CI Pipeline
 
@@ -29,16 +29,12 @@ Bug-fix regression tests follow the pattern `test_<topic>_<specific_issue>.py`,
 named after the module and defect rather than the version. Examples:
 
 - `test_cleanup_stale_shm_scoping.py` — `/dev/shm` cleanup scoping by PID/UID
-- `test_contour_pipeline_proxy_auth.py` — proxy auth realm/scheme fix
 - `test_batch_writer_csv_injection.py` — CSV formula-injection guard
 - `test_haversine_clip.py` — haversine numerical stability clip
 - `test_elevation_runtime_error.py` — `assert` → `RuntimeError` in ElevationGrid
 - `test_pool_atexit_gating.py` — atexit re-registration accumulation
 - `test_executor_partial_counters.py` — partial MP counter preservation on fallback
-- `test_contour_pipeline_clip_leak.py` — GDAL dataset leak in clip verification
 - `test_pattern_preview_dialog_leak.py` — antenna-preview dialog lifecycle
-- `test_hillshade_flush_cache.py` — hillshade pyramid FlushCache before release
-- `test_contour_tempdir_cleanup.py` — fallback temp-dir cleanup registration
 - `test_shared_dem_atexit_weakref.py` — atexit weak-reference registry for SharedDEMGrid
 - `test_batch_owns_clutter_grid.py` — batch clutter-grid ownership flag
 - `test_geo_bounds_lat_clamp.py` — latitude clamping + METERS_PER_DEGREE_LAT import

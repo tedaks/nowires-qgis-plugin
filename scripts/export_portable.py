@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Export portable QGIS project (.qgz), style (.qml), and layer definition (.qlr)
 for the repeater 90/50/50 coverage, all with relative paths (drop-and-open on any machine)."""
 import os
