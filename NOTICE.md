@@ -98,11 +98,17 @@ ContourLines plugin (© 2023 Daniel Hulshof Saint Martin, forked at
 plugin's own source MIT.
 
 - `algorithm/contour.py` and the `contour/` package were deleted.
-- The shared DEM download/clip/merge core (`dem_downloader.py`,
-  `tile_download_base.py`) — previously listed here as ContourLines-derived —
-  was **independently clean-room reimplemented** from public Copernicus GLO-30
-  specifications, the project's own tests, and the MIT `worldcover_downloader.py`
-  template. It is original work (see §1, §9, and CLEANROOM.md).
+- `dem_downloader.py` was previously listed here as ContourLines-derived. A
+  review of the upstream ContourLines source found that the only derived portion
+  was the **DEM tile-enumeration pattern** — dictated by the published Copernicus
+  GLO-30 1°×1° tile grid and the QGIS geometry API (a thin, spec-driven
+  expression, arguably *scène à faire*). It was independently reimplemented for
+  3.0.0 from those public specifications (see §9 and CLEANROOM.md).
+- `tile_download_base.py` was **never** ContourLines-derived. It was always the
+  NoWires author's own download/retry/cache/integrity code, GPL-labeled only
+  because the aggregate was GPL; it is MIT in 3.0.0. (It was conservatively
+  reimplemented alongside `dem_downloader.py` — the source review confirmed this
+  was unnecessary but harmless.)
 
 No ContourLines-derived code remains in the 3.0.0+ distribution.
 
@@ -176,7 +182,7 @@ Union.
 ## 9. Local Modifications
 
 - Files adapted from `nowires` retain the original MIT attribution in this notice and are redistributed as part of this MIT-licensed plugin.
-- `dem_downloader.py` and `tile_download_base.py` are **original work**, clean-room reimplemented for 3.0.0 from public Copernicus GLO-30 specifications, the project's own tests, and the MIT `worldcover_downloader.py` template — independent of any ContourLines code (see CLEANROOM.md). `worldcover_downloader.py` is likewise original NoWires work.
+- `tile_download_base.py` and `worldcover_downloader.py` are original NoWires work (previously GPL-labeled only by aggregate); `tile_download_base.py` was **never** ContourLines-derived. `dem_downloader.py` is original work whose only previously-ContourLines-derived portion — the spec-driven DEM tile-enumeration pattern — was independently reimplemented for 3.0.0 (see §3 and CLEANROOM.md). All three are MIT in 3.0.0.
 - Files in `itm/` are derived from `pyitm` and carry local import-path adjustments for plugin packaging. These modified works should not be treated as verbatim upstream copies.
 - The saalos vegetation model (`clutter/saalos.py`, `clutter/_saalos_vec.py`) was removed in v2.0.0 and replaced with original code based on ITU-R P.833-9 (§7).
 - The Contour Lines feature and all ContourLines-derived code were removed in 3.0.0 (see §3).
