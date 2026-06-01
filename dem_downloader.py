@@ -8,8 +8,7 @@
  Radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM
                              -------------------
         begin                : 2026-04-22
-        copyright            : (C) 2026 Daniel Hulshof Saint Martin
-                                Adaptations (C) 2026 Bortre Tenamo
+        copyright            : (C) 2026 Bortre Tenamo <tedaks@gmail.com>
         email                : tedaks@gmail.com
  ***************************************************************************/
 
@@ -23,35 +22,32 @@
  ***************************************************************************/
 
 
-DEM tile download, caching, and merging using Copernicus GLO-30 from AWS.
+Copernicus GLO-30 DEM tile download, caching, and merging.
 
-Portions of this module are adapted from the ContourLines QGIS plugin
-by Daniel Hulshof Saint Martin.
-
-Downloads Cloud-Optimized GeoTIFF tiles on demand, caches them locally,
-and provides utilities to clip/merge for a given area of interest.
+Downloads Cloud-Optimized GeoTIFF tiles on demand from the public
+``copernicus-dem-30m`` AWS Open Data bucket, caches them per-user, and
+clips/merges them to a requested area of interest. Structurally mirrors
+``worldcover_downloader.py``; the GLO-30 tile layout and naming are
+documented facts (see https://copernicus-dem-30m.s3.amazonaws.com/readme.html).
+This module is original work written from those public specifications and the
+project's own tests (see CLEANROOM.md); see NOTICE.md for attribution.
 """
 
 from __future__ import annotations
 
+import getpass
 import logging
 import math
 import os
 import re
 import ssl
+import stat
 import tempfile
 import urllib.request
-import getpass
 from typing import Any
 
+from qgis.core import QgsGeometry, QgsPointXY, QgsRectangle
 
-from qgis.core import (
-    QgsGeometry,
-    QgsPointXY,
-    QgsRectangle,
-)
-
-from NoWires.fs_utils import safe_create_dir
 from NoWires.constants import DEM_NODATA, DIR_PERMISSIONS
 from NoWires.geo_bounds import longitude_intervals
 from NoWires.tile_download_base import download_tile_with_retry
@@ -64,80 +60,119 @@ _MAX_TILES = 200
 _DOWNLOAD_RETRIES = 3
 _SOCKET_TIMEOUT = 60
 _VALID_TILE_RE = re.compile(r"^Copernicus_DSM_COG_10_[NS]\d{2}_00_[EW]\d{3}_00_DEM$")
+# Rough per-tile footprint used only for the pre-download AOI summary.
+_EST_MB_PER_TILE = 25
+
+
+def _ensure_dir(target):
+    """Create *target* as a directory safely, avoiding symlink TOCTOU races.
+
+    Uses os.lstat + O_DIRECTORY|O_NOFOLLOW validation for an existing entry and
+    an atomic tempfile.mkdtemp + os.rename when creating. Falls back to the
+    temporary path if the rename cannot complete.
+    """
+    try:
+        st = os.lstat(target)
+        if stat.S_ISLNK(st.st_mode):
+            logger.warning("Removing symlink at %s", target)
+            os.unlink(target)
+        elif not os.path.isdir(target):
+            logger.warning("Removing non-directory at %s", target)
+            os.unlink(target)
+        else:
+            dir_flag = getattr(os, "O_DIRECTORY", None)
+            nofollow_flag = getattr(os, "O_NOFOLLOW", None)
+            if dir_flag is not None and nofollow_flag is not None:
+                try:
+                    fd = os.open(target, os.O_RDONLY | dir_flag | nofollow_flag)
+                    os.close(fd)
+                except OSError:
+                    logger.warning("Removing unsafe directory at %s", target)
+                    os.unlink(target)
+    except OSError:
+        pass
+    if not os.path.isdir(target):
+        parent = os.path.dirname(target)
+        tmp = tempfile.mkdtemp(dir=parent)
+        try:
+            os.chmod(tmp, DIR_PERMISSIONS)
+        except OSError:
+            pass
+        try:
+            os.rename(tmp, target)
+        except OSError:
+            logger.debug("Could not rename %s to %s; using temp path", tmp, target)
+            return tmp
+    try:
+        if os.stat(target).st_mode & 0o777 != DIR_PERMISSIONS:
+            os.chmod(target, DIR_PERMISSIONS)
+    except OSError:
+        pass
+    return target
 
 
 def get_temp_dir(create=True):
+    """Return the per-user DEM cache directory (``<tmp>/NoWires-<user>``)."""
     try:
         username = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser())
     except (OSError, KeyError):
         username = "nowires"
-    base = tempfile.gettempdir()
-    target = os.path.join(base, "NoWires-" + username)
-    if create:
-        target = safe_create_dir(target)
-    return target
+    target = os.path.join(tempfile.gettempdir(), "NoWires-" + username)
+    if not create:
+        return target
+    return _ensure_dir(target)
 
 
 def tile_name_for(lat, lon):
-    lat, lon = math.floor(lat), math.floor(lon)
-    ns = "N" if lat >= 0 else "S"
-    ew = "E" if lon >= 0 else "W"
+    """Return the GLO-30 tile base name for the 1x1 degree cell containing lat/lon."""
+    lat_i = math.floor(lat)
+    lon_i = math.floor(lon)
+    ns = "N" if lat_i >= 0 else "S"
+    ew = "E" if lon_i >= 0 else "W"
     return "Copernicus_DSM_COG_10_{}{:02d}_00_{}{:03d}_00_DEM".format(
-        ns, abs(lat), ew, abs(lon)
-    )
+        ns, abs(lat_i), ew, abs(lon_i))
 
 
 def required_tiles(south, north, west, east, feedback=None, max_tiles=_MAX_TILES):
-    aoi_geom = QgsGeometry.fromRect(QgsRectangle(west, south, east, north))
-
-    tiles = []
+    """Enumerate the GLO-30 tiles whose 1-degree cell overlaps the bounding box."""
+    tiles: list[str] = []
     for lon_west, lon_east in longitude_intervals(west, east):
+        aoi = QgsGeometry.fromRect(QgsRectangle(lon_west, south, lon_east, north))
         for lat in range(math.floor(south), math.ceil(north)):
             for lon in range(math.floor(lon_west), math.ceil(lon_east)):
-                tile_points = [
-                    QgsPointXY(lon, lat),
-                    QgsPointXY(lon + 1, lat),
-                    QgsPointXY(lon + 1, lat + 1),
-                    QgsPointXY(lon, lat + 1),
-                ]
-                tile_poly = QgsGeometry.fromPolygonXY([tile_points])
-                if tile_poly.intersection(aoi_geom).isEmpty():
-                    continue
-                name = tile_name_for(lat, lon)
-                if name not in tiles:
-                    tiles.append(name)
-                    if feedback:
-                        feedback.pushInfo("Required tile: " + name)
-
+                tile = QgsGeometry.fromPolygonXY([[
+                    QgsPointXY(lon, lat), QgsPointXY(lon + 1, lat),
+                    QgsPointXY(lon + 1, lat + 1), QgsPointXY(lon, lat + 1),
+                ]])
+                if not tile.intersection(aoi).isEmpty():
+                    name = tile_name_for(lat, lon)
+                    if name not in tiles:
+                        tiles.append(name)
     if len(tiles) > max_tiles:
         raise ValueError(
-            "Area requires {} tiles (max {}). "
-            "Reduce the analysis area or increase the grid step.".format(
-                len(tiles), max_tiles
-            )
+            "Area requires {} DEM tiles (max {}). "
+            "Reduce the analysis area.".format(len(tiles), max_tiles)
         )
-
     return tiles
 
 
 def download_tiles(tile_list: list[str], temp_dir: str | None = None,
                    feedback: Any | None = None, proxy_opener: Any | None = None) -> list[str]:
+    """Download each GLO-30 tile into *temp_dir*; return the local paths obtained."""
     if temp_dir is None:
         temp_dir = get_temp_dir()
 
-    ctx = ssl.create_default_context()
-    default_opener = urllib.request.build_opener(
-        urllib.request.HTTPSHandler(context=ctx)
-    )
-    available: list[str] = []
+    opener = proxy_opener
+    if opener is None:
+        ctx = ssl.create_default_context()
+        opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx))
 
+    available: list[str] = []
     for tile_name in tile_list:
         if feedback and feedback.isCanceled():
             return available
-
-        local_tif = os.path.join(temp_dir, os.path.basename(tile_name) + ".tif")
+        local_tif = os.path.join(temp_dir, tile_name + ".tif")
         tile_url = "{}{}/{}.tif".format(COPERNICUS_BASE_URL, tile_name, tile_name)
-
         result = download_tile_with_retry(
             tile_url=tile_url,
             local_tif=local_tif,
@@ -147,7 +182,7 @@ def download_tiles(tile_list: list[str], temp_dir: str | None = None,
             socket_timeout=_SOCKET_TIMEOUT,
             valid_tile_re=_VALID_TILE_RE,
             base_url=COPERNICUS_BASE_URL,
-            opener=proxy_opener or default_opener,
+            opener=opener,
         )
         if result is not None:
             available.append(result)
@@ -156,16 +191,21 @@ def download_tiles(tile_list: list[str], temp_dir: str | None = None,
 
 
 def clip_and_merge(tile_paths, south, north, west, east, temp_dir=None, feedback=None):
+    """Clip the tiles to the AOI and merge them into a single GeoTIFF."""
     if temp_dir is None:
         temp_dir = get_temp_dir()
-
     return clip_and_merge_tiles(
         tile_paths, south, north, west, east, temp_dir, feedback,
-        nodata_value=DEM_NODATA, aoi_prefix="", merge_filename="merged_dem.tif",
+        nodata_value=DEM_NODATA, aoi_prefix="dem", merge_filename="merged_dem.tif",
     )
 
 
 def ensure_dem_for_area(south, north, west, east, feedback=None, proxy_opener=None):
+    """Download, clip, and merge the GLO-30 DEM covering the bounding box.
+
+    Returns the path to a single-tile cache file or the merged clip, or None
+    when no tile covers the area or every download fails.
+    """
     temp_dir = get_temp_dir()
 
     if feedback:
@@ -178,21 +218,21 @@ def ensure_dem_for_area(south, north, west, east, feedback=None, proxy_opener=No
         return None
 
     if feedback:
-        aoi_w = east - west
-        aoi_h = north - south
-        est_mb = len(tiles) * 30
-        pixel_count = len(tiles) * 3600 * 3600
+        lat_span = abs(north - south)
+        lon_span = abs(east - west)
         feedback.pushInfo(
-            "AOI {:.1f}\u00b0\u00d7{:.1f}\u00b0, {} tiles ~{:.0f} MB, {:.1f} M pixels".format(
-                aoi_w, aoi_h, len(tiles), est_mb, pixel_count / 1e6))
-
-    if feedback:
+            "AOI {:.2f}°×{:.2f}°: {} GLO-30 tile(s), "
+            "~{} MB, ~{} Mpx".format(
+                lon_span, lat_span, len(tiles),
+                len(tiles) * _EST_MB_PER_TILE,
+                round(len(tiles) * 3600 * 3600 / 1_000_000),
+            )
+        )
         feedback.pushInfo("Downloading DEM tiles")
 
     tile_paths = download_tiles(
         tiles, temp_dir=temp_dir, feedback=feedback, proxy_opener=proxy_opener
     )
-
     if not tile_paths:
         if feedback:
             feedback.pushInfo("No tiles were downloaded successfully.")
@@ -205,21 +245,12 @@ def ensure_dem_for_area(south, north, west, east, feedback=None, proxy_opener=No
         feedback.pushInfo("Clipping and merging DEM tiles")
 
     merge_temp_dir = tempfile.mkdtemp(prefix="nowires_dem_", dir=temp_dir)
-    # temp_dir (from get_temp_dir()) is already TOCTOU-safe, so the
-    # subdirectory created by mkdtemp inside it inherits that safety.
     os.chmod(merge_temp_dir, DIR_PERMISSIONS)
     if feedback:
         feedback.pushInfo(
-            "Merged DEM outputs are kept in a per-run folder for QGIS layer loading: "
-            + merge_temp_dir
+            "Merged DEM outputs are kept in a per-run folder: " + merge_temp_dir
         )
 
     return clip_and_merge(
-        tile_paths,
-        south,
-        north,
-        west,
-        east,
-        temp_dir=merge_temp_dir,
-        feedback=feedback,
+        tile_paths, south, north, west, east, temp_dir=merge_temp_dir, feedback=feedback
     )
