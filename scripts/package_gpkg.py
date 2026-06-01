@@ -9,6 +9,16 @@ from NoWires.constants import EARTH_RADIUS_M, GDAL_DRIVER_NAME
 gdal.UseExceptions()
 ogr.UseExceptions()
 
+
+def _plugin_version() -> str:
+    """Read the plugin version from metadata.txt (single source of truth)."""
+    metadata_path = os.path.join(os.path.dirname(__file__), "..", "metadata.txt")
+    with open(metadata_path, encoding="utf-8") as fh:
+        for line in fh:
+            if line.startswith("version="):
+                return line.split("=", 1)[1].strip()
+    return "0.0.0"
+
 TIF = "/output/7800h_repeater_90-50-50_1024.tif"
 CSV = "/output/7800h_repeater_90-50-50_1024.csv"
 GPKG = "/output/7800h_repeater_90-50-50.gpkg"
@@ -139,7 +149,7 @@ avg_dist = float(meta.get("average_distance_km", 0))
 reliability = meta.get("reliability_summary", "")
 
 gpkg_ds.SetMetadata([
-    "GENERATOR=NoWires QGIS Plugin v2.0.0",
+    f"GENERATOR=NoWires QGIS Plugin v{_plugin_version()}",
     "RADIO=L3Harris RF-7800V-HH",
     "MODE=Repeater (fixed site)",
     "FREQUENCY_MHZ=47.0",

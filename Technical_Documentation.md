@@ -1,4 +1,4 @@
-# NoWires Technical Documentation — v2.0.0
+# NoWires Technical Documentation — v3.0.0
 
 SPDX-License-Identifier: GPL-3.0-or-later
 
