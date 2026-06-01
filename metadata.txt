@@ -14,6 +14,13 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
+    Version 3.0.0
+    - BREAKING: Relicensed the plugin's own source from GPL-3.0-or-later to the MIT License
+    - BREAKING: Removed the Contour Lines feature (use standalone ContourLines plugin instead)
+    - Clean-room reimplemented DEM download core as original work from public Copernicus GLO-30 specs
+    - Fix Coverage Analysis always running single-threaded on Windows
+    - Fix test_decouple_n0_registered_and_not_advanced failing on Python 3.13
+
     Version 2.0.0
     - BREAKING: Replace saalos vegetation clutter model with ITU-R P.833-9 §2.1 Am
     - Removes ITWOM 3.0 code (Shumate/Givens & Bell, proprietary licence)

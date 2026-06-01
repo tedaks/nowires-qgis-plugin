@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-06-01
+
 ### Changed
 - **BREAKING:** Relicensed the plugin's own source from GPL-3.0-or-later to the **MIT License**. Only 3.0.0 and later are MIT; pre-3.0.0 releases remain GPL. The `itm/` files stay US-Government public domain (NTIA disclaimer).
 - **BREAKING:** Removed the Contour Lines feature — the `contour_lines` algorithm, the `contour/` package, and the hillshade overlay — whose code derived from the GPL ContourLines plugin. The provider now registers 4 algorithms. Users needing contour lines should install the standalone [ContourLines](https://plugins.qgis.org/plugins/ContourLines/) plugin.
@@ -16,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Correctness
 
+- Fix Coverage Analysis always running single-threaded on Windows. `should_use_multiprocessing` now delegates to `find_windows_python_executable` on Windows (as it did in v2.0.0) instead of hard-blocking; multiprocessing is auto-enabled when a validated Python interpreter is found and falls back to sequential otherwise.
 - Fix `test_decouple_n0_registered_and_not_advanced` failing on Python 3.13 — replace `MagicMock.called` (removed in 3.13) with dual-path check that also works against real QGIS bindings.
 
 ## [2.0.0] - 2026-05-31
