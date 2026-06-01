@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Regression test: the Decouple-N0 escape hatch restores the legacy behavior.
 
 v2.0.0 couples each K_FACTOR_PRESET to a representative N0 by default. The

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Regression tests for coverage_bounds lat clamping and METERS_PER_DEGREE_LAT (v1.5.7 fix #11).
 
 Before v1.5.7, coverage_bounds could return latitudes outside [-90, 90]

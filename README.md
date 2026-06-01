@@ -7,7 +7,7 @@ Radio propagation analysis and terrain tools powered by NTIA's Irregular Terrain
 This repository contains the QGIS 4 plugin source for **NoWires** version 3.0.0.
 
 Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-SPDX-License-Identifier: GPL-3.0-or-later
+SPDX-License-Identifier: MIT
 
 ## Features
 
@@ -269,7 +269,7 @@ refinement via `math.erf`.
 
 ## License
 
-SPDX-License-Identifier: GPL-3.0-or-later
+SPDX-License-Identifier: MIT
 
 GNU General Public License v3 or later.
 Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>.

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Contract tests for the ALLOW_THREADING opt-in on heavy-compute algorithms.
 
 Source-level checks: avoid needing a QGIS runtime so these run in the unit

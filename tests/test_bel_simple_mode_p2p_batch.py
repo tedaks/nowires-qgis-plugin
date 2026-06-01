@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Regression test: BEL must be computed in simple-clutter mode for P2P/Batch."""
 
 from NoWires.clutter.advanced import compute_terminal_clutter_losses

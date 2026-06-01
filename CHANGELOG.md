@@ -1,6 +1,6 @@
 # Changelog
 
-SPDX-License-Identifier: GPL-3.0-or-later
+SPDX-License-Identifier: MIT
 
 All notable changes to this project will be documented in this file.
 

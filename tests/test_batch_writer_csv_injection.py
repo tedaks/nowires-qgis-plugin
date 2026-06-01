@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Regression test for batch_writer.write_batch_csv CSV-injection guard (v1.5.7).
 
 The v1.4.0 fix that added _csv_safe() to report_export.write_report_csv was

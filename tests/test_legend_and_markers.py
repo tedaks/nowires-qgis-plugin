@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Tests for radio_coverage/legend.py (show_coverage_legend) and report/markers.py
 (write_single_marker, remove_existing_ogr_dataset).
 

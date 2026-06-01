@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Export QGIS project + style for portable reuse of repeater coverage layer."""
 import os
 import sys

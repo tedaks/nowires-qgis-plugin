@@ -1,5 +1,5 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Terminal clutter correction helpers for NoWires."""
 
 from __future__ import annotations

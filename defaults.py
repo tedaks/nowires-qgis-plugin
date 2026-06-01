@@ -1,5 +1,5 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 DEFAULT_TX_HEIGHT_M = 30.0
 DEFAULT_RX_HEIGHT_M = 10.0
 DEFAULT_FREQ_MHZ = 300.0

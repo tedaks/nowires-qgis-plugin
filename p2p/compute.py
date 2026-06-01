@@ -1,5 +1,5 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Core P2P analysis: DEM download, ITM prediction, Fresnel, output, reports."""
 
 import logging

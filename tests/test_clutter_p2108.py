@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Tests for P.2108 terrestrial statistical clutter loss (canonical module).
 
 The deprecated clutter_p2108 shim has been removed; these tests now

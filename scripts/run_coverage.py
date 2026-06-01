@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Repeater-mode coverage: RF-7800V-HH at 47 MHz, 10W, 30m tower, fixed site antenna."""
 import os
 import sys

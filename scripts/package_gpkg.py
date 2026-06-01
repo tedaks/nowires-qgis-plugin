@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Package repeater coverage into a portable GeoPackage (.gpkg) with raster, vectors, and style."""
 import os
 import math

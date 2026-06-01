@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Regression test: P2P algorithm must opt into threading.
 
 After the v1.7.1 fix, P2P sets ALLOW_THREADING = True and defers Qt widget

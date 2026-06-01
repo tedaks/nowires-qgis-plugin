@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Source-level contract test for partial counter accumulation (v1.5.7 fix #8).
 
 Before v1.5.7, _coverage_executor.execute_coverage_tasks overwrote

@@ -1,5 +1,5 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 METERS_PER_DEGREE_LAT = 111320.0
 DEM_NODATA = -32768
 FSPL_CONSTANT = 32.45

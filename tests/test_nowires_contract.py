@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Contract tests for the nowires plugin module.
 
 Tests structural invariants that don't require a QGIS runtime.
@@ -16,7 +16,7 @@ class TestNowiresModuleContract:
         path = os.path.join(src_dir, "..", "nowires.py")
         with open(path, "r") as f:
             content = f.read()
-        assert "SPDX-License-Identifier: GPL-3.0-or-later" in content
+        assert "SPDX-License-Identifier: MIT" in content
 
     def test_class_factory_is_exported(self):
         src_dir = os.path.dirname(__file__)

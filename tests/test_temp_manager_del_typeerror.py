@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
-# This program is free software under GPLv3 or later. See LICENSE.
+# SPDX-License-Identifier: MIT
+# Licensed under the MIT License. See LICENSE.
 """Regression tests for I18: TempDirManager.__del__ TypeError during interpreter shutdown.
 
 During CPython interpreter shutdown, module-level names (like shutil.rmtree, os.unlink,

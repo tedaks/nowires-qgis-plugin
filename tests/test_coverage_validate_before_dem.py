@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Regression test: coverage algorithm must call validate_itm_input_ranges before DEM download.
 
 Ensures the coverage algorithm validates inputs fail-fast before the potentially

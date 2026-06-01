@@ -1,7 +1,7 @@
 # tests/test_del_exception_guards.py
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Regression tests: __del__ exception guards for ElevationGrid and SharedDEMGrid."""
 
 

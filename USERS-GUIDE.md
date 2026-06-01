@@ -1,6 +1,6 @@
 # NoWires User's Guide
 
-SPDX-License-Identifier: GPL-3.0-or-later
+SPDX-License-Identifier: MIT
 
 ## Overview
 

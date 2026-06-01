@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Extended tests for coverage_pool — apply_batch_results, log_coverage_failures,
 _ensure_path, should_use_multiprocessing, _itm_worker, _itm_worker_batch,
 and shared-memory helpers."""
