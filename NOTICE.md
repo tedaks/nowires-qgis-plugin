@@ -103,7 +103,7 @@ plugin's own source MIT.
   was the **DEM tile-enumeration pattern** — dictated by the published Copernicus
   GLO-30 1°×1° tile grid and the QGIS geometry API (a thin, spec-driven
   expression, arguably *scène à faire*). It was independently reimplemented for
-  3.0.0 from those public specifications (see §9 and CLEANROOM.md).
+  3.0.0 from those public specifications (see §9).
 - `tile_download_base.py` was **never** ContourLines-derived. It was always the
   NoWires author's own download/retry/cache/integrity code, GPL-labeled only
   because the aggregate was GPL; it is MIT in 3.0.0. (It was conservatively
@@ -182,7 +182,7 @@ Union.
 ## 9. Local Modifications
 
 - Files adapted from `nowires` retain the original MIT attribution in this notice and are redistributed as part of this MIT-licensed plugin.
-- `tile_download_base.py` and `worldcover_downloader.py` are original NoWires work (previously GPL-labeled only by aggregate); `tile_download_base.py` was **never** ContourLines-derived. `dem_downloader.py` is original work whose only previously-ContourLines-derived portion — the spec-driven DEM tile-enumeration pattern — was independently reimplemented for 3.0.0 (see §3 and CLEANROOM.md). All three are MIT in 3.0.0.
+- `tile_download_base.py` and `worldcover_downloader.py` are original NoWires work (previously GPL-labeled only by aggregate); `tile_download_base.py` was **never** ContourLines-derived. `dem_downloader.py` is original work whose only previously-ContourLines-derived portion — the spec-driven DEM tile-enumeration pattern — was independently reimplemented for 3.0.0 (see §3). All three are MIT in 3.0.0.
 - Files in `itm/` are derived from `pyitm` and carry local import-path adjustments for plugin packaging. These modified works should not be treated as verbatim upstream copies.
 - The saalos vegetation model (`clutter/saalos.py`, `clutter/_saalos_vec.py`) was removed in v2.0.0 and replaced with original code based on ITU-R P.833-9 (§7).
 - The Contour Lines feature and all ContourLines-derived code were removed in 3.0.0 (see §3).

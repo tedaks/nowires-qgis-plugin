@@ -23,7 +23,7 @@ clips/merges them to a requested area of interest. Structurally mirrors
 ``worldcover_downloader.py``; the GLO-30 tile layout and naming are
 documented facts (see https://copernicus-dem-30m.s3.amazonaws.com/readme.html).
 This module is original work written from those public specifications and the
-project's own tests (see CLEANROOM.md); see NOTICE.md for attribution.
+project's own tests; see NOTICE.md for attribution.
 """
 
 from __future__ import annotations

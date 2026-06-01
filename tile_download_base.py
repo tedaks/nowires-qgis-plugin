@@ -23,7 +23,7 @@ SHA-256 sidecar, and retrying transient failures with exponential backoff.
 
 This module is original work written from standard HTTP-client policy, the
 public call signature (``worldcover_downloader.py``), and the project's own
-tests (see CLEANROOM.md); see NOTICE.md for attribution.
+project's own tests; see NOTICE.md for attribution.
 """
 
 from __future__ import annotations

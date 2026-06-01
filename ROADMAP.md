@@ -150,9 +150,8 @@ independent of N0 can still work. The Custom preset also leaves N0 free.
 This release removes the GPL-derived Contour feature and the GPL-derived DEM
 download core, then relicenses the entire repository from GPL-3.0-or-later to
 MIT. The technical plan with full file inventories, clean-room firewalls, and
-verification gates lives in [RELICENSE-MIT-PLAN.md](RELICENSE-MIT-PLAN.md). This
-roadmap entry summarizes the steps and classifies them per the AGENTS.md release
-shape convention.
+verification gates lives in this roadmap entry.
+The steps are classified per the AGENTS.md release shape convention.
 
 ### Context
 
