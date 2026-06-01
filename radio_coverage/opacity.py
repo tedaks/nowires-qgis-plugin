@@ -18,7 +18,7 @@
 Live opacity adjustment for the latest coverage raster layer.
 """
 
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import QSettings, Qt
 from qgis.PyQt.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -59,6 +59,18 @@ class CoverageOpacityDialog(QDialog):
     def __init__(self, layer, parent=None):
         super().__init__(parent)
         self._layer_id = layer.id()
+        self._settings_key = "NoWires/coverageOpacity/geometry"
+        geom_raw = QSettings().value(self._settings_key)
+        if geom_raw is not None:
+            try:
+                self.restoreGeometry(geom_raw)
+            except Exception:
+                pass
+        try:
+            if self.width() < 100:
+                self.setMinimumWidth(320)
+        except Exception:
+            self.setMinimumWidth(320)
         self.setWindowTitle("Coverage Opacity")
         self.setModal(False)
         if sys.platform == "darwin":
@@ -95,6 +107,14 @@ class CoverageOpacityDialog(QDialog):
         slider_row.addWidget(self._slider)
         slider_row.addWidget(self._pct_label)
         layout.addLayout(slider_row)
+
+        try:
+            self.finished.connect(self._save_geometry)
+        except Exception:
+            pass
+
+    def _save_geometry(self):
+        QSettings().setValue(self._settings_key, self.saveGeometry())
 
     def _resolve_layer(self):
         layer = QgsProject.instance().mapLayer(self._layer_id)
