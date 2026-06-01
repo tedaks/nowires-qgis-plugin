@@ -61,6 +61,8 @@ class P2PAlgorithm(NoWiresAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         self._p2p_post_processors = []
+        self._raster_layer_ids = []
+        self._vector_layer_ids = []
         tx_point = self.parameterAsPoint(
             parameters, self.TX_POINT, context,
             crs=WGS84_CRS,
@@ -85,6 +87,11 @@ class P2PAlgorithm(NoWiresAlgorithm):
         tx_h = self.parameterAsDouble(parameters, self.TX_HEIGHT, context)
         rx_h = self.parameterAsDouble(parameters, self.RX_HEIGHT, context)
         f_mhz = self.parameterAsDouble(parameters, self.FREQ_MHZ, context)
+
+        from NoWires.elevation import haversine_m
+        approx_dist_m = haversine_m(tx_lat, tx_lon, rx_lat, rx_lon)
+        self._layer_tree_group_name = "NoWires — P2P {:.0f} MHz {:.1f} km".format(
+            f_mhz, approx_dist_m / 1000.0)
         polarization = self.parameterAsEnum(parameters, self.POLARIZATION, context)
         climate = self.parameterAsEnum(parameters, self.CLIMATE, context)
         time_pct = self.parameterAsDouble(parameters, self.TIME_PCT, context)
@@ -198,6 +205,12 @@ class P2PAlgorithm(NoWiresAlgorithm):
         # auto-downloaded grids are closed inside run_p2p_analysis's own finally.
         result = run_p2p_analysis(p2p_params)
         self._pending_chart_kwargs = p2p_params._pending_chart_kwargs
+        summary_text = getattr(p2p_params, "_run_summary_text", None)
+        if summary_text is not None:
+            self._run_summary = {
+                "text": summary_text,
+                "report_html_path": getattr(p2p_params, "_run_summary_report_path", None),
+            }
         return result
 
     def postProcessAlgorithm(self, context, feedback):
@@ -209,10 +222,22 @@ class P2PAlgorithm(NoWiresAlgorithm):
             except Exception:
                 logger.warning("P2P profile chart failed", exc_info=True)
             self._pending_chart_kwargs = None
+        for pp in self._p2p_post_processors:
+            lid = getattr(pp, "layer_id", None)
+            if lid is not None:
+                self._vector_layer_ids.append(lid)
         return super().postProcessAlgorithm(context, feedback)
 
     def name(self):
         return "p2p_analysis"
+
+    def shortHelpString(self):
+        return self.tr(
+            "Point-to-Point radio link analysis: compute ITM path loss, "
+            "Fresnel clearance, and link budget for a single TX-to-RX path. "
+            "Outputs terrain profile, Fresnel zone layers, TX/RX markers, "
+            "and a detailed HTML/CSV/JSON report."
+        )
 
     def displayName(self):
         return self.tr("Point-to-Point Analysis")

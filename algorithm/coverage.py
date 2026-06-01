@@ -54,6 +54,9 @@ class CoverageAlgorithm(NoWiresAlgorithm):
         clutter_grid = None
         p = extract_coverage_params(self, parameters, context)
 
+        self._layer_tree_group_name = "NoWires — Coverage {:.0f} MHz {:.0f} km".format(
+            p.f_mhz, p.radius_km)
+
         feedback.pushInfo(
             "TX: ({:.5f}, {:.5f}), F={:.1f} MHz, R={:.1f} km, Grid={}x{}".format(
                 p.tx_lat, p.tx_lon, p.f_mhz, p.radius_km, p.grid_size, p.grid_size))
@@ -155,6 +158,13 @@ class CoverageAlgorithm(NoWiresAlgorithm):
 
     def name(self):
         return "coverage_analysis"
+
+    def shortHelpString(self):
+        return self.tr(
+            "Coverage analysis: compute a received-power heatmap around a single "
+            "transmitter using the ITM propagation model. Supports antenna "
+            "patterns, clutter correction, and HTML/CSV/JSON/PDF reports."
+        )
 
     def displayName(self):
         return self.tr("Coverage Analysis")
