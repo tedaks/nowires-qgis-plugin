@@ -50,15 +50,6 @@ class TestAlgorithmParameterConsistency:
                          "RADIUS_KM", "OUTPUT_RASTER"]:
             assert required in params, f"Coverage missing param: {required}"
 
-    def test_contour_has_all_required_params(self, qgis_app):
-        from NoWires.algorithm.contour import ContourLinesAlgorithm
-        alg = ContourLinesAlgorithm()
-        alg.initAlgorithm({})
-        assert alg.name() == "contour_lines"
-        params = {p.name() for p in alg.parameterDefinitions()}
-        for required in ["AREA_OF_INTEREST", "INTERVAL", "ELEVATION_MAP"]:
-            assert required in params, f"Contour missing param: {required}"
-
     def test_batch_has_all_required_params(self, qgis_app):
         from NoWires.algorithm.batch import BatchAnalysisAlgorithm
         alg = BatchAnalysisAlgorithm()

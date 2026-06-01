@@ -53,11 +53,10 @@ class TestProviderRegistryIntegration:
         registry.addProvider(provider)
         provider.loadAlgorithms()
         alg_names = [alg.name() for alg in provider.algorithms()]
-        assert len(alg_names) == 5
+        assert len(alg_names) == 4
         assert "p2p_analysis" in alg_names
         assert "coverage_analysis" in alg_names
         assert "coverage_comparison" in alg_names
-        assert "contour_lines" in alg_names
         assert "batch_p2p_analysis" in alg_names
         registry.removeProvider(provider)
 

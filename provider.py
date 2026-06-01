@@ -26,7 +26,7 @@
 # NoWires Processing Provider.
 #
 # Registers all processing algorithms: P2P analysis, coverage analysis,
-# and contour lines generation.
+# coverage comparison, and batch P2P analysis.
 
 import importlib
 import logging
@@ -42,7 +42,6 @@ _ALGORITHM_CLASSES = [
     ("algorithm.p2p", "P2PAlgorithm"),
     ("algorithm.coverage", "CoverageAlgorithm"),
     ("algorithm.coverage_comparison", "CoverageComparisonAlgorithm"),
-    ("algorithm.contour", "ContourLinesAlgorithm"),
     ("algorithm.batch", "BatchAnalysisAlgorithm"),
 ]
 

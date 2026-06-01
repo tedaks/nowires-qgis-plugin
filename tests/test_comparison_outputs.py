@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Integration tests for comparison/outputs.py and contour pipeline modules.
+"""Integration tests for comparison/outputs.py.
 
 Tests output writing functions with synthetic raster data,
-driving coverage in the comparison and contour modules.
+driving coverage in the comparison module.
 """
 
 import os

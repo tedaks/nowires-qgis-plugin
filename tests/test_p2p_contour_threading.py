@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Regression test: P2P and Contour algorithms must opt into threading.
+"""Regression test: P2P algorithm must opt into threading.
 
-After the v1.7.1 fix, both P2P and Contour set ALLOW_THREADING = True and
-defer Qt widget creation (show_profile_chart) to postProcessAlgorithm.
+After the v1.7.1 fix, P2P sets ALLOW_THREADING = True and defers Qt widget
+creation (show_profile_chart) to postProcessAlgorithm.
 """
 
 import os
@@ -19,11 +19,6 @@ def _source(name):
 
 def test_p2p_allows_threading():
     src = _source("algorithm/p2p.py")
-    assert "ALLOW_THREADING = True" in src
-
-
-def test_contour_allows_threading():
-    src = _source("algorithm/contour.py")
     assert "ALLOW_THREADING = True" in src
 
 

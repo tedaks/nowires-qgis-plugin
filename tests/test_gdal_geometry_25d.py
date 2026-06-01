@@ -13,7 +13,6 @@ _FILES = [
     "p2p/outputs.py",
     "report/markers.py",
     "batch/writer.py",
-    "contour/pipeline.py",
     "tile_merge.py",
 ]
 
@@ -39,10 +38,6 @@ class TestGdalGeometryTypes:
     def test_batch_writer_uses_25d(self):
         source = _read_module("batch/writer.py")
         assert "wkbPoint25D" in source
-
-    def test_contour_pipeline_uses_25d(self):
-        source = _read_module("contour/pipeline.py")
-        assert "wkbPolygon25D" in source
 
     def test_tile_merge_uses_25d(self):
         source = _read_module("tile_merge.py")

@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
 # This program is free software under GPLv3 or later. See LICENSE.
-"""Verify all 5 algorithms register their parameters correctly with QGIS."""
+"""Verify all 4 algorithms register their parameters correctly with QGIS."""
 
 import os
 import pytest
@@ -76,11 +76,6 @@ EXPECTED_COVERAGE_PARAMS = [
     "OUTPUT_REPORT_HTML", "OUTPUT_REPORT_PDF",
 ]
 
-EXPECTED_CONTOUR_PARAMS = [
-    "AREA_OF_INTEREST", "INTERVAL", "UNIT", "SMOOTHING", "COLOR",
-    "ELEVATION_MAP", "PROXY_AUTH", "OUTPUT", "OUTPUT_DEM",
-]
-
 EXPECTED_BATCH_PARAMS = [
     "MODE", "TX_POINT", "RX_LAYER", "RX_POINT", "TX_LAYER",
     "TX_HEIGHT", "RX_HEIGHT", "FREQ_MHZ", "POLARIZATION", "CLIMATE",
@@ -139,27 +134,6 @@ class TestCoverageParameterRegistration:
         assert isinstance(radius, QgsProcessingParameterNumber)
         assert radius.minimum() == 1.0
         assert radius.maximum() == 500.0
-
-
-class TestContourParameterRegistration:
-    def test_all_expected_params_present(self, provider):
-        alg = _get_algorithm(provider, "contour_lines")
-        param_names = [p.name() for p in alg.parameterDefinitions()]
-        for expected in EXPECTED_CONTOUR_PARAMS:
-            assert expected in param_names, "Missing param: {}".format(expected)
-
-    def test_extent_param_type(self, provider):
-        from qgis.core import QgsProcessingParameterExtent
-        alg = _get_algorithm(provider, "contour_lines")
-        param = alg.parameterDefinition("AREA_OF_INTEREST")
-        assert isinstance(param, QgsProcessingParameterExtent)
-
-    def test_auth_config_param_type(self, provider):
-        from qgis.core import QgsProcessingParameterAuthConfig
-        alg = _get_algorithm(provider, "contour_lines")
-        param = alg.parameterDefinition("PROXY_AUTH")
-        assert isinstance(param, QgsProcessingParameterAuthConfig)
-        assert param.flags() & QgsProcessingParameterAuthConfig.Flag.FlagOptional
 
 
 class TestComparisonParameterRegistration:

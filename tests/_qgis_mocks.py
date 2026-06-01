@@ -440,7 +440,6 @@ _PACKAGE_SUBMODULES = (
     "algorithm._coverage_helpers",
     "algorithm._project_paths",
     "algorithm.coverage_comparison",
-    "algorithm.contour",
     "algorithm.batch",
     # batch/
     "batch.outputs",
@@ -453,13 +452,6 @@ _PACKAGE_SUBMODULES = (
     "comparison.params",
     "comparison.reporting",
     "comparison.add_params",
-    # contour/
-    "contour.generation",
-    "contour.overlay",
-    "contour.pipeline",
-    "contour.smoothing",
-    "contour.symbology",
-    "contour._smoothing_vrt",
     # radio_coverage/
     "radio_coverage.compute",
     "radio_coverage.engine",
@@ -557,7 +549,6 @@ def register_nowires_package():
         "algorithm",
         "batch",
         "comparison",
-        "contour",
         "radio_coverage",
         "clutter",
         "p2p",

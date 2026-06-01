@@ -120,7 +120,6 @@ class NoWiresPlugin:
         action_specs = [
             ("Point-to-Point Analysis", self.run_p2p, True),
             ("Coverage Analysis", self.run_coverage, False),
-            ("Contour Lines", self.run_contour, False),
             ("Coverage Opacity", self.run_coverage_opacity, False),
             ("Open 3D View", self.run_open_3d_view, False),
             ("Coverage Comparison", self.run_comparison, True),
@@ -207,10 +206,6 @@ class NoWiresPlugin:
     def run_coverage(self) -> None:
         import processing
         processing.execAlgorithmDialog("nowires:coverage_analysis")
-
-    def run_contour(self) -> None:
-        import processing
-        processing.execAlgorithmDialog("nowires:contour_lines")
 
     def run_coverage_opacity(self) -> None:
         layer = find_latest_coverage_layer()

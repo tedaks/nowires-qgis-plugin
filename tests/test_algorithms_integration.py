@@ -7,7 +7,6 @@
 Coverage targets:
   - algorithm/coverage_comparison.py (lines 71-108, 246, 254, 257, 260)
   - algorithm/batch.py (lines 238-275, early empty-target detection)
-  - algorithm/contour.py (lines 88-137, param registration and AOI validation)
   - algorithm/p2p.py (lines 57-58, 190-196, param registration)
 """
 
@@ -18,8 +17,6 @@ try:
     from qgis.core import (
         QgsProcessingContext,
         QgsProcessingFeedback,
-        QgsProcessingException,
-        QgsRectangle,
     )
     _HAS_QGIS = bool(os.environ.get("QGIS_PREFIX_PATH"))
 except ImportError:
@@ -146,52 +143,6 @@ def test_batch_name_and_display(qgis_app):
     assert alg.name() == "batch_p2p_analysis"
     assert "Batch P2P" in str(alg.displayName())
     assert isinstance(alg.createInstance(), BatchAnalysisAlgorithm)
-
-
-# ---------------------------------------------------------------------------
-# ContourLinesAlgorithm
-# ---------------------------------------------------------------------------
-
-
-def test_contour_algorithm_registers_params(qgis_app):
-    """Call initAlgorithm({}), verify parameter definitions for contour generation."""
-    from NoWires.algorithm.contour import ContourLinesAlgorithm
-
-    alg = ContourLinesAlgorithm()
-    alg.initAlgorithm({})
-    param_names = {p.name() for p in alg.parameterDefinitions()}
-
-    assert "AREA_OF_INTEREST" in param_names
-    assert "INTERVAL" in param_names
-    assert "UNIT" in param_names
-    assert "SMOOTHING" in param_names
-    assert "COLOR" in param_names
-    assert "ELEVATION_MAP" in param_names
-    assert "PROXY_AUTH" in param_names
-    assert "OUTPUT" in param_names
-    assert "OUTPUT_DEM" in param_names
-
-
-def test_contour_requires_valid_area(qgis_app):
-    """Test that _validate_aoi raises QgsProcessingException for null/invalid AOI (lines 120-137)."""
-    from NoWires.algorithm.contour import ContourLinesAlgorithm
-
-    alg = ContourLinesAlgorithm()
-    alg.initAlgorithm({})
-
-    empty_rect = QgsRectangle()
-    with pytest.raises(QgsProcessingException, match="Invalid area of interest"):
-        alg._validate_aoi({alg.AREA_OF_INTEREST: empty_rect}, QgsProcessingContext())
-
-
-def test_contour_name_and_display(qgis_app):
-    """Verify contour algorithm identity (lines 276, 279, 282)."""
-    from NoWires.algorithm.contour import ContourLinesAlgorithm
-
-    alg = ContourLinesAlgorithm()
-    assert alg.name() == "contour_lines"
-    assert "Contour Lines" in str(alg.displayName())
-    assert isinstance(alg.createInstance(), ContourLinesAlgorithm)
 
 
 # ---------------------------------------------------------------------------

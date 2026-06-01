@@ -37,13 +37,6 @@ class TestQgsProjectStatePersistence:
         assert ok
         assert result == "test_cov_id_456"
 
-    def test_write_and_read_contour_layer_id(self, qgis_app):
-        project = QgsProject.instance()
-        project.writeEntry("NoWires", "last_contour_layer_id", "test_contour_id_789")
-        result, ok = project.readEntry("NoWires", "last_contour_layer_id", "")
-        assert ok
-        assert result == "test_contour_id_789"
-
     def test_layer_tree_root_accessible(self, qgis_app):
         project = QgsProject.instance()
         root = project.layerTreeRoot()

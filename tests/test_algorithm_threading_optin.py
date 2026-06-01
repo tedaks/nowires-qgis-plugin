@@ -38,6 +38,5 @@ def test_coverage_comparison_algorithm_opts_into_threading():
     assert "ALLOW_THREADING = True" in _source("algorithm/coverage_comparison.py")
 
 
-def test_p2p_and_contour_opt_into_threading():
-    for name in ("algorithm/p2p.py", "algorithm/contour.py"):
-        assert "ALLOW_THREADING = True" in _source(name), name
+def test_p2p_opts_into_threading():
+    assert "ALLOW_THREADING = True" in _source("algorithm/p2p.py")
