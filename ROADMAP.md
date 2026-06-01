@@ -95,7 +95,7 @@ saalos → P.833-9 §2.1 replacement removes `clutter_loss_saalos` and
 `clutter_loss_saalos_vec` from the public API and changes the default numeric
 output for the vegetation clutter category (removed symbols + default change →
 MAJOR). The k-factor N0 coupling (option 1) is bundled here if chosen; option 2
-(opt-in checkbox) is MINOR and targets v2.1.0+.
+(opt-in checkbox) is MINOR and targets v3.1.0+.
 
 ### Replace saalos vegetation model with ITU-R P.833-9 §2.1 (default change)  ✅ Shipped in v2.0.0
 
@@ -145,7 +145,157 @@ independent of N0 can still work. The Custom preset also leaves N0 free.
 
 ---
 
-## v2.1.0 — MINOR: dataclass migration, proxy auth, UX polish, and cleanups
+## v3.0.0 — MAJOR: contour removal and MIT relicense
+
+This release removes the GPL-derived Contour feature and the GPL-derived DEM
+download core, then relicenses the entire repository from GPL-3.0-or-later to
+MIT. The technical plan with full file inventories, clean-room firewalls, and
+verification gates lives in [RELICENSE-MIT-PLAN.md](RELICENSE-MIT-PLAN.md). This
+roadmap entry summarizes the steps and classifies them per the AGENTS.md release
+shape convention.
+
+### Context
+
+The project is GPL-3.0-or-later for one reason only: it incorporates and adapts
+GPL-licensed code from the ContourLines plugin (`NOTICE.md §3`). Every other
+component (nowires-derived code, ITM, clutter, WorldCover downloader) is already
+MIT-compatible. Removing the GPL-derived code is therefore necessary and
+sufficient to make the repo's own source MIT.
+
+Two GPL surfaces exist:
+
+- **Surface A — the Contour feature.** The `contour/` package and
+  `algorithm/contour.py` are self-contained. Mechanical to remove.
+- **Surface B — `dem_downloader.py` and `tile_download_base.py` (THE BLOCKER).**
+  These are imported by *every* algorithm (P2P, Coverage, Batch, Comparison,
+  Contour). Deleting them without replacement breaks the entire plugin, and they
+  cannot be header-flipped because the bodies are derived from GPL code. They
+  must be clean-room reimplemented.
+
+### Phases
+
+#### Phase 0 — Clean-room rewrite the DEM download core (PREREQUISITE)
+
+Scope: clean-room `dem_downloader.py` and (conservatively) `tile_download_base.py`.
+The MIT `worldcover_downloader.py` serves as the structural template — it already
+follows the same shape: tile-id → tile-name → tile-url → required-tiles loop →
+download → merge. The new downloaders are written from public specs only:
+the Copernicus GLO-30 AWS bucket layout, the 1°×1° tile-naming convention,
+GDAL's public API (`BuildVRT` / `Warp` / `Translate`), and standard HTTP-client
+behaviour (`Retry-After`, `Content-Length`, chunked writes).
+
+**Forbidden:** reading or paraphrasing the bodies of the GPL
+`dem_downloader.py` / `tile_download_base.py`. Only public signatures and
+documented AWS/GDAL specs are consulted.
+
+**Design constraints:**
+- Public signatures byte-identical → all callers pass untouched
+- `required_dem_tiles` enumerates the same tile set for a given bbox
+- Clipped DEMs are numerically identical (verified by band checksums)
+- Preserve the v1.7.1 AOI-size summary and proxy-threading behaviours
+- Preserve the existing per-tile budget, `max_bytes` cap, cache integrity
+  verification, and `_can_spawn` macOS/Windows multiprocessing compat
+
+Correctness gate: `gdal_integration` and `qgis_integration` DEM tests pass;
+signatures match byte-for-byte; same-tile-set validation against known
+coordinates; `gdalinfo -stats` checksums match before vs after.
+
+**Classification:** pure refactor with zero user-visible behaviour change → PATCH
+on its own. Shipped as a prerelease before the rest of v3.0.0 so the clean
+downloader is battle-tested before the contour removal.
+
+**Regression tests:** existing `test_dem_downloader.py`, `test_elevation_*.py`,
+and all `gdal_integration`/`qgis_integration` DEM tests must produce
+byte-identical output. New test `test_required_dem_tiles_parity.py` validates
+tile-set equivalence against known coordinate pairs.
+
+#### Phase 1 — Remove the Contour feature (correctness)
+
+Delete the GPL-derived Contour feature and all its integration points:
+
+- `contour/` package (6 modules + `__init__.py`) and `algorithm/contour.py`
+- `provider.py`: remove `("algorithm.contour", "ContourLinesAlgorithm")` registration
+- `nowires.py`: remove menu entry, `run_contour` method, and dialog call
+- `three_d.py`: drop contour-layer tracking (keep the coverage 3D path)
+- `tests/`: remove 14 contour-specific test files; trim contour half of
+  `test_p2p_contour_threading.py`; remove `EXPECTED_CONTOUR_PARAMS` and
+  `TestContourParameterRegistration` from
+  `test_algorithm_parameter_registration.py`
+- `.github/workflows/release.yml`: remove `contour` from `include_dirs` and
+  verify list
+- `grep -rinE "contour"` straggler sweep across all `.py` and `.yml` files
+
+Classifier: removes a public feature (`ContourLinesAlgorithm`, the `contour`
+package) and public symbols → **MAJOR** per AGENTS.md.
+
+**Regression tests:** `find . -name '*.py' -exec grep -l 'contour' {} +` must
+return zero non-test files. All remaining tests pass. Provider registration
+enumeration updated (`test_algorithm_registration.py`). No `ImportError` on
+plugin load.
+
+#### Phase 2 — Flip license headers
+
+After Phase 0 and Phase 1 land (so no GPL-derived source remains):
+
+- Replace `SPDX-License-Identifier: GPL-3.0-or-later` → `MIT` in all remaining
+  `.py` files (~380 minus deleted contour files)
+- Update the per-file copyright boilerplate to the MIT notice
+- **Do not touch** the 7 `itm/` files (`LicenseRef-NTIA-Software-Disclaimer`)
+- Flip SPDX headers in all `.md` docs and `metadata.txt`
+
+**Classification:** license header change with no code behaviour change → PATCH,
+but bundled under the MAJOR bump.
+
+**Regression test:** `grep -rln "GPL-3.0-or-later" --include=*.py . | grep -v '.venv\|.ci-venv'`
+→ empty. `mypy` and `import-linter` still green.
+
+#### Phase 3 — LICENSE, NOTICE, metadata
+
+- `LICENSE`: replace GPLv3 text with MIT License
+- `NOTICE.md`: delete §3 (ContourLines); rewrite §8/intro to drop "GPL because
+  of ContourLines" rationale; keep all other sections
+- `metadata.txt`: drop "adapts code from … ContourLines" and contour feature
+  sentence from `about=`; confirm MIT license field
+- Confirm no GPL-style `LICENSE` file lingers
+
+#### Phase 4 — Documentation
+
+- `README.md`: remove Contour Lines and contour-related 3D bullets; drop the
+  ContourLines adaptation sentence; update repository layout
+- `USERS-GUIDE.md`: remove the Contour workflow section
+- `Technical_Documentation.md`: remove contour architecture section
+- `AGENTS.md`: adjust contour references in release/include notes
+
+#### Phase 5 — Verification gate
+
+- `grep -rinE "GPL|GNU General Public|ContourLines" . | grep -v '.venv\|.ci-venv\|itm/'`
+  → only intended historical mentions remain
+- No `import` of `dem_downloader` resolves to GPL-derived code
+- Provider loads 4 algorithms (no contour): ruff + mypy + import-linter green
+- Full unit suite green; `gdal_integration` and `qgis_integration` suites green
+- Plugin zip built and smoke-tested in QGIS (4 algorithms, DEM download via new
+  downloader)
+- `metadata.txt` version bumped to 3.0.0; `CHANGELOG.md` `[Unreleased]` entries
+  moved to `## [3.0.0]`
+
+### Classification
+
+Removing a public feature (Contour) and public symbols
+(`ContourLinesAlgorithm`, the `contour` package) is a **MAJOR** change per
+AGENTS.md. The license change is independently release-significant. Bundled as a
+single deliberate MAJOR release.
+
+### Fallback options (if clean-room rewrite is not chosen)
+
+- **Port from MIT `nowires`** — if tedaks/nowires (MIT) ships equivalent DEM
+  acquisition, adapt it and attribute under `NOTICE §1` instead.
+- **Author relicense** — written MIT permission from Daniel Hulshof Saint Martin
+  for the derived portions; lowest code effort, external dependency. Renders
+  Phase 0 and Phase 1 unnecessary; only Phase 2–5 remain.
+
+---
+
+## v3.1.0 — MINOR: dataclass migration, proxy auth, UX polish, and cleanups
 
 This release batches the dataclass migration (prerequisite for deeper
 decompositions), proxy auth, and several high-impact UX/robustness items.
@@ -232,10 +382,10 @@ assert the dialog writes geometry on close and reads it on show. Verify the
 
 `shortHelpString()` is implemented only on `BatchAnalysisAlgorithm`
 (`algorithm/batch.py:270`) and `CoverageComparisonAlgorithm`
-(`algorithm/coverage_comparison.py:244`). P2P, Coverage, and Contour show an
+(`algorithm/coverage_comparison.py:244`). P2P and Coverage show an
 empty help panel in their Processing dialogs. Add `shortHelpString()` — and
 optionally `helpUrl()` deep-linking to the hosted `USERS-GUIDE.md` — to all
-five, ideally a `NoWiresAlgorithm` base default plus per-algorithm overrides.
+four, ideally a `NoWiresAlgorithm` base default plus per-algorithm overrides.
 Both are standard `QgsProcessingAlgorithm` overrides
 ([reference](https://qgis.org/pyqgis/3.44/core/QgsProcessingAlgorithm.html)).
 Additive help text, no behavior change → PATCH.
@@ -298,7 +448,7 @@ No new runtime tests needed; typecheck is the gate.
 
 **Priority: ship early in this release.** This migration is a prerequisite for
 the `run_p2p_analysis` and `compute_coverage` decompositions planned for later
-(v2.2.0 cleanups) — the 19-arg helper calls block meaningful slicing. It also
+(v3.2.0 cleanups) — the 19-arg helper calls block meaningful slicing. It also
 stands alone as a robustness win (call-site fragility).
 
 Two functions still take 19 positional/keyword arguments, well past the point
@@ -331,7 +481,8 @@ AGENTS.md; any external importer confirms the MINOR bump.
 
 #### Proxy auth wired into all algorithms
 
-`setup_proxy_opener` is called from `algorithm/contour.py:161` only. Coverage, P2P,
+`setup_proxy_opener` was previously called only from the now-removed
+`algorithm/contour.py` (v3.0.0). After contour removal, Coverage, P2P,
 Batch, and Comparison invoke `ensure_dem_for_area` and `ensure_clutter_grid_for_area`
 without any proxy, so users behind authenticated proxies cannot run those four
 algorithms. Add `QgsProcessingParameterAuthConfig` to each, thread `proxy_opener`
@@ -342,26 +493,25 @@ Adds new processing parameters → MINOR. One PR.
 
 **Regression tests:**
 - `test_proxy_auth_all_algorithms.py` — for each algorithm class (P2P, Coverage,
-  Batch, Comparison, Contour), assert that `QgsProcessingParameterAuthConfig` is
-  present in the parameter list. For Contour, assert it already existed (not
-  duplicated).
+  Batch, Comparison), assert that `QgsProcessingParameterAuthConfig` is
+  present in the parameter list.
 - `test_proxy_auth_threading.py` — assert `proxy_opener` is passed through to
-  `ensure_dem_for_area` and `ensure_worldcover_for_area` in the four newly-wired
+  `ensure_dem_for_area` and `ensure_worldcover_for_area` in all four
   algorithms. Mock the download functions and verify the opener is used.
 
 ---
 
-## v2.2.0 — MINOR: decompositions, coverage UX, and P.530
+## v3.2.0 — MINOR: decompositions, coverage UX, and P.530
 
 Decompositions (pure refactor → PATCH) bundled with the P.530 feature (MINOR)
-and coverage/palette UX (MINOR). The decompositions depend on the v2.1.0
+and coverage/palette UX (MINOR). The decompositions depend on the v3.1.0
 dataclass migration landing first.
 
 ### Cleanups (PATCH — bundled in this release)
 
 #### Decompose `run_p2p_analysis` into pipeline stages
 
-**Depends on:** v2.1.0 dataclass migration (the 19-arg `_write_p2p_output_layers`
+**Depends on:** v3.1.0 dataclass migration (the 19-arg `_write_p2p_output_layers`
 call becomes a one-liner once `P2PAnalysisParams` is passed).
 
 `p2p/compute.py:86-260` is 174 lines of straight-line code that mixes nine
@@ -399,7 +549,7 @@ output. No new tests needed — decomposition preserves the public signature.
 
 #### Decompose `compute_coverage` into pipeline stages
 
-**Depends on:** v2.1.0 dataclass migration (the 30+ positional/keyword arguments
+**Depends on:** v3.1.0 dataclass migration (the 30+ positional/keyword arguments
 bundle into `CoverageAnalysisParams` first).
 
 **Affected by v2.0.0:** `_build_rx_ground_grid` (lines 37–65) is removed in the
@@ -536,7 +686,7 @@ keywords.
 
 ---
 
-## v2.3.0 — MINOR: best-server, export, antenna patterns
+## v3.3.0 — MINOR: best-server, export, antenna patterns
 
 Three high-impact features that share the "new algorithm + new output" pattern.
 
@@ -630,7 +780,7 @@ NoWires layer + report into a chosen folder that opens unchanged on any OS:
   raster table: GPKG raster is a byte/PNG tile pyramid (see `package_gpkg.py`
   rescaling Float32 dBm → byte 0–250), which *loses* precision. GPKG raster is a
   display format, not lossless storage.
-- Consolidate **vectors** (TX/RX markers, Fresnel, contours, boundaries) into one
+- Consolidate **vectors** (TX/RX markers, Fresnel, boundaries) into one
   GeoPackage — lossless and portable, unlike Shapefile (10-char field
   truncation, multi-file).
 - Write a **relative-path `.qgz`** (`writeEntry("Paths", "/Absolute", False)`)
@@ -899,12 +1049,12 @@ functionality + likely new parameters → MINOR.
 
 #### Organize the plugin menu / add a NoWires dock panel
 
-`nowires.py` adds nine flat entries to the Plugins menu (P2P, Coverage, Contour,
-Opacity, 3D, Comparison, Batch, Pattern Preview, Clear Cache). Two options,
+`nowires.py` adds eight flat entries to the Plugins menu (P2P, Coverage,
+Batch, Comparison, Opacity, 3D, Pattern Preview, Clear Cache). Two options,
 escalating:
 
 1. **Submenu grouping** *(small, PATCH on its own)*: split into **Analysis ▸**
-   (P2P/Coverage/Contour/Comparison/Batch), **Visualize ▸**
+   (P2P/Coverage/Comparison/Batch), **Visualize ▸**
    (Opacity/Legend/3D/Pattern Preview), **Tools ▸** (Clear Cache). Pure menu
    wiring in `initGui`; declutters the Plugins menu.
 2. **Dockable NoWires panel** *(MINOR)*: consolidate the visualize/tools actions

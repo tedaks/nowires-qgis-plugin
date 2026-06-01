@@ -220,6 +220,15 @@ Land-cover data for automatic clutter correction: **ESA WorldCover 2020 v100**.
 - Original web application: [tedaks/nowires](https://github.com/tedaks/nowires)
 - Contour lines algorithm: [ContourLines](https://github.com/tedaks/ContourLines) by Daniel Hulshof Saint Martin
 
+## Recommended Companion Plugins
+
+The following QGIS plugins complement NoWires workflows and are available in the official QGIS Plugin Repository:
+
+- **[QuickMapServices](https://plugins.qgis.org/plugins/quick_map_services/)** — Adds a wide range of basemaps (Google, Bing, OSM, satellite imagery) as background layers, essential for visually validating coverage and link paths against real-world maps.
+- **[ContourLines](https://plugins.qgis.org/plugins/ContourLines/)** — Contour line generation from DEM data. Starting with v3.0.0, NoWires no longer includes a built-in contour feature; users who need contour lines should install this plugin.
+- **[Lat Lon Tools](https://plugins.qgis.org/plugins/latlontools/)** — Coordinate capture, conversion, and display in multiple formats (DMS, DD, MGRS, UTM). Helpful for copying exact TX/RX coordinates from the map or entering them accurately.
+- **[MGRS Tools](https://plugins.qgis.org/plugins/mgrs/)** — Military Grid Reference System (MGRS) coordinate display, grid overlay, and digitising. Useful for users who work with MGRS-based site planning.
+
 ## Development
 
 The test suite in this repository is designed to run outside QGIS for fast regression checks.

@@ -155,6 +155,19 @@ Ctrl+Alt+T
 
 Then find the `NoWires` provider.
 
+## Recommended Companion Plugins
+
+The following QGIS plugins complement NoWires workflows and are available in the **Plugins → Manage and Install Plugins** dialog:
+
+- **QuickMapServices** — Adds a wide range of basemaps (Google, Bing, OSM, satellite imagery) as background layers, essential for visually validating coverage and link paths against real-world maps.
+  - Plugin page: <https://plugins.qgis.org/plugins/quick_map_services/>
+- **ContourLines** — Contour line generation from DEM data. Starting with NoWires v3.0.0, the built-in contour feature has been removed; users who need contour lines should install this plugin.
+  - Plugin page: <https://plugins.qgis.org/plugins/ContourLines/>
+- **Lat Lon Tools** — Coordinate capture, conversion, and display in multiple formats (DMS, DD, MGRS, UTM). Helpful for copying exact TX/RX coordinates from the map or entering them accurately.
+  - Plugin page: <https://plugins.qgis.org/plugins/latlontools/>
+- **MGRS Tools** — Military Grid Reference System (MGRS) coordinate display, grid overlay, and digitising. Useful for users who work with MGRS-based site planning.
+  - Plugin page: <https://plugins.qgis.org/plugins/mgrs/>
+
 ## Basic Workflow: Point-to-Point Analysis
 
 Use this tool when you want to evaluate a single radio link between a transmitter and a receiver.
