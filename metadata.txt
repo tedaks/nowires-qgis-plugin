@@ -14,12 +14,23 @@ about=NoWires is a QGIS plugin for radio propagation analysis powered by NTIA's 
 hasProcessingProvider=yes
 
 changelog=
+    Version 3.0.1
+    - Fix Coverage Analysis always running single-threaded on Windows (auto-detect Python interpreter)
+    - Catch RuntimeError in _validate_downloaded_tile for corrupt DEM tiles
+    - Persist dialog geometry via QSettings for AntennaPatternPreviewDialog and CoverageOpacityDialog
+    - Group each run's outputs into a named QgsLayerTreeGroup
+    - Clickable file:// report pointer after P2P and coverage runs
+    - Message bar summary with coverage percentage, tile count, and elapsed time
+    - Progress ETA and throughput (pixels/sec) in long coverage and batch runs
+    - shortHelpString() on all four algorithms with User's Guide deep-links
+    - Brand each algorithm with icon() in the Processing toolbox
+    - Add type hint to antenna.py:clear_pattern_cache (enables mypy --strict)
+    - Unit tests for _compute_single_link edge cases and ElevationGrid south-up flip
+
     Version 3.0.0
     - BREAKING: Relicensed the plugin's own source from GPL-3.0-or-later to the MIT License
     - BREAKING: Removed the Contour Lines feature (use standalone ContourLines plugin instead)
     - Clean-room reimplemented DEM download core as original work from public Copernicus GLO-30 specs
-    - Fix Coverage Analysis always running single-threaded on Windows
-    - Fix test_decouple_n0_registered_and_not_advanced failing on Python 3.13
 
     Version 2.0.0
     - BREAKING: Replace saalos vegetation clutter model with ITU-R P.833-9 §2.1 Am
