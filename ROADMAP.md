@@ -294,16 +294,12 @@ single deliberate MAJOR release.
 
 ---
 
-## v3.1.0 — MINOR: dataclass migration, proxy auth, UX polish, and cleanups
+## v3.0.1 — PATCH: bugfixes and UX polish
 
-This release batches the dataclass migration (prerequisite for deeper
-decompositions), proxy auth, and several high-impact UX/robustness items.
-PATCH-level cleanups and decompositions may be bundled under this MINOR bump.
-
-_Items that landed early in v2.0.0 (tile-download decomposition, batch/params
-tests, gitignore entries, pip-audit noise fix, CONTRIBUTING.md bootstrap,
-package-name docs) have been removed from this section and recorded in
-CHANGELOG.md §[2.0.0]._
+PATCH-level bug fixes and UX improvements that can ship before MINOR features
+(dataclass migration, proxy auth). Per SemVer 2.0.0, the version must reflect
+the highest change level in the release; PATCH-only content ships as 3.0.x.
+When the first MINOR feature lands, the next release becomes 3.1.0.
 
 ### Bug fixes (PATCH — bundled in this release)
 
@@ -441,7 +437,15 @@ only function in the repo without annotations. Closing this gap enables
 **Regression test:** `mypy --strict` passes on `antenna.py` after the fix.
 No new runtime tests needed; typecheck is the gate.
 
-### Features (MINOR — this release's new functionality)
+---
+
+## v3.1.0 — MINOR: dataclass migration and proxy auth
+
+New public functionality (MINOR per SemVer 2.0.0 §7). These items cannot ship
+under a PATCH version because they add new processing parameters or change
+public function signatures.
+
+### Features
 
 #### Migrate high-arity functions to dataclass parameters
 
