@@ -14,8 +14,7 @@ NoWires is a QGIS 4 plugin that combines:
 
 - point-to-point radio propagation analysis
 - area coverage heatmap analysis
-- contour line generation
-- DEM download, caching, clipping, and derived overlay support
+- DEM download, caching, and clipping support
 
 The runtime target is QGIS 4 with its bundled Qt 6 / PyQt 6 stack. The plugin does not include a Qt 5 compatibility layer; UI code should use Qt 6 API locations and scoped enum names directly.
 
@@ -38,8 +37,6 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   Point-to-point analysis
 - [algorithm/coverage.py](algorithm/coverage.py)
   Coverage heatmap analysis
-- [algorithm/contour.py](algorithm/contour.py)
-  Contour and hillshade/elevation overlay workflow
 
 ### Supporting Modules
 
@@ -193,18 +190,6 @@ The plugin is organized around QGIS Processing algorithms exposed by a custom pr
   Comparison output helpers (vector + raster)
 - [comparison/reporting.py](comparison/reporting.py)
   Comparison report output helpers
-- [contour/generation.py](contour/generation.py)
-  Contour line generation core
-- [contour/overlay.py](contour/overlay.py)
-  Hillshade/elevation overlay helpers
-- [contour/pipeline.py](contour/pipeline.py)
-  Contour processing pipeline
-- [contour/smoothing.py](contour/smoothing.py)
-  VRT Gaussian smoothing for contour DEM
-- [contour/_smoothing_vrt.py](contour/_smoothing_vrt.py)
-  Gaussian kernel, raster calc, and blur VRT helpers (extracted from smoothing.py)
-- [contour/symbology.py](contour/symbology.py)
-  Rule-based contour symbology
 
 ### Bundled Third-Party Engine
 
@@ -227,7 +212,6 @@ The NoWires provider currently exposes:
 - `p2p_analysis`
 - `coverage_analysis`
 - `coverage_comparison`
-- `contour_lines`
 - `batch_p2p_analysis`
 
 ## Data Sources
@@ -255,12 +239,10 @@ In addition to Processing algorithms, the plugin exposes post-run helper actions
   Launches the P2P algorithm dialog
 - `Coverage Analysis`
   Launches the coverage algorithm dialog
-- `Contour Lines`
-  Launches the contour algorithm dialog
 - `Coverage Opacity`
   Opens a non-modal slider dialog for the latest tracked coverage layer
 - `Open 3D View`
-  Opens a QGIS 3D scene from the latest tracked NoWires DEM, coverage, and contour layers when supported by the runtime platform
+  Opens a QGIS 3D scene from the latest tracked NoWires DEM and coverage layers when supported by the runtime platform
 - `Coverage Comparison`
   Launches the coverage comparison algorithm dialog
 - `Batch P2P Analysis`
@@ -994,39 +976,16 @@ All coverage parameters are available for each panel, plus:
 - Ranked link table (by margin)
 - Optional CSV and JSON reports
 
-## Contour Lines
-
-### Purpose
-
-`algorithm/contour.py` generates contour lines and an optional elevation overlay from downloaded Copernicus DEM data.
-
-### Contour Inputs
-
-- area of interest extent
-- interval
-- units
-- smoothing level
-- line color
-- optional elevation overlay
-- optional proxy authentication
-
-### Contour Constraints
-
-- contour interval range: `1` to `5000`
-- area-of-interest maximum extent: `5.0°` width or height
-
 ## 3D Scene Support
 
 `three_d.py` tracks the latest relevant NoWires output layers in project settings under the `NoWires` scope:
 
 - `last_coverage_layer_id`
 - `last_dem_layer_id`
-- `last_contour_layer_id`
 
 Current behavior:
 
-- coverage and contour workflows update these tracked layer ids when they create 3D-relevant outputs
-- contour layers are configured for terrain-aware elevation when used in 3D
+- coverage workflows update these tracked layer ids when they create 3D-relevant outputs
 - Linux and macOS can request a plugin-opened 3D canvas through `iface.createNewMapCanvas3D(...)`
 - Windows does not use that API path from the plugin because it caused native crashes during testing; the plugin shows a warning and defers to QGIS's native `View -> 3D Map Views -> New 3D Map View` workflow instead
 

@@ -27,9 +27,7 @@ SPDX-License-Identifier: MIT
 - **Coverage Opacity Control**: Adjust the most recent coverage raster opacity from a live plugin dialog after the analysis finishes.
 
 ### Terrain Analysis
-- **Contour Lines**: Generate contour lines with rule-based symbology (index contours with labels) from Copernicus GLO-30 DEM. Adjustable interval (1–5000 m or ft), four smoothing levels, and custom colour.
-- **Hillshade Overlay**: Optional hillshade elevation layer rendered from the raw DEM with Dodge blending.
-- **3D Scene Support**: Coverage and contour workflows track the latest DEM and derived layers for opening a QGIS 3D view. On Windows, use QGIS's native `View -> 3D Map Views -> New 3D Map View` workflow because plugin-launched 3D canvases are disabled there for stability.
+- **3D Scene Support**: Coverage workflows track the latest DEM and derived layers for opening a QGIS 3D view. On Windows, use QGIS's native `View -> 3D Map Views -> New 3D Map View` workflow because plugin-launched 3D canvases are disabled there for stability.
 
 ### DEM Data
 - All DEM data is automatically downloaded from the **Copernicus GLO-30** dataset hosted on AWS Open Data.
@@ -49,7 +47,7 @@ SPDX-License-Identifier: MIT
 NoWires does not maintain a Qt 5 compatibility layer. Source code uses QGIS 4 / Qt 6 APIs directly.
 
 No additional Python packages need to be installed. The ITM library ([tedaks/pyitm](https://github.com/tedaks/pyitm)) is bundled with this plugin.
-This plugin also adapts code from [tedaks/nowires](https://github.com/tedaks/nowires) and [tedaks/ContourLines](https://github.com/tedaks/ContourLines); see [NOTICE.md](NOTICE.md) for third-party attribution and license details.
+This plugin also adapts code from [tedaks/nowires](https://github.com/tedaks/nowires); see [NOTICE.md](NOTICE.md) for third-party attribution and license details.
 
 ### Developer requirements
 
@@ -101,7 +99,6 @@ layer and has no plans to add one.
 - `algorithm/coverage.py`: coverage heatmap analysis
 - `algorithm/coverage_comparison.py`: coverage comparison producing a delta raster
 - `algorithm/batch.py`: batch P2P analysis (one-to-many and many-to-one)
-- `algorithm/contour.py`: contour line generation
 - `base_algorithm.py`: shared base class for NoWires Processing algorithms
 - `antenna.py`: antenna radiation pattern model with presets and pattern files
 - `clutter/__init__.py`: terminal clutter correction dispatch and helpers
@@ -150,12 +147,6 @@ layer and has no plans to add one.
 - `batch/params.py`: batch parameter definitions and defaults
 - `batch/outputs.py`: batch output helpers
 - `batch/writer.py`: batch CSV/layer writer
-- `contour/generation.py`: contour line generation core
-- `contour/overlay.py`: hillshade/elevation overlay helpers
-- `contour/pipeline.py`: contour processing pipeline
-- `contour/smoothing.py`: VRT Gaussian smoothing for contour DEM
-- `contour/_smoothing_vrt.py`: Gaussian kernel, raster calc, and blur VRT helpers (extracted from smoothing.py)
-- `contour/symbology.py`: rule-based contour symbology
 - `radio.py`: ITM bridge, Fresnel analysis, signal-level definitions
 - `k_factor_presets.py`: Earth-radius-factor presets and their N0 coupling (`resolve_k_factor`, `resolve_n0`), re-exported from `radio`
 - `fresnel.py`: Fresnel zone and LOS analysis
@@ -199,9 +190,8 @@ Open the **Processing Toolbox** (`Ctrl+Alt+T`) and navigate to **NoWires**:
 2. **Batch P2P Analysis**: Select a TX point and a set of RX points (one-to-many), or an RX point and a set of TX points (many-to-one). Results are ranked by link margin.
 3. **Coverage Analysis**: Select a TX point, set max analysis distance and grid resolution. Click Run to generate a signal-strength heatmap raster, coverage summary, and any requested reports.
 4. **Coverage Comparison**: Run two coverage configurations side-by-side (Panel A and Panel B) and produce a delta raster showing path-loss difference in dB.
-5. **Contour Lines**: Draw an extent, set contour interval and smoothing. Generates contour lines and optional hillshade.
-6. **Coverage Opacity**: After running coverage, open the menu action to adjust the latest coverage raster opacity live.
-7. **Open 3D View**: After running coverage or contours, open a tracked 3D scene from the plugin menu on Linux/macOS. On Windows, NoWires points you to the native QGIS 3D view.
+5. **Coverage Opacity**: After running coverage, open the menu action to adjust the latest coverage raster opacity live.
+6. **Open 3D View**: After running coverage, open a tracked 3D scene from the plugin menu on Linux/macOS. On Windows, NoWires points you to the native QGIS 3D view.
 
 ## Data Source
 
@@ -218,7 +208,6 @@ Land-cover data for automatic clutter correction: **ESA WorldCover 2020 v100**.
 
 - Radio propagation engine: [tedaks/pyitm](https://github.com/tedaks/pyitm) — NTIA Irregular Terrain Model (bundled)
 - Original web application: [tedaks/nowires](https://github.com/tedaks/nowires)
-- Contour lines algorithm: [ContourLines](https://github.com/tedaks/ContourLines) by Daniel Hulshof Saint Martin
 
 ## Recommended Companion Plugins
 
@@ -271,6 +260,6 @@ refinement via `math.erf`.
 
 SPDX-License-Identifier: MIT
 
-GNU General Public License v3 or later.
-Copyright (C) 2026 Bortre Tenamo <tedaks@gmail.com>.
+MIT License.
+Copyright (c) 2026 Bortre Tenamo <tedaks@gmail.com>.
 Third-party notices and upstream attribution details are documented in [NOTICE.md](NOTICE.md).

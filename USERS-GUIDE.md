@@ -8,7 +8,6 @@ NoWires is a QGIS 4 plugin for:
 
 - point-to-point radio link analysis
 - coverage heatmap analysis
-- contour line generation from Copernicus GLO-30 DEM data
 
 This guide is for end users. It focuses on installation, setup, and basic workflows. For implementation details and engineering reference material, see [Technical_Documentation.md](Technical_Documentation.md).
 
@@ -131,7 +130,6 @@ You should then see:
 - menu entries for:
   - `Point-to-Point Analysis`
   - `Coverage Analysis`
-  - `Contour Lines`
   - `Coverage Comparison`
   - `Batch P2P Analysis`
   - `Coverage Opacity`
@@ -538,42 +536,18 @@ Use this tool to compute multiple point-to-point links in one run.
 6. Run the tool.
 7. Review the ranked results layer and optional report.
 
-## Basic Workflow: Contour Lines
-
-Use this tool to generate contours and an optional hillshade/elevation overlay from downloaded Copernicus GLO-30 DEM.
-
-### Inputs
-
-- area of interest extent
-- contour interval
-- units: metres or feet
-- smoothing level
-- line color
-- optional elevation overlay
-
-### Basic Steps
-
-1. Open `Contour Lines`.
-2. Draw or enter an area of interest.
-3. Choose the contour interval and units.
-4. Set smoothing.
-5. Choose a line color.
-6. Decide whether to generate the elevation overlay.
-7. Run the tool.
-
 ## Basic Workflow: 3D View
 
-Use this when you want to inspect the latest NoWires DEM, coverage raster, and contour output in a QGIS 3D scene.
+Use this when you want to inspect the latest NoWires DEM and coverage raster in a QGIS 3D scene.
 
 ### How It Works
 
 - Coverage Analysis stores the latest coverage and DEM layers for 3D use.
-- Contour Lines stores the latest contour layer and optional DEM layer for 3D use.
 - `Open 3D View` reuses those tracked layers when available.
 
 ### Basic Steps
 
-1. Run `Coverage Analysis` or `Contour Lines` first.
+1. Run `Coverage Analysis` first.
 2. Open `NoWires -> Open 3D View`.
 3. Choose either `Local terrain` or `Globe`.
 4. Review the opened 3D scene.
@@ -584,7 +558,7 @@ On Windows, NoWires does not open the 3D canvas directly because that QGIS API p
 
 Instead:
 
-1. Run `Coverage Analysis` or `Contour Lines`.
+1. Run `Coverage Analysis`.
 2. Open QGIS's native 3D view from `View -> 3D Map Views -> New 3D Map View`.
 3. Use the tracked NoWires DEM layer as terrain, then add the other tracked NoWires layers to the scene as needed.
 
@@ -660,7 +634,7 @@ NoWires downloads Copernicus GLO-30 tiles from AWS Open Data. Network restrictio
 
 ### Open 3D View does not open a scene on Windows
 
-This is expected in the current release. Use QGIS's native `View -> 3D Map Views -> New 3D Map View` action instead after running a NoWires coverage or contour workflow, and use the NoWires DEM layer as terrain.
+This is expected in the current release. Use QGIS's native `View -> 3D Map Views -> New 3D Map View` action instead after running a NoWires coverage workflow, and use the NoWires DEM layer as terrain.
 
 ## Support Checklist
 
@@ -669,7 +643,7 @@ When reporting a problem, include:
 - operating system
 - QGIS version
 - plugin version
-- which tool you ran (P2P, Coverage, Coverage Comparison, Batch P2P, Contour Lines, etc.)
+- which tool you ran (P2P, Coverage, Coverage Comparison, Batch P2P, etc.)
 - the parameters you used
 - the exact error message from the Processing log
 
