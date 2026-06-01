@@ -76,9 +76,9 @@ _cov_lock = threading.Lock()
 def should_use_multiprocessing(os_name=None, platform_name=None):
     """Return whether process-based parallelism is safe in this runtime.
 
-    Windows always returns False (multiprocessing is unsupported there).
-    On macOS the ``find_macos_python_executable`` helper validates each
-    candidate; a False return triggers the sequential fallback in the executor.
+    On macOS and Windows the platform-specific ``find_*_python_executable``
+    helpers validate each candidate; a False return here triggers the
+    clean sequential fallback in the executor.
     """
     import sys
     if os_name is None:
@@ -86,7 +86,11 @@ def should_use_multiprocessing(os_name=None, platform_name=None):
     if platform_name is None:
         platform_name = sys.platform
     if os_name == "nt":
-        return False
+        from NoWires.windows_compat import find_windows_python_executable
+        if find_windows_python_executable() is None:
+            logger.warning("Windows: no usable Python for multiprocessing; "
+                           "falling back to sequential mode.")
+            return False
     if platform_name == "darwin" and find_macos_python_executable() is None:
         logger.warning("macOS: no usable Python for multiprocessing; "
                        "falling back to sequential mode.")

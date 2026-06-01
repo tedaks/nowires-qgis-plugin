@@ -9,17 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-06-02
+
+### Correctness
+
+- Fix Coverage Analysis always running single-threaded on Windows. `should_use_multiprocessing` now delegates to `find_windows_python_executable` on Windows and auto-enables multiprocessing when a validated Python interpreter is found, falling back to sequential otherwise.
+- Catch `RuntimeError` in `_validate_downloaded_tile` to handle corrupt or truncated DEM tiles gracefully instead of crashing.
+- Persist dialog geometry via `QSettings` for `AntennaPatternPreviewDialog` and `CoverageOpacityDialog` so they reopen where the user left them; existing `destroyed` signal ref-nulling preserved.
+
+### Robustness
+
+- Add type hint to `antenna.py:clear_pattern_cache` — the last untyped function in the repo, enabling `mypy --strict` on the full project.
+
+### Added
+
+- Group each run's outputs into a named `QgsLayerTreeGroup` (e.g. "NoWires — Coverage 900 MHz 50 km") so repeated runs no longer pile up as loose layers.
+- Clickable `file://` report pointer pushed via `feedback.pushInfo` after P2P and coverage runs so reports open in one click.
+- Message bar summary after each run with coverage percentage, tile count, and elapsed time plus a "View report" action.
+- Progress ETA and throughput (pixels/sec) in long coverage and batch runs.
+- `shortHelpString()` on all four algorithms with deep-links to the User's Guide.
+- Brand each algorithm with `icon()` reusing `logo.png` in the Processing toolbox.
+- Unit tests for `_compute_single_link` edge cases (EIRP, terminal-height out-of-range skip) and `ElevationGrid` south-up flip path / short-distance branch.
+
+### Changed
+
+- Restructure ROADMAP per SemVer classification (PATCH/MINOR/MAJOR sections).
+- Fix `test_decouple_n0_registered_and_not_advanced` compatibility with Python 3.13 (`MagicMock.called` removed).
+
 ## [3.0.0] - 2026-06-01
 
 ### Changed
 - **BREAKING:** Relicensed the plugin's own source from GPL-3.0-or-later to the **MIT License**. Only 3.0.0 and later are MIT; pre-3.0.0 releases remain GPL. The `itm/` files stay US-Government public domain (NTIA disclaimer).
 - **BREAKING:** Removed the Contour Lines feature — the `contour_lines` algorithm, the `contour/` package, and the hillshade overlay — whose code derived from the GPL ContourLines plugin. The provider now registers 4 algorithms. Users needing contour lines should install the standalone [ContourLines](https://plugins.qgis.org/plugins/ContourLines/) plugin.
 - Clean-room reimplemented the shared DEM download core (`dem_downloader.py`, `tile_download_base.py`) as original work from public Copernicus GLO-30 specifications, removing the last GPL-derived code. Public APIs are unchanged.
-
-### Correctness
-
-- Fix Coverage Analysis always running single-threaded on Windows. `should_use_multiprocessing` now delegates to `find_windows_python_executable` on Windows (as it did in v2.0.0) instead of hard-blocking; multiprocessing is auto-enabled when a validated Python interpreter is found and falls back to sequential otherwise.
-- Fix `test_decouple_n0_registered_and_not_advanced` failing on Python 3.13 — replace `MagicMock.called` (removed in 3.13) with dual-path check that also works against real QGIS bindings.
 
 ## [2.0.0] - 2026-05-31
 

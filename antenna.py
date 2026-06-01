@@ -167,7 +167,7 @@ def _read_pattern_points(path: str) -> list[tuple[float, float]]:
     return sorted(points)
 
 
-def clear_pattern_cache():
+def clear_pattern_cache() -> None:
     """Clear the LRU cache for antenna pattern files.
 
     Call this after editing a pattern CSV on disk to force re-reading

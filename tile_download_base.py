@@ -104,7 +104,10 @@ def _structurally_valid(path):
 
 def _validate_downloaded_tile(tmp_path):
     """Return True when a freshly downloaded tile opens (GDAL can read it)."""
-    return gdal.Open(tmp_path) is not None
+    try:
+        return gdal.Open(tmp_path) is not None
+    except RuntimeError:
+        return False
 
 
 def _serve_from_cache(local_tif, base_name_label, feedback):

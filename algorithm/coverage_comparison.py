@@ -77,6 +77,11 @@ class CoverageComparisonAlgorithm(NoWiresAlgorithm):
         threshold_db = self.parameterAsDouble(parameters, self.DELTA_THRESHOLD_DB, context)
         output_dir = self.parameterAsString(parameters, self.OUTPUT_DIR, context)
 
+        panel_a_freq = self.parameterAsDouble(parameters, self.PANEL_A_FREQ_MHZ, context)
+        panel_b_freq = self.parameterAsDouble(parameters, self.PANEL_B_FREQ_MHZ, context)
+        self._layer_tree_group_name = "NoWires — Comparison {:.0f} vs {:.0f} MHz".format(
+            panel_a_freq, panel_b_freq)
+
         tx_point_a = self.parameterAsPoint(parameters, self.PANEL_A_POINT, context, crs=crs4326)
         tx_point_b = self.parameterAsPoint(parameters, self.PANEL_B_POINT, context, crs=crs4326)
         radius_km_a = self.parameterAsDouble(parameters, self.PANEL_A_RADIUS_KM, context)

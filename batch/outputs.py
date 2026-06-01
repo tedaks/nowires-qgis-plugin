@@ -19,6 +19,7 @@ Batch P2P computation and output helpers.
 
 import logging
 import math
+import time
 
 import numpy as np
 from qgis.core import QgsProcessingException
@@ -206,6 +207,7 @@ def compute_batch_links(params: BatchAnalysisParams, feedback):
     wavelength_m = C_LIGHT / (params.f_mhz * MHZ_TO_HZ)
     results = []
     count = 0
+    start_time = time.time()
 
     total = params.total
 
@@ -222,7 +224,14 @@ def compute_batch_links(params: BatchAnalysisParams, feedback):
                               tx_def["lat"], tx_def["lon"], rx_def["lat"], rx_def["lon"], exc)
             count += 1
             if count % 100 == 0 or count == total:
+                elapsed = time.time() - start_time
+                rate = count / elapsed if elapsed > 0 else 0
+                eta = (total - count) / rate if rate > 0 else 0
                 feedback.setProgress(20 + int(60 * count / max(total, 1)))
+                if count % 500 == 0 or count == total:
+                    feedback.pushInfo(
+                        "{:.0f}% · {:.0f} links/s · ETA {:.0f}s ({}/{})".format(
+                            100 * count / max(total, 1), rate, eta, count, total))
 
     return results
 

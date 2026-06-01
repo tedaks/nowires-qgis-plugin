@@ -242,6 +242,7 @@ class BatchAnalysisAlgorithm(NoWiresAlgorithm):
         tmp_mgr = TempDirManager()
         rank_by = self.parameterAsEnum(parameters, self.RANK_BY, context)
         inp = _collect_batch_inputs(self, parameters, context, feedback)
+        self._layer_tree_group_name = "NoWires — Batch P2P {:.0f} MHz".format(inp.f_mhz)
         feedback.pushInfo("Computing batch P2P links...")
         feedback.setProgress(20)
         try:

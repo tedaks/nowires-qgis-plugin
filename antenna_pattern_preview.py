@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import math
 
-from qgis.PyQt.QtCore import QPointF
+from qgis.PyQt.QtCore import QPointF, QSettings
 from qgis.PyQt.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 from qgis.PyQt.QtWidgets import (
     QDialog, QFileDialog, QHBoxLayout, QLabel, QPushButton, QSizePolicy,
@@ -127,7 +127,16 @@ class AntennaPatternPreviewDialog(QDialog):
     def __init__(self, parent=None, initial_path: str | None = None):
         super().__init__(parent)
         self.setWindowTitle("NoWires — Antenna Pattern Preview")
-        self.resize(560, 600)
+        self._settings_key = "NoWires/antennaPatternPreview/geometry"
+        geom_raw = QSettings().value(self._settings_key)
+        if geom_raw is not None:
+            try:
+                self.restoreGeometry(geom_raw)
+            except Exception:
+                pass
+        if self.width() < 200:
+            self.resize(560, 600)
+        self.finished.connect(self._save_geometry)
         self._label = QLabel("No pattern loaded.")
         self._plot = _PolarPlot(self)
 
@@ -145,6 +154,9 @@ class AntennaPatternPreviewDialog(QDialog):
 
         if initial_path:
             self._load(initial_path)
+
+    def _save_geometry(self):
+        QSettings().setValue(self._settings_key, self.saveGeometry())
 
     def _on_pick(self):
         clear_pattern_cache()
