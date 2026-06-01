@@ -4,6 +4,7 @@
 
 import logging
 import math
+import os
 import numpy as np
 from osgeo import osr
 from qgis.core import QgsProcessingException
@@ -33,6 +34,15 @@ from NoWires.p2p.outputs_internal import _write_p2p_output_layers, _write_p2p_re
 logger = logging.getLogger(__name__)
 __all__ = ["run_p2p_analysis"]
 _MIN_P2P_DISTANCE_M = 1.0
+
+
+def _push_report_link(feedback, report_path):
+    uri = "file://{}".format(report_path)
+    label = "Open report: {}".format(os.path.basename(report_path))
+    try:
+        feedback.pushCommandInfo("{} ({})".format(label, uri))
+    except AttributeError:
+        feedback.pushInfo("Report: {}".format(uri))
 
 
 def _interpolate_nan_elevations(elevations):
@@ -226,6 +236,14 @@ def run_p2p_analysis(params: P2PAnalysisParams):
             bel_rx_db=cl.rx_bel_db)
         _write_p2p_reports(p.report_csv_path, p.report_json_path,
                            p.report_html_path, report_payload)
+        if p.report_html_path:
+            _push_report_link(p.feedback, p.report_html_path)
+        p._run_summary_text = (
+            "P2P: {:.1f} km, {:.0f} MHz — margin {:.1f} dB, LOS {}. ".format(
+                dist_m / 1000.0, p.f_mhz, margin_db,
+                "clear" if not los_blocked else "blocked")
+            + "{:.1f} dB loss ({})".format(loss_db, report_payload.get("propagation_mode_name", "")))
+        p._run_summary_report_path = p.report_html_path
         p.feedback.setProgress(90)
         chart_kwargs = dict(distances=dist_arr, elevations=elev_arr,
             terrain_bulge=terrain_bulge, los_h=los_h, fresnel_r=fresnel_r,

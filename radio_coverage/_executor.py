@@ -4,6 +4,7 @@
 
 import logging
 import os
+import time
 import warnings
 from concurrent.futures import ProcessPoolExecutor  # noqa: F401 re-exported for test mocking
 
@@ -28,9 +29,9 @@ def _run_sequential(tasks, grid_data, grid_meta, feedback, prx_grid, loss_grid,
                     itm_loss_grid, clutter_loss_grid, clutter_rx_db_grid, bel_rx_db_grid):
     if feedback:
         feedback.pushInfo("Single-threaded mode: no multiprocessing detected")
-    # 200 progress buckets for the whole run — finer than 100 without
-    # adding measurable overhead.
-    progress_interval = max(1, len(tasks) // 200)
+    start_time = time.time()
+    total = len(tasks)
+    progress_interval = max(1, total // 200)
     pixels_failed = 0
     pixels_done = 0
     cancelled = False
@@ -52,7 +53,14 @@ def _run_sequential(tasks, grid_data, grid_meta, feedback, prx_grid, loss_grid,
             pixels_failed += 1
         pixels_done += 1
         if feedback and task_idx % progress_interval == 0:
-            feedback.setProgress(int(pixels_done / max(len(tasks), 1) * 80))
+            progress = pixels_done / max(total, 1)
+            elapsed = time.time() - start_time
+            rate = pixels_done / elapsed if elapsed > 0 else 0
+            eta = (total - pixels_done) / rate if rate > 0 else 0
+            feedback.setProgress(int(progress * 80))
+            feedback.pushInfo(
+                "{:.0f}% · {:.0f} pix/s · ETA {:.0f}s ({}/{})".format(
+                    progress * 100, rate, eta, pixels_done, total))
     return cancelled, pixels_failed, pixels_done
 
 
@@ -66,6 +74,8 @@ def execute_coverage_tasks(
     use_mp = should_use_multiprocessing()
     pixels_failed = 0
     pixels_done = 0
+    start_time = time.time()
+    total = len(tasks)
     if use_mp:
         ensure_spawn_start_method()
         configure_macos_multiprocessing()
@@ -115,7 +125,14 @@ def execute_coverage_tasks(
                             bel_rx_db_grid)
                         pixels_done += len(batch_results)
                         if feedback and chunk_idx % 5 == 0:
-                            feedback.setProgress(int(pixels_done / len(tasks) * 80))
+                            progress = pixels_done / total
+                            elapsed = time.time() - start_time
+                            rate = pixels_done / elapsed if elapsed > 0 else 0
+                            eta = (total - pixels_done) / rate if rate > 0 else 0
+                            feedback.setProgress(int(progress * 80))
+                            feedback.pushInfo(
+                                "{:.0f}% · {:.0f} pix/s · ETA {:.0f}s ({}/{})".format(
+                                    progress * 100, rate, eta, pixels_done, total))
         except Exception as exc:
             logger.warning(
                 "Multiprocessing failed (%s: %s), falling back to sequential",

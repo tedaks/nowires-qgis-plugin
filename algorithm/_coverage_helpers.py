@@ -68,6 +68,15 @@ def _build_clutter_context(p, clutter_grid, elev):
     return clutter_grid_resolved, clutter_context, clutter_source, tx_clutter_for_report, owns_grid
 
 
+def _push_report_link(feedback, report_path):
+    uri = "file://{}".format(report_path)
+    label = "Open report: {}".format(os.path.basename(report_path))
+    try:
+        feedback.pushCommandInfo("{} ({})".format(label, uri))
+    except AttributeError:
+        feedback.pushInfo("Report: {}".format(uri))
+
+
 def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
                             dem_path, clutter_source, tx_clutter_for_report):
     """Write coverage raster, reports, and load QGIS layers."""
@@ -146,12 +155,20 @@ def _write_coverage_outputs(algorithm, parameters, context, feedback, p, result,
             "Could not load coverage raster layer: {}".format(raster_layer.error().summary()))
     report_coverage_results(feedback, report_payload, raster_grid, valid, p.rx_sens,
                             summary=summary)
+    pct_above = summary.get("pct_above_sensitivity", 0.0) if summary else 0.0
+    algorithm._run_summary = {
+        "text": "Coverage: {:.0f} MHz, {:.0f} km — {:.0f}% above {:.0f} dBm · {} tiles".format(
+            p.f_mhz, p.radius_km, pct_above, p.rx_sens, summary.get("tiles", "?") if summary else "?"),
+        "report_html_path": report_html_path,
+        "duration": summary.get("elapsed_s", 0.0) if summary else 0.0,
+    }
     if report_csv_path:
         write_report_csv(report_csv_path, report_payload)
     if report_json_path:
         write_report_json(report_json_path, report_payload)
     if report_html_path:
         write_report_html(report_html_path, report_payload, title="NoWires Coverage Report")
+        _push_report_link(feedback, report_html_path)
     if report_pdf_path:
         from NoWires.report.pdf import write_report_pdf
         if not write_report_pdf(report_pdf_path, report_payload, "NoWires Coverage Report"):
