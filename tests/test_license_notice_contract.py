@@ -25,19 +25,18 @@ def test_notice_documents_worldcover_license_and_citation():
     assert "Contains modified Copernicus Sentinel data (2020)" in notice
 
 
-def test_notice_lists_all_contourlines_derived_modules():
+def test_notice_documents_contourlines_removal_and_original_dem():
     notice = _text("NOTICE.md")
 
-    for filename in (
-        "algorithm/contour.py",
-        "dem_downloader.py",
-        "contour/generation.py",
-        "contour/pipeline.py",
-        "contour/symbology.py",
-        "contour/overlay.py",
-        "contour/smoothing.py",
-    ):
-        assert f"`{filename}`" in notice
+    # The ContourLines feature and all its derived code were removed in 3.0.0.
+    assert "removed in 3.0.0" in notice
+    assert "ContourLines" in notice
+    # The DEM core is now affirmatively original work, no longer "derived".
+    assert "`dem_downloader.py`" in notice
+    assert "`tile_download_base.py`" in notice
+    assert "original work" in notice
+    # The old false attribution ("derived from the ContourLines plugin") is gone.
+    assert "derived from the ContourLines plugin" not in notice
 
 
 def test_notice_preserves_nowires_mit_copyright():

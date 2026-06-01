@@ -3,7 +3,7 @@ name = "nowires"
 version = "3.0.0"
 description = "QGIS plugin for radio propagation analysis and terrain tools using ITM with Copernicus GLO-30 DEM"
 requires-python = ">=3.12"
-license = {text = "GPL-3.0-or-later"}
+license = {text = "MIT"}
 authors = [
     {name = "Bortre Tenamo", email = "tedaks@gmail.com"},
 ]
