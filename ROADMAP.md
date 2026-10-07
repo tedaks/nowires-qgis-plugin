@@ -439,6 +439,103 @@ No new runtime tests needed; typecheck is the gate.
 
 ---
 
+## v3.0.2 — PATCH: bundled `itm/` fidelity and attribution
+
+The bundled `itm/` package is a fork of [tedaks/pyitm](https://github.com/tedaks/pyitm)
+(pyitm-ng): its `itm/` package directory as of the 2026-04-19 upstream commits, before
+the Oct-2026 rename to `pyitm_ng/`, plus local plugin patches. Verified 2026-10-07
+against that upstream: 23 of the shared functions have diverged (4 `terrain`, 13
+`propagation`, 6 `variability`), and one local guard is measurably wrong against the
+NTIA C++ reference. Bug fixes → PATCH.
+
+### Correctness
+
+#### `smooth_earth_diffraction`: the `B_0` clamp is wrong for Vogler's `B_0 < 0`
+
+**Measured defect.** `itm/propagation.py:152` clamps
+`B_0 = [max(1.607 - K[i], 1e-12) for i in range(3)]`. Vogler's `1.607 - K < 0` is
+reachable on valid input (high antennas, small `|Z_g|` — the regime pyitm-ng documents
+as a legitimate C++ case, not an error). Clamping it to `1e-12` drives `x__km ≈ 0` and
+inflates `A_se`. On a 3000-case random p2p differential the bundled copy differs from
+pyitm-ng HEAD on 3 cases (max **+7.54 dB**), and the built NTIA/itm C++ reference
+(`183ad95`) sides with pyitm-ng on all three:
+
+| case | C++ reference | bundled `itm/` | pyitm-ng |
+|------|---------------|----------------|----------|
+| 1185 | 127.5967 | 135.1334 | 127.5967 |
+| 1526 | 77.8117 | 78.5867 | 77.8117 |
+| 2292 | 116.7034 | 117.4529 | 116.7034 |
+
+Transplanting pyitm-ng's `smooth_earth_diffraction` alone resolves all three cases; no
+other function has any effect. On case 1185, `1.607 - K[1] = -1.254` → clamped
+`B_0[1] = 1e-12` → `x__km[1] = 7.05e-10` → `A_se = 278.91 dB`, against the C++'s
+`222.05 dB`. Removing the clamp alone is *worse* (`-26.5 dB` on that case) because the
+paired `x__km[0] <= 0` fallback then fires: the function needs pyitm-ng's arithmetic
+wholesale, not a patched guard. pyitm-ng handles the same degenerate geometry by
+reproducing the C++ exactly and flagging it with its `REFERENCE_ATTENUATION_NAN` warning
+bit — adopt that in place of a clamp.
+
+The current suite locks only the crash fix: `tests/test_itm_reference_vectors.py`
+asserts `math.isfinite(result)` and `> 0` for this regime, never a value, so a
+value-level regression is invisible today.
+
+**Regression test:** `test_smooth_earth_b0_negative.py` — the three cases above as
+reference vectors, with the C++ invocation and the pyitm-ng revision that produced them
+recorded in the test docstring. Extend `test_itm_reference_vectors.py` so the `B_0 < 0`
+regime asserts a value rather than finiteness.
+
+**Classification:** PATCH (correctness).
+
+#### Sync bundled `itm/` with pyitm-ng 0.3.x
+
+The copy is five months and ~20 upstream commits behind. Upstream has since landed the
+bit-exact-C++ layer (`pyitm_ng/_cfloat.py`: `c_log`/`c_log10`/`c_pow`/`sq`/`c_min`/`c_max`/
+`c_csqrt` and `ieee_div` at every division that can hit `0.0`), input validation for
+values the C++ turns into undefined behaviour, and the horizon-accumulation fix.
+
+Rebase `itm/` onto pyitm-ng 0.3.x and re-apply the plugin's deliberate deviations on
+top, keeping only the ones that are wanted:
+
+- **`k_factor` parameter** on `smooth_earth_diffraction` / `longley_rice` (the plugin
+  exposes K-factor presets and threads them through) — keep; the default 4/3 equals the
+  value upstream hardcodes, so it is only observable when a non-default preset is
+  passed. Record it as a deliberate deviation in `NOTICE.md` and the module headers.
+- **NaN / `x__km <= 0` guards** — replace with the upstream behaviour (see the item
+  above), which reproduces the C++ exactly rather than substituting a finite value.
+- **Docstring/attribution headers, `py.typed`, import-path adjustments** — keep.
+
+Two measurements from the 2026-10-07 comparison that must not regress: the p2p
+differential (23 functions differ today; the target is pyitm-ng's own result set) and
+area mode (3000/3000 cases bit-identical, so any change there is a red flag). The
+`indices * xi` horizon accumulation that upstream replaced with sequential accumulation
+did **not** produce a difference in 20,000 random p2p cases in this copy — do not assume
+damage there without measuring.
+
+**Classification:** PATCH while it only changes edge-case results; MINOR if the adopted
+input validation starts raising where the plugin previously returned a value (new
+`ValueError`/`TypeError` on inputs the algorithms currently accept). Note the bump level
+chosen here governs the release.
+
+### Licensing / attribution
+
+#### `itm/` is `MIT AND NTIA-PD`, not NTIA-PD alone
+
+pyitm-ng carries two notices: the Python port is MIT (© 2026 tedaks), the model,
+constants and reference data are NTIA-PD. `NOTICE.md` §2 and `LICENSE` currently
+describe `itm/` as US-Government public domain only, and the per-file headers carry
+`SPDX-License-Identifier: LicenseRef-NTIA-Software-Disclaimer` — tedaks' MIT notice,
+which MIT requires be carried with copies or substantial portions, appears nowhere. The
+notice also names the upstream repositories but no revision, unlike pyitm-ng, which pins
+`NTIA/itm` by commit.
+
+**Regression test:** extend `test_license_notice_contract.py` — NOTICE.md §2 declares
+`MIT AND NTIA-PD`, carries the MIT permission notice for the port, and names the upstream
+revision the copy came from; the `itm/` SPDX headers agree with that declaration.
+
+**Classification:** PATCH (documentation and headers only; no runtime change).
+
+---
+
 ## v3.1.0 — MINOR: dataclass migration and proxy auth
 
 New public functionality (MINOR per SemVer 2.0.0 §7). These items cannot ship
